@@ -13,7 +13,7 @@ rmmod hids_driver
 
 ## About the compatibility with Linux distribution
 
-* Verified Linux:Centos,Debian,Ubuntu
+* Tested on:Centos,Debian,Ubuntu
 
 
 ## About the compatibility with ARM
