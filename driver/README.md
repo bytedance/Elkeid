@@ -1,8 +1,9 @@
-
-[![License](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/DianrongSecurity/AgentSmith-HIDS/blob/master/LICENSE) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
-
 ## About AgentSmith-HIDS Driver
-AgentSmith-HIDS driver hook some kernel function via Kprobe, and is also capable of monitoring containers by being compatible with Linux namespace. Mainly for provide data for cyber security engineer(HIDS/Audit/Sandbox/Honeypot). Can get more comprehensive information compared to userpace agent,but also has better performance.
+AgentSmith-HIDS Driver is a one-of-a-kind Kernel Space HIDS agent designed for Cyber-Security. 
+
+AgentSmith-HIDS Driver hooks kernel functions via Kprobe, providing rich and accurate data collection capabilities,  including kernel-level process execve probing, privilege escalation monitoring, network audition, and much more. The Driver treats Container-based monitoring as a first-class citizen as Host-based data collection by supporting Linux Namespace. Compare to User Space agents on the market, AgentSmith-HIDS provides more comprehensive information with massive performance improvement. 
+
+AgentSmith-HIDS has already been deployed massively for HIDS usage in world-class production environments. With its marvelous data collection ability, AgentSmith-HIDS also supports Sandbox, Honeypot, and Audition data requirements. 
 
 ## Quick Test
 ```shell script
@@ -16,12 +17,12 @@ rmmod hids_driver
 
 ## About the compatibility with Linux distribution
 
-* Tested on:Centos,Debian,Ubuntu
+* Fully Tested on: Centos, Debian, Ubuntu
 
 
 ## About the compatibility with ARM
 
-* Partial support
+* Partially support
 
 
 ## About the compatibility with Kernel version
@@ -83,15 +84,15 @@ rmmod hids_driver
 
 ### Data Protocol
 
-Use between data fields '**\x1e**' make intervals
+'**\x1e**' is used as **field** deliminator
 
-Use between data '**\x17**' make intervals
+'**\x17**' is used as **data** deliminator
 
-All hook print data consists of **common data** + **privatization data**
+Hook List data type generats data consists of **Common Data** with each ***privatizated data*** (lists below with same type name)
 
-All anti rootkit data does not contain **common data**
+Anti-rootkit List data does **NOT** contain fields in **Common Data**
 
-### common data
+### Common data
 
 ```
 ------------------------------------------------------------------
@@ -103,7 +104,7 @@ All anti rootkit data does not contain **common data**
 
 
 
-### connect data 
+### Connect Data 
 
 ```
 ------------------------------------------------
@@ -113,11 +114,11 @@ All anti rootkit data does not contain **common data**
 ------------------------------------------------
 ```
 
-Note: default situation connect_type always is -1
+Note: Connect_type is always -1 in default build settings
 
 
 
-### bind data
+### Bind Data
 
 ```
 -------------------------
@@ -129,7 +130,7 @@ Note: default situation connect_type always is -1
 
 
 
-### execve data
+### Execve Data
 
 ```
 -------------------------------------------------------------------------------------------------------------------------
@@ -141,13 +142,13 @@ Note: default situation connect_type always is -1
 
 Note:
 
-* **socket_exe/dip/dport/sip/sport/sa_family** data from process fd
+* **socket_exe/dip/dport/sip/sport/sa_family** is collected from the process's /proc/fd 
 
-* **ssh/ld_preload** data from process env
+* **ssh/ld_preload** is collected from the process's /proc/env
 
 
 
-### create file data
+### Create File data
 
 ```
 -----------
@@ -159,7 +160,7 @@ Note:
 
 
 
-### ptrace
+### Ptrace
 
 ```
 ----------------------------------------------
@@ -171,7 +172,7 @@ Note:
 
 
 
-### dns query data
+### Dns Query Data
 
 ```
 -----------------------------------------------------
@@ -183,7 +184,7 @@ Note:
 
 
 
-### init kernel module data
+### Init Kernel Module Data
 
 ```
 ----------------------------
@@ -195,7 +196,7 @@ Note:
 
 
 
-### update cred data
+### Update Cred Data
 
 ```
 ----------------------
@@ -207,7 +208,7 @@ Note:
 
 
 
-### rename data
+### Rename Data
 
 ```
 ----------------------------
@@ -219,7 +220,7 @@ Note:
 
 
 
-### link data
+### Link Data
 
 ```
 ----------------------------
@@ -231,13 +232,13 @@ Note:
 
 
 
-### setsid data
+### Setsid Data
 
-only common data
+Only contains fields in ***Common Data***
 
 
 
-### prctl data
+### Prctl Data
 
 ```
 _________________
@@ -249,7 +250,7 @@ _________________
 
 
 
-### open data
+### Open Data
 
 ````
 ---------------------
@@ -261,7 +262,7 @@ _________________
 
 
 
-### mprotect data
+### Mprotect data
 
 ```
 -----------------------------------------------------
@@ -273,7 +274,7 @@ _________________
 
 
 
-### nanosleep data
+### Nanosleep Data
 
 ```
 ----------
@@ -285,7 +286,7 @@ _________________
 
 
 
-### kill data
+### Kill Data
 
 ```
 ----------------
@@ -297,7 +298,7 @@ _________________
 
 
 
-### tkill data
+### Tkill data
 
 ```
 ----------------
@@ -309,31 +310,19 @@ _________________
 
 
 
-### process exit data
+### Process Exit Data
 
-only common data
-
-
-
-### exit group data
-
-only common data
+Only contains fields in ***Common Data***
 
 
 
-### rmdir data
+### Exit Group Data
 
-```
-------
-|12  |
-------
-|file|
-------
-```
+Only contains fields in ***Common Data***
 
 
 
-### unlink data
+### Rmdir Data
 
 ```
 ------
@@ -345,7 +334,19 @@ only common data
 
 
 
-### interrupt table hook data
+### Unlink Data
+
+```
+------
+|12  |
+------
+|file|
+------
+```
+
+
+
+### Interrupt Table Hook Data
 
 ```
 ---------------------------------------------------
@@ -355,11 +356,11 @@ only common data
 ---------------------------------------------------
 ```
 
-Note:  uid always is -1
+Note:  ***uid*** is always -1
 
 
 
- ### syscall table hook data
+ ### Syscall Able Hook Data
 
 ```
 -------------------------------------------------
@@ -369,11 +370,11 @@ Note:  uid always is -1
 -------------------------------------------------
 ```
 
-Note: uid always is -1
+Note: ***uid*** is always -1
 
 
 
-### proc file hook
+### Proc File Hook
 
 ```
 ----------------------------------
@@ -383,11 +384,11 @@ Note: uid always is -1
 ----------------------------------
 ```
 
-Note: uid always is -1
+Note:  ***uid*** is always -1
 
 
 
-### hidden kernel module data
+### Hidden Kernel Module Data
 
 ````
 ----------------------------------
@@ -397,17 +398,17 @@ Note: uid always is -1
 ----------------------------------
 ````
 
-Note: uid always is -1
+Note:  ***uid*** is always -1
 
 
 
 ## About Driver Filter
 
-AgentSmith-HIDS driver support whitelist,We have 'exe' and 'argv' whitelist, 'exe' whitelist acts on **execve/create file/dns query/connect** hook, 'argv' whitelist only acts on **execve** hook.
+AgentSmith-HIDS driver supports whitelist to filter out unwanted data. We provide two types of whitelists, **'exe'** whitelist and **'argv'** whitelist.
+**'exe'** whitelist acts on ***execve/create file/dns query/connect*** hooks, while **'argv'** whitelist only acts on ***execve*** hook. 
+For performance and stability concerns, both 'exe' and 'argv' whitelist only supports 64-elements-wide capacity.
 
-'exe' and 'argv' whitelist capacity is 64. 
-
-whitelist driver is : `/dev/hids_driver_whitelist`
+whitelist driver is in: `/dev/hids_driver_whitelist`
 
 | Operations                    | Flag   | Example                                              |
 | ----------------------------- | ------ | ---------------------------------------------------- |
@@ -436,7 +437,7 @@ Filter define is:
 
 
 
-## About Performance of AgentSmith-HIDS Driver
+## Performance Stats of AgentSmith-HIDS Driver
 
 ### Testing Environment(VM):
 
@@ -473,7 +474,7 @@ Testing Load:
 
 `udp_recvmsg_handler` will work only if the port is equal 53 or 5353
 
-Original Testing Data:[Benchmark Data](https://github.com/bytedance/AgentSmith-HIDS/tree/main/driver/benchmark_data/handler)
+Original Testing Data:[Benchmark Data](https://code.byted.org/security/mongoose_driver/tree/master/benchmark_data)
 
 
 ## License
