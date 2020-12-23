@@ -12,7 +12,7 @@ The comprehensiveness of information which can be collected by this agent was on
 
 ## System Architecture
 
-<img src="./AgentSmith-HIDS.png" width="50%" height="50%"/>
+<img src="./AgentSmith-HIDS.png"/>
 
 Currently we only opensource AgentSmith-HIDS Agent && Driver:
 

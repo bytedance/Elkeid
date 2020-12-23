@@ -12,7 +12,7 @@ AgentSmith-HIDS严格意义上并不是一个“Host-based Intrusion Detection S
 
 ## 系统架构
 
-<img src="./AgentSmith-HIDS.png" width="50%" height="50%"/>
+<img src="./AgentSmith-HIDS.png"/>
 
 目前我们只开源了AgentSmith-HIDS Agent && Driver：
 
