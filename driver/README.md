@@ -1,6 +1,11 @@
 [![License](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/DianrongSecurity/AgentSmith-HIDS/blob/master/LICENSE) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
 ## About AgentSmith-HIDS Driver
+
+English | [简体中文](README-zh_CN.md)
+
+
+
 AgentSmith-HIDS Driver is a one-of-a-kind Kernel Space HIDS agent designed for Cyber-Security. 
 
 AgentSmith-HIDS Driver hooks kernel functions via Kprobe, providing rich and accurate data collection capabilities,  including kernel-level process execve probing, privilege escalation monitoring, network audition, and much more. The Driver treats Container-based monitoring as a first-class citizen as Host-based data collection by supporting Linux Namespace. Compare to User Space agents on the market, AgentSmith-HIDS provides more comprehensive information with massive performance improvement. 
@@ -144,9 +149,9 @@ Note: Connect_type is always -1 in default build settings
 
 Note:
 
-* **socket_exe/dip/dport/sip/sport/sa_family** is collected from the process's /proc/fd 
+* **socket_exe/dip/dport/sip/sport/sa_family** is collected from the process's fds
 
-* **ssh/ld_preload** is collected from the process's /proc/env
+* **ssh/ld_preload** is collected from the process's env
 
 
 
