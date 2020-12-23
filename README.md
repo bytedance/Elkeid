@@ -16,9 +16,9 @@ The comprehensiveness of information which can be collected by this agent was on
 
 Currently we only opensource AgentSmith-HIDS Agent && Driver
 
-### [Kernel Space Driver](https://github.com/bytedance/AgentSmith-HIDS/tree/main/driver)
+#### [AgentSmith-Driver](https://github.com/bytedance/AgentSmith-HIDS/tree/main/driver)
 
-### [User Space Agent](https://github.com/bytedance/AgentSmith-HIDS/tree/main/agent)
+#### [AgentSmith-Agent](https://github.com/bytedance/AgentSmith-HIDS/tree/main/agent)
 
 ## TODO
 * OpenSource AgentSmith-Server

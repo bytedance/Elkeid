@@ -16,9 +16,9 @@ AgentSmith-HIDS严格意义上并不是一个“Host-based Intrusion Detection S
 
 目前我们只开源了AgentSmith-HIDS Agent && Driver：
 
-### [Kernel Space Driver](https://github.com/bytedance/AgentSmith-HIDS/tree/main/driver)
+#### [AgentSmith-Driver](https://github.com/bytedance/AgentSmith-HIDS/tree/main/driver)
 
-### [User Space Agent](https://github.com/bytedance/AgentSmith-HIDS/tree/main/agent)
+#### [AgentSmith-Agent](https://github.com/bytedance/AgentSmith-HIDS/tree/main/agent)
 
 ## TODO
 * OpenSource AgentSmith-Server
