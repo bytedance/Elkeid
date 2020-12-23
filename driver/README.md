@@ -13,8 +13,12 @@ AgentSmith-HIDS Driver hooks kernel functions via Kprobe, providing rich and acc
 AgentSmith-HIDS has already been deployed massively for HIDS usage in world-class production environments. With its marvelous data collection ability, AgentSmith-HIDS also supports Sandbox, Honeypot, and Audition data requirements. 
 
 ## Quick Test
+
+First you need install Linux Headers
+
 ```shell script
-cd LKM
+git clone https://github.com/bytedance/AgentSmith-HIDS.git
+cd AgentSmith-HIDS/driver/LKM/
 make claen && make
 insmod hids_driver.ko
 dmesg
@@ -483,6 +487,10 @@ Testing Load:
 
 Original Testing Data:[Benchmark Data](https://github.com/bytedance/AgentSmith-HIDS/tree/main/driver/benchmark_data/handler)
 
+
+## About Deploy
+
+You can use DKMS or Pre-packaged ko file
 
 ## License
 

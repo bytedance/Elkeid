@@ -18,8 +18,11 @@ AgentSmith-HIDS已经在生产环境大规模部署。
 
 ## 快速测试
 
+首先需要安装Linux Headers
+
 ```shell script
-cd LKM
+git clone https://github.com/bytedance/AgentSmith-HIDS.git
+cd AgentSmith-HIDS/driver/LKM/
 make claen && make
 insmod hids_driver.ko
 dmesg
@@ -494,6 +497,10 @@ Testing Load:
 
 测试原始数据:[Benchmark Data](https://github.com/bytedance/AgentSmith-HIDS/tree/main/driver/benchmark_data/handler)
 
+
+## 关于部署
+
+可以使用DKMS或者提前编译好ko文件然后进行下发
 
 ## License
 
