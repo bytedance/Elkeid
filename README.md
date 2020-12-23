@@ -14,11 +14,10 @@ The comprehensiveness of information which can be collected by this agent was on
 
 <img src="./AgentSmith-HIDS.png" width="50%" height="50%"/>
 
-Currently we only opensource AgentSmith-HIDS Agent && Driver
+Currently we only opensource AgentSmith-HIDS Agent && Driver:
 
-#### [AgentSmith-Driver](https://github.com/bytedance/AgentSmith-HIDS/tree/main/driver)
-
-#### [AgentSmith-Agent](https://github.com/bytedance/AgentSmith-HIDS/tree/main/agent)
+* #### [AgentSmith-Driver](https://github.com/bytedance/AgentSmith-HIDS/tree/main/driver)
+* #### [AgentSmith-Agent](https://github.com/bytedance/AgentSmith-HIDS/tree/main/agent)
 
 ## TODO
 * OpenSource AgentSmith-Server
