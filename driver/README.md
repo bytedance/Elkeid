@@ -492,6 +492,9 @@ Original Testing Data:[Benchmark Data](https://github.com/bytedance/AgentSmith-H
 
 You can use DKMS or Pre-packaged ko file
 
+* install driver: `insmod hids_driver.ko`
+* remove driver: first you need kill userspace agent and `rmmod hids_driver.ko`
+
 ## License
 
 AgentSmith-HIDS kernel module are distributed under the GNU GPLv3 license.

@@ -502,6 +502,9 @@ Testing Load:
 
 可以使用DKMS或者提前编译好ko文件然后进行下发
 
+* install driver: `insmod hids_driver.ko`
+* remove driver: first you need kill userspace agent and `rmmod hids_driver.ko`
+
 ## License
 
 AgentSmith-HIDS kernel module are distributed under the GNU GPLv3 license.
