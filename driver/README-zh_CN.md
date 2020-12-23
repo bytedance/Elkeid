@@ -2,7 +2,7 @@
 
 ## About AgentSmith-HIDS Driver
 
-[English](README-zh_CN.md) | 简体中文
+[English](README.md) | 简体中文
 
 
 
