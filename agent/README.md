@@ -66,7 +66,7 @@ Agent will start a synchronous producer to send data to Kafka, please remember t
 ### Other Methods
 You can use custom data output by implementing `Transport interface` under [transport](transport/transport.go).Next, modify the `main` function and set it as the default transport method.In the future, we will support gRPC.
 ## Logs
-You can configure the storage path of the log file by setting the `log` parameter(default is `log/agent_smith.log`), but for more detailed log configuration, please modify the corresponding configuration in the `main`  function. All logs of error level or above will be sent to [Data Output](#About-Data-Output).
+You can configure the storage path of the log file by setting the `log` parameter(default is `log/agent_smith.log`), but for more detailed log configuration, please modify the corresponding configuration in the `main`  function. All logs of error level or above will be sent to [Data Output](#about-data-output).
 ## Config File
 Currently for testing purposes, a configuration file is provided to control the addition and deletion of plugins. This poses a great security risk, please do not use it in a production environment. 
 
@@ -88,12 +88,12 @@ plugins :
 ```
 Among them, `name` and `version` need to be the same as the [plugin](support/README.md#registration) config, `path` is used to find the plugin binary file, and `sha256` is used to verify the actual startup file.
 
-All events related to the plugin can be seen in the [log](#Logs) file.
+All events related to the plugin can be seen in the [log](#logs) file.
 ## Example With AgentSmith-HIDS Driver
 ### Precondition
 * The [Linux Kernrl Module](../driver) (a ko file).
 * The [Driver Plugin](driver) (a binary file).
-* The [Agent](#To-Start-Using-AgentSmith-HIDS-Agent) (a binary file).
+* The [Agent](#to-start-using-agentsmith-hids-agent) (a binary file).
 ### Select a working directory
 I will use `/etc/hids` as the working directory for the following steps:
 ```
@@ -127,7 +127,7 @@ If you want to disable this plugin, modify the configuration file and delete dri
 ```
 echo "plugins: []" > /etc/hids/config.yaml
 ```
-If you want to enable the Driver Plugin again, just [restore the configuration file](#Create-config-file).
+If you want to enable the Driver Plugin again, just [restore the configuration file](#create-config-file).
 
 ## License
 AgentSmith-HIDS Agent are distributed under the Apache-2.0 license.
