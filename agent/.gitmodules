@@ -1,3 +1,0 @@
-[submodule "support/rust/flexi_logger"]
-	path = support/rust/flexi_logger
-	url = git@github.com:bytedance/flexi_logger.git
