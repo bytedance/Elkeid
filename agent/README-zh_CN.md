@@ -24,7 +24,7 @@ AgentSmith-HIDS Agent基于Golang构建，但其他功能插件可以用不同�
 * Golang 1.15(推荐)
 ## 快速开始
 ```
-git clone https://github.com/bytedance/AgentSmith-HIDS
+git clone --recursive https://github.com/bytedance/AgentSmith-HIDS
 cd AgentSmith-HIDS/agent
 go build
 ```

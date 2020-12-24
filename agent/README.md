@@ -21,7 +21,7 @@ For maximum functionality, you should probably run with root privileges.
 * Golang 1.15(Recommended)
 ## To Start Using AgentSmith-HIDS Agent
 ```
-git clone https://github.com/bytedance/AgentSmith-HIDS
+git clone --recursive https://github.com/bytedance/AgentSmith-HIDS
 cd AgentSmith-HIDS/agent
 go build
 ```
