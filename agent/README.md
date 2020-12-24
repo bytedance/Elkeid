@@ -66,7 +66,7 @@ Agent will start a synchronous producer to send data to Kafka, please remember t
 ### Other Methods
 You can use custom data output by implementing `Transport interface` under [transport](transport/transport.go).Next, modify the `main` function and set it as the default transport method.In the future, we will support gRPC.
 ## Logs
-You can configure the storage path of the log file by setting the `log` parameter(default is `log/agent_smith.log`), but for more detailed log configuration, please modify the corresponding configuration in the `main`  function. All logs of error level or above will be sent to [Data Output](#about-data-output).
+You can configure the storage path of the log file by setting the `log` parameter(default is `log/agent_smith.log`), but for more detailed log configuration, please modify the corresponding configuration in the `main`  function. All logs of error level or above will be sent to [Data Output](#data-output).
 ## Config File
 Currently for testing purposes, a configuration file is provided to control the addition and deletion of plugins. This poses a great security risk, please do not use it in a production environment. 
 
