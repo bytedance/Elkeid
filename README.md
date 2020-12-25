@@ -28,3 +28,6 @@ Currently, we are only open-sourcing AgentSmith-HIDS Agent && Driver. Both compo
 
 ## To be Continued 
 * AgentSmith-Server is under development. More Features are on the way.
+
+## Contact Us
+Any questions or suggestions, please feel free to contact us: hids@bytedance.com
