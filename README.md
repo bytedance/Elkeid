@@ -5,7 +5,7 @@ English | [简体中文](README-zh_CN.md)
 AgentSmith-HIDS is a Cloud-Native Host-Based Intrusion Detection solution project to provide next-generation Threat Detection and Behavior Audition with modern architecture. 
 
 AgentSmith-HIDS comprises three major components：
-* AgentSmith-HIDS Agent, co-worked with AgentSmith-HIDS Driver, is the game-changer for the Data Collection market. It worked at both Kernel and User Space of Linux System, providing rich data flow with much better performance. 
+* AgentSmith-HIDS Agent, co-worked with AgentSmith-HIDS Driver, is the game-changer for the Data Collection market. It works at both Kernel and User Space of Linux System, providing rich data flow with much better performance. 
 * AgentSmith-HIDS Server provides Service-Discovery for the production environment of up to millions of agents. The Server also supports primary data formatting along with rules distribution for the Agent. 
 * AgentSmith-Hub provides high-performance, lightweight, and stateless alert generation with data manipulation to analyze the rich data flow. 
 
