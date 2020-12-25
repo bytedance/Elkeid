@@ -28,5 +28,3 @@ AgentSmith-HIDS包含三个主要组件：
 ## To be Continued
 * AgentSmith-HIDS Server正在开发中，更多功能即将推出。
 
-## Contact Us
-如果有问题或者建议，欢迎大家随时联系我们： hids@bytedance.com 
