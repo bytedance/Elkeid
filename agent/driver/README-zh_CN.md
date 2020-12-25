@@ -65,3 +65,6 @@ cat hids_driver-1.0.0.0-4.14-amd64.sha256
 3ca9eb8143e99fac18a50613247cadb900ba79bf6f7d9a073b61e4ab303d3635
 ```
 最后，将你的文件服务器地址填入到`config.ko_url`列表中(可以有多个)。这样当插件启动时，与当前插件和内核版本保持一致的ko文件将会被自动下载。
+
+## License
+Driver Plugin are distributed under the Apache-2.0 license.

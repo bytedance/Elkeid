@@ -61,3 +61,6 @@ cat hids_driver-1.0.0.0-4.14-amd64.sha256
 3ca9eb8143e99fac18a50613247cadb900ba79bf6f7d9a073b61e4ab303d3635
 ```
 Finally, set your file server address in the `config.ko_url` ist (there can be multiple addresses), so that when the plugin starts, the ko file that is compatible with the [LKM](../../driver) and kernel version will be automatically downloaded.
+
+## License
+Driver Plugin are distributed under the Apache-2.0 license.

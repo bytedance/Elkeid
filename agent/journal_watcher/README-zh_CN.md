@@ -32,3 +32,6 @@ const PLUGIN_NAME:&str = "journal_watcher";
 const PLUGIN_VERSION:&str = "1.0.0.0";
 ```
 这些常量可以根据需要进行修改，但是要注意：他们需要与[Agent参数](../README-zh_CN.md#参数和选项)以及[Agent的配置文件](../README-zh_CN.md#配置文件)保持一致。
+
+## License
+Journal Watcher Plugin are distributed under the LGPL-2.1 license.
