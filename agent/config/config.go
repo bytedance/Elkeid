@@ -27,6 +27,7 @@ func parseConfig() error {
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 	config, err := config.NewYAML(config.Source(f))
 	if err != nil {
 		return err
@@ -50,6 +51,7 @@ func parseConfig() error {
 				hasher := sha256.New()
 				io.Copy(hasher, f)
 				checksum := hasher.Sum(nil)
+				f.Close()
 				if hex.EncodeToString(checksum) != c.SHA256 {
 					zap.S().Error("Checksum doesn't match")
 					continue
