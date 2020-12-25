@@ -429,19 +429,19 @@ AgentSmith-HIDS驱动程序支持白名单以过滤出不需要的数据。 我�
 **'exe'**白名单作用于**execve /create filte/ dns query/connect hook**，而**'argv'**白名单仅作用于**execve hook**  。
 出于性能和稳定性方面的考虑，‘exe’和‘argv’白名单容量为64。
 
-白名单的字符串驱动位于: `/dev/hids_driver_whitelist`
+白名单的字符串驱动位于: `/dev/hids_driver_allowlist`
 
 | Operations                    | Flag   | Example                                              |
 | ----------------------------- | ------ | ---------------------------------------------------- |
-| ADD_EXECVE_EXE_SHITELIST      | Y(89)  | `echo Y/bin/ls > /dev/someone_whitelist`             |
-| DEL_EXECVE_EXE_SHITELIST      | F(70)  | `echo Y/bin/ls > /dev/someone_whitelist`             |
-| DEL_ALL_EXECVE_EXE_SHITELIST  | w(119) | `echo w/del_all > /dev/someone_whitelist`            |
-| EXECVE_EXE_CHECK              | y(121) | `echo y/bin/ls > /dev/someone_whitelist && dmesg`    |
-| ADD_EXECVE_ARGV_SHITELIST     | m(109) | `echo m/bin/ls -l > /dev/someone_whitelist`          |
-| DEL_EXECVE_ARGV_SHITELIST     | J(74)  | `echo J/bin/ls -l > /dev/someone_whitelist`          |
-| DEL_ALL_EXECVE_ARGV_SHITELIST | u(117) | `echo u/del_all > /dev/someone_whitelist`            |
-| EXECVE_ARGV_CHECK             | z(122) | `echo z/bin/ls -l > /dev/someone_whitelist && dmesg` |
-| PRINT_ALL_WHITELIST           | .(46)  | `echo ./print_all > /dev/someone_whitelist && dmesg` |
+| ADD_EXECVE_EXE_SHITELIST      | Y(89)  | `echo Y/bin/ls > /dev/someone_allowlist`             |
+| DEL_EXECVE_EXE_SHITELIST      | F(70)  | `echo Y/bin/ls > /dev/someone_allowlist`             |
+| DEL_ALL_EXECVE_EXE_SHITELIST  | w(119) | `echo w/del_all > /dev/someone_allowlist`            |
+| EXECVE_EXE_CHECK              | y(121) | `echo y/bin/ls > /dev/someone_allowlist && dmesg`    |
+| ADD_EXECVE_ARGV_SHITELIST     | m(109) | `echo m/bin/ls -l > /dev/someone_allowlist`          |
+| DEL_EXECVE_ARGV_SHITELIST     | J(74)  | `echo J/bin/ls -l > /dev/someone_allowlist`          |
+| DEL_ALL_EXECVE_ARGV_SHITELIST | u(117) | `echo u/del_all > /dev/someone_allowlist`            |
+| EXECVE_ARGV_CHECK             | z(122) | `echo z/bin/ls -l > /dev/someone_allowlist && dmesg` |
+| PRINT_ALL_ALLOWLIST           | .(46)  | `echo ./print_all > /dev/someone_allowlist && dmesg` |
 
 Filter define is:
 
@@ -450,7 +450,7 @@ Filter define is:
 #define DEL_EXECVE_EXE_SHITELIST 70
 #define DEL_ALL_EXECVE_EXE_SHITELIST 119
 #define EXECVE_EXE_CHECK 121
-#define PRINT_ALL_WHITELIST 46
+#define PRINT_ALL_ALLOWLIST 46
 #define ADD_EXECVE_ARGV_SHITELIST 109
 #define DEL_EXECVE_ARGV_SHITELIST 74
 #define DEL_ALL_EXECVE_ARGV_SHITELIST 117

@@ -13,7 +13,7 @@ Now we are more than happy to announce the open-source of AgentSmith-HIDS Agent 
 
 * **Better performance**  Data/Information are collected in kernel space to avoid additional supplement actions such as traversal of '/proc' directory or collecting from other audition processes such as "auditd".
 * **Hard to be bypassed**  A specifically designed kernel driver powers data/Information collection, making it virtually impossible for malicious software, like rootkit, to evade detection or audition. The Driver could capture even evasion behavior itself.
-* **Kernel + User Space**  AgentSmith-HIDS Agent provides User Space detection abilities, including file audition, in-house rule detection, and primary whitelists. 
+* **Kernel + User Space**  AgentSmith-HIDS Agent provides User Space detection abilities, including file audition, in-house rule detection, and primary allowlists. 
 * **Easy to be integrated**  AgentSmith-HIDS could empower any User Space agents far beyond Host Intrusion usages with the detailed and reliable data flow. A wide user action audition could benefit both Behavior Analysis and Compliance requests. When integrated with NIDS, security analyzers could build a comprehensive Provenance Graph from the network connections, along with high traceable process trees and file auditions.
 
 
