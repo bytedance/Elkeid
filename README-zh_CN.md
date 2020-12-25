@@ -2,14 +2,14 @@
 
 [English](README.md) | 简体中文
 
-AgentSmith-HIDS是一个云原生的基于主机的入侵检测解决方案，旨在提供具有现代体系结构的下一代威胁检测和行为审计。
+AgentSmith-HIDS是一个云原生的基于主机的入侵检测解决方案。
 
 AgentSmith-HIDS包含三个主要组件：
 * AgentSmith-HIDS Agent与AgentSmith-HIDS Driver作为数据采集层，它在Linux系统的内核和用户空间上均可使用，从而提供了具有更好性能的且更丰富的数据。 
 * AgentSmith-HIDS Server可以提供百万级Agent的接入能力，并且支持控制与策略下发。
 * AgentSmith-HUB 提供高性能，轻量级和无状态规则引擎。
 
-目前AgentSmith-HIDS Agent和AgentSmith-HIDS Driver 已开源。由于缺少规则引擎和检测功能，AgentSmith-HIDS Agent && Driver 无法单独提供所有的HIDS能力。但是目前开源的部分作为"Host-Information-Collect-Agent"，可以轻松地与其他的HIDS/NIDS/XDR解决方案进行集成。 AgentSmith-HIDS Agent和AgentSmith-HIDS Driver 有以下几个优点：
+目前AgentSmith-HIDS Agent和AgentSmith-HIDS Driver 已开源。由于目前开源模块缺少规则引擎和检测功能，AgentSmith-HIDS Agent && Driver 无法单独提供所有的HIDS能力。但是目前开源的部分作为"Host-Information-Collect-Agent"，可以轻松地与其他的HIDS/NIDS/XDR解决方案进行集成。 AgentSmith-HIDS Agent和AgentSmith-HIDS Driver 有以下几个优点：
 
 * **性能更优**，主要通过内核态驱动来获取信息，无需诸如遍历`/proc`这样的行为进行数据补全。
 * **难以绕过**，由于我们的信息获取是来自于内核态驱动，因此面对很多刻意隐藏自己的行为如rootkit难以绕过我们的监控。并且对于rootkit本身，驱动提供了一部分检测能力。

@@ -415,23 +415,23 @@ Note:  ***uid*** is always -1
 
 ## About Driver Filter
 
-AgentSmith-HIDS driver supports whitelist to filter out unwanted data. We provide two types of whitelists, **'exe'** whitelist and **'argv'** whitelist.
-**'exe'** whitelist acts on ***execve/create file/dns query/connect*** hooks, while **'argv'** whitelist only acts on ***execve*** hook. 
-For performance and stability concerns, both 'exe' and 'argv' whitelist only supports 64-elements-wide capacity.
+AgentSmith-HIDS driver supports allowlist to filter out unwanted data. We provide two types of allowlists, **'exe'** allowlist and **'argv'** allowlist.
+**'exe'** allowlist acts on ***execve/create file/dns query/connect*** hooks, while **'argv'** allowlist only acts on ***execve*** hook. 
+For performance and stability concerns, both 'exe' and 'argv' allowlist only supports 64-elements-wide capacity.
 
-whitelist driver is in: `/dev/hids_driver_whitelist`
+allowlist driver is in: `/dev/hids_driver_allowlist`
 
 | Operations                    | Flag   | Example                                              |
 | ----------------------------- | ------ | ---------------------------------------------------- |
-| ADD_EXECVE_EXE_SHITELIST      | Y(89)  | `echo Y/bin/ls > /dev/someone_whitelist`             |
-| DEL_EXECVE_EXE_SHITELIST      | F(70)  | `echo Y/bin/ls > /dev/someone_whitelist`             |
-| DEL_ALL_EXECVE_EXE_SHITELIST  | w(119) | `echo w/del_all > /dev/someone_whitelist`            |
-| EXECVE_EXE_CHECK              | y(121) | `echo y/bin/ls > /dev/someone_whitelist && dmesg`    |
-| ADD_EXECVE_ARGV_SHITELIST     | m(109) | `echo m/bin/ls -l > /dev/someone_whitelist`          |
-| DEL_EXECVE_ARGV_SHITELIST     | J(74)  | `echo J/bin/ls -l > /dev/someone_whitelist`          |
-| DEL_ALL_EXECVE_ARGV_SHITELIST | u(117) | `echo u/del_all > /dev/someone_whitelist`            |
-| EXECVE_ARGV_CHECK             | z(122) | `echo z/bin/ls -l > /dev/someone_whitelist && dmesg` |
-| PRINT_ALL_WHITELIST           | .(46)  | `echo ./print_all > /dev/someone_whitelist && dmesg` |
+| ADD_EXECVE_EXE_SHITELIST      | Y(89)  | `echo Y/bin/ls > /dev/someone_allowlist`             |
+| DEL_EXECVE_EXE_SHITELIST      | F(70)  | `echo Y/bin/ls > /dev/someone_allowlist`             |
+| DEL_ALL_EXECVE_EXE_SHITELIST  | w(119) | `echo w/del_all > /dev/someone_allowlist`            |
+| EXECVE_EXE_CHECK              | y(121) | `echo y/bin/ls > /dev/someone_allowlist && dmesg`    |
+| ADD_EXECVE_ARGV_SHITELIST     | m(109) | `echo m/bin/ls -l > /dev/someone_allowlist`          |
+| DEL_EXECVE_ARGV_SHITELIST     | J(74)  | `echo J/bin/ls -l > /dev/someone_allowlist`          |
+| DEL_ALL_EXECVE_ARGV_SHITELIST | u(117) | `echo u/del_all > /dev/someone_allowlist`            |
+| EXECVE_ARGV_CHECK             | z(122) | `echo z/bin/ls -l > /dev/someone_allowlist && dmesg` |
+| PRINT_ALL_ALLOWLIST           | .(46)  | `echo ./print_all > /dev/someone_allowlist && dmesg` |
 
 Filter define is:
 ```c
@@ -439,7 +439,7 @@ Filter define is:
 #define DEL_EXECVE_EXE_SHITELIST 70
 #define DEL_ALL_EXECVE_EXE_SHITELIST 119
 #define EXECVE_EXE_CHECK 121
-#define PRINT_ALL_WHITELIST 46
+#define PRINT_ALL_ALLOWLIST 46
 #define ADD_EXECVE_ARGV_SHITELIST 109
 #define DEL_EXECVE_ARGV_SHITELIST 74
 #define DEL_ALL_EXECVE_ARGV_SHITELIST 117
