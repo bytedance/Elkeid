@@ -349,7 +349,7 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
             kfree(data_main);
             break;
 
-        case PRINT_ALL_allowlist:
+        case PRINT_ALL_ALLOWLIST:
             print_all_execve_allowlist();
             print_all_argv_allowlist();
             kfree(data_main);
