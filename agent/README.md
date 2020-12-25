@@ -3,20 +3,22 @@
 
 English | [简体中文](README-zh_CN.md)
 ## About AgentSmith-HIDS Agent
-AgentSmith-HIDS Agent is a user space program,which is used to forward data sent by other plugins to the remote end, and control other plugins according to configuration.
+AgentSmith-HIDS Agent is a User Space program designed to supplement multiple functionalities through build-in or third party plugins. The main program controls plugins' behavior via configurations and forwards data, collected by various Agent plugins, to the configured remote backend. 
 
-AgentSmith-HIDS Agent is built in golang, but plugins can be built in other languages ​​([rust is currently supported](support/rust), and the next supported one will be golang).
+AgentSmith-HIDS Agent is written in Golang, but plugins are designed to support other languages ​​([rust is currently supported](support/rust), and the next will be Golang).
 
-A plugin is a program with a specific function that can be independently updated and configured. After the plugin is registered to the agent, the resource usage of the plugin will be monitored, and the log of the plugin will also be passed to the Agent.
+A plugin is a program with a specific function that can be independently updated and configured. The plugin's resource usage will be monitored once it gets registered on the agent. The plugin's log will also be passed to the Agent and logged together.
 
-You can see two example plugins in the [driver](driver/) and [journal_watcher](journal_watcher/) directories. The former is used to parse and enrich the data transmitted by the AgentSmith-HIDS Driver from the kernel, and the latter is used for log monitoring.
+You may check out two examples of plugin implementation in [driver](driver/) and [journal_watcher](journal_watcher/) directories. The former one parses and enriches the data transmitted by the AgentSmith-HIDS Driver from the kernel. The latter one is used for log monitoring.
 
-Through this Agent-Plugins struct, we can decouple basic modules (such as communication and control/resource monitoring, etc.) from functional modules (such as process monitoring/file monitoring/vulnerability analysis, etc.) to achieve dynamic increase and decrease of the modules.
+We decoupled basic functionalities through this Agent-Plugins struct. Functional modules such as process monitoring and file auditioning could be implemented for specific needs, while basic modules, like communication and control/resource monitoring could stay the same across various Linux distributions.
+
+The current version of AgentSmith-HIDS Agent is recommended only for local testing. Without AgentSmith-HIDS Server, it does not support remote control and configurations. 
 
 ## Supported Platforms
-In theory, all distribution systems under Linux are compatible, but Debian (including Ubuntu) and RHEL (including CentOS) have been fully tested.Currently, we have only tested on the x86_64 platform.
-In addition, for better compatibility with the plugins, it is recommended to run the AgentSmith-HIDS Agent in a physical machine or a virtual machine instead of a container.
-For maximum functionality, you should probably run with root privileges.
+In theory, all Linux distribution systems are compatible, but only Debian (including Ubuntu) and RHEL (including CentOS) have been fully tested. All tests have been made only for the **x86_64** platform.
+We recommend running the AgentSmith-HIDS Agent with **root privileges** in a **physical machine** or a **virtual machine** instead of a container for better compatibility with the current plugins.
+
 ## Compilation Environment Requirements
 * Golang 1.15(Recommended)
 ## To Start Using AgentSmith-HIDS Agent
@@ -49,28 +51,28 @@ Help Options:
   -h, --help                     Show this help message
 
 ```
-The configuration file is used to control the currently running plugin instance. If you want to start running the Agent itself simply and quickly without enabling any plugin functions, then you can directly execute `./agent`, you will see the data output on the stdout of the current terminal:
+The configuration file is used to control the currently running plugin instance. Suppose you want to start running the Agent itself simply and quickly without enabling any plugin functions. In that case, you can directly execute `./agent`, and you will see the data output on the *stdout* of the current terminal.
 ```
 [{"data_type":"1001","level":"error","msg":"no such file or directory","source":"config/config.go:114","timestamp":"${current_timestamp}"}]
 [{"cpu":"0.00000","data_type":"1000","distro":"${your_distro}","io":"8192","kernel_version":"${your_kernel_version}","memory":"${current_agent_memory_usage}","plugins":"[]","slab":"${current_sys_slab_usage}","timestamp":"${current_timestamp}"}]
 ```
-The error in the first line is caused by the configuration file not being found and can be ignored for now. The second line is the agent's heartbeat data, each field in it describes the current Agent and Plugin information.
+The error in the first line is caused by the configuration file not being found and can be ignored for now. The second line is the agent's heartbeat data. Each field in it describes the current Agent and Plugin information.
 ## Data Output
-The current version of AgentSmith-HIDS Agent is more used for local testing. It does not support remote control and configuration, but supports transmission of data to the remote (via sarama/kafka).Note: please do not use it in a production environment.
+AgentSmith-HIDS Agent supports data transmission to local output or a remote message queue (via sarama/kafka). 
 ### Stdout(Default)
 Flush all data in stdout. Note: This method does not save the data persistently. When data sending speed is too fast, it may cause the current terminal to run slowly.
 ### File
-Save the data to the specified file, the default is the `data.log` in agent working directory.
+Save the data to the specified file. By default, it is the `data.log` in the agent working directory.
 ### Kafka
-Agent will start a synchronous producer to send data to Kafka, please remember to configure the `addr` and `topic` parameters.
+The Agent will start a synchronous producer to send data to Kafka. Please remember to configure the `addr` and `topic` parameters.
 ### Other Methods
-You can use custom data output by implementing `Transport interface` under [transport](transport/transport.go).Next, modify the `main` function and set it as the default transport method.In the future, we will support gRPC.
+You can use custom data output by implementing `Transport interface` under [transport](transport/transport.go). You should also modify the `main` function and set it as the default transport method.We will support gRPC in the future.
 ## Logs
-You can configure the storage path of the log file by setting the `log` parameter(default is `log/agent_smith.log`), but for more detailed log configuration, please modify the corresponding configuration in the `main`  function. All logs of error level or above will be sent to [Data Output](#data-output).
+You may configure the log file's storage path by setting thee `log` parameter(default is `log/agent_smith.log`). For more detailed log configuration, please modify the corresponding configurations in the `main`  function. All logs of error level or above will be sent to [Data Output](#data-output).
 ## Config File
-Currently for testing purposes, a configuration file is provided to control the addition and deletion of plugins. This poses a great security risk, please do not use it in a production environment. 
+For local testing purposes, a configuration file is provided to control the addition and deletion of plugins. This raises a significant security risk. Please do not deploy the current version directly in a production environment. 
 
-When Agent starts, the config file which is set by `--config`(default is `config.yaml` in working directory) will be monitored(via inotify). Whenever a modification event is triggered, the configuration file will be parsed and compared with the currently loaded plugins to achieve dynamic modification. Note: Please don't use vim/gedit and other tools when modifying, [they will not trigger the modification event of inotify](https://stackoverflow.com/questions/13312794/inotify-dont-treat-vim-editting-as-a-modification-event).
+When Agent starts, the config file, which is set by `--config`(default is `config.yaml` in working directory) will be monitored(via inotify). Whenever a modification event is triggered, the configuration file will be parsed and compared with the currently loaded plugins to achieve dynamic modification. Note: Please don't use vim/gedit and other tools when modifying, [they will not trigger the modification event of inotify](https://stackoverflow.com/questions/13312794/inotify-dont-treat-vim-editting-as-a-modification-event).
 
 A correct configuration file looks like this:
 ```

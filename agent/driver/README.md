@@ -2,7 +2,7 @@ English | [简体中文](README-zh_CN.md)
 ## About Driver Plugin
 The Driver Plugin is used to manage the kernel module (install/uninstall/update).
 
-It can receive and parse the data from the kernel module, and further enrich the information, and then forward it to the Agent.
+It can receive and parse the data from the kernel module, enrich the data flow, and then forward it to the Agent.
 
 ## Supported Platforms
 Same as [AgentSmith-HIDS Agent](../README.md#supported-platforms)
@@ -10,7 +10,7 @@ Same as [AgentSmith-HIDS Agent](../README.md#supported-platforms)
 ## Compilation Environment Requirements
 * Rust 1.48.0
 
-Quickly install [rust](https://www.rust-lang.org/tools/install) environment:
+Please Install [rust](https://www.rust-lang.org/tools/install) environment:
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
@@ -40,13 +40,13 @@ For details, please refer to:
 https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html
 
 ## Template Generation
-According to the [data definition in Driver](../../driver), we use code generation to build parser.The structures is defined in the [template.toml](template.toml).
+According to the [data definition in Driver](../../driver), we use code generation to build parser. The structures is defined in the [template.toml](template.toml).
 
-The `metadata` field defines the [LKM](../../driver) version and the maintenance members of this template.The `config` field defines the download address of the ko distribution (if needed), the pipe path of the [LKM](../../driver), the name of the ko file to be managed, and the socket path of the Agent.
+The `metadata` field defines the [LKM](../../driver) version and the maintenance members of this template. The `config` field defines the download address of the ko distribution (if needed), the pipe path of the [LKM](../../driver), the name of the ko file to be managed, and the socket path of the Agent.
 
 Please note: The socket path must be consistent with the [parameters in the Agent](../README.md#parameters-and-options).
 
-The `structures` field describes various data types, please modify as needed. For details, please refer to:https://github.com/toml-lang/toml
+The `structures` field describes various data types, please modify as needed. For more details, please refer to:https://github.com/toml-lang/toml
 
 ## Distribute ko
 You can put ko files of different kernel versions on a file server for easy distribution. Please rename each ko file according to the following requirements:
