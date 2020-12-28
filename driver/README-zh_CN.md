@@ -23,7 +23,7 @@ AgentSmith-HIDS已经在生产环境大规模部署。
 ```shell script
 git clone https://github.com/bytedance/AgentSmith-HIDS.git
 cd AgentSmith-HIDS/driver/LKM/
-make claen && make
+make clean && make
 insmod hids_driver.ko
 dmesg
 cat /proc/hids_driver/1
