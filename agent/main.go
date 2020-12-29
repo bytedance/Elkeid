@@ -128,5 +128,8 @@ func main() {
 	select {
 	case sig := <-sigs:
 		zap.S().Infof("Receive signal %v", sig.String())
+		if s, err := plugin.GetServer(); err == nil {
+			s.Close()
+		}
 	}
 }
