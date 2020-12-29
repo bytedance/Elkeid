@@ -23,8 +23,8 @@ Now we are more than happy to announce the open-source of ByteDance-HIDS Agent a
 
 Currently, we are only open-sourcing ByteDance-HIDS Agent && Driver. Both components have been deployed and tested in production environments for months. We welcome any suggestions and cooperation.
 
-* #### [ByteDance-Driver](https://github.com/bytedance/ByteDance-HIDS/tree/main/driver)
-* #### [ByteDance-Agent](https://github.com/bytedance/ByteDance-HIDS/tree/main/agent)
+* #### [ByteDance-HIDS Driver](https://github.com/bytedance/ByteDance-HIDS/tree/main/driver)
+* #### [ByteDance-HIDS Agent](https://github.com/bytedance/ByteDance-HIDS/tree/main/agent)
 
 ## To be Continued 
 * ByteDance-Server is under development. More Features are on the way.
