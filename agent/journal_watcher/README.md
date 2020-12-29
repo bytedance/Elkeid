@@ -4,7 +4,14 @@ Journal Wacher is a plugin for monitoring systemd logs.
 Currently, ssh-related events are mainly collected, which could be used to monitor abnormal login behaviors, such as ssh brute-force attack or krb5 abnormal logins, etc.
 
 ## Supported Platforms
-Same as [ByteDance-HIDS Agent](../README.md#supported-platforms)
+Same as [ByteDance-HIDS Agent](../README.md#supported-platforms).
+
+But please note: this plugin is developed based on libsystemd, so please make sure that `libsystemd.so` can be found in your environment.
+
+Reasons for not providing static link based on musl-libc :
+
+A lot of glibc-specific functions are used in libsystemd, resulting in a lot of work for porting to musl-libc. If you have a good idea, please feel free to contact us.
+
 
 ## Compilation Environment Requirements
 * Rust 1.48.0
