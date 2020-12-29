@@ -27,5 +27,5 @@ Currently, we are only open-sourcing ByteDance-HIDS Agent && Driver. Both compon
 * #### [ByteDance-Agent](https://github.com/bytedance/ByteDance-HIDS/tree/main/agent)
 
 ## To be Continued 
-* AgentSmith-Server is under development. More Features are on the way.
+* ByteDance-Server is under development. More Features are on the way.
 

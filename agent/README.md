@@ -40,7 +40,7 @@ Usage:
 Application Options:
   -v, --version                  Print agent version
       --plugin=                  Plugin socket path (default: plugin.sock)
-      --log=                     Log file path (default: log/agent_smith.log)
+      --log=                     Log file path (default: log/hids_agent.log)
       --config=                  Config file path(.yaml) (default: config.yaml)
       --data=[file|stdout|kafka] Set data output (default: stdout)
       --file_path=               If data option is file ,this option is used to set the file path (default: data.log)
@@ -68,7 +68,7 @@ The Agent will start a synchronous producer to send data to Kafka. Please rememb
 ### Other Methods
 You can use custom data output by implementing `Transport interface` under [transport](transport/transport.go). You should also modify the `main` function and set it as the default transport method.We will support gRPC in the future.
 ## Logs
-You may configure the log file's storage path by setting thee `log` parameter(default is `log/agent_smith.log`). For more detailed log configuration, please modify the corresponding configurations in the `main`  function. All logs of error level or above will be sent to [Data Output](#data-output).
+You may configure the log file's storage path by setting thee `log` parameter(default is `log/hids_agent.log`). For more detailed log configuration, please modify the corresponding configurations in the `main`  function. All logs of error level or above will be sent to [Data Output](#data-output).
 ## Config File
 For local testing purposes, a configuration file is provided to control the addition and deletion of plugins. This raises a significant security risk. Please do not deploy the current version directly in a production environment. 
 

@@ -41,7 +41,7 @@ Usage:
 Application Options:
   -v, --version                  Print agent version
       --plugin=                  Plugin socket path (default: plugin.sock)
-      --log=                     Log file path (default: log/agent_smith.log)
+      --log=                     Log file path (default: log/hids_agent.log)
       --config=                  Config file path(.yaml) (default: config.yaml)
       --data=[file|stdout|kafka] Set data output (default: stdout)
       --file_path=               If data option is file ,this option is used to set the file path (default: data.log)
@@ -78,7 +78,7 @@ Agent将会产生一个同步生产者去发送数据到Kafka，在此之前请�
 
 实现后请修改`main`函数，将自定义的方法设置为默认的。在未来，我们会支持gRPC数据传输。
 ## 日志
-你可以通过配置`log`参数来配置Agent日志的存放位置(默认是Agent工作目录下的`log/agent_smith.log`)。
+你可以通过配置`log`参数来配置Agent日志的存放位置(默认是Agent工作目录下的`log/hids_agent.log`)。
 
 更加具体的日志配置，请修改`main`函数中的相应日志选项。所有等级大于等于Error的日志都将会被转发到[数据输出](#数据输出)中。
 ## 配置文件
