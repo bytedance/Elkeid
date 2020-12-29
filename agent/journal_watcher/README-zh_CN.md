@@ -3,7 +3,7 @@
 Journal Wacher是一个用来监视systemd日志的插件。当前插件会解析并产生ssh相关的事件，这些事件可以用来监视不正常的登陆行为，例如ssh暴力破解或者krb5的不正常登陆等。
 
 ## 平台兼容性
-与[AgentSmith-HIDS Agent](../README-zh_CN.md#平台兼容性)相同。
+与[ByteDance-HIDS Agent](../README-zh_CN.md#平台兼容性)相同。
 
 ## 需要的编译环境
 * Rust 1.48.0

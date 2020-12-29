@@ -3,8 +3,8 @@ package transport
 import (
 	"sync"
 
-	"github.com/bytedance/AgentSmith-HIDS/agent/spec"
-	"github.com/bytedance/AgentSmith-HIDS/agent/transport/stdout"
+	"github.com/bytedance/ByteDance-HIDS/agent/spec"
+	"github.com/bytedance/ByteDance-HIDS/agent/transport/stdout"
 )
 
 var (

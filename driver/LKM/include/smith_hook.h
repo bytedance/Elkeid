@@ -7,7 +7,7 @@
 
 #if(LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32))
 #error ******************************************************************************
-#error * AgentSmith-HIDS works on kernel 2.6.32 or newer. Please update your kernel *
+#error * ByteDance-HIDS works on kernel 2.6.32 or newer. Please update your kernel *
 #error ******************************************************************************
 #endif
 
