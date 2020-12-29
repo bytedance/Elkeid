@@ -5,6 +5,13 @@ Journal Wacher是一个用来监视systemd日志的插件。当前插件会解�
 ## 平台兼容性
 与[ByteDance-HIDS Agent](../README-zh_CN.md#平台兼容性)相同。
 
+但是请注意：这个插件是基于libsystemd进行开发的，请确保在你的环境中能找到`libsystemd.so`。
+
+不提供基于musl-libc静态链接的原因：
+
+libsystemd中用到了大量glibc特有的函数，这导致移植到musl-libc十分困难，如果你有好的想法请随时联系我们。
+
+
 ## 需要的编译环境
 * Rust 1.48.0
 
