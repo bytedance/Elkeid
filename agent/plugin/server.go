@@ -4,6 +4,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -117,7 +118,10 @@ func Run() {
 	for {
 		conn, err := s.l.Accept()
 		if err != nil {
-			zap.S().Panicf("Accept connect error: %v", err)
+			if !strings.Contains(err.Error(), "use of closed network connection") {
+				zap.S().Panicf("Accept connect error: %v", err)
+			}
+			return
 		}
 		go func() {
 			r := msgp.NewReader(conn)
