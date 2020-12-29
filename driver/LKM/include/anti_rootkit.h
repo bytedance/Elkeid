@@ -24,13 +24,13 @@ static void analyze_interrupts(void);
 
 static void analyze_modules(void);
 
-static void analyze_fops(void); 
+static void analyze_fops(void);
 
-#else 
+#else
 static inline void analyze_syscalls(void) { }
 static inline void analyze_interrupts(void) { }
 static inline void analyze_modules(void) { }
 static inline void analyze_fops(void) { }
-#endif  //LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0) 
+#endif  //LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
 
 #endif //__ANTI_ROOTKIT_H

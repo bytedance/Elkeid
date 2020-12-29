@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-3.0 */
+/* SPDX-License-Identifier: GPL-2.0 */
 
 #ifndef SMITH_HOOK_H
 #define SMITH_HOOK_H

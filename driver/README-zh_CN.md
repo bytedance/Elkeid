@@ -507,4 +507,4 @@ Testing Load:
 
 ## License
 
-AgentSmith-HIDS kernel module are distributed under the GNU GPLv3 license.
+AgentSmith-HIDS kernel module are distributed under the GNU GPLv2 license.

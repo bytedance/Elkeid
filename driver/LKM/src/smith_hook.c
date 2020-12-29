@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: GPL-2.0
 /*
  * smith_hook.c
  *
@@ -1580,14 +1580,14 @@ int udp_recvmsg_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     struct udp_recvmsg_data *data;
 
     data = (struct udp_recvmsg_data *)ri->data;
-    
+
     recv_data = kmalloc((data->iov_len + 1) * sizeof(char), GFP_ATOMIC);
 
     if (!recv_data || copy_from_user(recv_data, data->iov_base, data->iov_len)) {
         kfree(recv_data);
         return 0;
     }
-    recv_data[data->iov_len] = '\0'; 
+    recv_data[data->iov_len] = '\0';
 
 
     if (sizeof(recv_data) >= 8) {
@@ -1736,7 +1736,7 @@ void rename_and_link_hander(int type, const char __user * oldori,
 
     if(!oldname || !newname)
         goto out_free;
-    
+
     if(copy_from_user(oldname, oldori, old_len) || copy_from_user(newname, newori, new_len))
         goto out_free;
 
@@ -1872,7 +1872,7 @@ int prctl_pre_handler(struct kprobe *p, struct pt_regs *regs)
     //length of the string, including the terminating null byte, ex‐
     //ceeds 16 bytes, the string is silently truncated.)
     if (PR_SET_NAME != (int)p_get_arg1(regs))
-        return 0; 
+        return 0;
 
     newname_ori = (void *)p_get_arg2(regs);
     if (IS_ERR_OR_NULL(newname_ori))
@@ -1883,8 +1883,8 @@ int prctl_pre_handler(struct kprobe *p, struct pt_regs *regs)
         return 0;
 
     newname = kmalloc((newname_len + 1) * sizeof(char), GFP_ATOMIC);
-    if(!newname) 
-        return 0; 
+    if(!newname)
+        return 0;
 
     if(copy_from_user(newname, (char __user *)newname_ori, newname_len)) {
         kfree(newname);
@@ -1926,13 +1926,13 @@ int open_pre_handler(struct kprobe *p, struct pt_regs *regs)
 
     filename = kmalloc((filename_len + 1) * sizeof(char), GFP_ATOMIC);
     if(!filename)
-        return 0; 
+        return 0;
 
     if(copy_from_user(filename, (char __user *)filename_ori, filename_len))
-        goto out;   
+        goto out;
 
     filename[filename_len] = '\0';
-    
+
     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
     if (buffer)
         exe_path = get_exe_file(current, buffer, PATH_MAX);
@@ -1940,7 +1940,7 @@ int open_pre_handler(struct kprobe *p, struct pt_regs *regs)
     open_print(exe_path, filename, (int)p_get_arg2(regs),
                (umode_t) p_get_arg3(regs));
 
-out: 
+out:
     if (buffer)
         kfree(buffer);
 

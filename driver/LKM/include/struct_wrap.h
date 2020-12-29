@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-3.0 */
+/* SPDX-License-Identifier: GPL-2.0 */
 
 #ifndef __STRUCT_WRAP_H_
 #define __STRUCT_WRAP_H_
