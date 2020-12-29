@@ -28,3 +28,6 @@ ByteDance-HIDS包含三个主要组件：
 ## To be Continued
 * ByteDance-HIDS Server正在开发中，更多功能即将推出。
 
+## License
+* ByteDance-HIDS Driver: GPLv2
+* ByteDance-HIDS Agent: Apache-2.0
