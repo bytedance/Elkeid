@@ -86,4 +86,4 @@ MODULE_VERSION("1.5.0.0");
 //MODULE_LICENSE("GPLv3");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Will Chen <chenyue.will@bytedance.com>;Muchun Song <songmuchun@bytedance.com>;Jia Ma <jia.ma@bytedance.com>; Gaba <panxiting@bytedance.com>");
-MODULE_DESCRIPTION("Kprobe template for AgentSmith-HIDS");
+MODULE_DESCRIPTION("Kprobe template for ByteDance-HIDS");

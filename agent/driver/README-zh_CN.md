@@ -4,7 +4,7 @@ Driver Plugin用于管理内核模块(安装/卸载/升级)。它可以接收并
 
 
 ## 平台兼容性
-与[AgentSmith-HIDS Agent](../README-zh_CN.md#平台兼容性)相同。
+与[ByteDance-HIDS Agent](../README-zh_CN.md#平台兼容性)相同。
 
 ## 需要的编译环境
 * Rust 1.48.0

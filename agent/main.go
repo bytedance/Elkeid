@@ -10,14 +10,14 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	"github.com/bytedance/AgentSmith-HIDS/agent/common"
-	"github.com/bytedance/AgentSmith-HIDS/agent/config"
-	"github.com/bytedance/AgentSmith-HIDS/agent/health"
-	"github.com/bytedance/AgentSmith-HIDS/agent/log"
-	"github.com/bytedance/AgentSmith-HIDS/agent/plugin"
-	"github.com/bytedance/AgentSmith-HIDS/agent/transport"
-	"github.com/bytedance/AgentSmith-HIDS/agent/transport/fileout"
-	"github.com/bytedance/AgentSmith-HIDS/agent/transport/kafka"
+	"github.com/bytedance/ByteDance-HIDS/agent/common"
+	"github.com/bytedance/ByteDance-HIDS/agent/config"
+	"github.com/bytedance/ByteDance-HIDS/agent/health"
+	"github.com/bytedance/ByteDance-HIDS/agent/log"
+	"github.com/bytedance/ByteDance-HIDS/agent/plugin"
+	"github.com/bytedance/ByteDance-HIDS/agent/transport"
+	"github.com/bytedance/ByteDance-HIDS/agent/transport/fileout"
+	"github.com/bytedance/ByteDance-HIDS/agent/transport/kafka"
 	"github.com/jessevdk/go-flags"
 
 	"github.com/nightlyone/lockfile"
@@ -29,7 +29,7 @@ import (
 var opts struct {
 	Version  bool   `short:"v" long:"version" description:"Print agent version"`
 	Plugin   string `long:"plugin" description:"Plugin socket path" default:"plugin.sock"`
-	Log      string `long:"log" description:"Log file path" default:"log/agent_smith.log"`
+	Log      string `long:"log" description:"Log file path" default:"log/hids_agent.log"`
 	Config   string `long:"config" description:"Config file path(.yaml)" default:"config.yaml"`
 	Data     string `long:"data" choice:"file" choice:"stdout" choice:"kafka" description:"Set data output" default:"stdout"`
 	FilePath string `long:"file_path" description:"If data option is file ,this option is used to set the file path" default:"data.log"`
@@ -81,7 +81,7 @@ func main() {
 		}
 		transport.SetTransport(k)
 	}
-	lock, err := lockfile.New("/var/run/agent_smith.pid")
+	lock, err := lockfile.New("/var/run/hids_agent.pid")
 	if err != nil {
 		zap.S().Panicf("%v", err)
 	}
@@ -112,7 +112,7 @@ func main() {
 	undo := zap.ReplaceGlobals(logger)
 	defer undo()
 
-	zap.S().Infof("Agent Smith Version:v%s", common.Version)
+	zap.S().Infof("HIDS Agent Version:v%s", common.Version)
 	zap.S().Infof("Agent ID:%s", common.AgentID)
 	zap.S().Infof("Private IPv4:%v", common.PrivateIPv4)
 	zap.S().Infof("Public IPv4:%v", common.PublicIPv4)

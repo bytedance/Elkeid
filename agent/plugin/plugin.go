@@ -11,8 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/bytedance/AgentSmith-HIDS/agent/plugin/procotol"
-	"github.com/bytedance/AgentSmith-HIDS/agent/spec"
+	"github.com/bytedance/ByteDance-HIDS/agent/plugin/procotol"
+	"github.com/bytedance/ByteDance-HIDS/agent/spec"
 	"github.com/prometheus/procfs"
 	"github.com/tinylib/msgp/msgp"
 	"go.uber.org/atomic"

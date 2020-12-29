@@ -5,7 +5,7 @@ The Driver Plugin is used to manage the kernel module (install/uninstall/update)
 It can receive and parse the data from the kernel module, enrich the data flow, and then forward it to the Agent.
 
 ## Supported Platforms
-Same as [AgentSmith-HIDS Agent](../README.md#supported-platforms)
+Same as [ByteDance-HIDS Agent](../README.md#supported-platforms)
 
 ## Compilation Environment Requirements
 * Rust 1.48.0
