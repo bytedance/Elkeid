@@ -43,6 +43,7 @@ const COMMON_FIELDS_KERNEL: &[&str] = &[
     "ppid",
     "pgid",
     "tgid",
+    "sid",
     "comm",
     "nodename",
     "sessionid",
@@ -62,7 +63,7 @@ fn generate_parser(content: &mut Template) {
     content.structures.iter_mut().for_each(|(_, v)| {
         if v.common_fields {
             v.fields.iter_mut().for_each(|(_, f)| {
-                f.index += 10;
+                f.index += COMMON_FIELDS_KERNEL.len();
             });
             for i in 0..COMMON_FIELDS_KERNEL.len() {
                 v.fields.insert(
