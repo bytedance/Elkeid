@@ -7,7 +7,7 @@ ByteDance-HIDS is a Cloud-Native Host-Based Intrusion Detection solution project
 ByteDance-HIDS comprises three major components：
 * **ByteDance-HIDS Agent, co-worked with ByteDance-HIDS Driver**, is the game-changer for the Data Collection market. It works at both Kernel and User Space of Linux System, providing rich data flow with much better performance. 
 * **ByteDance-HIDS Server** provides Service-Discovery for the production environment of up to millions of agents. The Server also supports primary data formatting along with rules distribution for the Agent. 
-* **HUB** provides high-performance, lightweight, and stateless alert generation with data manipulation to analyze the rich data flow. 
+* **ByteDance-HIDS HUB** provides high-performance, lightweight, and stateless alert generation with data manipulation to analyze the rich data flow. 
 
 Now we are more than happy to announce the open-source of ByteDance-HIDS Agent and ByteDance-HIDS Driver. We decided to strengthen the Defense Community with our game-changing technology. Due to the lack of rule engine and detection functions, ByteDance-HIDS Agent and Driver doesn't provide all HIDS capability on its own. However, it is a tremendous Host-Information-Collect-Agent that could be easily integrated with current HIDS/NIDS/XDR solutions on the market. ByteDance-HIDS Agent and ByteDance-HIDS Driver together advance solutions on the market in four major areas.
 
@@ -23,8 +23,8 @@ Now we are more than happy to announce the open-source of ByteDance-HIDS Agent a
 
 Currently, we are only open-sourcing ByteDance-HIDS Agent && Driver. Both components have been deployed and tested in production environments for months. We welcome any suggestions and cooperation.
 
-* #### [ByteDance-Driver](https://github.com/bytedance/ByteDance-HIDS/tree/main/driver)
-* #### [ByteDance-Agent](https://github.com/bytedance/ByteDance-HIDS/tree/main/agent)
+* #### [ByteDance-HIDS Driver](https://github.com/bytedance/ByteDance-HIDS/tree/main/driver)
+* #### [ByteDance-HIDS Agent](https://github.com/bytedance/ByteDance-HIDS/tree/main/agent)
 
 ## To be Continued 
 * ByteDance-Server is under development. More Features are on the way.
