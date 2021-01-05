@@ -10,6 +10,7 @@
 #include <linux/dcache.h>
 #include <linux/file.h>
 #include <linux/fs.h>
+#include <linux/uaccess.h>
 
 #ifdef CONFIG_X86
 #if LINUX_VERSION_CODE > KERNEL_VERSION(4, 7, 0)
