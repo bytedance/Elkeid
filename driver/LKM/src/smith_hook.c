@@ -952,8 +952,7 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 				if (offset + len > argv_res_len)
 					break;
 
-				if (copy_from_user
-				    (argv_res + offset, native, len))
+				if (smith_copy_from_user(argv_res + offset, native, len))
 					break;
 
 				 offset += len;
@@ -1132,8 +1131,7 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
                 if (offset + len > argv_res_len)
                     break;
 
-                if (copy_from_user
-                        (argv_res + offset, native, len))
+                if (smith_copy_from_user(argv_res + offset, native, len))
                     break;
 
                 offset += len;
@@ -1736,7 +1734,7 @@ void rename_and_link_hander(int type, const char __user * oldori,
 
     if(!oldname || !newname)
         goto out_free;
-    
+
     if(smith_copy_from_user(oldname, oldori, old_len) || smith_copy_from_user(newname, newori, new_len))
         goto out_free;
 
