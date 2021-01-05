@@ -1,18 +1,18 @@
-[![License](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/DianrongSecurity/AgentSmith-HIDS/blob/master/LICENSE) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![License](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/DianrongSecurity/ByteDance-HIDS/blob/master/LICENSE) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
-## About AgentSmith-HIDS Driver
+## About ByteDance-HIDS Driver
 
 [English](README.md) | 简体中文
 
 
 
-AgentSmith-HIDS Driver 主要是为信息安全需求而设计的。
+ByteDance-HIDS Driver 主要是为信息安全需求而设计的。
 
-AgentSmith-HIDS Driver 主要通过Kprobe Hook Kernel Funcion 来提供丰富而准确的数据收集功能，包括内核级进程执行探测，特权升级监控，网络审计等等。 并且支持Linux namespace，因此对容器监控有着很好的实现。与传统的UserSpace HIDS相比，AgentSmith-HIDS由于驱动的存在提供了更全面的信息，并提高了性能。
+ByteDance-HIDS Driver 主要通过Kprobe Hook Kernel Funcion 来提供丰富而准确的数据收集功能，包括内核级进程执行探测，特权升级监控，网络审计等等。 并且支持Linux namespace，因此对容器监控有着很好的实现。与传统的UserSpace HIDS相比，ByteDance-HIDS由于驱动的存在提供了更全面的信息，并提高了性能。
 
-AgentSmith-HIDS已经在生产环境大规模部署。 
+ByteDance-HIDS已经在生产环境大规模部署。 
 
-凭借其出色的数据收集能力，AgentSmith-HIDS Driver还可以支持沙盒，蜜罐和审计等需求。
+凭借其出色的数据收集能力，ByteDance-HIDS Driver还可以支持沙盒，蜜罐和审计等需求。
 
 
 
@@ -21,9 +21,9 @@ AgentSmith-HIDS已经在生产环境大规模部署。
 首先需要安装Linux Headers
 
 ```shell script
-git clone https://github.com/bytedance/AgentSmith-HIDS.git
-cd AgentSmith-HIDS/driver/LKM/
-make claen && make
+git clone https://github.com/bytedance/ByteDance-HIDS.git
+cd ByteDance-HIDS/driver/LKM/
+make clean && make
 insmod hids_driver.ko
 dmesg
 cat /proc/hids_driver/1
@@ -425,23 +425,23 @@ Note:  ***uid*** 为 -1
 
 ## 关于Driver Filter
 
-AgentSmith-HIDS驱动程序支持白名单以过滤出不需要的数据。 我们提供两种类型的白名单，**'exe'**白名单和**'argv'**白名单。
+ByteDance-HIDS驱动程序支持白名单以过滤出不需要的数据。 我们提供两种类型的白名单，**'exe'**白名单和**'argv'**白名单。
 **'exe'**白名单作用于**execve /create filte/ dns query/connect hook**，而**'argv'**白名单仅作用于**execve hook**  。
 出于性能和稳定性方面的考虑，‘exe’和‘argv’白名单容量为64。
 
-白名单的字符串驱动位于: `/dev/hids_driver_whitelist`
+白名单的字符串驱动位于: `/dev/hids_driver_allowlist`
 
 | Operations                    | Flag   | Example                                              |
 | ----------------------------- | ------ | ---------------------------------------------------- |
-| ADD_EXECVE_EXE_SHITELIST      | Y(89)  | `echo Y/bin/ls > /dev/someone_whitelist`             |
-| DEL_EXECVE_EXE_SHITELIST      | F(70)  | `echo Y/bin/ls > /dev/someone_whitelist`             |
-| DEL_ALL_EXECVE_EXE_SHITELIST  | w(119) | `echo w/del_all > /dev/someone_whitelist`            |
-| EXECVE_EXE_CHECK              | y(121) | `echo y/bin/ls > /dev/someone_whitelist && dmesg`    |
-| ADD_EXECVE_ARGV_SHITELIST     | m(109) | `echo m/bin/ls -l > /dev/someone_whitelist`          |
-| DEL_EXECVE_ARGV_SHITELIST     | J(74)  | `echo J/bin/ls -l > /dev/someone_whitelist`          |
-| DEL_ALL_EXECVE_ARGV_SHITELIST | u(117) | `echo u/del_all > /dev/someone_whitelist`            |
-| EXECVE_ARGV_CHECK             | z(122) | `echo z/bin/ls -l > /dev/someone_whitelist && dmesg` |
-| PRINT_ALL_WHITELIST           | .(46)  | `echo ./print_all > /dev/someone_whitelist && dmesg` |
+| ADD_EXECVE_EXE_SHITELIST      | Y(89)  | `echo Y/bin/ls > /dev/someone_allowlist`             |
+| DEL_EXECVE_EXE_SHITELIST      | F(70)  | `echo Y/bin/ls > /dev/someone_allowlist`             |
+| DEL_ALL_EXECVE_EXE_SHITELIST  | w(119) | `echo w/del_all > /dev/someone_allowlist`            |
+| EXECVE_EXE_CHECK              | y(121) | `echo y/bin/ls > /dev/someone_allowlist && dmesg`    |
+| ADD_EXECVE_ARGV_SHITELIST     | m(109) | `echo m/bin/ls -l > /dev/someone_allowlist`          |
+| DEL_EXECVE_ARGV_SHITELIST     | J(74)  | `echo J/bin/ls -l > /dev/someone_allowlist`          |
+| DEL_ALL_EXECVE_ARGV_SHITELIST | u(117) | `echo u/del_all > /dev/someone_allowlist`            |
+| EXECVE_ARGV_CHECK             | z(122) | `echo z/bin/ls -l > /dev/someone_allowlist && dmesg` |
+| PRINT_ALL_ALLOWLIST           | .(46)  | `echo ./print_all > /dev/someone_allowlist && dmesg` |
 
 Filter define is:
 
@@ -450,7 +450,7 @@ Filter define is:
 #define DEL_EXECVE_EXE_SHITELIST 70
 #define DEL_ALL_EXECVE_EXE_SHITELIST 119
 #define EXECVE_EXE_CHECK 121
-#define PRINT_ALL_WHITELIST 46
+#define PRINT_ALL_ALLOWLIST 46
 #define ADD_EXECVE_ARGV_SHITELIST 109
 #define DEL_EXECVE_ARGV_SHITELIST 74
 #define DEL_ALL_EXECVE_ARGV_SHITELIST 117
@@ -459,7 +459,7 @@ Filter define is:
 
 
 
-## 关于AgentSmith-HIDS Driver 性能
+## 关于ByteDance-HIDS Driver 性能
 
 ### Testing Environment(VM):
 
@@ -495,7 +495,7 @@ Testing Load:
 
 `udp_recvmsg_handler` 仅工作在端口为 53 或 5353的情况
 
-测试原始数据:[Benchmark Data](https://github.com/bytedance/AgentSmith-HIDS/tree/main/driver/benchmark_data/handler)
+测试原始数据:[Benchmark Data](https://github.com/bytedance/ByteDance-HIDS/tree/main/driver/benchmark_data/handler)
 
 
 ## 关于部署
@@ -507,4 +507,4 @@ Testing Load:
 
 ## License
 
-AgentSmith-HIDS kernel module are distributed under the GNU GPLv3 license.
+ByteDance-HIDS kernel module are distributed under the GNU GPLv2 license.

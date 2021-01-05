@@ -1,23 +1,31 @@
-# AgentSmith-HIDS
+# ByteDance-HIDS
 
 English | [简体中文](README-zh_CN.md)
 
-Technically, AgentSmith-HIDS is not a Host-based Intrusion Detection System (HIDS) due to lack of rule engine and detection function. However, it can be used as a high performance 'Host Information Collect Agent' as part of your own HIDS solution.
-The comprehensiveness of information which can be collected by this agent was one of the most important metrics during developing this project, hence it was built to function in the kernel space and achieve huge advantage comparing to those function in user space, such as:
+ByteDance-HIDS is a Cloud-Native Host-Based Intrusion Detection solution project to provide next-generation Threat Detection and Behavior Audition with modern architecture. 
 
-* **Better performance**, Information needed are collected in kernel space to avoid additional supplement actions such as traversal of '/proc'; and to enhance the performance of data transportation.
-* **Hard to be bypassed**, Information collection was powered by specifically designed kernel drive, makes it almost impossible to bypass the detection for malicious software like rootkit, which can deliberately hide themselves.
-* **Easy to be integrated**，The AgentSmith-HIDS was built to integrate with other applications and can be used not only as security tool but also a good monitoring tool, or even a good detector of your assets. The agent is capable of collecting the users, files, processes and internet connections for you, so let's imagine when you integrate it with CMDB, you could get a comprehensive map consists of your network, host, container and business (even dependencies). What if you also have a Database audit tool at hand? The map can be extended to contain the relationship between your DB, DB User, tables, fields, applications, network, host and containers etc. Thinking of the possibility of integration with network intrusion detection system and/or threat intelligence etc., higher traceability could also be achieved. It just never gets old.
-* **Kernel Space + User Space**，AgentSmith-HIDS also provide user space module, to further extend the functionality when working with kernel space module.
+ByteDance-HIDS comprises three major components：
+* **ByteDance-HIDS Agent, co-worked with ByteDance-HIDS Driver**, is the game-changer for the Data Collection market. It works at both Kernel and User Space of Linux System, providing rich data flow with much better performance. 
+* **ByteDance-HIDS Server** provides Service-Discovery for the production environment of up to millions of agents. The Server also supports primary data formatting along with rules distribution for the Agent. 
+* **ByteDance-HIDS HUB** provides high-performance, lightweight, and stateless alert generation with data manipulation to analyze the rich data flow. 
+
+Now we are more than happy to announce the open-source of ByteDance-HIDS Agent and ByteDance-HIDS Driver. We decided to strengthen the Defense Community with our game-changing technology. Due to the lack of rule engine and detection functions, ByteDance-HIDS Agent and Driver doesn't provide all HIDS capability on its own. However, it is a tremendous Host-Information-Collect-Agent that could be easily integrated with current HIDS/NIDS/XDR solutions on the market. ByteDance-HIDS Agent and ByteDance-HIDS Driver together advance solutions on the market in four major areas.
+
+* **Better performance**  Data/Information are collected in kernel space to avoid additional supplement actions such as traversal of '/proc' directory or collecting from other audition processes such as "auditd".
+* **Hard to be bypassed**  A specifically designed kernel driver powers data/Information collection, making it virtually impossible for malicious software, like rootkit, to evade detection or audition. The Driver could capture even evasion behavior itself.
+* **Kernel + User Space**  ByteDance-HIDS Agent provides User Space detection abilities, including file audition, in-house rule detection, and primary allowlists. 
+* **Easy to be integrated**  ByteDance-HIDS could empower any User Space agents far beyond Host Intrusion usages with the detailed and reliable data flow. A wide user action audition could benefit both Behavior Analysis and Compliance requests. When integrated with NIDS, security analyzers could build a comprehensive Provenance Graph from the network connections, along with high traceable process trees and file auditions.
+
 
 ## System Architecture
 
-<img src="./AgentSmith-HIDS.png"/>
+<img src="./ByteDance-HIDS.png"/>
 
-Currently we only opensource AgentSmith-HIDS Agent && Driver:
+Currently, we are only open-sourcing ByteDance-HIDS Agent && Driver. Both components have been deployed and tested in production environments for months. We welcome any suggestions and cooperation.
 
-* #### [AgentSmith-Driver](https://github.com/bytedance/AgentSmith-HIDS/tree/main/driver)
-* #### [AgentSmith-Agent](https://github.com/bytedance/AgentSmith-HIDS/tree/main/agent)
+* #### [ByteDance-HIDS Driver](https://github.com/bytedance/ByteDance-HIDS/tree/main/driver)
+* #### [ByteDance-HIDS Agent](https://github.com/bytedance/ByteDance-HIDS/tree/main/agent)
 
-## TODO
-* OpenSource AgentSmith-Server
+## To be Continued 
+* ByteDance-Server is under development. More Features are on the way.
+

@@ -1,25 +1,25 @@
-[![License](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/DianrongSecurity/AgentSmith-HIDS/blob/master/LICENSE) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![License](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/DianrongSecurity/ByteDance-HIDS/blob/master/LICENSE) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
-## About AgentSmith-HIDS Driver
+## About ByteDance-HIDS Driver
 
 English | [简体中文](README-zh_CN.md)
 
 
 
-AgentSmith-HIDS Driver is a one-of-a-kind Kernel Space HIDS agent designed for Cyber-Security. 
+ByteDance-HIDS Driver is a one-of-a-kind Kernel Space HIDS agent designed for Cyber-Security. 
 
-AgentSmith-HIDS Driver hooks kernel functions via Kprobe, providing rich and accurate data collection capabilities,  including kernel-level process execve probing, privilege escalation monitoring, network audition, and much more. The Driver treats Container-based monitoring as a first-class citizen as Host-based data collection by supporting Linux Namespace. Compare to User Space agents on the market, AgentSmith-HIDS provides more comprehensive information with massive performance improvement. 
+ByteDance-HIDS Driver hooks kernel functions via Kprobe, providing rich and accurate data collection capabilities,  including kernel-level process execve probing, privilege escalation monitoring, network audition, and much more. The Driver treats Container-based monitoring as a first-class citizen as Host-based data collection by supporting Linux Namespace. Compare to User Space agents on the market, ByteDance-HIDS provides more comprehensive information with massive performance improvement. 
 
-AgentSmith-HIDS has already been deployed massively for HIDS usage in world-class production environments. With its marvelous data collection ability, AgentSmith-HIDS also supports Sandbox, Honeypot, and Audition data requirements. 
+ByteDance-HIDS has already been deployed massively for HIDS usage in world-class production environments. With its marvelous data collection ability, ByteDance-HIDS also supports Sandbox, Honeypot, and Audition data requirements. 
 
 ## Quick Test
 
 First you need install Linux Headers
 
 ```shell script
-git clone https://github.com/bytedance/AgentSmith-HIDS.git
-cd AgentSmith-HIDS/driver/LKM/
-make claen && make
+git clone https://github.com/bytedance/ByteDance-HIDS.git
+cd ByteDance-HIDS/driver/LKM/
+make clean && make
 insmod hids_driver.ko
 dmesg
 cat /proc/hids_driver/1
@@ -415,23 +415,23 @@ Note:  ***uid*** is always -1
 
 ## About Driver Filter
 
-AgentSmith-HIDS driver supports whitelist to filter out unwanted data. We provide two types of whitelists, **'exe'** whitelist and **'argv'** whitelist.
-**'exe'** whitelist acts on ***execve/create file/dns query/connect*** hooks, while **'argv'** whitelist only acts on ***execve*** hook. 
-For performance and stability concerns, both 'exe' and 'argv' whitelist only supports 64-elements-wide capacity.
+ByteDance-HIDS driver supports allowlist to filter out unwanted data. We provide two types of allowlists, **'exe'** allowlist and **'argv'** allowlist.
+**'exe'** allowlist acts on ***execve/create file/dns query/connect*** hooks, while **'argv'** allowlist only acts on ***execve*** hook. 
+For performance and stability concerns, both 'exe' and 'argv' allowlist only supports 64-elements-wide capacity.
 
-whitelist driver is in: `/dev/hids_driver_whitelist`
+allowlist driver is in: `/dev/hids_driver_allowlist`
 
 | Operations                    | Flag   | Example                                              |
 | ----------------------------- | ------ | ---------------------------------------------------- |
-| ADD_EXECVE_EXE_SHITELIST      | Y(89)  | `echo Y/bin/ls > /dev/someone_whitelist`             |
-| DEL_EXECVE_EXE_SHITELIST      | F(70)  | `echo Y/bin/ls > /dev/someone_whitelist`             |
-| DEL_ALL_EXECVE_EXE_SHITELIST  | w(119) | `echo w/del_all > /dev/someone_whitelist`            |
-| EXECVE_EXE_CHECK              | y(121) | `echo y/bin/ls > /dev/someone_whitelist && dmesg`    |
-| ADD_EXECVE_ARGV_SHITELIST     | m(109) | `echo m/bin/ls -l > /dev/someone_whitelist`          |
-| DEL_EXECVE_ARGV_SHITELIST     | J(74)  | `echo J/bin/ls -l > /dev/someone_whitelist`          |
-| DEL_ALL_EXECVE_ARGV_SHITELIST | u(117) | `echo u/del_all > /dev/someone_whitelist`            |
-| EXECVE_ARGV_CHECK             | z(122) | `echo z/bin/ls -l > /dev/someone_whitelist && dmesg` |
-| PRINT_ALL_WHITELIST           | .(46)  | `echo ./print_all > /dev/someone_whitelist && dmesg` |
+| ADD_EXECVE_EXE_SHITELIST      | Y(89)  | `echo Y/bin/ls > /dev/someone_allowlist`             |
+| DEL_EXECVE_EXE_SHITELIST      | F(70)  | `echo Y/bin/ls > /dev/someone_allowlist`             |
+| DEL_ALL_EXECVE_EXE_SHITELIST  | w(119) | `echo w/del_all > /dev/someone_allowlist`            |
+| EXECVE_EXE_CHECK              | y(121) | `echo y/bin/ls > /dev/someone_allowlist && dmesg`    |
+| ADD_EXECVE_ARGV_SHITELIST     | m(109) | `echo m/bin/ls -l > /dev/someone_allowlist`          |
+| DEL_EXECVE_ARGV_SHITELIST     | J(74)  | `echo J/bin/ls -l > /dev/someone_allowlist`          |
+| DEL_ALL_EXECVE_ARGV_SHITELIST | u(117) | `echo u/del_all > /dev/someone_allowlist`            |
+| EXECVE_ARGV_CHECK             | z(122) | `echo z/bin/ls -l > /dev/someone_allowlist && dmesg` |
+| PRINT_ALL_ALLOWLIST           | .(46)  | `echo ./print_all > /dev/someone_allowlist && dmesg` |
 
 Filter define is:
 ```c
@@ -439,7 +439,7 @@ Filter define is:
 #define DEL_EXECVE_EXE_SHITELIST 70
 #define DEL_ALL_EXECVE_EXE_SHITELIST 119
 #define EXECVE_EXE_CHECK 121
-#define PRINT_ALL_WHITELIST 46
+#define PRINT_ALL_ALLOWLIST 46
 #define ADD_EXECVE_ARGV_SHITELIST 109
 #define DEL_EXECVE_ARGV_SHITELIST 74
 #define DEL_ALL_EXECVE_ARGV_SHITELIST 117
@@ -448,7 +448,7 @@ Filter define is:
 
 
 
-## Performance Stats of AgentSmith-HIDS Driver
+## Performance Stats of ByteDance-HIDS Driver
 
 ### Testing Environment(VM):
 
@@ -485,7 +485,7 @@ Testing Load:
 
 `udp_recvmsg_handler` will work only if the port is equal 53 or 5353
 
-Original Testing Data:[Benchmark Data](https://github.com/bytedance/AgentSmith-HIDS/tree/main/driver/benchmark_data/handler)
+Original Testing Data:[Benchmark Data](https://github.com/bytedance/ByteDance-HIDS/tree/main/driver/benchmark_data/handler)
 
 
 ## About Deploy
@@ -497,4 +497,4 @@ You can use DKMS or Pre-packaged ko file
 
 ## License
 
-AgentSmith-HIDS kernel module are distributed under the GNU GPLv3 license.
+ByteDance-HIDS kernel module are distributed under the GNU GPLv2 license.

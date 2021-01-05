@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-3.0 */
+/* SPDX-License-Identifier: GPL-2.0 */
 
 #ifndef FILTER_H
 #define FILTER_H
@@ -14,8 +14,8 @@
 #include <linux/string.h>
 #include <linux/rbtree.h>
 
-#define FILTER_DEVICE_NAME "hids_driver_whitelist"
-#define FILTER_CLASS_NAME "hids_driver_whitelist"
+#define FILTER_DEVICE_NAME "hids_driver_allowlist"
+#define FILTER_CLASS_NAME "hids_driver_allowlist"
 
 #define SHMEM_MAX_SIZE 8192
 
