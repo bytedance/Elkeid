@@ -110,14 +110,14 @@ const char __user *get_user_arg_ptr(struct user_arg_ptr argv, int nr)
 	if (argv.is_compat) {
 		compat_uptr_t compat;
 
-		if (get_user(compat, argv.ptr.compat + nr))
+		if (smith_get_user(compat, argv.ptr.compat + nr))
 			return ERR_PTR(-EFAULT);
 
 		return compat_ptr(compat);
 	}
 #endif
 
-	if (get_user(native, argv.ptr.native + nr))
+	if (smith_get_user(native, argv.ptr.native + nr))
 		return ERR_PTR(-EFAULT);
 
 	return native;
@@ -154,7 +154,7 @@ int count(char **argv, int max)
         for (;;) {
             char *p;
 
-            if (get_user(p, argv))
+            if (smith_get_user(p, argv))
                 return -EFAULT;
             if (!p)
                 break;
@@ -492,7 +492,7 @@ int bind_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     if (ulen <= 0 || ulen > sizeof(struct sockaddr_storage))
         return -EINVAL;
 
-    if (copy_from_user(&address, (void __user *)p_get_arg2(regs), ulen))
+    if (smith_copy_from_user(&address, (void __user *)p_get_arg2(regs), ulen))
         return -EFAULT;
 
     uaddr = (struct sockaddr *)&address;
@@ -597,7 +597,7 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 
     socket = sockfd_lookup(fd, &err);
     if (socket) {
-        copy_res = copy_from_user(&tmp_dirp, data->dirp, 16);
+        copy_res = smith_copy_from_user(&tmp_dirp, data->dirp, 16);
 
         if (copy_res) {
             sockfd_put(socket);
@@ -985,7 +985,7 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 			len = strnlen_user(native, MAX_ARG_STRLEN);
 			if (len > 14 && len < 256) {
 				memset(buf, 0, 256);
-				if (copy_from_user(buf, native, len))
+				if (smith_copy_from_user(buf, native, len))
 					break;
 				else {
 					if (strncmp("SSH_CONNECTION=", buf, 11) == 0) {
@@ -1122,7 +1122,7 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
         if (argv_res) {
             free_argv = 1;
             for (i = 0; i < argv_len; i++) {
-                if (get_user(native, argv + i))
+                if (smith_get_user(native, argv + i))
                     break;
 
                 len = strnlen_user(native, MAX_ARG_STRLEN);
@@ -1160,7 +1160,7 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
             if (free_ld_preload == 1 && ssh_connection_flag == 1)
                 break;
 
-            if (get_user(native, env + i))
+            if (smith_get_user(native, env + i))
                 break;
 
             len = strnlen_user(native, MAX_ARG_STRLEN);
@@ -1168,7 +1168,7 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
                 break;
             else if (len > 14 && len < 256) {
                 memset(buf, 0, 256);
-                if (copy_from_user(buf, native, len))
+                if (smith_copy_from_user(buf, native, len))
                     break;
                 else {
                     if (strncmp("SSH_CONNECTION=", buf, 11) == 0) {
@@ -1583,7 +1583,7 @@ int udp_recvmsg_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     
     recv_data = kmalloc((data->iov_len + 1) * sizeof(char), GFP_ATOMIC);
 
-    if (!recv_data || copy_from_user(recv_data, data->iov_base, data->iov_len)) {
+    if (!recv_data || smith_copy_from_user(recv_data, data->iov_base, data->iov_len)) {
         kfree(recv_data);
         return 0;
     }
@@ -1737,7 +1737,7 @@ void rename_and_link_hander(int type, const char __user * oldori,
     if(!oldname || !newname)
         goto out_free;
     
-    if(copy_from_user(oldname, oldori, old_len) || copy_from_user(newname, newori, new_len))
+    if(smith_copy_from_user(oldname, oldori, old_len) || smith_copy_from_user(newname, newori, new_len))
         goto out_free;
 
     oldname[old_len] = '\0';
@@ -1886,7 +1886,7 @@ int prctl_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if(!newname) 
         return 0; 
 
-    if(copy_from_user(newname, (char __user *)newname_ori, newname_len)) {
+    if(smith_copy_from_user(newname, (char __user *)newname_ori, newname_len)) {
         kfree(newname);
         return 0;
     }
@@ -1928,7 +1928,7 @@ int open_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if(!filename)
         return 0; 
 
-    if(copy_from_user(filename, (char __user *)filename_ori, filename_len))
+    if(smith_copy_from_user(filename, (char __user *)filename_ori, filename_len))
         goto out;   
 
     filename[filename_len] = '\0';
@@ -1961,7 +1961,7 @@ int nanosleep_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if (IS_ERR_OR_NULL(tmp))
         return 0;
 
-    if (copy_from_user(&tu, (struct timespec __user *)tmp, sizeof(tu)))
+    if (smith_copy_from_user(&tu, (struct timespec __user *)tmp, sizeof(tu)))
         return 0;
 
     if (!timespec_valid(&tu))
