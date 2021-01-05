@@ -303,7 +303,7 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
     char flag;
     char *data_main;
 
-    if(get_user(flag, buff))
+    if(smith_get_user(flag, buff))
         return len;
 
     if (len < ALLOWLIST_NODE_MIN || len > ALLOWLIST_NODE_MAX)
@@ -313,7 +313,7 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
     if (!data_main)
         return len;
 
-    if (copy_from_user(data_main, buff + 1, len - 1)) {
+    if (smith_copy_from_user(data_main, buff + 1, len - 1)) {
         kfree(data_main);
         return len;
     }
