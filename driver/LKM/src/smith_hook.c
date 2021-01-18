@@ -414,7 +414,7 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
             next_task:
             old_task = task;
             rcu_read_lock();
-            task = rcu_dereference(task->parent);
+            task = rcu_dereference(task->real_parent);
             if (task)
                 get_task_struct(task);
             rcu_read_unlock();
