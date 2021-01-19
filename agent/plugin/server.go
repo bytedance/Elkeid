@@ -158,7 +158,7 @@ func Run() {
 						s.Delete(req.Name)
 						return
 					}
-					err := transport.Send(data)
+					err = transport.Send(data)
 					if err != nil {
 						zap.S().Error(err)
 					}
