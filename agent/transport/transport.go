@@ -3,6 +3,7 @@ package transport
 import (
 	"sync"
 
+	"github.com/bytedance/ByteDance-HIDS/agent/common"
 	"github.com/bytedance/ByteDance-HIDS/agent/spec"
 	"github.com/bytedance/ByteDance-HIDS/agent/transport/stdout"
 )
@@ -27,6 +28,27 @@ func SetTransport(t Transport) {
 func Send(d *spec.Data) error {
 	mu.Lock()
 	defer mu.Unlock()
+	for i := range *d {
+		(*d)[i]["agent_id"] = common.AgentID
+		if len(common.PrivateIPv4) != 0 {
+			(*d)[i]["ipv4"] = common.PrivateIPv4[0]
+		} else if len(common.PublicIPv4) != 0 {
+			(*d)[i]["ipv4"] = common.PublicIPv4[0]
+		} else {
+			(*d)[i]["ipv4"] = ""
+		}
+		if len(common.PrivateIPv6) != 0 {
+			(*d)[i]["ipv6"] = common.PrivateIPv6[0]
+		} else if len(common.PublicIPv6) != 0 {
+			(*d)[i]["ipv6"] = common.PublicIPv6[0]
+		} else {
+			(*d)[i]["ipv6"] = ""
+		}
+		(*d)[i]["hostname"] = common.Hostname
+		(*d)[i]["version"] = common.Version
+		(*d)[i]["kernel_version"] = common.KernelVersion
+		(*d)[i]["distro"] = common.Distro
+	}
 	return defaultTransport.Send(d)
 }
 func Receive() (spec.Task, error) {
