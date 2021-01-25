@@ -13,7 +13,7 @@ You may check out two examples of plugin implementation in [driver](driver/) and
 
 We decoupled basic functionalities through this Agent-Plugins struct. Functional modules such as process monitoring and file auditioning could be implemented for specific needs, while basic modules, like communication and control/resource monitoring could stay the same across various Linux distributions.
 
-The current version of AgentSmith-HIDS Agent is recommended only for local testing. Without ByteDance-HIDS Server, it does not support remote control and configurations. 
+The current version of AgentSmith-HIDS Agent is recommended only for local testing. Without AgentSmith-HIDS Server, it does not support remote control and configurations. 
 
 ## Supported Platforms
 In theory, all Linux distribution systems are compatible, but only Debian (including Ubuntu) and RHEL (including CentOS) have been fully tested. All tests have been made only for the **x86_64** platform.
