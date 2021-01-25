@@ -1,15 +1,15 @@
-[![License](https://img.shields.io/badge/License-Apache%20v2-blue.svg)](https://github.com/DianrongSecurity/ByteDance-HIDS/blob/master/LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%20v2-blue.svg)](https://github.com/bytedance/AgentSmith-HIDS/blob/main/agent/LICENSE)
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
 [English](README.md) | 简体中文
-## 关于 ByteDance-HIDS Agent
-ByteDance-HIDS Agent 是一个用户态的程序，主要是用来转发其他功能插件发送来的数据以及通过配置来控制其他插件。
+## 关于 AgentSmith-HIDS Agent
+AgentSmith-HIDS Agent 是一个用户态的程序，主要是用来转发其他功能插件发送来的数据以及通过配置来控制其他插件。
 
-ByteDance-HIDS Agent基于Golang构建，但其他功能插件可以用不同的语言去完成([目前已经支持Rust](support/rust)，下一个受到支持的语言是Golang)。
+AgentSmith-HIDS Agent基于Golang构建，但其他功能插件可以用不同的语言去完成([目前已经支持Rust](support/rust)，下一个受到支持的语言是Golang)。
 
 插件是一个具有特定功能并且可以独立配置与更新的程序。当插件向Agent注册之后，插件的资源使用情况会被受到监视，并且插件本身产生的的日志也会被转发给Agent。
 
-在[driver](driver/) 与 [journal_watcher](journal_watcher/)下你可以看到两个示例插件。前者用来解析并丰富ByteDance-HIDS Driver从内核发来的数据，后者用来监控系统日志。
+在[driver](driver/) 与 [journal_watcher](journal_watcher/)下你可以看到两个示例插件。前者用来解析并丰富AgentSmith-HIDS Driver从内核发来的数据，后者用来监控系统日志。
 
 通过Agent-Plugin的这种模式，我们可以将基础模块(例如通信与控制和资源监控等)与功能模块(例如进程监控和文件监控以及漏洞分析等)解耦，进而实现动态增减相关模块。
 
@@ -18,14 +18,14 @@ ByteDance-HIDS Agent基于Golang构建，但其他功能插件可以用不同的
 
 另外，为了更好的与插件兼容，建议将Agent运行在物理机或者虚拟机中，而不是容器中。
 
-为了功能的完整性，你可能需要以root权限运行ByteDance-HIDS Agent。
+为了功能的完整性，你可能需要以root权限运行AgentSmith-HIDS Agent。
 
 ## 需要的编译环境
 * Golang 1.15(推荐)
 ## 快速开始
 ```
-git clone --recursive https://github.com/bytedance/ByteDance-HIDS
-cd ByteDance-HIDS/agent
+git clone --recursive https://github.com/bytedance/AgentSmith-HIDS
+cd AgentSmith-HIDS/agent
 go build
 ```
 在当前目录下，你将会看见`agent`二进制文件。
@@ -62,7 +62,7 @@ Help Options:
 第二行是当前Agent的心跳数据，里面的字段描述了当前Agent和当前已加载
 插件的相关信息。
 ## 数据输出
-当前版本的ByteDance-HIDS Agent更多是用于本地的测试，它不支持远程控制与配置，但是支持将数据发送到远端(通过sarama/kafka)。
+当前版本的AgentSmith-HIDS Agent更多是用于本地的测试，它不支持远程控制与配置，但是支持将数据发送到远端(通过sarama/kafka)。
 
 注意：请不要用于生产环境。
 ### Stdout(默认)
@@ -104,7 +104,7 @@ plugins:
 
 所有与插件相关的事件都可以在[日志文件](#日志)中看到。
 
-## 与ByteDance-HIDS Driver兼容运行的示例
+## 与AgentSmith-HIDS Driver兼容运行的示例
 ### 前提条件
 * [Linux Kernrl Module](../driver) (一个ko文件)
 * [Driver Plugin](driver) (一个二进制文件)
@@ -146,4 +146,4 @@ echo "plugins : []" > /etc/hids/config.yaml
 如果你想再次开启这个插件，请[恢复配置文件](#配置文件)。
 
 ## License
-ByteDance-HIDS Agent are distributed under the Apache-2.0 license.
+AgentSmith-HIDS Agent are distributed under the Apache-2.0 license.

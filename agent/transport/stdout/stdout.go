@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/bytedance/ByteDance-HIDS/agent/spec"
+	"github.com/bytedance/AgentSmith-HIDS/agent/spec"
 )
 
 type Stdout struct {

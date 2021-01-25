@@ -285,6 +285,12 @@ static ssize_t trace_read_pipe(struct file *filp, char __user * ubuf,
     trace_seq_init(&iter->seq);
 
 waitagain:
+    if(fatal_signal_pending(current))
+        goto out;
+
+    if(!ring_buffer_record_is_on_sym(ring_buffer))
+        goto out;
+
     sret = trace_wait_pipe(filp);
     if (sret <= 0)
         goto out;
