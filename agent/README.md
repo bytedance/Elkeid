@@ -1,30 +1,30 @@
-[![License](https://img.shields.io/badge/License-Apache%20v2-blue.svg)](https://github.com/DianrongSecurity/ByteDance-HIDS/blob/master/LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%20v2-blue.svg)](https://github.com/bytedance/AgentSmith-HIDS/blob/main/agent/LICENSE)
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
 English | [简体中文](README-zh_CN.md)
-## About ByteDance-HIDS Agent
-ByteDance-HIDS Agent is a User Space program designed to supplement multiple functionalities through build-in or third party plugins. The main program controls plugins' behavior via configurations and forwards data, collected by various Agent plugins, to the configured remote backend. 
+## About AgentSmith-HIDS Agent
+AgentSmith-HIDS Agent is a User Space program designed to supplement multiple functionalities through build-in or third party plugins. The main program controls plugins' behavior via configurations and forwards data, collected by various Agent plugins, to the configured remote backend. 
 
-ByteDance-HIDS Agent is written in Golang, but plugins are designed to support other languages ​​([rust is currently supported](support/rust), and the next will be Golang).
+AgentSmith-HIDS Agent is written in Golang, but plugins are designed to support other languages ​​([rust is currently supported](support/rust), and the next will be Golang).
 
 A plugin is a program with a specific function that can be independently updated and configured. The plugin's resource usage will be monitored once it gets registered on the agent. The plugin's log will also be passed to the Agent and logged together.
 
-You may check out two examples of plugin implementation in [driver](driver/) and [journal_watcher](journal_watcher/) directories. The former one parses and enriches the data transmitted by the ByteDance-HIDS Driver from the kernel. The latter one is used for log monitoring.
+You may check out two examples of plugin implementation in [driver](driver/) and [journal_watcher](journal_watcher/) directories. The former one parses and enriches the data transmitted by the AgentSmith-HIDS Driver from the kernel. The latter one is used for log monitoring.
 
 We decoupled basic functionalities through this Agent-Plugins struct. Functional modules such as process monitoring and file auditioning could be implemented for specific needs, while basic modules, like communication and control/resource monitoring could stay the same across various Linux distributions.
 
-The current version of ByteDance-HIDS Agent is recommended only for local testing. Without ByteDance-HIDS Server, it does not support remote control and configurations. 
+The current version of AgentSmith-HIDS Agent is recommended only for local testing. Without ByteDance-HIDS Server, it does not support remote control and configurations. 
 
 ## Supported Platforms
 In theory, all Linux distribution systems are compatible, but only Debian (including Ubuntu) and RHEL (including CentOS) have been fully tested. All tests have been made only for the **x86_64** platform.
-We recommend running the ByteDance-HIDS Agent with **root privileges** in a **physical machine** or a **virtual machine** instead of a container for better compatibility with the current plugins.
+We recommend running the AgentSmith-HIDS Agent with **root privileges** in a **physical machine** or a **virtual machine** instead of a container for better compatibility with the current plugins.
 
 ## Compilation Environment Requirements
 * Golang 1.15(Recommended)
-## To Start Using ByteDance-HIDS Agent
+## To Start Using AgentSmith-HIDS Agent
 ```
-git clone --recursive https://github.com/bytedance/ByteDance-HIDS
-cd ByteDance-HIDS/agent
+git clone --recursive https://github.com/bytedance/AgentSmith-HIDS
+cd AgentSmith-HIDS/agent
 go build
 ```
 You will see the `agent` binary program in the current directory.
@@ -58,7 +58,7 @@ The configuration file is used to control the currently running plugin instance.
 ```
 The error in the first line is caused by the configuration file not being found and can be ignored for now. The second line is the agent's heartbeat data. Each field in it describes the current Agent and Plugin information.
 ## Data Output
-ByteDance-HIDS Agent supports data transmission to local output or a remote message queue (via sarama/kafka). 
+AgentSmith-HIDS Agent supports data transmission to local output or a remote message queue (via sarama/kafka). 
 ### Stdout(Default)
 Flush all data in stdout. Note: This method does not save the data persistently. When data sending speed is too fast, it may cause the current terminal to run slowly.
 ### File
@@ -91,11 +91,11 @@ plugins :
 Among them, `name` and `version` need to be the same as the [plugin](support/README.md#registration) config, `path` is used to find the plugin binary file, and `sha256` is used to verify the actual startup file.
 
 All events related to the plugin can be seen in the [log](#logs) file.
-## Example With ByteDance-HIDS Driver
+## Example With AgentSmith-HIDS Driver
 ### Precondition
 * The [Linux Kernrl Module](../driver) (a ko file).
 * The [Driver Plugin](driver) (a binary file).
-* The [Agent](#to-start-using-ByteDance-HIDS-agent) (a binary file).
+* The [Agent](#to-start-using-AgentSmith-HIDS-agent) (a binary file).
 ### Select a working directory
 I will use `/etc/hids` as the working directory for the following steps:
 ```
@@ -132,4 +132,4 @@ echo "plugins: []" > /etc/hids/config.yaml
 If you want to enable the Driver Plugin again, just [restore the configuration file](#create-config-file).
 
 ## License
-ByteDance-HIDS Agent are distributed under the Apache-2.0 license.
+AgentSmith-HIDS Agent are distributed under the Apache-2.0 license.

@@ -1,16 +1,16 @@
-[![License](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/DianrongSecurity/ByteDance-HIDS/blob/master/LICENSE) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![License](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/bytedance/AgentSmith-HIDS/blob/main/driver/LICENSE) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
-## About ByteDance-HIDS Driver
+## About AgentSmith-HIDS Driver
 
 English | [简体中文](README-zh_CN.md)
 
 
 
-ByteDance-HIDS Driver is a one-of-a-kind Kernel Space HIDS agent designed for Cyber-Security. 
+AgentSmith-HIDS Driver is a one-of-a-kind Kernel Space HIDS agent designed for Cyber-Security. 
 
-ByteDance-HIDS Driver hooks kernel functions via Kprobe, providing rich and accurate data collection capabilities,  including kernel-level process execve probing, privilege escalation monitoring, network audition, and much more. The Driver treats Container-based monitoring as a first-class citizen as Host-based data collection by supporting Linux Namespace. Compare to User Space agents on the market, ByteDance-HIDS provides more comprehensive information with massive performance improvement. 
+AgentSmith-HIDS Driver hooks kernel functions via Kprobe, providing rich and accurate data collection capabilities,  including kernel-level process execve probing, privilege escalation monitoring, network audition, and much more. The Driver treats Container-based monitoring as a first-class citizen as Host-based data collection by supporting Linux Namespace. Compare to User Space agents on the market, ByteDance-HIDS provides more comprehensive information with massive performance improvement. 
 
-ByteDance-HIDS has already been deployed massively for HIDS usage in world-class production environments. With its marvelous data collection ability, ByteDance-HIDS also supports Sandbox, Honeypot, and Audition data requirements. 
+AgentSmith-HIDS has already been deployed massively for HIDS usage in world-class production environments. With its marvelous data collection ability, ByteDance-HIDS also supports Sandbox, Honeypot, and Audition data requirements. 
 
 ## Quick Test
 

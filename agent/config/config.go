@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/bytedance/ByteDance-HIDS/agent/plugin"
+	"github.com/bytedance/AgentSmith-HIDS/agent/plugin"
 	"github.com/fsnotify/fsnotify"
 	"go.uber.org/config"
 	"go.uber.org/zap"

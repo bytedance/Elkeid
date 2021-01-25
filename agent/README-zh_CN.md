@@ -1,11 +1,11 @@
-[![License](https://img.shields.io/badge/License-Apache%20v2-blue.svg)](https://github.com/DianrongSecurity/ByteDance-HIDS/blob/master/LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%20v2-blue.svg)](https://github.com/bytedance/AgentSmith-HIDS/blob/main/agent/LICENSE)
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
 [English](README.md) | 简体中文
-## 关于 ByteDance-HIDS Agent
-ByteDance-HIDS Agent 是一个用户态的程序，主要是用来转发其他功能插件发送来的数据以及通过配置来控制其他插件。
+## 关于 AgentSmith-HIDS Agent
+AgentSmith-HIDS Agent 是一个用户态的程序，主要是用来转发其他功能插件发送来的数据以及通过配置来控制其他插件。
 
-ByteDance-HIDS Agent基于Golang构建，但其他功能插件可以用不同的语言去完成([目前已经支持Rust](support/rust)，下一个受到支持的语言是Golang)。
+AgentSmith-HIDS Agent基于Golang构建，但其他功能插件可以用不同的语言去完成([目前已经支持Rust](support/rust)，下一个受到支持的语言是Golang)。
 
 插件是一个具有特定功能并且可以独立配置与更新的程序。当插件向Agent注册之后，插件的资源使用情况会被受到监视，并且插件本身产生的的日志也会被转发给Agent。
 
@@ -24,8 +24,8 @@ ByteDance-HIDS Agent基于Golang构建，但其他功能插件可以用不同的
 * Golang 1.15(推荐)
 ## 快速开始
 ```
-git clone --recursive https://github.com/bytedance/ByteDance-HIDS
-cd ByteDance-HIDS/agent
+git clone --recursive https://github.com/bytedance/AgentSmith-HIDS
+cd AgentSmith-HIDS/agent
 go build
 ```
 在当前目录下，你将会看见`agent`二进制文件。
@@ -146,4 +146,4 @@ echo "plugins : []" > /etc/hids/config.yaml
 如果你想再次开启这个插件，请[恢复配置文件](#配置文件)。
 
 ## License
-ByteDance-HIDS Agent are distributed under the Apache-2.0 license.
+AgentSmith-HIDS Agent are distributed under the Apache-2.0 license.

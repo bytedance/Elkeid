@@ -1,18 +1,18 @@
-[![License](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/DianrongSecurity/ByteDance-HIDS/blob/master/LICENSE) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![License](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/bytedance/AgentSmith-HIDS/blob/main/driver/LICENSE) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
-## About ByteDance-HIDS Driver
+## About AgentSmith-HIDS Driver
 
 [English](README.md) | 简体中文
 
 
 
-ByteDance-HIDS Driver 主要是为信息安全需求而设计的。
+AgentSmith-HIDS Driver 主要是为信息安全需求而设计的。
 
-ByteDance-HIDS Driver 主要通过Kprobe Hook Kernel Funcion 来提供丰富而准确的数据收集功能，包括内核级进程执行探测，特权升级监控，网络审计等等。 并且支持Linux namespace，因此对容器监控有着很好的实现。与传统的UserSpace HIDS相比，ByteDance-HIDS由于驱动的存在提供了更全面的信息，并提高了性能。
+AgentSmith-HIDS Driver 主要通过Kprobe Hook Kernel Funcion 来提供丰富而准确的数据收集功能，包括内核级进程执行探测，特权升级监控，网络审计等等。 并且支持Linux namespace，因此对容器监控有着很好的实现。与传统的UserSpace HIDS相比，AgentSmith-HIDS由于驱动的存在提供了更全面的信息，并提高了性能。
 
-ByteDance-HIDS已经在生产环境大规模部署。 
+AgentSmith-HIDS已经在生产环境大规模部署。 
 
-凭借其出色的数据收集能力，ByteDance-HIDS Driver还可以支持沙盒，蜜罐和审计等需求。
+凭借其出色的数据收集能力，AgentSmith-HIDS Driver还可以支持沙盒，蜜罐和审计等需求。
 
 
 
@@ -21,8 +21,8 @@ ByteDance-HIDS已经在生产环境大规模部署。
 首先需要安装Linux Headers
 
 ```shell script
-git clone https://github.com/bytedance/ByteDance-HIDS.git
-cd ByteDance-HIDS/driver/LKM/
+git clone https://github.com/bytedance/AgentSmith-HIDS.git
+cd AgentSmith-HIDS/driver/LKM/
 make clean && make
 insmod hids_driver.ko
 dmesg
@@ -425,7 +425,7 @@ Note:  ***uid*** 为 -1
 
 ## 关于Driver Filter
 
-ByteDance-HIDS驱动程序支持白名单以过滤出不需要的数据。 我们提供两种类型的白名单，**'exe'**白名单和**'argv'**白名单。
+AgentSmith-HIDS驱动程序支持白名单以过滤出不需要的数据。 我们提供两种类型的白名单，**'exe'**白名单和**'argv'**白名单。
 **'exe'**白名单作用于**execve /create filte/ dns query/connect hook**，而**'argv'**白名单仅作用于**execve hook**  。
 出于性能和稳定性方面的考虑，‘exe’和‘argv’白名单容量为64。
 
@@ -495,7 +495,7 @@ Testing Load:
 
 `udp_recvmsg_handler` 仅工作在端口为 53 或 5353的情况
 
-测试原始数据:[Benchmark Data](https://github.com/bytedance/ByteDance-HIDS/tree/main/driver/benchmark_data/handler)
+测试原始数据:[Benchmark Data](https://github.com/bytedance/AgentSmith-HIDS/tree/main/driver/benchmark_data/handler)
 
 
 ## 关于部署
@@ -507,4 +507,4 @@ Testing Load:
 
 ## License
 
-ByteDance-HIDS kernel module are distributed under the GNU GPLv2 license.
+AgentSmith-HIDS kernel module are distributed under the GNU GPLv2 license.
