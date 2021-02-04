@@ -71,7 +71,7 @@ rmmod hids_driver
 | execve             | 59       |                                         | ON      |
 | create file        | 602      |                                         | ON      |
 | ptrace             | 101      | only PTRACE_POKETEXT or PTRACE_POKEDATA | ON      |
-| dns queny          | 601      |                                         | ON      |
+| dns queny          | 601      |                                         | OFF      |
 | init kernel module | 603      |                                         | ON      |
 | update cred        | 604      | only old uid ≠0 && new uid == 0         | ON      |
 | rename             | 82       |                                         | OFF     |
