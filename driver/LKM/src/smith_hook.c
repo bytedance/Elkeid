@@ -22,7 +22,7 @@ int BIND_HOOK = 1;
 int EXECVE_HOOK = 1;
 int CREATE_FILE_HOOK = 1;
 int PTRACE_HOOK = 1;
-int DNS_HOOK = 1;
+int DNS_HOOK = 0;
 int DO_INIT_MODULE_HOOK = 1;
 int UPDATE_CRED_HOOK = 1;
 
@@ -1571,6 +1571,7 @@ int udp_recvmsg_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     int qr;
     int opcode = 0, rcode = 0;
+    int query_len = 0, iov_len = 512;
 
     char *query;
     unsigned char *recv_data = NULL;
@@ -1579,9 +1580,12 @@ int udp_recvmsg_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 
     data = (struct udp_recvmsg_data *)ri->data;
 
-    recv_data = kmalloc((data->iov_len + 1) * sizeof(char), GFP_ATOMIC);
+    if (data->iov_len < 512)
+        iov_len = data->iov_len;
 
-    if (!recv_data || smith_copy_from_user(recv_data, data->iov_base, data->iov_len)) {
+    recv_data = kmalloc((iov_len + 1) * sizeof(char), GFP_ATOMIC);
+
+    if (!recv_data || smith_copy_from_user(recv_data, data->iov_base, iov_len)) {
         kfree(recv_data);
         return 0;
     }
@@ -1594,12 +1598,14 @@ int udp_recvmsg_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
             opcode = (recv_data[2] >> 3) & 0x0f;
             rcode = recv_data[3] & 0x0f;
 
-            if (strlen(recv_data + 12) == 0) {
+            query_len = strlen(recv_data + 12);
+
+            if (query_len == 0 || query_len > 253) {
                 kfree(recv_data);
                 return 0;
             }
             //parser DNS protocol and get DNS query info
-            query = kzalloc(strlen(recv_data + 12), GFP_ATOMIC);
+            query = kzalloc(query_len, GFP_ATOMIC);
             if (!query) {
                 kfree(recv_data);
                 return 0;
