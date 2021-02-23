@@ -448,6 +448,7 @@ struct udp_recvmsg_data {
     __be32 sip4;
     struct in6_addr *dip6;
     struct in6_addr *sip6;
+    struct msghdr *msg;
 
     void __user *iov_base;
     __kernel_size_t iov_len;
@@ -945,7 +946,7 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 				if (IS_ERR(native))
 					break;
 
-				len = strnlen_user(native, MAX_ARG_STRLEN);
+				len = smith_strnlen_user(native, MAX_ARG_STRLEN);
 				if (!len || len > MAX_ARG_STRLEN)
 					break;
 
@@ -981,7 +982,7 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 			if (IS_ERR(native))
 				continue;
 
-			len = strnlen_user(native, MAX_ARG_STRLEN);
+			len = smith_strnlen_user(native, MAX_ARG_STRLEN);
 			if (len > 14 && len < 256) {
 				memset(buf, 0, 256);
 				if (smith_copy_from_user(buf, native, len))
@@ -1124,7 +1125,7 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
                 if (smith_get_user(native, argv + i))
                     break;
 
-                len = strnlen_user(native, MAX_ARG_STRLEN);
+                len = smith_strnlen_user(native, MAX_ARG_STRLEN);
                 if (!len || len > MAX_ARG_STRLEN)
                     break;
 
@@ -1161,7 +1162,7 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
             if (smith_get_user(native, env + i))
                 break;
 
-            len = strnlen_user(native, MAX_ARG_STRLEN);
+            len = smith_strnlen_user(native, MAX_ARG_STRLEN);
             if (!len || len > MAX_ARG_STRLEN)
                 break;
             else if (len > 14 && len < 256) {
@@ -1368,9 +1369,30 @@ out:
 }
 #endif
 
+void udp_msg_parser(struct msghdr *msg, struct udp_recvmsg_data *data) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
+    if (msg->msg_iter.iov) {
+            if (msg->msg_iter.iov->iov_len > 0) {
+                data->iov_len = msg->msg_iter.iov->iov_len;
+                data->iov_base = msg->msg_iter.iov->iov_base;
+            }
+        } else if (msg->msg_iter.kvec) {
+            if (msg->msg_iter.kvec->iov_len > 0) {
+                data->iov_len = msg->msg_iter.kvec->iov_len;
+                data->iov_base = msg->msg_iter.kvec->iov_base;
+            }
+        }
+#else
+    if (msg->msg_iov->iov_len > 0) {
+        data->iov_base = msg->msg_iov->iov_base;
+        data->iov_len = msg->msg_iov->iov_len;
+    }
+#endif
+    return;
+}
+
 int udp_recvmsg_entry_handler(struct kretprobe_instance *ri,
-                              struct pt_regs *regs)
-{
+                              struct pt_regs *regs) {
     int flags;
 
     void *tmp_msg;
@@ -1381,26 +1403,38 @@ int udp_recvmsg_entry_handler(struct kretprobe_instance *ri,
     struct msghdr *msg;
     struct udp_recvmsg_data *data;
 
-    data = (struct udp_recvmsg_data *)ri->data;
+    data = (struct udp_recvmsg_data *) ri->data;
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 9)
-    flags = (int)p_get_arg5(regs);
+    flags = (int)p_regs_get_arg5(regs);
 #else
-    flags = (int)p_get_arg6(regs);
+    flags = (int)p_regs_get_arg6(regs);
 #endif
     if (flags & MSG_ERRQUEUE)
         return -EINVAL;
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 9)
-    tmp_sk = (void *)p_get_arg1(regs);
+    tmp_sk = (void *)p_regs_get_arg1(regs);
 #else
-    tmp_sk = (void *)p_get_arg2(regs);
+    tmp_sk = (void *)p_regs_get_arg2(regs);
 #endif
     if (IS_ERR_OR_NULL(tmp_sk))
         return -EINVAL;
 
-    sk = (struct sock *)tmp_sk;
-    inet = (struct inet_sock *)sk;
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 9)
+    tmp_msg = (void *)p_regs_get_arg2(regs);
+#else
+    tmp_msg = (void *)p_regs_get_arg3(regs);
+#endif
+    if (IS_ERR_OR_NULL(tmp_msg))
+        return -EINVAL;
+
+    msg = (struct msghdr *) tmp_msg;
+
+    sk = (struct sock *) tmp_sk;
+    inet = (struct inet_sock *) sk;
+
+    data->sa_family = AF_INET;
 
     //only port == 53 or 5353 UDP data
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
@@ -1409,14 +1443,13 @@ int udp_recvmsg_entry_handler(struct kretprobe_instance *ri,
     if (inet->dport == 13568 || inet->dport == 59668)
 #endif
     {
-        data->sa_family = AF_INET;
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
         if (inet->inet_daddr) {
-			data->dip4 = inet->inet_daddr;
-			data->sip4 = inet->inet_saddr;
-			data->sport = ntohs(inet->inet_sport);
-			data->dport = ntohs(inet->inet_dport);
-		}
+            data->dip4 = inet->inet_daddr;
+            data->sip4 = inet->inet_saddr;
+            data->sport = ntohs(inet->inet_sport);
+            data->dport = ntohs(inet->inet_dport);
+        }
 #else
         if (inet->daddr) {
             data->dip4 = inet->daddr;
@@ -1426,39 +1459,26 @@ int udp_recvmsg_entry_handler(struct kretprobe_instance *ri,
         }
 #endif
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 9)
-        tmp_msg = (void *)p_get_arg2(regs);
-#else
-        tmp_msg = (void *)p_get_arg3(regs);
-#endif
-        if (IS_ERR_OR_NULL(tmp_msg))
-            return -EINVAL;
-
-        msg = (struct msghdr *)tmp_msg;
-        if (IS_ERR_OR_NULL(msg))
-            return -EINVAL;
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-        if (msg->msg_iter.iov) {
-			if (msg->msg_iter.iov->iov_len > 0) {
-				data->iov_len = msg->msg_iter.iov->iov_len;
-				data->iov_base = msg->msg_iter.iov->iov_base;
-			}
-		} else if (msg->msg_iter.kvec) {
-			if (msg->msg_iter.kvec->iov_len > 0) {
-				data->iov_len = msg->msg_iter.kvec->iov_len;
-				data->iov_base = msg->msg_iter.kvec->iov_base;
-			}
-		}
-#else
-        if (msg->msg_iov->iov_len > 0) {
-            data->iov_base = msg->msg_iov->iov_base;
-            data->iov_len = msg->msg_iov->iov_len;
-        }
-#endif
+        udp_msg_parser(msg, data);
         if (data->iov_len > 0)
             return 0;
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
+        } else if (inet->inet_dport == 0) {
+        data->msg = msg;
+        data->dport = 0;
+        data->sip4 = inet->inet_saddr;
+        data->sport = ntohs(inet->inet_sport);
+        return 0;
     }
+#else
+    } else if (inet->dport == 0) {
+        data->msg = msg;
+        data->dport = 0;
+        data->sip4 = inet->saddr;
+        data->sport = ntohs(inet->sport);
+        return 0;
+    }
+#endif
 
     return -EINVAL;
 }
@@ -1478,23 +1498,32 @@ int udpv6_recvmsg_entry_handler(struct kretprobe_instance *ri,
 	data = (struct udp_recvmsg_data *)ri->data;
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 9)
-	flags = (int)p_get_arg5(regs);
+	flags = (int)p_regs_get_arg5(regs);
 #else
-	flags = (int)p_get_arg6(regs);
+	flags = (int)p_regs_get_arg6(regs);
 #endif
 	if (flags & MSG_ERRQUEUE)
 		return -EINVAL;
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 9)
-	tmp_sk = (void *)p_get_arg1(regs);
+	tmp_sk = (void *)p_regs_get_arg1(regs);
 #else
-	tmp_sk = (void *)p_get_arg2(regs);
+	tmp_sk = (void *)p_regs_get_arg2(regs);
 #endif
 
 	if (IS_ERR_OR_NULL(tmp_sk))
 		return -EINVAL;
 
-	sk = (struct sock *)tmp_sk;
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 9)
+    tmp_msg = (void *)p_regs_get_arg2(regs);
+#else
+    tmp_msg = (void *)p_regs_get_arg3(regs);
+#endif
+    if (IS_ERR_OR_NULL(tmp_msg))
+        return -EINVAL;
+
+    msg = (struct msghdr *)tmp_msg;
+    sk = (struct sock *)tmp_sk;
 	if (IS_ERR_OR_NULL(sk))
 		return -EINVAL;
 
@@ -1505,6 +1534,7 @@ int udpv6_recvmsg_entry_handler(struct kretprobe_instance *ri,
 	sk = (struct sock *)tmp_sk;
 	inet = (struct inet_sock *)sk;
 
+	data->sa_family = AF_INET6;
 	//only get port == 53 or 5353 UDP data
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
 	if (inet->inet_dport == 13568 || inet->inet_dport == 59668)
@@ -1512,7 +1542,6 @@ int udpv6_recvmsg_entry_handler(struct kretprobe_instance *ri,
 	if (inet->dport == 13568 || inet->dport == 59668)
 #endif
 	{
-		data->sa_family = AF_INET6;
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
 		if (inet->inet_dport) {
 			data->dip6 = &(sk->sk_v6_daddr);
@@ -1528,40 +1557,26 @@ int udpv6_recvmsg_entry_handler(struct kretprobe_instance *ri,
 			data->dport = ntohs(inet->dport);
 		}
 #endif
-
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 9)
-		tmp_msg = (void *)p_get_arg2(regs);
-#else
-		tmp_msg = (void *)p_get_arg3(regs);
-#endif
-		if (IS_ERR_OR_NULL(tmp_msg))
-			return -EINVAL;
-
-		msg = (struct msghdr *)tmp_msg;
-		if (IS_ERR_OR_NULL(msg))
-			return -EINVAL;
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-		if (msg->msg_iter.iov) {
-			if (msg->msg_iter.iov->iov_len > 0) {
-				data->iov_len = msg->msg_iter.iov->iov_len;
-				data->iov_base = msg->msg_iter.iov->iov_base;
-			}
-		} else if (msg->msg_iter.kvec) {
-			if (msg->msg_iter.kvec->iov_len > 0) {
-				data->iov_len = msg->msg_iter.kvec->iov_len;
-				data->iov_base = msg->msg_iter.kvec->iov_base;
-			}
-		}
-#else
-		if (msg->msg_iov->iov_len > 0) {
-			data->iov_base = msg->msg_iov->iov_base;
-			data->iov_len = msg->msg_iov->iov_len;
-		}
-#endif
+        udp_msg_parser(msg, data);
 		if (data->iov_len > 0)
 			return 0;
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
+	} else if (inet->inet_dport == 0) {
+        data->msg = msg;
+	    data->dport = 0;
+		data->sip6 = &(sk->sk_v6_rcv_saddr);
+		data->sport = ntohs(inet->inet_sport);
+	    return 0;
 	}
+#else
+	} else if (inet->dport == 0) {
+        data->msg = msg;
+        data->dport = 0;
+    	data->sip6 = &(inet->pinet6->saddr);
+		data->sport = ntohs(inet->sport);
+        return 0;
+    }
+#endif
 
 	return -EINVAL;
 }
@@ -1577,20 +1592,56 @@ int udp_recvmsg_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     unsigned char *recv_data = NULL;
 
     struct udp_recvmsg_data *data;
+    struct sockaddr_in *sin;
+    struct sockaddr_in6 *sin6;
 
     data = (struct udp_recvmsg_data *)ri->data;
+
+    if (data->dport == 0) {
+        if (IS_ERR_OR_NULL(data->msg) || IS_ERR_OR_NULL(data->msg->msg_name))
+            return 0;
+
+        if (data->sa_family == AF_INET) {
+            sin = (struct sockaddr_in *) data->msg->msg_name;
+            if (sin->sin_port == 13568 || sin->sin_port == 59668) {
+                data->dport = sin->sin_port;
+                data->dip4 = sin->sin_addr.s_addr;
+                udp_msg_parser(data->msg, data);
+            } else {
+                return 0;
+            }
+#if IS_ENABLED(CONFIG_IPV6)
+            } else {
+            sin6 = (struct sockaddr_in6 *)data->msg->msg_name;
+            if (sin6->sin6_port == 13568 || sin6->sin6_port == 59668) {
+                data->dport = sin6->sin6_port;
+                data->dip6 = &(sin6->sin6_addr);
+                udp_msg_parser(data->msg, data);
+            } else {
+                return 0;
+            }
+        }
+#else
+        }
+#endif
+    }
+
+    if (data->iov_len < 20)
+        return 0;
 
     if (data->iov_len < 512)
         iov_len = data->iov_len;
 
     recv_data = kmalloc((iov_len + 1) * sizeof(char), GFP_ATOMIC);
 
-    if (!recv_data || smith_copy_from_user(recv_data, data->iov_base, iov_len)) {
+    if (!recv_data)
+        return 0;
+
+    if (smith_copy_from_user(recv_data, data->iov_base, iov_len)) {
         kfree(recv_data);
         return 0;
     }
     recv_data[iov_len] = '\0';
-
 
     if (sizeof(recv_data) >= 8) {
         qr = (recv_data[2] & 0x80) ? 1 : 0;
@@ -1604,6 +1655,7 @@ int udp_recvmsg_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
                 kfree(recv_data);
                 return 0;
             }
+
             //parser DNS protocol and get DNS query info
             query = kzalloc(query_len, GFP_ATOMIC);
             if (!query) {
@@ -1611,7 +1663,7 @@ int udp_recvmsg_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
                 return 0;
             }
 
-            getDNSQuery(recv_data, 12, query);
+            __get_dns_query(recv_data, 12, query);
             if (data->sa_family == AF_INET)
                 dns_data_transport(query, data->dip4,
                                    data->sip4, data->dport,
@@ -1727,11 +1779,11 @@ void rename_and_link_hander(int type, const char __user * oldori,
     if (IS_ERR_OR_NULL(oldori) || IS_ERR_OR_NULL(newori))
         return;
 
-    new_len = strnlen_user(newori, PATH_MAX);
+    new_len = smith_strnlen_user(newori, PATH_MAX);
     if (!new_len || new_len > MAX_ARG_STRLEN)
         return;
 
-    old_len = strnlen_user(oldori, PATH_MAX);
+    old_len = smith_strnlen_user(oldori, PATH_MAX);
     if (!old_len || old_len > MAX_ARG_STRLEN)
         return;
 
@@ -1882,7 +1934,7 @@ int prctl_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if (IS_ERR_OR_NULL(newname_ori))
         return 0;
 
-    newname_len = strnlen_user((char __user *)newname_ori, PATH_MAX);
+    newname_len = smith_strnlen_user((char __user *)newname_ori, PATH_MAX);
     if (!newname_len || newname_len > MAX_ARG_STRLEN)
         return 0;
 
@@ -1924,7 +1976,7 @@ int open_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if (IS_ERR_OR_NULL(filename_ori))
         return 0;
 
-    filename_len = strnlen_user((char __user *)filename_ori, PATH_MAX);
+    filename_len = smith_strnlen_user((char __user *)filename_ori, PATH_MAX);
     if (!filename_len || filename_len > MAX_ARG_STRLEN)
         return 0;
 

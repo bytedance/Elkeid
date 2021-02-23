@@ -28,6 +28,15 @@ extern char *__dentry_path(struct dentry *dentry, char *buf, int buflen);
 
 extern u64 GET_PPIN(void);
 
+static __always_inline long __must_check smith_strnlen_user(const char __user *str, long count)
+{
+    long res;
+    pagefault_disable();
+    res = strnlen_user(str,count);
+    pagefault_enable();
+    return res;
+}
+
 static __always_inline unsigned long __must_check smith_copy_from_user(void *to, const void __user *from, unsigned long n)
 {
     unsigned long res;

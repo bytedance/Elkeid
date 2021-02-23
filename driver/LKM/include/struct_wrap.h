@@ -116,7 +116,7 @@ static inline int get_current_euid(void) {
 #endif
 }
 
-static void *getDNSQuery(unsigned char *data, int index, char *res) {
+static void *__get_dns_query(unsigned char *data, int index, char *res) {
     int i;
     int flag = -1;
     int len;
