@@ -1589,7 +1589,7 @@ int udp_recvmsg_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
         kfree(recv_data);
         return 0;
     }
-    recv_data[data->iov_len] = '\0';
+    recv_data[iov_len] = '\0';
 
 
     if (sizeof(recv_data) >= 8) {
