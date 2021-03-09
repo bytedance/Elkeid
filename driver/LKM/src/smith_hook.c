@@ -1269,6 +1269,8 @@ int security_inode_create_pre_handler(struct kprobe *p, struct pt_regs *regs)
 #else
         pathstr = __dentry_path((struct dentry *)tmp, pname_buf, PATH_MAX);
 #endif
+        if(IS_ERR(pathstr))
+            pathstr = "-2";
     }
 
     security_inode_create_print(exe_path, pathstr);
@@ -2109,6 +2111,8 @@ int security_path_rmdir_pre_handler(struct kprobe *p, struct pt_regs *regs)
 #else
         pathstr = __dentry_path((struct dentry *)tmp, pname_buf, PATH_MAX);
 #endif
+	if(IS_ERR(pathstr))
+            pathstr = "-2";
     }
 
     delete_file_handler(1, pathstr);
@@ -2140,10 +2144,9 @@ int security_path_unlink_pre_handler(struct kprobe *p, struct pt_regs *regs)
 #else
         pathstr = __dentry_path((struct dentry *)tmp, pname_buf, PATH_MAX);
 #endif
+	if(IS_ERR(pathstr))
+            pathstr = "-2";
     }
-
-    if (!pathstr)
-        pathstr = "";
 
     delete_file_handler(0, pathstr);
 
