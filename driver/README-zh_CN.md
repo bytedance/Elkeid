@@ -381,7 +381,7 @@ Note:  ***uid*** 为 -1
 
 
 
- ### Syscall Able Hook Data
+ ### Syscall Table Hook Data
 
 ```
 -------------------------------------------------
@@ -473,7 +473,7 @@ Testing Load:
 | syscall               | ltp                                   |
 | --------------------- | ------------------------------------- |
 | connect               | ./runltp -f syscalls -s connect -t 5m |
-| bind                  | ./runltp -f syscalls -s ptrace -t 5m  |
+| bind                  | ./runltp -f syscalls -s bind -t 5m  |
 | execve                | ./runltp -f syscalls -s execve -t 5m  |
 | security_inode_create | ./runltp -f syscalls -s open -t 5m    |
 | ptrace                | ./runltp -f syscalls -s ptrace -t 5m  |
