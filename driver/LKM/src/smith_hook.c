@@ -1300,16 +1300,14 @@ int ptrace_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if (request == PTRACE_POKETEXT || request == PTRACE_POKEDATA) {
         long pid;
         void *addr;
-        char *data;
         char *exe_path = DEFAULT_RET_STR;
         char *buffer;
         char *pid_tree;
-        char copy_data[8];
 
         pid = (long)p_get_arg2(regs);
         addr = (void *)p_get_arg3(regs);
 
-        if (IS_ERR_OR_NULL(&data))
+        if (IS_ERR_OR_NULL(addr))
             return 0;
 
         buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
@@ -1317,7 +1315,7 @@ int ptrace_pre_handler(struct kprobe *p, struct pt_regs *regs)
             exe_path = get_exe_file(current, buffer, PATH_MAX);
 
         pid_tree = get_pid_tree(PID_TREE_LIMIT);
-        ptrace_print(request, pid, addr, copy_data, exe_path, pid_tree);
+        ptrace_print(request, pid, addr, "-1", exe_path, pid_tree);
 
         kfree(buffer);
         kfree(pid_tree);
