@@ -553,7 +553,7 @@ PRINT_EVENT_DEFINE(ptrace,
                    ),
 
                    PE_fast_assign(
-                           __entry->uid = __get_current_uid();
+                           __entry->uid = get_current_uid();
                            __entry->request = request;
                            __entry->owner_pid = owner_pid;
                            __entry->addr = (long) addr;
