@@ -550,8 +550,6 @@ PRINT_EVENT_DEFINE(ptrace,
                            __array(char, comm, TASK_COMM_LEN)
                            __string(nodename, current->nsproxy->uts_ns->name.nodename)
                            __field(unsigned int, sessionid)
-                           __field(unsigned int, pid_inum)
-                           __field(unsigned int, root_pid_inum)
                    ),
 
                    PE_fast_assign(
@@ -570,15 +568,13 @@ PRINT_EVENT_DEFINE(ptrace,
                            memcpy(__entry->comm, current->comm, TASK_COMM_LEN);
                            __assign_str(nodename, current->nsproxy->uts_ns->name.nodename);
                            __entry->sessionid = __get_sessionid();
-                           __entry->pid_inum = __get_pid_ns_inum();
-                           __entry->root_pid_inum = ROOT_PID_NS_INUM;
                    ),
 
                    PE_printk(
-                           "%d" RS "101" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%u" RS "%u" RS "%ld" RS "%ld" RS "%ld" RS "%s" RS "%s",
-                           __entry->uid, __get_str(exe_path),__entry->pid, __entry->ppid,
-                           __entry->pgid, __entry->tgid, __entry->sid,__entry->comm, __get_str(nodename),
-                           __entry->sessionid, __entry->pid_inum, __entry->root_pid_inum, __entry->request, __entry->owner_pid,
+                           "%d" RS "101" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%ld" RS "%ld" RS "%ld" RS "%s" RS "%s",
+                           __entry->uid, __get_str(exe_path),
+                           __entry->pid, __entry->ppid, __entry->pgid, __entry->tgid, __entry->sid,
+                           __entry->comm, __get_str(nodename), __entry->sessionid, __entry->request, __entry->owner_pid,
                            __entry->addr, __get_str(data_res),__get_str(pid_tree))
 );
 
