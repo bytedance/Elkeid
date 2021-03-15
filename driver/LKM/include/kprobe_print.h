@@ -529,7 +529,7 @@ PRINT_EVENT_DEFINE(connect6,
 PRINT_EVENT_DEFINE(ptrace,
 
                    PE_PROTO(long request,
-                           long owner_pid, void * addr, char data_res[8], char * exe_path, char *pid_tree),
+                           long owner_pid, void *addr, char *data_res, char *exe_path, char *pid_tree),
 
                    PE_ARGS(request,
                            owner_pid, addr, data_res, exe_path, pid_tree),
@@ -539,7 +539,7 @@ PRINT_EVENT_DEFINE(ptrace,
                            __field(long, request)
                            __field(long, owner_pid)
                            __field(long, addr)
-                           __array(char, data_res, 8)
+                           __string(data_res, data_res)
                            __string(exe_path, exe_path)
                            __string(pid_tree, pid_tree)
                            __field(int, pid)
@@ -550,32 +550,36 @@ PRINT_EVENT_DEFINE(ptrace,
                            __array(char, comm, TASK_COMM_LEN)
                            __string(nodename, current->nsproxy->uts_ns->name.nodename)
                            __field(unsigned int, sessionid)
+                           __field(unsigned int, pid_inum)
+                           __field(unsigned int, root_pid_inum)
                    ),
 
                    PE_fast_assign(
-                           __entry->uid = get_current_uid();
+                           __entry->uid = __get_current_uid();
                            __entry->request = request;
                            __entry->owner_pid = owner_pid;
                            __entry->addr = (long) addr;
-                           memcpy(__entry->data_res, data_res, 8);
+                           __assign_str(data_res, data_res);
                            __assign_str(exe_path, exe_path);
                            __assign_str(pid_tree, pid_tree);
                            __entry->pid = current->pid;
-                           __entry->ppid = current->real_parent->pid;
+                           __entry->ppid = current->real_parent->tgid;
                            __entry->pgid = __get_pgid();
                            __entry->sid = __get_sid();
                            __entry->tgid = current->tgid;
                            memcpy(__entry->comm, current->comm, TASK_COMM_LEN);
                            __assign_str(nodename, current->nsproxy->uts_ns->name.nodename);
                            __entry->sessionid = __get_sessionid();
+                           __entry->pid_inum = __get_pid_ns_inum();
+                           __entry->root_pid_inum = ROOT_PID_NS_INUM;
                    ),
 
                    PE_printk(
-                           "%d" RS "101" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%ld" RS "%ld" RS "%ld" RS "%s" RS "%s",
-                           __entry->uid, __get_str(exe_path),
-                           __entry->pid, __entry->ppid, __entry->pgid, __entry->tgid, __entry->sid,
-                           __entry->comm, __get_str(nodename), __entry->sessionid, __entry->request, __entry->owner_pid,
-                           __entry->addr, __entry->data_res,__get_str(pid_tree))
+                           "%d" RS "101" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%u" RS "%u" RS "%ld" RS "%ld" RS "%ld" RS "%s" RS "%s",
+                           __entry->uid, __get_str(exe_path),__entry->pid, __entry->ppid,
+                           __entry->pgid, __entry->tgid, __entry->sid,__entry->comm, __get_str(nodename),
+                           __entry->sessionid, __entry->pid_inum, __entry->root_pid_inum, __entry->request, __entry->owner_pid,
+                           __entry->addr, __get_str(data_res),__get_str(pid_tree))
 );
 
 PRINT_EVENT_DEFINE(bind,
