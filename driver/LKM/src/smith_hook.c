@@ -1262,7 +1262,7 @@ int security_inode_create_pre_handler(struct kprobe *p, struct pt_regs *regs)
         tmp = (void *)p_regs_get_arg2(regs);
         if (IS_ERR_OR_NULL(tmp)) {
             kfree(pname_buf);
-            return 0;
+            goto out;
         }
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
         pathstr = dentry_path_raw((struct dentry *)tmp, pname_buf, PATH_MAX);
@@ -1301,8 +1301,8 @@ int ptrace_pre_handler(struct kprobe *p, struct pt_regs *regs)
         long pid;
         void *addr;
         char *exe_path = DEFAULT_RET_STR;
-        char *buffer;
-        char *pid_tree;
+        char *buffer = NULL;
+        char *pid_tree = NULL;
 
         pid = (long)p_get_arg2(regs);
         addr = (void *)p_get_arg3(regs);
@@ -1317,8 +1317,11 @@ int ptrace_pre_handler(struct kprobe *p, struct pt_regs *regs)
         pid_tree = get_pid_tree(PID_TREE_LIMIT);
         ptrace_print(request, pid, addr, "-1", exe_path, pid_tree);
 
-        kfree(buffer);
-        kfree(pid_tree);
+        if(buffer)
+            kfree(buffer);
+
+        if(pid_tree)
+            kfree(pid_tree);
     }
 
     return 0;
@@ -1694,7 +1697,7 @@ int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
     char *vm_file_path = "-1";
     char *vm_file_buff = NULL;
     char *exe_path = "-1";
-    char *abs_buf = DEFAULT_RET_STR;
+    char *abs_buf = NULL;
     char *pid_tree = NULL;
 
     struct vm_area_struct *vma;
@@ -2192,7 +2195,6 @@ int do_init_module_pre_handler(struct kprobe *p, struct pt_regs *regs)
     char *exe_path = DEFAULT_RET_STR;
     char *pname_buf = NULL;
     char *pname = NULL;
-    char *init_module_buf = NULL;
     void *tmp_mod;
     struct module *mod;
 
@@ -2201,10 +2203,6 @@ int do_init_module_pre_handler(struct kprobe *p, struct pt_regs *regs)
         return 0;
 
     mod = (struct module *)tmp_mod;
-
-    init_module_buf = kzalloc(PATH_MAX, GFP_ATOMIC);
-    if (!init_module_buf)
-        return 0;
 
     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
     if (buffer)
@@ -2228,8 +2226,6 @@ int do_init_module_pre_handler(struct kprobe *p, struct pt_regs *regs)
 
     if (pname_buf)
         kfree(pname_buf);
-
-    kfree(init_module_buf);
 
     return 0;
 }
