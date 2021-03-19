@@ -127,7 +127,7 @@ char *get_pid_tree(int limit)
     strcat(tmp_data, ".");
     strcat(tmp_data, current->comm);
 
-    while (task->pid != 1) {
+    while (1) {
         limit_index = limit_index + 1;
         if (limit_index >= limit) {
             put_task_struct(task);
@@ -138,7 +138,7 @@ char *get_pid_tree(int limit)
         rcu_read_lock();
         task = rcu_dereference(task->real_parent);
         put_task_struct(old_task);
-        if (!task) {
+        if (!task || task->pid == 1) {
             rcu_read_unlock();
             break;
         }
