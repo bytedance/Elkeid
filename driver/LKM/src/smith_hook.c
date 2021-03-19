@@ -611,18 +611,24 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
                 inet = (struct inet_sock *)sk;
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
                 if (inet->inet_daddr) {
-				dip4 = inet->inet_daddr;
-				sip4 = inet->inet_saddr;
-				sport = ntohs(inet->inet_sport);
-				dport = ntohs(inet->inet_dport);
-				flag = 1;
-			}
+                    dip4 = inet->inet_daddr;
+				    //dip4 = ((struct sockaddr_in *)&tmp_dirp)->sin_addr.s_addr;
+				    sip4 = inet->inet_saddr;
+				    sport = ntohs(inet->inet_sport);
+				    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
+				    if(dport == 0)
+				        dport = ntohs(inet->inet_dport);
+				    flag = 1;
+			    }
 #else
                 if (inet->daddr) {
                     dip4 = inet->daddr;
+                    //dip4 = ((struct sockaddr_in *)&tmp_dirp)->sin_addr.s_addr;
                     sip4 = inet->saddr;
                     sport = ntohs(inet->sport);
-                    dport = ntohs(inet->dport);
+                    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
+                    if(dport == 0)
+                        dport = ntohs(inet->dport);
                     flag = 1;
                 }
 #endif
@@ -634,20 +640,26 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 			    inet = (struct inet_sock *)sk;
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
 			    if (inet->inet_dport) {
+				    //dip6 = &((struct sockaddr_in6 *)&tmp_dirp)->sin6_addr;
 				    dip6 = &(sk->sk_v6_daddr);
 				    sip6 = &(sk->sk_v6_rcv_saddr);
 				    sport = ntohs(inet->inet_sport);
-				    dport = ntohs(inet->inet_dport);
+				    dport = ntohs(((struct sockaddr_in6 *)&tmp_dirp)->sin6_port);
+				    if(dport == 0)
+				        dport = ntohs(inet->inet_dport);
 				    flag = 1;
 			    }
 #else
-			if (inet->dport) {
-				dip6 = &(inet->pinet6->daddr);
-				sip6 = &(inet->pinet6->saddr);
-				sport = ntohs(inet->sport);
-				dport = ntohs(inet->dport);
-				flag = 1;
-			}
+			    if (inet->dport) {
+				    //dip6 = &((struct sockaddr_in6 *)&tmp_dirp)->sin6_addr;
+				    dip6 = &(inet->pinet6->daddr);
+				    sip6 = &(inet->pinet6->saddr);
+				    sport = ntohs(inet->sport);
+				    dport = ntohs(((struct sockaddr_in6 *)&tmp_dirp)->sin6_port);
+				    if(dport)
+				        dport = ntohs(inet->dport);
+				    flag = 1;
+			    }
 #endif
 			sa_family = AF_INET6;
 			break;
@@ -720,12 +732,12 @@ int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
         case AF_INET:
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
             if (inet->inet_daddr) {
-			dip4 = inet->inet_daddr;
-			sip4 = inet->inet_saddr;
-			sport = ntohs(inet->inet_sport);
-			dport = ntohs(inet->inet_dport);
-			flag = 1;
-		}
+			    dip4 = inet->inet_daddr;
+			    sip4 = inet->inet_saddr;
+			    sport = ntohs(inet->inet_sport);
+			    dport = ntohs(inet->inet_dport);
+			    flag = 1;
+		    }
 #else
             if (inet->daddr) {
                 dip4 = inet->daddr;
