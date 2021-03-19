@@ -846,7 +846,7 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     file = fget_raw(1);
     if (file) {
         stdout_buf = kzalloc(PATH_MAX, GFP_ATOMIC);
-        if (!stdout_buf) {
+        if (stdout_buf) {
             tmp_stdout = d_path(&(file->f_path), stdout_buf, PATH_MAX);
             if (IS_ERR(tmp_stdout))
                 tmp_stdout = "-1";
