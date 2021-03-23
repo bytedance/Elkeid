@@ -39,7 +39,7 @@ unsigned long smith_kallsyms_lookup_name(const char *name)
         if (!kallsyms_lookup_name_sym) {
                 kallsyms_lookup_name_sym = (void *)get_kallsyms_func();
                 if(!kallsyms_lookup_name_sym)
-                        reutrn 0;
+                        return 0;
         }
         return kallsyms_lookup_name_sym(name);
 }
