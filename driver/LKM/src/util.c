@@ -138,7 +138,7 @@ char *get_pid_tree(int limit)
         rcu_read_lock();
         task = rcu_dereference(task->real_parent);
         put_task_struct(old_task);
-        if (!task || task->pid == 1) {
+        if (!task || task->pid == 0) {
             rcu_read_unlock();
             break;
         }
