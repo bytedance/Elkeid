@@ -85,7 +85,11 @@ struct print_event_class {
 	unsigned short id;
 	enum print_line_t (*format)(struct trace_seq *seq,
 				    struct print_event_entry *entry);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+	struct trace_buffer *buffer;
+#else
 	struct ring_buffer *buffer;
+#endif
 };
 
 #define RB_BUFFER_SIZE	SZ_128K

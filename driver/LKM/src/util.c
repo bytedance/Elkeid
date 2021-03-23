@@ -6,6 +6,13 @@
 #include "../include/util.h"
 #include <linux/version.h>
 #include <linux/kallsyms.h>
+#include <linux/kprobes.h>
+/* kernel version after 5.8 should use api in linux/mmap_lock.h
+   ref: https://lkml.org/lkml/2020/6/4/28
+*/
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+#include <linux/mmap_lock.h>
+#endif
 
 #define PID_TREE_MATEDATA_LEN  32
 
@@ -39,7 +46,7 @@ unsigned long smith_kallsyms_lookup_name(const char *name)
         if (!kallsyms_lookup_name_sym) {
                 kallsyms_lookup_name_sym = (void *)get_kallsyms_func();
                 if(!kallsyms_lookup_name_sym)
-                        reutrn 0;
+                        return 0;
         }
         return kallsyms_lookup_name_sym(name);
 }
@@ -86,7 +93,14 @@ char *get_exe_file(struct task_struct *task, char *buffer, int size)
     if (!buffer || !task->mm)
         return exe_file_str;
 
+/* After version 5.8, the "mmap_sem" has been deprecated. Use api in linux/mmap_lock.h
+   For more, check the comments before #include<linux/mmap_lock.h> above.
+*/
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+    if (mmap_read_trylock(task->mm)) {
+#else
     if (down_read_trylock(&task->mm->mmap_sem)) {
+#endif
         if (task->mm->exe_file) {
             exe_file_str =
                     d_path(&task->mm->exe_file->f_path, buffer,
@@ -95,7 +109,11 @@ char *get_exe_file(struct task_struct *task, char *buffer, int size)
             if (IS_ERR(exe_file_str))
                 exe_file_str = "-1";
         }
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+        mmap_read_unlock(task->mm);
+#else
         up_read(&task->mm->mmap_sem);
+#endif
     }
 
     return exe_file_str;

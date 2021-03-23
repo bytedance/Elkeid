@@ -2025,7 +2025,11 @@ int nanosleep_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     char *exe_path = DEFAULT_RET_STR;
     char *buffer = NULL;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+    struct timespec64 tu;
+#else
     struct timespec tu;
+#endif
     void *tmp;
 
     tmp = (void *)p_get_arg1(regs);
@@ -2035,7 +2039,11 @@ int nanosleep_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if (smith_copy_from_user(&tu, (struct timespec __user *)tmp, sizeof(tu)))
         return 0;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+    if (!timespec64_valid(&tu))
+#else
     if (!timespec_valid(&tu))
+#endif
         return 0;
 
     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);

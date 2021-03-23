@@ -1032,7 +1032,14 @@ PRINT_EVENT_DEFINE(open,
 
 PRINT_EVENT_DEFINE(nanosleep,
 
+                   /* after version 5.6, time_t has been modified to cope with y2038 problem
+                      ref: https://lkml.org/lkml/2020/1/29/355
+                   */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+                   PE_PROTO(char *exe_path, time64_t sec, long nsec),
+#else
                    PE_PROTO(char *exe_path, time_t sec, long nsec),
+#endif
 
                    PE_ARGS(exe_path, sec, nsec),
 
@@ -1047,7 +1054,11 @@ PRINT_EVENT_DEFINE(nanosleep,
                            __array(char, comm, TASK_COMM_LEN)
                            __string(nodename, current->nsproxy->uts_ns->name.nodename)
                            __field(unsigned int, sessionid)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+                           __field(time64_t, sec)
+#else
                            __field(time_t, sec)
+#endif
                            __field(long, nsec)
                    ),
 
@@ -1066,7 +1077,11 @@ PRINT_EVENT_DEFINE(nanosleep,
                            __entry->nsec = nsec;
                    ),
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+                   PE_printk("%d" RS "2" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%lld" RS "%ld",
+#else
                    PE_printk("%d" RS "2" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%ld" RS "%ld",
+#endif
                            __entry->uid, __get_str(exe_path),
                            __entry->pid, __entry->ppid, __entry->pgid,
                            __entry->tgid, __entry->sid, __entry->comm,

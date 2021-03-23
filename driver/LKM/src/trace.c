@@ -20,7 +20,15 @@
 
 struct print_event_iterator {
     struct mutex mutex;
+    /* 
+       From version 5.6, the "ring_buffer" has been deconfused, using perf_buffer and trace_buffer instead
+       ref: https://lore.kernel.org/bpf/20200110020509.983809718@goodmis.org/T/
+    */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+    struct trace_buffer *buffer;
+#else
     struct ring_buffer *buffer;
+#endif
 
     /* The below is zeroed out in pipe_read */
     struct trace_seq seq;
@@ -31,7 +39,11 @@ struct print_event_iterator {
     /* All new field here will be zeroed out in pipe_read */
 };
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+static struct trace_buffer *ring_buffer;
+#else
 static struct ring_buffer *ring_buffer;
+#endif
 
 /* Defined in linker script */
 extern struct print_event_class *const __start_print_event_class[];
@@ -39,12 +51,19 @@ extern struct print_event_class *const __stop_print_event_class[];
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 5, 0)
 static int (*ring_buffer_wait_sym) (struct ring_buffer * buffer, int cpu);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+static int (*ring_buffer_wait_sym) (struct trace_buffer * buffer,
+                                    int cpu, bool full);
 #else
 static int (*ring_buffer_wait_sym) (struct ring_buffer * buffer,
                                     int cpu, bool full);
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+static __poll_t(*ring_buffer_poll_wait_sym) (struct trace_buffer * buffer,
+					     int cpu, struct file * filp,
+					     poll_table * poll_table);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
 static __poll_t(*ring_buffer_poll_wait_sym) (struct ring_buffer * buffer,
 					     int cpu, struct file * filp,
 					     poll_table * poll_table);
@@ -64,7 +83,11 @@ static ssize_t(*trace_seq_to_user_sym) (struct trace_seq * s,
 #define trace_seq_to_user_sym trace_seq_to_user
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+static int (*ring_buffer_record_is_on_sym) (struct trace_buffer * buffer);
+#else
 static int (*ring_buffer_record_is_on_sym) (struct ring_buffer * buffer);
+#endif
 
 static int kallsyms_lookup_symbols(void)
 {
@@ -190,7 +213,11 @@ static struct print_event_entry *__find_next_entry(struct print_event_iterator
                                                    *missing_events,
                                                    u64 * ent_ts)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+    struct trace_buffer *buffer = iter->buffer;
+#else
     struct ring_buffer *buffer = iter->buffer;
+#endif
     struct print_event_entry *ent, *next = NULL;
     unsigned long lost_events = 0, next_lost = 0;
     u64 next_ts = 0, ts;
@@ -376,6 +403,10 @@ static int trace_release_pipe(struct inode *inode, struct file *file)
     return 0;
 }
 
+/* version 5.6 has modified the API "proc_create_data", changed file_operations to proc_ops
+   ref: https://github.com/openzfs/zfs/issues/9956
+*/
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
 static const struct file_operations trace_pipe_fops = {
         .owner = THIS_MODULE,
         .open = trace_open_pipe,
@@ -386,6 +417,14 @@ static const struct file_operations trace_pipe_fops = {
         .release = trace_release_pipe,
         .llseek = no_llseek,
 };
+#else
+static const struct proc_ops trace_pipe_fops = {
+    .proc_open = trace_open_pipe,
+    .proc_read = trace_read_pipe,
+    .proc_release = trace_release_pipe,
+    .proc_poll = trace_poll_pipe,
+};
+#endif
 
 static inline int num_print_event_class(void)
 {
