@@ -29,3 +29,12 @@ Currently, we are only open-sourcing AgentSmith-HIDS Agent && Driver. Both compo
 ## To be Continued 
 * AgentSmith-Server is under development. More Features are on the way.
 
+## Contact us && Cooperation
+
+<img src="./Lark.png"/>
+
+Lark Group
+
+## License
+* AgentSmith-HIDS Driver: GPLv2
+* AgentSmith-HIDS Agent: Apache-2.0
