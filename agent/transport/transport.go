@@ -3,9 +3,9 @@ package transport
 import (
 	"sync"
 
-	"github.com/bytedance/AgentSmith-HIDS/agent/common"
-	"github.com/bytedance/AgentSmith-HIDS/agent/spec"
-	"github.com/bytedance/AgentSmith-HIDS/agent/transport/stdout"
+	"github.com/bytedance/Elkeid/agent/common"
+	"github.com/bytedance/Elkeid/agent/spec"
+	"github.com/bytedance/Elkeid/agent/transport/stdout"
 )
 
 var (

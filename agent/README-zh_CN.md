@@ -1,4 +1,4 @@
-[![License](https://img.shields.io/badge/License-Apache%20v2-blue.svg)](https://github.com/bytedance/AgentSmith-HIDS/blob/main/agent/LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%20v2-blue.svg)](https://github.com/bytedance/Elkeid/blob/main/agent/LICENSE)
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
 [English](README.md) | 简体中文
@@ -24,8 +24,8 @@ Elkeid Agent基于Golang构建，但其他功能插件可以用不同的语言�
 * Golang 1.15(推荐)
 ## 快速开始
 ```
-git clone --recursive https://github.com/bytedance/AgentSmith-HIDS
-cd AgentSmith-HIDS/agent
+git clone --recursive https://github.com/bytedance/Elkeid
+cd Elkeid/agent
 go build
 ```
 在当前目录下，你将会看见`agent`二进制文件。

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 
 	"github.com/Shopify/sarama"
-	"github.com/bytedance/AgentSmith-HIDS/agent/spec"
-	"github.com/bytedance/AgentSmith-HIDS/agent/transport"
+	"github.com/bytedance/Elkeid/agent/spec"
+	"github.com/bytedance/Elkeid/agent/transport"
 	"go.uber.org/zap"
 )
 

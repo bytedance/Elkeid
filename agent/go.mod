@@ -1,4 +1,4 @@
-module github.com/bytedance/AgentSmith-HIDS/agent
+module github.com/bytedance/Elkeid/agent
 
 go 1.15
 

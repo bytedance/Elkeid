@@ -1,4 +1,4 @@
-[![License](https://img.shields.io/badge/License-Apache%20v2-blue.svg)](https://github.com/bytedance/AgentSmith-HIDS/blob/main/agent/LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%20v2-blue.svg)](https://github.com/bytedance/Elkeid/blob/main/agent/LICENSE)
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
 English | [简体中文](README-zh_CN.md)
@@ -23,8 +23,8 @@ We recommend running the Elkeid Agent with **root privileges** in a **physical m
 * Golang 1.15(Recommended)
 ## To Start Using Elkeid Agent
 ```
-git clone --recursive https://github.com/bytedance/AgentSmith-HIDS
-cd AgentSmith-HIDS/agent
+git clone --recursive https://github.com/bytedance/Elkeid
+cd Elkeid/agent
 go build
 ```
 You will see the `agent` binary program in the current directory.
