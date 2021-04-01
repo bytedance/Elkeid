@@ -1,4 +1,4 @@
-[![License](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/bytedance/AgentSmith-HIDS/blob/main/driver/LICENSE) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![License](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/bytedance/Elkeid/blob/main/driver/LICENSE) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
 ## About Elkeid(AgentSmith-HIDS) Driver
 
@@ -17,8 +17,8 @@ Elkeid has already been deployed massively for HIDS usage in world-class product
 First you need install Linux Headers
 
 ```shell script
-git clone https://github.com/bytedance/AgentSmith-HIDS.git
-cd AgentSmith-HIDS/driver/LKM/
+git clone https://github.com/bytedance/Elkeid.git
+cd Elkeid/driver/LKM/
 make clean && make
 insmod hids_driver.ko
 dmesg
@@ -496,7 +496,7 @@ Testing Load:
 
 `udp_recvmsg_handler` will work only if the port is equal 53 or 5353
 
-Original Testing Data:[Benchmark Data](https://github.com/bytedance/AgentSmith-HIDS/tree/main/driver/benchmark_data/handler)
+Original Testing Data:[Benchmark Data](https://github.com/bytedance/Elkeid/tree/main/driver/benchmark_data/handler)
 
 
 ## About Deploy

@@ -23,8 +23,8 @@ Now we are more than happy to announce the open-source of Elkeid Agent and Elkei
 
 Currently, we are only open-sourcing Elkeid Agent && Driver. Both components have been deployed and tested in production environments for months. We welcome any suggestions and cooperation.
 
-* #### [Elkeid Driver](https://github.com/bytedance/AgentSmith-HIDS/tree/main/driver)
-* #### [Elkeid Agent](https://github.com/bytedance/AgentSmith-HIDS/tree/main/agent)
+* #### [Elkeid Driver](https://github.com/bytedance/Elkeid/tree/main/driver)
+* #### [Elkeid Agent](https://github.com/bytedance/Elkeid/tree/main/agent)
 
 ## To be Continued 
 * Elkeid Server is under development. More Features are on the way.

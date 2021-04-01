@@ -22,8 +22,8 @@ Elkeid 包含三个主要组件：
 
 目前，我们只开源了Elkeid Agent && Driver。这两个组件已经在生产环境中部署和测试了数月，欢迎任何建议和合作。
 
-* #### [Elkeid Driver](https://github.com/bytedance/AgentSmith-HIDS/tree/main/driver)
-* #### [Elkeid Agent](https://github.com/bytedance/AgentSmith-HIDS/tree/main/agent)
+* #### [Elkeid Driver](https://github.com/bytedance/Elkeid/tree/main/driver)
+* #### [Elkeid Agent](https://github.com/bytedance/Elkeid/tree/main/agent)
 
 ## To be Continued
 * Elkeid Server正在开发中，更多功能即将推出。

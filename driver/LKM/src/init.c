@@ -80,10 +80,10 @@ static void __exit kprobes_exit(void)
 module_init(kprobes_init);
 module_exit(kprobes_exit);
 
-MODULE_INFO(homepage, "https://github.com/smcdef/kprobe-template");
+MODULE_INFO(homepage, "https://github.com/bytedance/Elkeid");
 MODULE_VERSION("1.5.0.0");
 
 //MODULE_LICENSE("GPLv3");
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Will Chen <chenyue.will@bytedance.com>;Shen Pin <shenping.matt@bytedance.com>;Muchun Song <songmuchun@bytedance.com>;Jia Ma <jia.ma@bytedance.com>; Gaba <panxiting@bytedance.com>");
-MODULE_DESCRIPTION("Kprobe template for AgentSmith-HIDS");
+MODULE_AUTHOR("Will Chen <chenyue.will@bytedance.com>;Shen Ping <shenping.matt@bytedance.com>;Muchun Song <songmuchun@bytedance.com>;Jia Ma <jia.ma@bytedance.com>; Gaba <panxiting@bytedance.com>");
+MODULE_DESCRIPTION("Elkeid");
