@@ -1,18 +1,18 @@
-[![License](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/bytedance/AgentSmith-HIDS/blob/main/driver/LICENSE) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![License](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/bytedance/Elkeid/blob/main/driver/LICENSE) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
-## About AgentSmith-HIDS Driver
+## About Elkeid(AgentSmith-HIDS) Driver
 
 [English](README.md) | 简体中文
 
 
 
-AgentSmith-HIDS Driver 主要是为信息安全需求而设计的。
+Elkeid Driver 主要是为信息安全需求而设计的。
 
-AgentSmith-HIDS Driver 主要通过Kprobe Hook Kernel Funcion 来提供丰富而准确的数据收集功能，包括内核级进程执行探测，特权升级监控，网络审计等等。 并且支持Linux namespace，因此对容器监控有着很好的实现。与传统的UserSpace HIDS相比，AgentSmith-HIDS由于驱动的存在提供了更全面的信息，并提高了性能。
+Elkeid Driver 主要通过Kprobe Hook Kernel Funcion 来提供丰富而准确的数据收集功能，包括内核级进程执行探测，特权升级监控，网络审计等等。 并且支持Linux namespace，因此对容器监控有着很好的实现。与传统的UserSpace HIDS相比，Elkeid由于驱动的存在提供了更全面的信息，并提高了性能。
 
-AgentSmith-HIDS已经在生产环境大规模部署。 
+Elkeid已经在生产环境大规模部署。 
 
-凭借其出色的数据收集能力，AgentSmith-HIDS Driver还可以支持沙盒，蜜罐和审计等需求。
+凭借其出色的数据收集能力，Elkeid Driver还可以支持沙盒，蜜罐和审计等需求。
 
 
 
@@ -21,8 +21,8 @@ AgentSmith-HIDS已经在生产环境大规模部署。
 首先需要安装Linux Headers
 
 ```shell script
-git clone https://github.com/bytedance/AgentSmith-HIDS.git
-cd AgentSmith-HIDS/driver/LKM/
+git clone https://github.com/bytedance/Elkeid.git
+cd Elkeid/driver/LKM/
 make clean && make
 insmod hids_driver.ko
 dmesg
@@ -74,10 +74,10 @@ rmmod hids_driver
 | dns queny          | 601      |                                         | OFF      |
 | init kernel module | 603      |                                         | ON      |
 | update cred        | 604      | only old uid ≠0 && new uid == 0         | ON      |
-| rename             | 82       |                                         | OFF     |
-| link               | 86       |                                         | OFF     |
-| setsid             | 112      |                                         | OFF     |
-| prctl              | 157      | only PS_SET_NAME                        | OFF     |
+| rename             | 82       |                                         | ON     |
+| link               | 86       |                                         | ON     |
+| setsid             | 112      |                                         | ON     |
+| prctl              | 157      | only PS_SET_NAME                        | ON     |
 | open               | 2        |                                         | OFF     |
 | mprotect           | 10       | only PROT_EXEC                          | OFF     |
 | nanosleep          | 35       |                                         | OFF     |
@@ -87,7 +87,7 @@ rmmod hids_driver
 | exit group         | 231      |                                         | OFF     |
 | rmdir              | 606      |                                         | OFF     |
 | unlink             | 605      |                                         | OFF     |
-
+| call_usermodehelper_exec             | 607      |                                         | OFF     |
 
 
 ## Anti Rootkit List
@@ -116,11 +116,11 @@ rmmod hids_driver
 ### 公共数据
 
 ```
-------------------------------------------------------------------
-|1  |2        |3  |4  |5   |6   |7   |8  |9   |10      |11       |
------------------------------------------------------------------
-|uid|data_type|exe|pid|ppid|pgid|tgid|sid|comm|nodename|sessionid|
-------------------------------------------------------------------
+-------------------------------------------------------------------------------
+|1  |2        |3  |4  |5   |6   |7   |8  |9   |10      |11       |12 |13      |
+-------------------------------------------------------------------------------
+|uid|data_type|exe|pid|ppid|pgid|tgid|sid|comm|nodename|sessionid|pns|root_pns|
+-------------------------------------------------------------------------------
 ```
 
 
@@ -129,7 +129,7 @@ rmmod hids_driver
 
 ```
 ------------------------------------------------
-|12          |13       |14 |15   |16 |17   |18 |
+|14          |15       |16 |17   |18 |19   |20 |
 ------------------------------------------------
 |connect_type|sa_family|dip|dport|sip|sport|res|
 ------------------------------------------------
@@ -143,7 +143,7 @@ Note: Connect_type 在默认情况下为 -1
 
 ```
 -------------------------
-|12       |13 |14   |15 |
+|14       |15 |16   |17 |
 -------------------------
 |sa_family|sip|sport|res|
 -------------------------
@@ -155,7 +155,7 @@ Note: Connect_type 在默认情况下为 -1
 
 ```
 -------------------------------------------------------------------------------------------------------------------------
-|12        |13  |14      |15      |16   |17    |18 |19   |20 |21   |22       |23      |24 |25        |26 |27        |28 |
+|14        |15  |16      |17      |18   |19    |20 |21   |22 |23   |24       |25      |26 |27        |28 |29        |30 |
 -------------------------------------------------------------------------------------------------------------------------
 |socket_exe|argv|run_path|pgid_exe|stdin|stdout|dip|dport|sip|sport|sa_family|pid_tree|tty|socket_pid|ssh|ld_preload|res|
 -------------------------------------------------------------------------------------------------------------------------
@@ -172,11 +172,11 @@ Note:
 ### Create File data
 
 ```
------------
-|12 	  |
------------
-|file_path|
------------
+----------------------------------------------------
+|14 	  |15 |16   |17 |18   |19       |20        |
+----------------------------------------------------
+|file_path|dip|dport|sip|sport|sa_family|socket_pid|
+----------------------------------------------------
 ```
 
 
@@ -185,7 +185,7 @@ Note:
 
 ```
 ----------------------------------------------
-|12            |13        |14  |15  |16      |
+|14            |15        |16  |17  |18      |
 ----------------------------------------------
 |ptrace_request|target_pid|addr|data|pid_tree|
 ----------------------------------------------
@@ -197,7 +197,7 @@ Note:
 
 ```
 -----------------------------------------------------
-|12   |13       |14 |15   |16 |17   |18|19    |20   |
+|14   |15       |16 |17   |18 |19   |20|21    |22   |
 -----------------------------------------------------
 |query|sa_family|dip|dport|sip|sport|qr|opcode|rcode|
 -----------------------------------------------------
@@ -209,7 +209,7 @@ Note:
 
 ```
 ----------------------------
-|12      |13      |14      | 
+|14      |15      |16      | 
 ----------------------------
 |mod_info|pid_tree|run_path|
 ----------------------------
@@ -221,7 +221,7 @@ Note:
 
 ```
 ----------------------
-|12      |13     |14 | 
+|14      |15     |16 | 
 ----------------------
 |pid_tree|old_uid|res|
 ----------------------
@@ -233,7 +233,7 @@ Note:
 
 ```
 ----------------------------
-|12      |13      |14      | 
+|14      |15      |16      | 
 ----------------------------
 |run_path|old_name|new_name|
 ----------------------------
@@ -245,7 +245,7 @@ Note:
 
 ```
 ----------------------------
-|12      |13      |14      | 
+|14      |15      |16      | 
 ----------------------------
 |run_path|old_name|new_name|
 ----------------------------
@@ -263,7 +263,7 @@ Note:
 
 ```
 _________________
-|12    |13      | 
+|14    |15      | 
 -----------------
 |option|new_name|
 -----------------
@@ -275,7 +275,7 @@ _________________
 
 ````
 ---------------------
-|12   |13  |14      | 
+|14   |15  |16      | 
 ---------------------
 |flags|mode|filename|
 ---------------------
@@ -287,7 +287,7 @@ _________________
 
 ```
 -----------------------------------------------------
-|12           |13       |14        |15     |16      |
+|14           |15       |16        |17     |18      |
 -----------------------------------------------------
 |mprotect_prot|owner_pid|owner_file|vm_file|pid_tree|
 -----------------------------------------------------
@@ -299,7 +299,7 @@ _________________
 
 ```
 ----------
-|12 |13  |
+|14 |15  |
 ----------
 |sec|nsec|
 ----------
@@ -311,7 +311,7 @@ _________________
 
 ```
 ----------------
-|12        |13 |
+|14        |15 |
 ----------------
 |target_pid|sig|
 ----------------
@@ -323,7 +323,7 @@ _________________
 
 ```
 ----------------
-|12        |13 |
+|14        |15 |
 ----------------
 |target_pid|sig|
 ----------------
@@ -347,7 +347,7 @@ _________________
 
 ```
 ------
-|12  |
+|14  |
 ------
 |file|
 ------
@@ -359,12 +359,22 @@ _________________
 
 ```
 ------
-|12  |
+|14  |
 ------
 |file|
 ------
 ```
 
+
+### call_usermodehelper_exec Data
+
+```
+-----------------------------
+|1  |2        |3  |4   |5   |
+-----------------------------
+|uid|data_type|exe|argv|wait|
+-----------------------------
+```
 
 
 ### Interrupt Table Hook Data
@@ -425,7 +435,7 @@ Note:  ***uid*** 为 -1
 
 ## 关于Driver Filter
 
-AgentSmith-HIDS驱动程序支持白名单以过滤出不需要的数据。 我们提供两种类型的白名单，**'exe'**白名单和**'argv'**白名单。
+Elkeid驱动程序支持白名单以过滤出不需要的数据。 我们提供两种类型的白名单，**'exe'**白名单和**'argv'**白名单。
 **'exe'**白名单作用于**execve /create filte/ dns query/connect hook**，而**'argv'**白名单仅作用于**execve hook**  。
 出于性能和稳定性方面的考虑，‘exe’和‘argv’白名单容量为64。
 
@@ -459,7 +469,7 @@ Filter define is:
 
 
 
-## 关于AgentSmith-HIDS Driver 性能
+## 关于Elkeid Driver 性能
 
 ### Testing Environment(VM):
 
@@ -495,7 +505,7 @@ Testing Load:
 
 `udp_recvmsg_handler` 仅工作在端口为 53 或 5353的情况
 
-测试原始数据:[Benchmark Data](https://github.com/bytedance/AgentSmith-HIDS/tree/main/driver/benchmark_data/handler)
+测试原始数据:[Benchmark Data](https://github.com/bytedance/Elkeid/tree/main/driver/benchmark_data/handler)
 
 
 ## 关于部署
@@ -507,4 +517,4 @@ Testing Load:
 
 ## License
 
-AgentSmith-HIDS kernel module are distributed under the GNU GPLv2 license.
+Elkeid kernel module are distributed under the GNU GPLv2 license.
