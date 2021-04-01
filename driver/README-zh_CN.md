@@ -1,6 +1,6 @@
 [![License](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/bytedance/Elkeid/blob/main/driver/LICENSE) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
-## About Elkeid(Elkeid) Driver
+## About Elkeid(AgentSmith-HIDS) Driver
 
 [English](README.md) | 简体中文
 
