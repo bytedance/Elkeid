@@ -1,18 +1,18 @@
 [![License](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/bytedance/AgentSmith-HIDS/blob/main/driver/LICENSE) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
-## About AgentSmith-HIDS Driver
+## About Elkeid(AgentSmith-HIDS) Driver
 
 [English](README.md) | 简体中文
 
 
 
-AgentSmith-HIDS Driver 主要是为信息安全需求而设计的。
+Elkeid Driver 主要是为信息安全需求而设计的。
 
-AgentSmith-HIDS Driver 主要通过Kprobe Hook Kernel Funcion 来提供丰富而准确的数据收集功能，包括内核级进程执行探测，特权升级监控，网络审计等等。 并且支持Linux namespace，因此对容器监控有着很好的实现。与传统的UserSpace HIDS相比，AgentSmith-HIDS由于驱动的存在提供了更全面的信息，并提高了性能。
+Elkeid Driver 主要通过Kprobe Hook Kernel Funcion 来提供丰富而准确的数据收集功能，包括内核级进程执行探测，特权升级监控，网络审计等等。 并且支持Linux namespace，因此对容器监控有着很好的实现。与传统的UserSpace HIDS相比，Elkeid由于驱动的存在提供了更全面的信息，并提高了性能。
 
-AgentSmith-HIDS已经在生产环境大规模部署。 
+Elkeid已经在生产环境大规模部署。 
 
-凭借其出色的数据收集能力，AgentSmith-HIDS Driver还可以支持沙盒，蜜罐和审计等需求。
+凭借其出色的数据收集能力，Elkeid Driver还可以支持沙盒，蜜罐和审计等需求。
 
 
 
@@ -425,7 +425,7 @@ Note:  ***uid*** 为 -1
 
 ## 关于Driver Filter
 
-AgentSmith-HIDS驱动程序支持白名单以过滤出不需要的数据。 我们提供两种类型的白名单，**'exe'**白名单和**'argv'**白名单。
+Elkeid驱动程序支持白名单以过滤出不需要的数据。 我们提供两种类型的白名单，**'exe'**白名单和**'argv'**白名单。
 **'exe'**白名单作用于**execve /create filte/ dns query/connect hook**，而**'argv'**白名单仅作用于**execve hook**  。
 出于性能和稳定性方面的考虑，‘exe’和‘argv’白名单容量为64。
 
@@ -459,7 +459,7 @@ Filter define is:
 
 
 
-## 关于AgentSmith-HIDS Driver 性能
+## 关于Elkeid Driver 性能
 
 ### Testing Environment(VM):
 
@@ -507,4 +507,4 @@ Testing Load:
 
 ## License
 
-AgentSmith-HIDS kernel module are distributed under the GNU GPLv2 license.
+Elkeid kernel module are distributed under the GNU GPLv2 license.

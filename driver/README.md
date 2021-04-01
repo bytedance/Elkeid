@@ -1,16 +1,16 @@
 [![License](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/bytedance/AgentSmith-HIDS/blob/main/driver/LICENSE) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
-## About AgentSmith-HIDS Driver
+## About Elkeid(AgentSmith-HIDS) Driver
 
 English | [简体中文](README-zh_CN.md)
 
 
 
-AgentSmith-HIDS Driver is a one-of-a-kind Kernel Space HIDS agent designed for Cyber-Security. 
+Elkeid Driver is a one-of-a-kind Kernel Space HIDS agent designed for Cyber-Security. 
 
-AgentSmith-HIDS Driver hooks kernel functions via Kprobe, providing rich and accurate data collection capabilities,  including kernel-level process execve probing, privilege escalation monitoring, network audition, and much more. The Driver treats Container-based monitoring as a first-class citizen as Host-based data collection by supporting Linux Namespace. Compare to User Space agents on the market, AgentSmith-HIDS provides more comprehensive information with massive performance improvement. 
+Elkeid Driver hooks kernel functions via Kprobe, providing rich and accurate data collection capabilities,  including kernel-level process execve probing, privilege escalation monitoring, network audition, and much more. The Driver treats Container-based monitoring as a first-class citizen as Host-based data collection by supporting Linux Namespace. Compare to User Space agents on the market, Elkeid provides more comprehensive information with massive performance improvement. 
 
-AgentSmith-HIDS has already been deployed massively for HIDS usage in world-class production environments. With its marvelous data collection ability, AgentSmith-HIDS also supports Sandbox, Honeypot, and Audition data requirements. 
+Elkeid has already been deployed massively for HIDS usage in world-class production environments. With its marvelous data collection ability, Elkeid also supports Sandbox, Honeypot, and Audition data requirements. 
 
 ## Quick Test
 
@@ -415,7 +415,7 @@ Note:  ***uid*** is always -1
 
 ## About Driver Filter
 
-AgentSmith-HIDS driver supports allowlist to filter out unwanted data. We provide two types of allowlists, **'exe'** allowlist and **'argv'** allowlist.
+Elkeid driver supports allowlist to filter out unwanted data. We provide two types of allowlists, **'exe'** allowlist and **'argv'** allowlist.
 **'exe'** allowlist acts on ***execve/create file/dns query/connect*** hooks, while **'argv'** allowlist only acts on ***execve*** hook. 
 For performance and stability concerns, both 'exe' and 'argv' allowlist only supports 64-elements-wide capacity.
 
@@ -448,7 +448,7 @@ Filter define is:
 
 
 
-## Performance Stats of AgentSmith-HIDS Driver
+## Performance Stats of Elkeid Driver
 
 ### Testing Environment(VM):
 
@@ -497,4 +497,4 @@ You can use DKMS or Pre-packaged ko file
 
 ## License
 
-AgentSmith-HIDS kernel module are distributed under the GNU GPLv2 license.
+Elkeid kernel module are distributed under the GNU GPLv2 license.
