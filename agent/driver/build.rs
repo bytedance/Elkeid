@@ -26,7 +26,7 @@ struct Config {
 struct Structure {
     common_fields: bool,
     data_type: usize,
-    #[serde(rename = "additional_fields")]
+    #[serde(rename = "additional_fields",default)]
     fields: HashMap<String, Field>,
 }
 #[derive(Deserialize, Debug, Clone)]
@@ -47,6 +47,8 @@ const COMMON_FIELDS_KERNEL: &[&str] = &[
     "comm",
     "nodename",
     "sessionid",
+    "pns",
+    "root_pns",
 ];
 const COMMON_FIELDS_USER: &[&str] = &[
     "username",
