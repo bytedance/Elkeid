@@ -78,6 +78,7 @@ rmmod hids_driver
 | link               | 86       |                                         | ON     |
 | setsid             | 112      |                                         | ON     |
 | prctl              | 157      | only PS_SET_NAME                        | ON     |
+| memfd_create       | 157      |                                                 | ON     |
 | open               | 2        |                                         | OFF     |
 | mprotect           | 10       | only PROT_EXEC                          | OFF     |
 | nanosleep          | 35       |                                         | OFF     |
@@ -269,6 +270,16 @@ _________________
 -----------------
 ```
 
+
+### memfd_create Data
+
+```
+______________
+|14    |15   | 
+--------------
+|fdname|flags|
+--------------
+```
 
 
 ### Open Data
