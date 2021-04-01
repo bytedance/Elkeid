@@ -14,7 +14,6 @@
 #define SANDBOX 0
 
 #define MAXACTIVE 24 * NR_CPUS
-#define DEFAULT_RET_STR "-2"
 
 // Hook on-off
 int CONNECT_HOOK = 1;
@@ -22,15 +21,18 @@ int BIND_HOOK = 1;
 int EXECVE_HOOK = 1;
 int CREATE_FILE_HOOK = 1;
 int PTRACE_HOOK = 1;
-int DNS_HOOK = 0;
 int DO_INIT_MODULE_HOOK = 1;
 int UPDATE_CRED_HOOK = 1;
 
-int RENAME_HOOK = 0;
-int LINK_HOOK = 0;
-int SETSID_HOOK = 0;
-int PRCTL_HOOK = 0;
+int RENAME_HOOK = 1;
+int LINK_HOOK = 1;
+int SETSID_HOOK = 1;
+int PRCTL_HOOK = 1;
+int MEMFD_CREATE_HOOK = 1;
 
+int DNS_HOOK = 0;
+int CALL_USERMODEHELPER = 0;
+int ACCEPT_HOOK = 0;
 int OPEN_HOOK = 0;
 int MPROTECT_HOOK = 0;
 int NANOSLEEP_HOOK = 0;
@@ -68,6 +70,9 @@ char link_kprobe_state = 0x0;
 char linkat_kprobe_state = 0x0;
 char setsid_kprobe_state = 0x0;
 char prctl_kprobe_state = 0x0;
+char memfd_create_kprobe_state = 0x0;
+char accept_kretprobe_state = 0x0;
+char accept4_kretprobe_state = 0x0;
 char open_kprobe_state = 0x0;
 char nanosleep_kprobe_state = 0x0;
 char kill_kprobe_state = 0x0;
@@ -76,6 +81,7 @@ char exit_kprobe_state = 0x0;
 char exit_group_kprobe_state = 0x0;
 char security_path_rmdir_kprobe_state = 0x0;
 char security_path_unlink_kprobe_state = 0x0;
+char call_usermodehelper_exec_kprobe_state = 0x0;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
 char execveat_kretprobe_state = 0x0;
@@ -111,14 +117,14 @@ const char __user *get_user_arg_ptr(struct user_arg_ptr argv, int nr)
 		compat_uptr_t compat;
 
 		if (smith_get_user(compat, argv.ptr.compat + nr))
-			return ERR_PTR(-EFAULT);
+		    return ERR_PTR(-EFAULT);
 
 		return compat_ptr(compat);
 	}
 #endif
 
 	if (smith_get_user(native, argv.ptr.native + nr))
-		return ERR_PTR(-EFAULT);
+	    return ERR_PTR(-EFAULT);
 
 	return native;
 }
@@ -143,17 +149,16 @@ int count(struct user_arg_ptr argv, int max)
 	}
 	return i;
 }
-#else
+#endif
 
 //count execve argv num
-int count(char **argv, int max)
+int execve_count(char **argv, int max)
 {
     int i = 0;
 
     if (argv != NULL) {
         for (;;) {
             char *p;
-
             if (smith_get_user(p, argv))
                 return -EFAULT;
             if (!p)
@@ -168,8 +173,6 @@ int count(char **argv, int max)
     }
     return i;
 }
-
-#endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 5, 0)
 struct kmem_cache *files_cachep;
@@ -344,8 +347,8 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
             }
             rcu_read_unlock();
 
-            d_name = d_path(&file->f_path, fd_buff, 24);
-            if (IS_ERR(d_name) || strlen(d_name) < 8)
+            d_name = smith_d_path(&file->f_path, fd_buff, 24);
+            if (strlen(d_name) < 8)
                 goto next_file;
 
             //find socket fd
@@ -379,7 +382,7 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
                             *sa_family = sk->sk_family;
                             break;
 #if IS_ENABLED(CONFIG_IPV6)
-                            case AF_INET6:
+                        case AF_INET6:
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
 						    memcpy(dip6, &(sk->sk_v6_daddr), sizeof(sk->sk_v6_daddr));
 						    memcpy(sip6, &(sk->sk_v6_rcv_saddr), sizeof(sk->sk_v6_rcv_saddr));
@@ -439,6 +442,11 @@ struct connect_syscall_data {
     struct sockaddr *dirp;
 };
 
+struct accept_data {
+    int type;
+    struct sockaddr accept_dirp;
+};
+
 struct udp_recvmsg_data {
     int sport;
     int dport;
@@ -446,6 +454,7 @@ struct udp_recvmsg_data {
 
     __be32 dip4;
     __be32 sip4;
+
     struct in6_addr *dip6;
     struct in6_addr *sip6;
     struct msghdr *msg;
@@ -494,13 +503,13 @@ int bind_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
         return -EINVAL;
 
     if (smith_copy_from_user(&address, (void __user *)p_get_arg2(regs), ulen))
-        return -EFAULT;
+    return -EFAULT;
 
     uaddr = (struct sockaddr *)&address;
     if (uaddr->sa_family == AF_INET && ulen >= sizeof(data->sin))
         memcpy(&data->sin, (void *)&address, sizeof(data->sin));
 #if IS_ENABLED(CONFIG_IPV6)
-    else if (uaddr->sa_family == AF_INET6 && ulen >= sizeof(data->sin6))
+        else if (uaddr->sa_family == AF_INET6 && ulen >= sizeof(data->sin6))
 		memcpy(&data->sin6, (void *)&address, sizeof(data->sin6));
 #endif
     else
@@ -522,6 +531,7 @@ int bind_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     struct in_addr *in_addr = NULL;
     struct in6_addr *in6_addr = NULL;
 
+    uaddr = &((struct bind_data *)ri->data)->dirp;
     retval = regs_return_value(regs);
     /*
      * If the return value is not zero, the data passed by the user
@@ -530,7 +540,6 @@ int bind_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     if (retval)
         return 0;
 
-    uaddr = &((struct bind_data *)ri->data)->dirp;
     sa_family = uaddr->sa_family;
     //only get AF_INET/AF_INET6 bind info
     switch (sa_family) {
@@ -551,9 +560,7 @@ int bind_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     }
 
     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
-
-    if (buffer)
-        exe_path = get_exe_file(current, buffer, PATH_MAX);
+    exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
     if (sa_family == AF_INET)
         bind_print(exe_path, in_addr, sport, retval);
@@ -593,7 +600,7 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     data = (struct connect_syscall_data *)ri->data;
     fd = data->fd;
 
-    if (!fd)
+    if (!fd || IS_ERR_OR_NULL(data->dirp))
         return 0;
 
     socket = sockfd_lookup(fd, &err);
@@ -610,7 +617,7 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
                 sk = socket->sk;
                 inet = (struct inet_sock *)sk;
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
-                if (inet->inet_daddr) {
+            if (inet->inet_daddr) {
                     dip4 = inet->inet_daddr;
 				    //dip4 = ((struct sockaddr_in *)&tmp_dirp)->sin_addr.s_addr;
 				    sip4 = inet->inet_saddr;
@@ -672,17 +679,13 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 
     if (flag) {
         buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
-
-        if (buffer)
-            exe_path = get_exe_file(current, buffer, PATH_MAX);
+        exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
         if (sa_family == AF_INET)
-            connect4_print(-1, dport, dip4, exe_path, sip4, sport,
-                           retval);
+            connect4_print(-1, dport, dip4, exe_path, sip4, sport, retval);
 #if IS_ENABLED(CONFIG_IPV6)
         else
-			connect6_print(-1, dport, dip6, exe_path, sip6, sport,
-				       retval);
+			connect6_print(-1, dport, dip6, exe_path, sip6, sport, retval);
 #endif
 
         if (buffer)
@@ -717,8 +720,7 @@ int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
         return 0;
 
     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
-    if (buffer)
-        exe_path = get_exe_file(current, buffer, PATH_MAX);
+    exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
     //exe filter check
     if (execve_exe_check(exe_path)) {
@@ -732,12 +734,12 @@ int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
         case AF_INET:
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
             if (inet->inet_daddr) {
-			    dip4 = inet->inet_daddr;
-			    sip4 = inet->inet_saddr;
-			    sport = ntohs(inet->inet_sport);
-			    dport = ntohs(inet->inet_dport);
-			    flag = 1;
-		    }
+			dip4 = inet->inet_daddr;
+			sip4 = inet->inet_saddr;
+			sport = ntohs(inet->inet_sport);
+			dport = ntohs(inet->inet_dport);
+			flag = 1;
+		}
 #else
             if (inet->daddr) {
                 dip4 = inet->daddr;
@@ -790,6 +792,151 @@ int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     return 0;
 }
 
+int accept_entry_handler(struct kretprobe_instance *ri,
+                         struct pt_regs *regs)
+{
+    struct accept_data *data;
+    struct sockaddr accept_dirp;
+    struct sockaddr *dirp;
+
+    data = (struct accept_data *)ri->data;
+    data->type = 2;
+
+    dirp = (void __user *)p_get_arg2(regs);
+    if(IS_ERR_OR_NULL(dirp))
+        return -EINVAL;
+
+    if(smith_copy_from_user(&accept_dirp, (struct sockaddr __user *) dirp, 16))
+    return -EINVAL;
+
+    data->accept_dirp = accept_dirp;
+    return 0;
+}
+
+int accept4_entry_handler(struct kretprobe_instance *ri,
+                          struct pt_regs *regs)
+{
+    struct accept_data *data;
+    struct sockaddr accept_dirp;
+    struct sockaddr *dirp;
+
+    data = (struct accept_data *)ri->data;
+    data->type = 1;
+
+    dirp = (void __user *)p_get_arg2(regs);
+    if(IS_ERR_OR_NULL(dirp))
+        return -EINVAL;
+
+    if(smith_copy_from_user(&accept_dirp, (struct sockaddr __user *) dirp, 16))
+    return -EINVAL;
+
+    data->accept_dirp = accept_dirp;
+    return 0;
+}
+
+int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+{
+    int flag = 0;
+    int sport = 0;
+    int dport = 0;
+    int retval, err, sa_family, kernel_getsockname_err;
+
+    __be32 dip4 = 0;
+    __be32 sip4 = 0;
+
+    char *exe_path = DEFAULT_RET_STR;
+    char *buffer = NULL;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 16, 0)
+    int addrlen;
+    void * addrlen_user;
+#endif
+
+    struct sockaddr accept_dirp;
+    struct accept_data *data;
+    struct socket *sock;
+
+//    struct in6_addr *dip6;
+//    struct in6_addr *sip6;
+
+    struct sockaddr_in *sin;
+    struct sockaddr_in source_addr;
+
+//    struct sockaddr_in6 *sin6;
+//    struct sockaddr_in6 source_addr6;
+
+    retval = regs_return_value(regs);
+    data = (struct accept_data *)ri->data;
+
+    accept_dirp = data->accept_dirp;
+    if (IS_ERR_OR_NULL(&accept_dirp))
+        return 0;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 16, 0)
+    addrlen_user = (void __user *)p_get_arg3(regs);
+    if (IS_ERR_OR_NULL(addrlen_user))
+        return 0;
+
+    addrlen = *(int __user *)addrlen_user;
+#endif
+
+    buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
+    exe_path = smith_get_exe_file(buffer, PATH_MAX);
+
+    //only get AF_INET/AF_INET6 accept info
+    if(accept_dirp.sa_family == AF_INET) {
+        flag = 1;
+        sa_family = 4;
+        sock = sockfd_lookup(retval, &err);
+
+        if(IS_ERR_OR_NULL(sock))
+            goto out;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
+        kernel_getsockname_err = kernel_getsockname(sock, (struct sockaddr *)&source_addr);
+#else
+        kernel_getsockname_err = kernel_getsockname(sock, (struct sockaddr *)&source_addr, &addrlen);
+#endif
+        if (kernel_getsockname_err < 0)
+            goto out;
+
+        sport = ntohs(source_addr.sin_port);
+        sip4 = source_addr.sin_addr.s_addr;
+        sockfd_put(sock);
+        sin = (struct sockaddr_in *) &accept_dirp;
+        dip4 = sin->sin_addr.s_addr;
+        dport = ntohs(sin->sin_port);
+        accept_print(dport, dip4, exe_path, sip4, sport, retval);
+    }
+
+//#if IS_ENABLED(CONFIG_IPV6)
+//    else if (accept_dirp.sa_family == AF_INET6) {
+//        flag = 1;
+//        sa_family = 6;
+//        sock = sockfd_lookup(retval, &err);
+//        if (sock) {
+//#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
+//            kernel_getsockname(sock, (struct sockaddr *)&source_addr);
+//#else
+//            kernel_getsockname(sock, (struct sockaddr *)&source_addr, &addrlen);
+//#endif
+//            sport = ntohs(source_addr6.sin6_port);
+//            sip6 = &(source_addr6.sin6_addr);
+//            sockfd_put(sock);
+//        }
+//        sin6 = (struct sockaddr_in6 *)&accept_dirp;
+//        dip6 = &(sin6->sin6_addr);
+//        dport = ntohs(sin6->sin6_port);
+//        accept6_print(dport, dip6, exe_path, sip6, sport, retval);
+//    }
+//#endif
+out:
+    if (buffer)
+        kfree(buffer);
+
+    return 0;
+}
+
 int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     int sa_family = -1;
@@ -821,8 +968,7 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 
     data = (struct execve_data *)ri->data;
     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
-    if (buffer)
-        exe_path = get_exe_file(current, buffer, PATH_MAX);
+    exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
     //exe filter check and argv filter check
     if (execve_exe_check(exe_path) || execve_argv_check(data->argv))
@@ -838,40 +984,28 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 
     //if socket exist,get pid tree
     if (sa_family == AF_INET6 || sa_family == AF_INET)
-        pid_tree = get_pid_tree(PID_TREE_LIMIT);
+        pid_tree = smith_get_pid_tree(PID_TREE_LIMIT);
     else
-        pid_tree = get_pid_tree(PID_TREE_LIMIT_LOW);
+        pid_tree = smith_get_pid_tree(PID_TREE_LIMIT_LOW);
 
     // get stdin
     file = fget_raw(0);
     if (file) {
-        stdin_buf = kzalloc(PATH_MAX, GFP_ATOMIC);
-        if (stdin_buf) {
-            tmp_stdin = d_path(&(file->f_path), stdin_buf, PATH_MAX);
-            if (IS_ERR(tmp_stdin))
-                tmp_stdin = "-1";
-        }
+        stdin_buf = kzalloc(256, GFP_ATOMIC);
+        tmp_stdin = smith_d_path(&(file->f_path), stdin_buf, 256);
         fput(file);
     }
 
     //get stdout
     file = fget_raw(1);
     if (file) {
-        stdout_buf = kzalloc(PATH_MAX, GFP_ATOMIC);
-        if (stdout_buf) {
-            tmp_stdout = d_path(&(file->f_path), stdout_buf, PATH_MAX);
-            if (IS_ERR(tmp_stdout))
-                tmp_stdout = "-1";
-        }
+        stdout_buf = kzalloc(256, GFP_ATOMIC);
+        tmp_stdout = smith_d_path(&(file->f_path), stdout_buf, 256);
         fput(file);
     }
 
     pname_buf = kzalloc(PATH_MAX, GFP_ATOMIC);
-    if (pname_buf)
-        pname = d_path(&current->fs->pwd, pname_buf, PATH_MAX);
-
-    if (IS_ERR(pname))
-        pname = "-1";
+    pname = smith_d_path(&current->fs->pwd, pname_buf, PATH_MAX);
 
     if (sa_family == AF_INET) {
         execve_print(pname,
@@ -879,16 +1013,18 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
                      tmp_stdin, tmp_stdout,
                      dip4, dport, sip4, sport,
                      pid_tree, tty_name, socket_pid, socket_pname,
-                     data->ssh_connection, data->ld_preload, regs_return_value(regs));
+                     data->ssh_connection, data->ld_preload,
+                     regs_return_value(regs));
     }
 #if IS_ENABLED(CONFIG_IPV6)
-    else if (sa_family == AF_INET6) {
+        else if (sa_family == AF_INET6) {
 		execve6_print(pname,
 			      exe_path, pgid_exe_path, data->argv,
 			      tmp_stdin, tmp_stdout,
 			      &dip6, dport, &sip6, sport,
 			      pid_tree, tty_name, socket_pid, socket_pname,
-			      data->ssh_connection, data->ld_preload, regs_return_value(regs));
+			      data->ssh_connection, data->ld_preload,
+			      regs_return_value(regs));
 	}
 #endif
     else {
@@ -934,7 +1070,7 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 		     struct execve_data *data)
 {
 	int argv_len = 0, argv_res_len = 0, i = 0, len = 0, offset = 0;
-	int env_len = 0, free_argv = 0;
+	int env_len = 0, free_argv = 0, res = 0;
 	int ssh_connection_flag = 0, ld_preload_flag = 0;
 	int free_ld_preload = 1, free_ssh_connection = 1;
 
@@ -945,10 +1081,10 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 
 	env_len = count(env_ptr, MAX_ARG_STRINGS);
 	argv_len = count(argv_ptr, MAX_ARG_STRINGS);
-	argv_res_len = 128 * (argv_len + 2);
+	argv_res_len = 256 * argv_len;
 
 	if (argv_len > 0) {
-		argv_res = kzalloc(argv_res_len, GFP_ATOMIC);
+		argv_res = kmalloc(argv_res_len + 1, GFP_ATOMIC);
 		if (!argv_res) {
 			argv_res = "-1";
 		} else {
@@ -962,20 +1098,24 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 				if (!len || len > MAX_ARG_STRLEN)
 					break;
 
-				if (offset + len > argv_res_len)
-					break;
+				if (offset + len > argv_res_len) {
+				    res = argv_res_len - offset;
+				    offset += res - smith_copy_from_user(argv_res + offset, native, res);
+				    break;
+				}
 
 				if (smith_copy_from_user(argv_res + offset, native, len))
-					break;
+				    break;
 
-				 offset += len;
+				offset += len;
                 *(argv_res + offset - 1) = ' ';
 			}
+			*(argv_res + offset) = '\0';
 		}
 	}
 
-	ssh_connection = kzalloc(255, GFP_ATOMIC);
-	ld_preload = kzalloc(255, GFP_ATOMIC);
+	ssh_connection = kmalloc(255, GFP_ATOMIC);
+	ld_preload = kmalloc(255, GFP_ATOMIC);
 
 	if (!ssh_connection)
 		free_ssh_connection = 0;
@@ -987,7 +1127,7 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 	if (env_len > 0) {
 		char buf[256];
 		for (i = 0; i < env_len; i++) {
-			if (free_ld_preload == 1 && ssh_connection_flag == 1)
+			if (ld_preload_flag == 1 && ssh_connection_flag == 1)
 				break;
 
 			native = get_user_arg_ptr(env_ptr, i);
@@ -1001,17 +1141,16 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 					break;
 				else {
 					if (strncmp("SSH_CONNECTION=", buf, 11) == 0) {
+					    ssh_connection_flag = 1;
 						if (free_ssh_connection == 1) {
 							strcpy(ssh_connection, buf + 15);
-							ssh_connection_flag = 1;
 						} else {
 							ssh_connection = "-1";
 						}
-					} else
-					    if (strncmp("LD_PRELOAD=", buf, 11) == 0) {
+					} else if (strncmp("LD_PRELOAD=", buf, 11) == 0) {
+					    ld_preload_flag = 1;
 						if (free_ld_preload == 1) {
 							strcpy(ld_preload, buf + 11);
-							ld_preload_flag = 1;
 						} else {
 							ld_preload = "-1";
 						}
@@ -1115,8 +1254,8 @@ int execve_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 //get execve syscall argv/LD_PRELOAD && SSH_CONNECTION env info
 void get_execve_data(char **argv, char **env, struct execve_data *data)
 {
-    int argv_len = 0, argv_res_len = 0, i = 0, len = 0, offset = 0;
-    int env_len = 0, free_argv = 0, ssh_connection_flag = 0, ld_preload_flag =0;
+    int argv_len = 0, argv_res_len = 0, i = 0, len = 0, offset = 0, res = 0;
+    int env_len = 0, free_argv = 0, ssh_connection_flag = 0, ld_preload_flag = 0;
     int free_ssh_connection = 1, free_ld_preload = 1;
 
     char *argv_res = NULL;
@@ -1124,14 +1263,16 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
     char *ld_preload = NULL;
     const char __user * native;
 
-    env_len = count(env, MAX_ARG_STRINGS);
-    argv_res_len = 128 * (argv_len + 2);
-    argv_len = count(argv, MAX_ARG_STRINGS);
+    env_len = execve_count(env, MAX_ARG_STRINGS);
+    argv_res_len = 256 * argv_len;
+    argv_len = execve_count(argv, MAX_ARG_STRINGS);
 
     //get execve args data
     if (argv_len > 0) {
-        argv_res = kzalloc(argv_res_len, GFP_ATOMIC);
-        if (argv_res) {
+        argv_res = kmalloc(argv_res_len + 1, GFP_ATOMIC);
+        if (!argv_res) {
+            argv_res = "-1";
+        } else {
             free_argv = 1;
             for (i = 0; i < argv_len; i++) {
                 if (smith_get_user(native, argv + i))
@@ -1141,8 +1282,11 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
                 if (!len || len > MAX_ARG_STRLEN)
                     break;
 
-                if (offset + len > argv_res_len)
+                if (offset + len > argv_res_len) {
+                    res = argv_res_len - offset;
+                    offset += res - smith_copy_from_user(argv_res + offset, native, res);
                     break;
+                }
 
                 if (smith_copy_from_user(argv_res + offset, native, len))
                     break;
@@ -1150,13 +1294,12 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
                 offset += len;
                 *(argv_res + offset - 1) = ' ';
             }
-        } else {
-            argv_res = "-1";
+            *(argv_res + offset) = '\0';
         }
     }
 
-    ssh_connection = kzalloc(255, GFP_ATOMIC);
-    ld_preload = kzalloc(255, GFP_ATOMIC);
+    ssh_connection = kmalloc(255, GFP_ATOMIC);
+    ld_preload = kmalloc(255, GFP_ATOMIC);
 
     if (!ssh_connection)
         free_ssh_connection = 0;
@@ -1168,7 +1311,7 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
     if (env_len > 0) {
         char buf[256];
         for (i = 0; i < argv_len; i++) {
-            if (free_ld_preload == 1 && ssh_connection_flag == 1)
+            if (ld_preload_flag == 1 && ssh_connection_flag == 1)
                 break;
 
             if (smith_get_user(native, env + i))
@@ -1183,17 +1326,16 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
                     break;
                 else {
                     if (strncmp("SSH_CONNECTION=", buf, 11) == 0) {
+                        ssh_connection_flag = 1;
                         if (free_ssh_connection == 1) {
                             strcpy(ssh_connection, buf + 15);
-                            ssh_connection_flag = 1;
                         } else {
                             ssh_connection = "-1";
                         }
-                    } else
-                    if (strncmp("LD_PRELOAD=", buf, 11) == 0) {
+                    } else if (strncmp("LD_PRELOAD=", buf, 11) == 0) {
+                        ld_preload_flag = 1;
                         if (free_ld_preload == 1) {
                             strcpy(ld_preload, buf + 11);
-                            ld_preload_flag = 1;
                         } else {
                             ld_preload = "-1";
                         }
@@ -1226,7 +1368,7 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
 }
 
 int compat_execve_entry_handler(struct kretprobe_instance *ri,
-                              struct pt_regs *regs)
+                                struct pt_regs *regs)
 {
     struct execve_data *data;
     char **argv = (char **)p_get_arg2(regs);
@@ -1252,18 +1394,29 @@ int execve_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 //get create file info
 int security_inode_create_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
+    int sa_family = -1;
+    int dport = 0, sport = 0;
+
+    __be32 dip4;
+    __be32 sip4;
+    pid_t socket_pid = -1;
+
     void *tmp;
     char *pname_buf = NULL;
     char *buffer = NULL;
     char *pathstr = DEFAULT_RET_STR;
     char *exe_path = DEFAULT_RET_STR;
+    char *socket_pname = "-1";
+    char *socket_pname_buf = NULL;
+
+    struct in6_addr dip6;
+    struct in6_addr sip6;
 
     if (IS_PRIVATE((struct inode *)p_regs_get_arg1(regs)))
         return 0;
 
     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
-    if (buffer)
-        exe_path = get_exe_file(current, buffer, PATH_MAX);
+    exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
     //exe filter check
     if (execve_exe_check(exe_path))
@@ -1281,11 +1434,30 @@ int security_inode_create_pre_handler(struct kprobe *p, struct pt_regs *regs)
 #else
         pathstr = __dentry_path((struct dentry *)tmp, pname_buf, PATH_MAX);
 #endif
+
         if(IS_ERR(pathstr))
-            pathstr = "-2";
+            pathstr = NAME_TOO_LONG;
     }
 
-    security_inode_create_print(exe_path, pathstr);
+    get_process_socket(&sip4, &sip6, &sport, &dip4, &dip6, &dport,
+                       &socket_pname, &socket_pname_buf, &socket_pid,
+                       &sa_family);
+
+    if (sa_family == AF_INET) {
+        security_inode4_create_print(exe_path, pathstr,
+                                     dip4, dport, sip4, sport,
+                                     socket_pid);
+    }
+#if IS_ENABLED(CONFIG_IPV6)
+        else if (sa_family == AF_INET6) {
+		security_inode6_create_print(exe_path, pathstr, &dip6,
+                                     dport, &sip6, sport,
+			                         socket_pid);
+	}
+#endif
+    else {
+        security_inode_create_nosocket_print(exe_path, pathstr);
+    }
 
     if (pname_buf)
         kfree(pname_buf);
@@ -1323,10 +1495,9 @@ int ptrace_pre_handler(struct kprobe *p, struct pt_regs *regs)
             return 0;
 
         buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
-        if (buffer)
-            exe_path = get_exe_file(current, buffer, PATH_MAX);
+        exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
-        pid_tree = get_pid_tree(PID_TREE_LIMIT);
+        pid_tree = smith_get_pid_tree(PID_TREE_LIMIT);
         ptrace_print(request, pid, addr, "-1", exe_path, pid_tree);
 
         if(buffer)
@@ -1346,8 +1517,7 @@ void dns_data_transport(char *query, __be32 dip, __be32 sip, int dport,
     char *buffer = NULL;
 
     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
-    if (buffer)
-        exe_path = get_exe_file(current, buffer, PATH_MAX);
+    exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
     //exe filter check
     if (execve_exe_check(exe_path))
@@ -1369,8 +1539,7 @@ void dns6_data_transport(char *query, struct in6_addr *dip,
 	char *buffer = NULL;
 
 	buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
-	if (buffer)
-		exe_path = get_exe_file(current, buffer, PATH_MAX);
+	exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
 	//exe filter check
 	if (execve_exe_check(exe_path))
@@ -1717,13 +1886,12 @@ int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
     //only get PROT_EXEC mprotect info
     //The memory can be used to store instructions which can then be executed. On most architectures,
     //this flag implies that the memory can be read (as if PROT_READ had been specified).
-    prot = (unsigned long)p_get_arg2(regs);
+    prot = (unsigned long)p_regs_get_arg2(regs);
     if (prot & PROT_EXEC) {
         abs_buf = kzalloc(PATH_MAX, GFP_ATOMIC);
-        if (abs_buf)
-            exe_path = get_exe_file(current, abs_buf, PATH_MAX);
+        exe_path = smith_get_exe_file(abs_buf, PATH_MAX);
 
-        vma = (struct vm_area_struct *)p_get_arg1(regs);
+        vma = (struct vm_area_struct *)p_regs_get_arg1(regs);
         if (IS_ERR_OR_NULL(vma)) {
             mprotect_print(exe_path, prot, "-1", -1, "-1", "-1");
         } else {
@@ -1732,12 +1900,7 @@ int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
                 if (!IS_ERR_OR_NULL(&vma->vm_mm->exe_file)) {
                     if (get_file_rcu(vma->vm_mm->exe_file)) {
                         file_buf = kzalloc(PATH_MAX, GFP_ATOMIC);
-                        if (file_buf) {
-                            file_path = d_path(&vma->vm_mm->exe_file->f_path, file_buf, PATH_MAX);
-
-                            if (IS_ERR(file_path))
-                                file_path = "-1";
-                        }
+                        file_path = smith_d_path(&vma->vm_mm->exe_file->f_path, file_buf, PATH_MAX);
                         fput(vma->vm_mm->exe_file);
                     }
                 }
@@ -1748,18 +1911,13 @@ int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
                 if (get_file_rcu(vma->vm_file)) {
                     vm_file_buff =
                             kzalloc(PATH_MAX, GFP_ATOMIC);
-                    if (vm_file_buff) {
-                        vm_file_path = d_path(&vma->vm_file->f_path, vm_file_buff, PATH_MAX);
-
-                        if (IS_ERR(vm_file_path))
-                            vm_file_path = "-1";
-                    }
+                    vm_file_path = smith_d_path(&vma->vm_file->f_path, vm_file_buff, PATH_MAX);
                     fput(vma->vm_file);
                 }
             }
             rcu_read_unlock();
 
-            pid_tree = get_pid_tree(PID_TREE_LIMIT);
+            pid_tree = smith_get_pid_tree(PID_TREE_LIMIT);
             mprotect_print(exe_path, prot, file_path, target_pid, vm_file_path, pid_tree);
         }
 
@@ -1778,15 +1936,80 @@ int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
     return 0;
 }
 
-void rename_and_link_hander(int type, const char __user * oldori,
-                            const char __user * newori)
+int call_usermodehelper_exec_pre_handler(struct kprobe *p, struct pt_regs *regs)
+{
+    int wait = 0, argv_res_len = 0, argv_len = 0, i = 0;
+    int offset = 0, res = 0, free_argv = 0, len = 0;
+    void *si_tmp;
+    const char *path;
+    char **argv;
+    char *argv_res = NULL;
+    char * native;
+    struct subprocess_info *si;
+
+    si_tmp = (void *)p_regs_get_arg1(regs);
+    if (IS_ERR_OR_NULL(si_tmp))
+        return 0;
+
+    si = (struct subprocess_info *)si_tmp;
+    wait = (int)p_regs_get_arg2(regs);
+
+    path = si->path;
+    argv = si->argv;
+
+    if (IS_ERR_OR_NULL(path))
+        return 0;
+
+    argv_len = execve_count(argv, MAX_ARG_STRINGS);
+    argv_res_len = 256 * argv_len;
+
+    //get execve args data
+    if (argv_len > 0) {
+        argv_res = kmalloc(argv_res_len + 1, GFP_ATOMIC);
+        if (!argv_res) {
+            argv_res = "-1";
+        } else {
+            free_argv = 1;
+            for (i = 0; i < argv_len; i++) {
+                if (smith_get_user(native, argv + i))
+                    break;
+
+                len = smith_strnlen_user(native, MAX_ARG_STRLEN);
+                if (!len || len > MAX_ARG_STRLEN)
+                    break;
+
+                if (offset + len > argv_res_len) {
+                    res = argv_res_len - offset;
+                    offset += res - smith_copy_from_user(argv_res + offset, native, res);
+                    break;
+                }
+
+                if (smith_copy_from_user(argv_res + offset, native, len))
+                    break;
+
+                offset += len;
+                *(argv_res + offset - 1) = ' ';
+            }
+            *(argv_res + offset) = '\0';
+        }
+    }
+
+    call_usermodehelper_exec_print(path, argv_res, wait);
+
+    if(free_argv)
+        kfree(argv_res);
+
+    return 0;
+}
+
+void rename_and_link_hander(int type, const char __user * oldori, const char __user * newori)
 {
     int old_len = 0;
     int new_len = 0;
 
     char *buffer = NULL;
-    char *pname = NULL;
-    char *pname_buf = DEFAULT_RET_STR;
+    char *pname = DEFAULT_RET_STR;
+    char *pname_buf = NULL;
     char *exe_path = DEFAULT_RET_STR;
     char *oldname = NULL;
     char *newname = NULL;
@@ -1795,11 +2018,11 @@ void rename_and_link_hander(int type, const char __user * oldori,
         return;
 
     new_len = smith_strnlen_user(newori, PATH_MAX);
-    if (!new_len || new_len > MAX_ARG_STRLEN)
+    if (!new_len || new_len > PATH_MAX)
         return;
 
     old_len = smith_strnlen_user(oldori, PATH_MAX);
-    if (!old_len || old_len > MAX_ARG_STRLEN)
+    if (!old_len || old_len > PATH_MAX)
         return;
 
     oldname = kmalloc((old_len + 1) * sizeof(char), GFP_ATOMIC);
@@ -1815,21 +2038,18 @@ void rename_and_link_hander(int type, const char __user * oldori,
     newname[new_len] = '\0';
 
     pname_buf = kzalloc(PATH_MAX, GFP_ATOMIC);
-    if (pname_buf)
-        pname = d_path(&current->fs->pwd, pname_buf, PATH_MAX);
-
-    if (IS_ERR(pname))
-        pname = "-1";
+    pname = smith_d_path(&current->fs->pwd, pname_buf, PATH_MAX);
 
     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
-    if (buffer)
-        exe_path = get_exe_file(current, buffer, PATH_MAX);
+    exe_path = smith_get_exe_file(buffer, PATH_MAX);
+
+    if (execve_exe_check(exe_path))
+        goto out_free;
 
     if (type)
         rename_print(exe_path, pname, oldname, newname);
     else
         link_print(exe_path, pname, oldname, newname);
-
 
 out_free:
     if (pname_buf)
@@ -1857,7 +2077,7 @@ int rename_pre_handler(struct kprobe *p, struct pt_regs *regs)
         return 0;
 
     rename_and_link_hander(1, (const char __user *)oldname,
-                         (const char __user *)newname);
+    (const char __user *)newname);
     return 0;
 }
 
@@ -1873,7 +2093,7 @@ int renameat_pre_handler(struct kprobe *p, struct pt_regs *regs)
         return 0;
 
     rename_and_link_hander(1, (const char __user *)oldname,
-                        (const char __user *)newname);
+    (const char __user *)newname);
     return 0;
 }
 
@@ -1889,7 +2109,7 @@ int link_pre_handler(struct kprobe *p, struct pt_regs *regs)
         return 0;
 
     rename_and_link_hander(0, (const char __user *)oldname,
-                        (const char __user *)newname);
+    (const char __user *)newname);
     return 0;
 }
 
@@ -1905,7 +2125,7 @@ int linkat_pre_handler(struct kprobe *p, struct pt_regs *regs)
         return 0;
 
     rename_and_link_hander(0, (const char __user *)oldname,
-                        (const char __user *)newname);
+    (const char __user *)newname);
     return 0;
 }
 
@@ -1915,11 +2135,14 @@ int setsid_pre_handler(struct kprobe *p, struct pt_regs *regs)
     char *buffer = NULL;
 
     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
-    if (buffer)
-        exe_path = get_exe_file(current, buffer, PATH_MAX);
+    exe_path = smith_get_exe_file(buffer, PATH_MAX);
+
+    if (execve_exe_check(exe_path))
+        goto out;
 
     setsid_print(exe_path);
 
+out:
     if (buffer)
         kfree(buffer);
 
@@ -1950,7 +2173,7 @@ int prctl_pre_handler(struct kprobe *p, struct pt_regs *regs)
         return 0;
 
     newname_len = smith_strnlen_user((char __user *)newname_ori, PATH_MAX);
-    if (!newname_len || newname_len > MAX_ARG_STRLEN)
+    if (!newname_len || newname_len > PATH_MAX)
         return 0;
 
     newname = kmalloc((newname_len + 1) * sizeof(char), GFP_ATOMIC);
@@ -1964,19 +2187,66 @@ int prctl_pre_handler(struct kprobe *p, struct pt_regs *regs)
     newname[newname_len] = '\0';
 
     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
-    if (buffer)
-        exe_path = get_exe_file(current, buffer, PATH_MAX);
+    exe_path = smith_get_exe_file(buffer, PATH_MAX);
+
+    if (execve_exe_check(exe_path))
+        goto out;
 
     prctl_print(exe_path, PR_SET_NAME, newname);
 
+out:
     if (buffer)
         kfree(buffer);
 
-    if (newname)
-        kfree(newname);
+    kfree(newname);
 
     return 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
+int memfd_create_kprobe_pre_handler(struct kprobe *p, struct pt_regs *regs)
+{
+    int len;
+    unsigned long flags;
+
+    char *fdname = NULL;
+    char __user *fdname_ori;
+    char *exe_path = DEFAULT_RET_STR;
+    char *exe_buffer = NULL;
+
+    exe_buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
+    exe_path = smith_get_exe_file(exe_buffer, PATH_MAX);
+
+    fdname_ori = (void *)p_get_arg1(regs);
+    if (IS_ERR_OR_NULL(fdname_ori))
+        goto out;
+
+    len = smith_strnlen_user((char __user *)fdname_ori, PATH_MAX);
+    if (!len || len > PATH_MAX)
+        goto out;
+
+    fdname = kmalloc((len + 1) * sizeof(char), GFP_ATOMIC);
+    if(!fdname)
+        goto out;
+
+    if(smith_copy_from_user(fdname, (char __user *)fdname_ori, len))
+        goto out;
+
+    fdname[len] = '\0';
+
+    flags = (unsigned long)p_get_arg2(regs);
+    memfd_create_print(exe_path, fdname, flags);
+
+out:
+    if (exe_buffer)
+        kfree(exe_buffer);
+
+    if (fdname)
+        kfree(fdname);
+
+    return 0;
+}
+#endif
 
 int open_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
@@ -1992,7 +2262,7 @@ int open_pre_handler(struct kprobe *p, struct pt_regs *regs)
         return 0;
 
     filename_len = smith_strnlen_user((char __user *)filename_ori, PATH_MAX);
-    if (!filename_len || filename_len > MAX_ARG_STRLEN)
+    if (!filename_len || filename_len > PATH_MAX)
         return 0;
 
     filename = kmalloc((filename_len + 1) * sizeof(char), GFP_ATOMIC);
@@ -2000,23 +2270,21 @@ int open_pre_handler(struct kprobe *p, struct pt_regs *regs)
         return 0;
 
     if(smith_copy_from_user(filename, (char __user *)filename_ori, filename_len))
-        goto out;
+    goto out;
 
     filename[filename_len] = '\0';
 
     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
-    if (buffer)
-        exe_path = get_exe_file(current, buffer, PATH_MAX);
+    exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
     open_print(exe_path, filename, (int)p_get_arg2(regs),
-               (umode_t) p_get_arg3(regs));
+               (umode_t)p_get_arg3(regs));
 
-out:
+    out:
     if (buffer)
         kfree(buffer);
 
-    if (filename)
-        kfree(filename);
+    kfree(filename);
 
     return 0;
 }
@@ -2033,14 +2301,13 @@ int nanosleep_pre_handler(struct kprobe *p, struct pt_regs *regs)
         return 0;
 
     if (smith_copy_from_user(&tu, (struct timespec __user *)tmp, sizeof(tu)))
-        return 0;
+    return 0;
 
     if (!timespec_valid(&tu))
         return 0;
 
     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
-    if (buffer)
-        exe_path = get_exe_file(current, buffer, PATH_MAX);
+    exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
     nanosleep_print(exe_path, tu.tv_sec, tu.tv_nsec);
 
@@ -2056,8 +2323,7 @@ void kill_and_tkill_handler(int type, pid_t pid, int sig)
     char *buffer = NULL;
 
     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
-    if (buffer)
-        exe_path = get_exe_file(current, buffer, PATH_MAX);
+    exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
     if (type)
         kill_print(exe_path, pid, sig);
@@ -2071,7 +2337,7 @@ void kill_and_tkill_handler(int type, pid_t pid, int sig)
 
 int kill_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
-    pid_t pid = (pid_t) p_get_arg1(regs);
+    pid_t pid = (pid_t)p_get_arg1(regs);
     int sig = (int)p_get_arg2(regs);
     kill_and_tkill_handler(0, pid, sig);
     return 0;
@@ -2079,7 +2345,7 @@ int kill_pre_handler(struct kprobe *p, struct pt_regs *regs)
 
 int tkill_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
-    pid_t pid = (pid_t) p_get_arg1(regs);
+    pid_t pid = (pid_t)p_get_arg1(regs);
     int sig = (int)p_get_arg2(regs);
     kill_and_tkill_handler(1, pid, sig);
     return 0;
@@ -2091,8 +2357,7 @@ void delete_file_handler(int type, char *path)
     char *exe_path = DEFAULT_RET_STR;
 
     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
-    if (buffer)
-        exe_path = get_exe_file(current, buffer, PATH_MAX);
+    exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
     if (type)
         security_path_rmdir_print(exe_path, path);
@@ -2124,7 +2389,8 @@ int security_path_rmdir_pre_handler(struct kprobe *p, struct pt_regs *regs)
 #else
         pathstr = __dentry_path((struct dentry *)tmp, pname_buf, PATH_MAX);
 #endif
-	if(IS_ERR(pathstr))
+
+        if (IS_ERR(pathstr))
             pathstr = "-2";
     }
 
@@ -2157,7 +2423,7 @@ int security_path_unlink_pre_handler(struct kprobe *p, struct pt_regs *regs)
 #else
         pathstr = __dentry_path((struct dentry *)tmp, pname_buf, PATH_MAX);
 #endif
-	if(IS_ERR(pathstr))
+        if (IS_ERR(pathstr))
             pathstr = "-2";
     }
 
@@ -2175,8 +2441,7 @@ void exit_handler(int type)
     char *buffer = NULL;
 
     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
-    if (buffer)
-        exe_path = get_exe_file(current, buffer, PATH_MAX);
+    exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
     if (type)
         exit_print(exe_path);
@@ -2210,24 +2475,19 @@ int do_init_module_pre_handler(struct kprobe *p, struct pt_regs *regs)
     void *tmp_mod;
     struct module *mod;
 
-    tmp_mod = (void *) p_get_arg1(regs);
+    tmp_mod = (void *) p_regs_get_arg1(regs);
     if (IS_ERR_OR_NULL(tmp_mod))
         return 0;
 
     mod = (struct module *)tmp_mod;
 
     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
-    if (buffer)
-        exe_path = get_exe_file(current, buffer, PATH_MAX);
+    exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
     pname_buf = kzalloc(PATH_MAX, GFP_ATOMIC);
-    if (pname_buf)
-        pname = d_path(&current->fs->pwd, pname_buf, PATH_MAX);
+    pname = smith_d_path(&current->fs->pwd, pname_buf, PATH_MAX);
 
-    if (IS_ERR(pname))
-        pname = "-1";
-
-    pid_tree = get_pid_tree(PID_TREE_LIMIT);
+    pid_tree = smith_get_pid_tree(PID_TREE_LIMIT);
     do_init_module_print(exe_path, mod->name, pid_tree, pname);
 
     if (buffer)
@@ -2247,7 +2507,7 @@ int update_cred_entry_handler(struct kretprobe_instance *ri,
 {
     struct update_cred_data *data;
     data = (struct update_cred_data *)ri->data;
-    data->old_uid = get_current_uid();
+    data->old_uid = __get_current_uid();
     return 0;
 }
 
@@ -2255,12 +2515,12 @@ int update_cred_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     int now_uid;
     int retval;
-    char *exe_path = DEFAULT_RET_STR;
+    char *exe_path = NULL;
     char *buffer = NULL;
     char *pid_tree = NULL;
     struct update_cred_data *data;
 
-    now_uid = get_current_uid();
+    now_uid = __get_current_uid();
     retval = regs_return_value(regs);
 
     //only get old uid ≠0 && new uid == 0
@@ -2270,10 +2530,9 @@ int update_cred_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     data = (struct update_cred_data *)ri->data;
     if (data->old_uid != 0) {
         buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
-        if (buffer)
-            exe_path = get_exe_file(current, buffer, PATH_MAX);
+        exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
-        pid_tree = get_pid_tree(PID_TREE_LIMIT);
+        pid_tree = smith_get_pid_tree(PID_TREE_LIMIT);
         update_cred_print(exe_path, pid_tree, data->old_uid, retval);
 
         if (buffer)
@@ -2303,7 +2562,7 @@ int tcp_v4_connect_entry_handler(struct kretprobe_instance *ri,
     data->sa_family = AF_INET;
     // type 1 for TCPv4
     data->type = 1;
-    data->sk = (struct sock *)p_get_arg1(regs);
+    data->sk = (struct sock *)p_regs_get_arg1(regs);
     return 0;
 }
 
@@ -2316,7 +2575,7 @@ int tcp_v6_connect_entry_handler(struct kretprobe_instance *ri,
 	data->sa_family = AF_INET6;
 	// type 2 for TCPv6
 	data->type = 2;
-	data->sk = (struct sock *)p_get_arg1(regs);
+	data->sk = (struct sock *)p_regs_get_arg1(regs);
 	return 0;
 }
 #endif
@@ -2329,7 +2588,7 @@ int ip4_datagram_connect_entry_handler(struct kretprobe_instance *ri,
     data->sa_family = AF_INET;
     // type 3 for UDPv4
     data->type = 3;
-    data->sk = (struct sock *)p_get_arg1(regs);
+    data->sk = (struct sock *)p_regs_get_arg1(regs);
     return 0;
 }
 
@@ -2342,7 +2601,7 @@ int ip6_datagram_connect_entry_handler(struct kretprobe_instance *ri,
 	data->sa_family = AF_INET6;
 	// type 4 for UDPv6
 	data->type = 4;
-	data->sk = (struct sock *)p_get_arg1(regs);
+	data->sk = (struct sock *)p_regs_get_arg1(regs);
 	return 0;
 }
 #endif
@@ -2384,6 +2643,11 @@ struct kretprobe compat_execveat_kretprobe = {
 };
 #endif
 #endif
+
+struct kprobe call_usermodehelper_exec_kprobe = {
+        .symbol_name = "call_usermodehelper_exec",
+        .pre_handler = call_usermodehelper_exec_pre_handler,
+};
 
 struct kprobe rename_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(rename),
@@ -2475,6 +2739,22 @@ struct kretprobe connect_syscall_kretprobe = {
         .maxactive = MAXACTIVE,
 };
 
+struct kretprobe accept_kretprobe = {
+        .kp.symbol_name = P_GET_SYSCALL_NAME(accept),
+        .data_size = sizeof(struct accept_data),
+        .handler = accept_handler,
+        .entry_handler = accept_entry_handler,
+        .maxactive = MAXACTIVE,
+};
+
+struct kretprobe accept4_kretprobe = {
+        .kp.symbol_name = P_GET_SYSCALL_NAME(accept4),
+        .data_size = sizeof(struct accept_data),
+        .handler = accept_handler,
+        .entry_handler = accept4_entry_handler,
+        .maxactive = MAXACTIVE,
+};
+
 struct kprobe do_init_module_kprobe = {
         .symbol_name = "do_init_module",
         .pre_handler = do_init_module_pre_handler,
@@ -2510,6 +2790,13 @@ struct kprobe setsid_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(setsid),
         .pre_handler = setsid_pre_handler,
 };
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
+struct kprobe memfd_create_kprobe = {
+        .symbol_name = P_GET_SYSCALL_NAME(memfd_create),
+        .pre_handler = memfd_create_kprobe_pre_handler,
+};
+#endif
 
 struct kprobe prctl_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(prctl),
@@ -2570,6 +2857,22 @@ int register_bind_kprobe(void)
 void unregister_bind_kprobe(void)
 {
     unregister_kretprobe(&bind_kretprobe);
+}
+
+int register_call_usermodehelper_exec_kprobe(void)
+{
+    int ret;
+    ret = register_kprobe(&call_usermodehelper_exec_kprobe);
+
+    if (ret == 0)
+        call_usermodehelper_exec_kprobe_state = 0x1;
+
+    return ret;
+}
+
+void unregister_call_usermodehelper_exec_kprobe(void)
+{
+    unregister_kprobe(&call_usermodehelper_exec_kprobe);
 }
 
 int register_rename_kprobe(void)
@@ -2884,6 +3187,38 @@ void unregister_connect_syscall_kprobe(void)
     unregister_kretprobe(&connect_syscall_kretprobe);
 }
 
+int register_accept_kprobe(void)
+{
+    int ret;
+    ret = register_kretprobe(&accept_kretprobe);
+
+    if (ret == 0)
+        accept_kretprobe_state = 0x1;
+
+    return ret;
+}
+
+void unregister_accept_kprobe(void)
+{
+    unregister_kretprobe(&accept_kretprobe);
+}
+
+int register_accept4_kprobe(void)
+{
+    int ret;
+    ret = register_kretprobe(&accept4_kretprobe);
+
+    if (ret == 0)
+        accept4_kretprobe_state = 0x1;
+
+    return ret;
+}
+
+void unregister_accept4_kprobe(void)
+{
+    unregister_kretprobe(&accept4_kretprobe);
+}
+
 int register_create_file_kprobe(void)
 {
     int ret;
@@ -2930,6 +3265,24 @@ void unregister_setsid_kprobe(void)
 {
     unregister_kprobe(&setsid_kprobe);
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
+int register_memfd_create_kprobe(void)
+{
+    int ret;
+    ret = register_kprobe(&memfd_create_kprobe);
+
+    if (ret == 0)
+        memfd_create_kprobe_state = 0x1;
+
+    return ret;
+}
+
+void unregister_memfd_create_kprobe(void)
+{
+    unregister_kprobe(&memfd_create_kprobe);
+}
+#endif
 
 int register_prctl_kprobe(void)
 {
@@ -3075,6 +3428,9 @@ void uninstall_kprobe(void)
     if (connect_syscall_kprobe_state == 0x1)
         unregister_connect_syscall_kprobe();
 
+    if (call_usermodehelper_exec_kprobe_state == 0x1)
+        unregister_call_usermodehelper_exec_kprobe();
+
     if (mprotect_kprobe_state == 0x1)
         unregister_mprotect_kprobe();
 
@@ -3122,6 +3478,17 @@ void uninstall_kprobe(void)
 
     if (prctl_kprobe_state == 0x1)
         unregister_prctl_kprobe();
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
+    if (memfd_create_kprobe_state == 0x1)
+        unregister_memfd_create_kprobe();
+#endif
+
+    if (accept_kretprobe_state == 0x1)
+        unregister_accept_kprobe();
+
+    if (accept4_kretprobe_state == 0x1)
+        unregister_accept4_kprobe();
 
     if (open_kprobe_state == 0x1)
         unregister_open_kprobe();
@@ -3179,17 +3546,19 @@ void install_kprobe(void)
     int ret;
 
     if (SANDBOX == 1) {
-        MPROTECT_HOOK = 1;
+        DNS_HOOK = 1;
+        CALL_USERMODEHELPER = 1;
+        //MPROTECT_HOOK = 1;
+        ACCEPT_HOOK = 1;
         OPEN_HOOK = 1;
-        NANOSLEEP_HOOK = 1;
+        MPROTECT_HOOK = 1;
+        //NANOSLEEP_HOOK = 1;
         KILL_HOOK = 1;
-        EXIT_HOOK = 1;
         RM_HOOK = 1;
+        EXIT_HOOK = 1;
 
-        RENAME_HOOK = 1;
-        LINK_HOOK = 1;
-        SETSID_HOOK = 1;
-        PRCTL_HOOK = 1;
+        FAKE_SLEEP = 0;
+        FAKE_RM = 0;
 
         PID_TREE_LIMIT = 100;
         PID_TREE_LIMIT_LOW = 100;
@@ -3210,11 +3579,29 @@ void install_kprobe(void)
             printk(KERN_INFO "[SMITH] security_path_unlink register_kprobe failed, returned %d\n", ret);
     }
 
+    if (ACCEPT_HOOK == 1) {
+        ret = register_accept_kprobe();
+        if (ret < 0)
+            printk(KERN_INFO "[SMITH] open accept_kprobe failed, returned %d\n", ret);
+
+        ret = register_accept4_kprobe();
+        if (ret < 0)
+            printk(KERN_INFO "[SMITH] open accept4_kprobe failed, returned %d\n", ret);
+    }
+
     if (OPEN_HOOK == 1) {
         ret = register_open_kprobe();
         if (ret < 0)
             printk(KERN_INFO "[SMITH] open register_kprobe failed, returned %d\n", ret);
     }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
+    if (MEMFD_CREATE_HOOK == 1) {
+        ret = register_memfd_create_kprobe();
+        if (ret < 0)
+            printk(KERN_INFO "[SMITH] memfd_create register_kprobe failed, returned %d\n", ret);
+    }
+#endif
 
     if (KILL_HOOK == 1) {
         ret = register_kill_kprobe();
@@ -3346,6 +3733,12 @@ void install_kprobe(void)
 #endif
     }
 
+    if (CALL_USERMODEHELPER == 1) {
+        ret = register_call_usermodehelper_exec_kprobe();
+        if (ret < 0)
+            printk(KERN_INFO "[SMITH] call_usermodehelper_exec register_kprobe failed, returned %d\n", ret);
+    }
+
     if (PTRACE_HOOK == 1) {
         ret = register_ptrace_kprobe();
         if (ret < 0)
@@ -3395,20 +3788,22 @@ static int __init smith_init(void)
     exit_protect_action();
 #endif
 
+    __init_root_pid_ns_inum();
+
     install_kprobe();
 
     printk(KERN_INFO "[SMITH] SANDBOX: %d\n", SANDBOX);
 
     printk(KERN_INFO
-    "[SMITH] register_kprobe success: connect_hook: %d,do_init_module_hook:"
-    " %d,execve_hook: %d,bind_hook: %d,create_file_hook: %d,ptrace_hook: %d, update_cred_hook:"
-    " %d, dns_hook: %d, mprotect_hook: %d,link_hook: %d,rename_hook: %d,"
+    "[SMITH] register_kprobe success: connect_hook: %d,load_module_hook:"
+    " %d,execve_hook: %d,call_usermodehekoer_hook: %d,bind_hook: %d,create_file_hook: %d,ptrace_hook: %d, update_cred_hook:"
+    " %d, dns_hook: %d, accept_hook:%d, mprotect_hook: %d,link_hook: %d, memfd_create: %d, rename_hook: %d,"
     "setsid_hook:%d, prctl_hook:%d, open_hook:%d, nanosleep_hook:%d, kill_hook: %d, rm_hook: %d, "
     " EXIT_HOOK: %d, EXIT_PROTECT: %d\n",
-            CONNECT_HOOK, DO_INIT_MODULE_HOOK, EXECVE_HOOK, BIND_HOOK,
+            CONNECT_HOOK, DO_INIT_MODULE_HOOK, EXECVE_HOOK, CALL_USERMODEHELPER, BIND_HOOK,
             CREATE_FILE_HOOK, PTRACE_HOOK, UPDATE_CRED_HOOK, DNS_HOOK,
-            MPROTECT_HOOK, LINK_HOOK, RENAME_HOOK, SETSID_HOOK, PRCTL_HOOK,
-            OPEN_HOOK, NANOSLEEP_HOOK, KILL_HOOK, RM_HOOK, EXIT_HOOK,
+            ACCEPT_HOOK, MPROTECT_HOOK, LINK_HOOK, MEMFD_CREATE_HOOK, RENAME_HOOK, SETSID_HOOK,
+            PRCTL_HOOK, OPEN_HOOK, NANOSLEEP_HOOK, KILL_HOOK, RM_HOOK, EXIT_HOOK,
             EXIT_PROTECT);
 
     return 0;

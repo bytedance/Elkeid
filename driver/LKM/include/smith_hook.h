@@ -42,8 +42,9 @@
 #include <linux/kallsyms.h>
 #include <linux/fdtable.h>
 #include <linux/prctl.h>
+#include <linux/kmod.h>
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 1, 0)
+#ifndef get_file_rcu
 #define get_file_rcu(x) atomic_long_inc_not_zero(&(x)->f_count)
 #endif
 
