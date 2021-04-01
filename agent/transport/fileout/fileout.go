@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/bytedance/AgentSmith-HIDS/agent/spec"
-	"github.com/bytedance/AgentSmith-HIDS/agent/transport"
+	"github.com/bytedance/Elkeid/agent/spec"
+	"github.com/bytedance/Elkeid/agent/transport"
 )
 
 type FileOut struct {

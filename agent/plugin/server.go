@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytedance/AgentSmith-HIDS/agent/plugin/procotol"
-	"github.com/bytedance/AgentSmith-HIDS/agent/transport"
+	"github.com/bytedance/Elkeid/agent/plugin/procotol"
+	"github.com/bytedance/Elkeid/agent/transport"
 
 	"github.com/tinylib/msgp/msgp"
 	"go.uber.org/zap"

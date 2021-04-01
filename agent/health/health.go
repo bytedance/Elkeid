@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/bytedance/AgentSmith-HIDS/agent/common"
-	"github.com/bytedance/AgentSmith-HIDS/agent/plugin"
-	"github.com/bytedance/AgentSmith-HIDS/agent/spec"
-	"github.com/bytedance/AgentSmith-HIDS/agent/transport"
+	"github.com/bytedance/Elkeid/agent/common"
+	"github.com/bytedance/Elkeid/agent/plugin"
+	"github.com/bytedance/Elkeid/agent/spec"
+	"github.com/bytedance/Elkeid/agent/transport"
 	"github.com/prometheus/procfs"
 	"go.uber.org/zap"
 )
