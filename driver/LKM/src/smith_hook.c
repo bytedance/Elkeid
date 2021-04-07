@@ -592,8 +592,8 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     struct sockaddr tmp_dirp;
     struct connect_syscall_data *data;
     struct inet_sock *inet;
-    struct in6_addr *dip6;
-    struct in6_addr *sip6;
+    struct in6_addr *dip6 = NULL;
+    struct in6_addr *sip6 = NULL;
 
     retval = regs_return_value(regs);
 
