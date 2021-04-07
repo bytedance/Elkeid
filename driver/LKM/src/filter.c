@@ -182,7 +182,7 @@ static void add_execve_exe_allowlist(char *data)
 
     write_lock(&exe_allowlist_lock);
     if(!insert_rb(&execve_exe_allowlist, node))
-        printk(KERN_INFO "[SMITH] add_execve_exe_allowlist error\n");
+        printk(KERN_INFO "[ELKEID] add_execve_exe_allowlist error\n");
     write_unlock(&exe_allowlist_lock);
 
 }
@@ -212,7 +212,7 @@ static void print_all_execve_allowlist(void)
     for (node = rb_first(&execve_exe_allowlist); node; node = rb_next(node)) {
         struct allowlist_node *data =
         container_of(node, struct allowlist_node, node);
-        printk("[SMITH DEBUG] execve_allowlist:%s \n", data->data);
+        printk("[ELKEID DEBUG] execve_allowlist:%s \n", data->data);
     }
     read_unlock(&exe_allowlist_lock);
 }
@@ -246,7 +246,7 @@ static void add_execve_argv_allowlist(char *data)
 
     write_lock(&argv_allowlist_lock);
     if(!insert_rb(&execve_argv_allowlist, node))
-        printk(KERN_INFO "[SMITH] add_execve_argv_allowlist error\n");
+        printk(KERN_INFO "[ELKEID] add_execve_argv_allowlist error\n");
     write_unlock(&argv_allowlist_lock);
 }
 
@@ -275,7 +275,7 @@ static void print_all_argv_allowlist(void)
          node = rb_next(node)) {
         struct allowlist_node *data =
         container_of(node, struct allowlist_node, node);
-        printk("[SMITH DEBUG] argv_allowlist:%s \n", data->data);
+        printk("[ELKEID DEBUG] argv_allowlist:%s \n", data->data);
     }
     read_unlock(&argv_allowlist_lock);
 }
@@ -344,7 +344,7 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
 
         case EXECVE_EXE_CHECK:
             res = execve_exe_check(data_main);
-            printk("[SMITH DEBUG] execve_exe_check:%s %d\n",
+            printk("[ELKEID DEBUG] execve_exe_check:%s %d\n",
                    strim(data_main), res);
             kfree(data_main);
             break;
@@ -377,7 +377,7 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
 
         case EXECVE_ARGV_CHECK:
             res = execve_argv_check(data_main);
-            printk("[SMITH DEBUG] execve_argv_check:%s %d\n",
+            printk("[ELKEID DEBUG] execve_argv_check:%s %d\n",
                    strim(data_main), res);
             kfree(data_main);
             break;
@@ -433,13 +433,13 @@ int filter_init(void)
     filter_major = register_chrdev(0, FILTER_DEVICE_NAME, &mchar_fops);
 
     if (filter_major < 0) {
-        pr_err("[SMITH FILTER] REGISTER_CHRDEV_ERROR\n");
+        pr_err("[ELKEID FILTER] REGISTER_CHRDEV_ERROR\n");
         return filter_major;
     }
 
     filter_class = class_create(THIS_MODULE, FILTER_CLASS_NAME);
     if (IS_ERR(filter_class)) {
-        pr_err("[SMITH FILTER] CLASS_CREATE_ERROR");
+        pr_err("[ELKEID FILTER] CLASS_CREATE_ERROR");
         ret = PTR_ERR(filter_class);
         goto chrdev_unregister;
     }
@@ -448,7 +448,7 @@ int filter_init(void)
                         NULL, FILTER_DEVICE_NAME);
 
     if (IS_ERR(dev)) {
-        pr_err("[SMITH FILTER] DEVICE_CREATE_ERROR");
+        pr_err("[ELKEID FILTER] DEVICE_CREATE_ERROR");
         ret = PTR_ERR(dev);
         goto class_destroy;
     }
@@ -456,7 +456,7 @@ int filter_init(void)
     sh_mem = kzalloc(SHMEM_MAX_SIZE, GFP_ATOMIC);
 
     if (sh_mem == NULL) {
-        pr_err("[SMITH FILTER] SHMEM_INIT_ERROR\n");
+        pr_err("[ELKEID FILTER] SHMEM_INIT_ERROR\n");
         ret = -ENOMEM;
         goto device_destroy;
     }

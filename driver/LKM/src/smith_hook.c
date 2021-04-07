@@ -3572,163 +3572,163 @@ void install_kprobe(void)
     if (RM_HOOK == 1) {
         ret = register_security_path_rmdir_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] security_path_rmdir register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] security_path_rmdir register_kprobe failed, returned %d\n", ret);
 
         ret = register_security_path_unlink_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] security_path_unlink register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] security_path_unlink register_kprobe failed, returned %d\n", ret);
     }
 
     if (ACCEPT_HOOK == 1) {
         ret = register_accept_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] open accept_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] open accept_kprobe failed, returned %d\n", ret);
 
         ret = register_accept4_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] open accept4_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] open accept4_kprobe failed, returned %d\n", ret);
     }
 
     if (OPEN_HOOK == 1) {
         ret = register_open_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] open register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] open register_kprobe failed, returned %d\n", ret);
     }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
     if (MEMFD_CREATE_HOOK == 1) {
         ret = register_memfd_create_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] memfd_create register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] memfd_create register_kprobe failed, returned %d\n", ret);
     }
 #endif
 
     if (KILL_HOOK == 1) {
         ret = register_kill_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] open kill_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] open kill_kprobe failed, returned %d\n", ret);
 
         ret = register_tkill_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] open tkill_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] open tkill_kprobe failed, returned %d\n", ret);
     }
 
     if (EXIT_HOOK == 1) {
         ret = register_exit_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] open exit_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] open exit_kprobe failed, returned %d\n", ret);
 
         ret = register_exit_group_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] open exit_group_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] open exit_group_kprobe failed, returned %d\n", ret);
     }
 
     if (NANOSLEEP_HOOK == 1) {
         ret = register_nanosleep_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] nanosleep register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] nanosleep register_kprobe failed, returned %d\n", ret);
     }
 
     if (CONNECT_HOOK == 1) {
         ret = register_connect_syscall_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] connect register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] connect register_kprobe failed, returned %d\n", ret);
 
 //            ret = register_tcp_v4_connect_kprobe();
 //            if (ret < 0)
-//                printk(KERN_INFO "[SMITH] connect register_kprobe failed, returned %d\n", ret);
+//                printk(KERN_INFO "[ELKEID] connect register_kprobe failed, returned %d\n", ret);
 //
 //            ret = register_ip4_datagram_connect_kprobe();
 //            if (ret < 0) {
-//                printk(KERN_INFO "[SMITH] ip4_datagram_connect register_kprobe failed, returned %d\n", ret);
+//                printk(KERN_INFO "[ELKEID] ip4_datagram_connect register_kprobe failed, returned %d\n", ret);
 //
 //    #if IS_ENABLED(CONFIG_IPV6)
 //            ret = register_tcp_v6_connect_kprobe();
 //            if (ret < 0) {
-//                printk(KERN_INFO "[SMITH] tcp_v6_connect register_kprobe failed, returned %d\n", ret);
+//                printk(KERN_INFO "[ELKEID] tcp_v6_connect register_kprobe failed, returned %d\n", ret);
 //
 //            ret = register_ip6_datagram_connect_kprobe();
 //            if (ret < 0) {
-//                printk(KERN_INFO "[SMITH] ip6_datagram_connect register_kprobe failed, returned %d\n", ret);
+//                printk(KERN_INFO "[ELKEID] ip6_datagram_connect register_kprobe failed, returned %d\n", ret);
 //    #endif
     }
 
     if (MPROTECT_HOOK == 1) {
         ret = register_mprotect_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] mprotect register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] mprotect register_kprobe failed, returned %d\n", ret);
     }
 
     if (PRCTL_HOOK == 1) {
         ret = register_prctl_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] prctl register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] prctl register_kprobe failed, returned %d\n", ret);
     }
 
     if (SETSID_HOOK == 1) {
         ret = register_setsid_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] setsid register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] setsid register_kprobe failed, returned %d\n", ret);
     }
 
     if (BIND_HOOK == 1) {
         ret = register_bind_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] bind register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] bind register_kprobe failed, returned %d\n", ret);
     }
 
     if (RENAME_HOOK == 1) {
         ret = register_rename_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] renameat register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] renameat register_kprobe failed, returned %d\n", ret);
 
         ret = register_renameat_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] rename2 register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] rename2 register_kprobe failed, returned %d\n", ret);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,15,0)
         ret = register_renameat2_kprobe();
 		if (ret < 0)
-			printk(KERN_INFO "[SMITH] mprotect register_kprobe failed, returned %d\n", ret);
+			printk(KERN_INFO "[ELKEID] mprotect register_kprobe failed, returned %d\n", ret);
 #endif
     }
 
     if (LINK_HOOK == 1) {
         ret = register_link_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] link register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] link register_kprobe failed, returned %d\n", ret);
 
         ret = register_linkat_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] linkat register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] linkat register_kprobe failed, returned %d\n", ret);
     }
 
     if (CREATE_FILE_HOOK == 1) {
         ret = register_create_file_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] create_file register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] create_file register_kprobe failed, returned %d\n", ret);
     }
 
     if (EXECVE_HOOK == 1) {
         ret = register_execve_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] execve register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] execve register_kprobe failed, returned %d\n", ret);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
         ret = register_execveat_kprobe();
 		if (ret < 0)
-			printk(KERN_INFO "[SMITH] execveat register_kprobe failed, returned %d\n", ret);
+			printk(KERN_INFO "[ELKEID] execveat register_kprobe failed, returned %d\n", ret);
 #endif
 
 #ifdef CONFIG_COMPAT
         ret = register_compat_execve_kprobe();
 		if (ret < 0)
-			printk(KERN_INFO "[SMITH] compat_sys_execve register_kprobe failed, returned %d\n", ret);
+			printk(KERN_INFO "[ELKEID] compat_sys_execve register_kprobe failed, returned %d\n", ret);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
 		ret = register_compat_execveat_kprobe();
 		if (ret < 0)
-			printk(KERN_INFO "[SMITH] compat_sys_execveat register_kprobe failed, returned %d\n", ret);
+			printk(KERN_INFO "[ELKEID] compat_sys_execveat register_kprobe failed, returned %d\n", ret);
 #endif
 #endif
     }
@@ -3736,23 +3736,23 @@ void install_kprobe(void)
     if (CALL_USERMODEHELPER == 1) {
         ret = register_call_usermodehelper_exec_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] call_usermodehelper_exec register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] call_usermodehelper_exec register_kprobe failed, returned %d\n", ret);
     }
 
     if (PTRACE_HOOK == 1) {
         ret = register_ptrace_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] ptrace register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] ptrace register_kprobe failed, returned %d\n", ret);
     }
 #ifdef CONFIG_X86
     if (DNS_HOOK == 1) {
 		ret = register_udp_recvmsg_kprobe();
 		if (ret < 0)
-			printk(KERN_INFO "[SMITH] udp_recvmsg register_kprobe failed, returned %d\n", ret);
+			printk(KERN_INFO "[ELKEID] udp_recvmsg register_kprobe failed, returned %d\n", ret);
 #if IS_ENABLED(CONFIG_IPV6)
 		ret = register_udpv6_recvmsg_kprobe();
 		if (ret < 0)
-			printk(KERN_INFO "[SMITH] udpv6_recvmsg register_kprobe failed, returned %d\n", ret);
+			printk(KERN_INFO "[ELKEID] udpv6_recvmsg register_kprobe failed, returned %d\n", ret);
 #endif
 	}
 #endif
@@ -3760,13 +3760,13 @@ void install_kprobe(void)
     if (DO_INIT_MODULE_HOOK == 1) {
         ret = register_do_init_module_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] do_init_module register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] do_init_module register_kprobe failed, returned %d\n", ret);
     }
 
     if (UPDATE_CRED_HOOK == 1) {
         ret = register_update_cred_kprobe();
         if (ret < 0)
-            printk(KERN_INFO "[SMITH] update_cred register_kprobe failed, returned %d\n", ret);
+            printk(KERN_INFO "[ELKEID] update_cred register_kprobe failed, returned %d\n", ret);
     }
 }
 
@@ -3782,7 +3782,7 @@ static int __init smith_init(void)
     if (ret)
         return ret;
 
-    printk(KERN_INFO "[SMITH] Filter Init Success \n");
+    printk(KERN_INFO "[ELKEID] Filter Init Success \n");
 
 #if (EXIT_PROTECT == 1)
     exit_protect_action();
@@ -3792,10 +3792,10 @@ static int __init smith_init(void)
 
     install_kprobe();
 
-    printk(KERN_INFO "[SMITH] SANDBOX: %d\n", SANDBOX);
+    printk(KERN_INFO "[ELKEID] SANDBOX: %d\n", SANDBOX);
 
     printk(KERN_INFO
-    "[SMITH] register_kprobe success: connect_hook: %d,load_module_hook:"
+    "[ELKEID] register_kprobe success: connect_hook: %d,load_module_hook:"
     " %d,execve_hook: %d,call_usermodehekoer_hook: %d,bind_hook: %d,create_file_hook: %d,ptrace_hook: %d, update_cred_hook:"
     " %d, dns_hook: %d, accept_hook:%d, mprotect_hook: %d,link_hook: %d, memfd_create: %d, rename_hook: %d,"
     "setsid_hook:%d, prctl_hook:%d, open_hook:%d, nanosleep_hook:%d, kill_hook: %d, rm_hook: %d, "
@@ -3813,7 +3813,7 @@ static void smith_exit(void)
 {
     uninstall_kprobe();
     filter_cleanup();
-    printk(KERN_INFO "[SMITH] uninstall_kprobe success\n");
+    printk(KERN_INFO "[ELKEID] uninstall_kprobe success\n");
 }
 
 KPROBE_INITCALL(smith_init, smith_exit);

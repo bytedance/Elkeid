@@ -191,12 +191,12 @@ static void analyze_fops(void)
 
 	fp = filp_open("/proc", O_RDONLY, S_IRUSR);
 	if (IS_ERR_OR_NULL(fp)) {
-		printk(KERN_INFO "[SMITH] open /proc error\n");
+		printk(KERN_INFO "[ELKEID] open /proc error\n");
 		return;
 	}
 
 	if (IS_ERR_OR_NULL(fp->f_op)) {
-		printk(KERN_INFO "[SMITH] /proc has no fops\n");
+		printk(KERN_INFO "[ELKEID] /proc has no fops\n");
 		filp_close(fp, NULL);
 		return;
 	}
@@ -257,7 +257,7 @@ static int __init anti_rootkit_init(void)
     if (kset)
         mod_kset = *kset;
     init_del_workqueue();
-    printk("[SMITH] ANTI_ROOTKIT_CHECK: %d\n", ANTI_ROOTKIT_CHECK);
+    printk("[ELKEID] ANTI_ROOTKIT_CHECK: %d\n", ANTI_ROOTKIT_CHECK);
     return 0;
 }
 
