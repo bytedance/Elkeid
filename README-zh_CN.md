@@ -5,7 +5,7 @@
 Elkeid是一个云原生的基于主机的入侵检测解决方案。
 
 Elkeid 包含三个主要组件：
-* **Elkeid Agent**与Elkeid Driver作为数据采集层，它在Linux系统的内核和用户空间上均可使用，从而提供了具有更好性能的且更丰富的数据。 
+* **Elkeid Agent**与**Elkeid Driver**作为数据采集层，它在Linux系统的内核和用户空间上均可使用，从而提供了具有更好性能的且更丰富的数据。 
 * **Elkeid Server**可以提供百万级Agent的接入能力，并且支持控制与策略下发。
 * **Elkeid HUB** 提供高性能，轻量级，分布式和无状态规则/事件处理引擎。
 
