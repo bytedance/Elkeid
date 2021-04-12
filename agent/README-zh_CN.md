@@ -27,7 +27,7 @@ Agent支持采用以下一种或多种方式连接到Server：
 * findyou
 * load balance/passthrough
 
-如果同时开启了多种方式，那么在连接时，优先级为：findyou > load balance/passthrough (内网) >  load balance/passthrough (外网) 。并且，每种连接方式都可以配置多个目的地址，当处在复杂网络环境下时，这个功能十分有用，具体配置位于`product.go`文件中，可以根据需要进行修改，下面为一个样例：
+如果同时开启了多种方式，那么在连接时，优先级为：findyou > load balance/passthrough (内网) >  load balance/passthrough (外网) 。并且，每种连接方式都可以配置多个目的地址，当处在复杂网络环境下时，这个功能十分有用，具体配置位于[`product.go`](transport/connection/product.go)文件中，可以根据需要进行修改，下面为一个样例：
 ```
   sd["findyou-0"] = "findyou-0.pri"
   sd["findyou-1"] = "findyou-1.pri"
