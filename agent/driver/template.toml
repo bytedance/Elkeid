@@ -3,10 +3,14 @@ version = "1.5.0.0"
 maintainers = ["zhanglei.sec@bytedance.com"]
 
 [config]
-ko_url = ["http://example.com/download/ko/"]
+ko_url = [
+"lf3-elkeid.bytetos.com/elkeid-download/ko/",
+"lf6-elkeid.bytetos.com/elkeid-download/ko/",
+"lf9-elkeid.bytetos.com/elkeid-download/ko/",
+"lf26-elkeid.bytetos.com/elkeid-download/ko/"]
 pipe_path = "/proc/hids_driver/1"
 name = "hids_driver"
-socket_path = "..plugin.sock"
+socket_path = "../plugin.sock"
 
 [structures.execve]
 # common_fields contains [uid,data_type,exe,pid,ppid,pgid,tgid,sid,comm,nodename,sessionid] from kernel,[username,timestamp,exe_hash,ppid_argv,pgid_argv,argv,pid_tree] from user.
