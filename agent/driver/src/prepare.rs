@@ -22,6 +22,7 @@ fn download_sha(url: &str) -> Result<String> {
 fn download_and_verify_sha(file_url: &str, file_path: &str, sha_url: &str) -> Result<()> {
     info!("Downloading checksum from {}", sha_url);
     let digest = download_sha(sha_url)?;
+    let digest = digest.trim();
 
     info!("Downloading from {}", file_url);
     let resp = blocking::get(file_url)?;

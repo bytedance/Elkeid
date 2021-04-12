@@ -14,5 +14,5 @@ var CaCert []byte
 func init() {
 	sd["findyou-0"] = "10.227.2.103:8098"
 	sd["findyou-1"] = "10.227.2.103:8089"
-	setDialOptions(CaCert, ClientKey, ClientCert, "elkeid.com")
+	setDialOptions(CaCert, ClientKey, ClientCert, "hids_svr.github.com")
 }

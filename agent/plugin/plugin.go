@@ -172,6 +172,8 @@ func NewPlugin(name, version, checksum, runPath string) (*Plugin, error) {
 		return nil, err
 	}
 	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pgid: 0}
-	p := Plugin{cmd: c, name: name, version: version, checksum: checksum}
+	exited := atomic.Value{}
+	exited.Store(false)
+	p := Plugin{cmd: c, name: name, version: version, checksum: checksum, exited: exited}
 	return &p, nil
 }
