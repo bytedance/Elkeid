@@ -112,7 +112,7 @@ func Run() {
 	for {
 		conn, err := s.l.Accept()
 		if err != nil {
-			zap.S().Panicf("Accept connect error: %v", err)
+			zap.S().Errorf("Accept connect error: %v", err)
 		}
 		go func() {
 			r := msgp.NewReader(conn)

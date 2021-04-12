@@ -4,5 +4,5 @@
 pub const KO_URL: &[&str] = &["http://example.com/download/ko/"];
 pub const NAME: &str = "hids_driver";
 pub const PIPE_PATH: &str = "/proc/hids_driver/1";
-pub const SOCKET_PATH: &str = "/etc/hids/plugin.sock";
+pub const SOCKET_PATH: &str = "../plugin.sock";
 pub const VERSION: &str = "1.5.0.0";
