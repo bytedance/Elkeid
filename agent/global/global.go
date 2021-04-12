@@ -36,10 +36,10 @@ var (
 
 func init() {
 	GrpcChannel = make(chan []*Record, 1000)
-	id, err := ioutil.ReadFile("machine-id")
+	id, err := ioutil.ReadFile("agent-id")
 	if err != nil {
 		AgentID = uuid.New().String()
-		err = ioutil.WriteFile("machine-id", []byte(AgentID), 0700)
+		err = ioutil.WriteFile("agent-id", []byte(AgentID), 0700)
 		if err != nil {
 			AgentID = "PLACEHOLDER-WRITE-AGENT-ID-ERROR-" + err.Error()
 			fmt.Fprintf(os.Stderr, "Failed to write agent id file:%v", err)
@@ -48,7 +48,7 @@ func init() {
 		_, err = uuid.Parse(string(id))
 		if err != nil {
 			AgentID = uuid.New().String()
-			err = ioutil.WriteFile("machine-id", []byte(AgentID), 0700)
+			err = ioutil.WriteFile("agent-id", []byte(AgentID), 0700)
 			if err != nil {
 				AgentID = "PLACEHOLDER-WRITE-AGENT-ID-ERROR-" + err.Error()
 				fmt.Fprintf(os.Stderr, "Failed to write agent id file:%v", err)
