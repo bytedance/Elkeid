@@ -21,7 +21,7 @@ Elkeid Agent基于Golang构建，但其他功能插件可以用不同的语言�
 为了功能的完整性，你可能需要以root权限运行Elkeid Agent。
 
 ## 需要的编译环境
-* Golang 1.15(推荐)
+* Golang 1.16(必需)
 ## 快速开始
 ```
 git clone --recursive https://github.com/bytedance/Elkeid
@@ -82,7 +82,7 @@ Agent将会产生一个同步生产者去发送数据到Kafka，在此之前请�
 
 更加具体的日志配置，请修改`main`函数中的相应日志选项。所有等级大于等于Error的日志都将会被转发到[数据输出](#数据输出)中。
 ## 配置文件
-当前，处于测试目的，我们提供了一个配置文件去控制Agent中插件的添加与删除。这将会带来较大的安全风险，所以请不要在生产环境中使用。
+当前，出于测试目的，我们提供了一个配置文件去控制Agent中插件的添加与删除。这将会带来较大的安全风险，所以请不要在生产环境中使用。
 
 当Agent开始运行时，`config`参数中所配置的文件(默认是Agent工作目录下的`config.yaml`)将会被监视(通过inotify)。每当文件的修改事件被触发，配置文件都会被重新解析并与当前加载的Agent插件列表进行对比，进而实现对已加载插件的动态修改。请注意，不要使用类似vim/gedit等工具进行修改，因为它们[不会触发inotify的修改事件](https://stackoverflow.com/questions/13312794/inotify-dont-treat-vim-editting-as-a-modification-event)。
 
