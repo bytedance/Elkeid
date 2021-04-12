@@ -6,7 +6,7 @@ maintainers = ["zhanglei.sec@bytedance.com"]
 ko_url = ["http://example.com/download/ko/"]
 pipe_path = "/proc/hids_driver/1"
 name = "hids_driver"
-socket_path = "/etc/hids/plugin.sock"
+socket_path = "..plugin.sock"
 
 [structures.execve]
 # common_fields contains [uid,data_type,exe,pid,ppid,pgid,tgid,sid,comm,nodename,sessionid] from kernel,[username,timestamp,exe_hash,ppid_argv,pgid_argv,argv,pid_tree] from user.
