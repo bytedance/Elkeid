@@ -9,7 +9,7 @@ ko_url = [
 "https://lf9-elkeid.bytetos.com/elkeid-download/ko/",
 "https://lf26-elkeid.bytetos.com/elkeid-download/ko/"]
 pipe_path = "/proc/hids_driver/1"
-name = "elkeid-driver"
+name = "hids_driver"
 socket_path = "../plugin.sock"
 
 [structures.execve]
