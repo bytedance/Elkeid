@@ -4,12 +4,12 @@ maintainers = ["zhanglei.sec@bytedance.com"]
 
 [config]
 ko_url = [
-"lf3-elkeid.bytetos.com/elkeid-download/ko/",
-"lf6-elkeid.bytetos.com/elkeid-download/ko/",
-"lf9-elkeid.bytetos.com/elkeid-download/ko/",
-"lf26-elkeid.bytetos.com/elkeid-download/ko/"]
+"https://lf3-elkeid.bytetos.com/elkeid-download/ko/",
+"https://lf6-elkeid.bytetos.com/elkeid-download/ko/",
+"https://lf9-elkeid.bytetos.com/elkeid-download/ko/",
+"https://lf26-elkeid.bytetos.com/elkeid-download/ko/"]
 pipe_path = "/proc/hids_driver/1"
-name = "hids_driver"
+name = "elkeid-driver"
 socket_path = "../plugin.sock"
 
 [structures.execve]

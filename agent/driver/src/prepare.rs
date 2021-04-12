@@ -138,8 +138,8 @@ pub fn prepare_ko() -> Result<()> {
     // version is different. download the dpkg package and install
     for i in KO_URL {
         // gen download link
-        let checksum_url = format!("{}{}-{}-{}.sha256", i, NAME, VERSION, kernel_version);
-        let ko_url = format!("{}{}-{}-{}.ko", i, NAME, VERSION, kernel_version);
+        let checksum_url = format!("{}{}_{}_{}.sha256", i, NAME, VERSION,kernel_version);
+        let ko_url = format!("{}{}_{}_{}.ko", i, NAME, VERSION kernel_version);
 
         info!("Downloading ko from {}", ko_url);
 
