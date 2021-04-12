@@ -1,4 +1,4 @@
-package health
+package report
 
 import (
 	"encoding/json"
@@ -8,40 +8,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/bytedance/Elkeid/agent/common"
+	"github.com/bytedance/Elkeid/agent/global"
 	"github.com/bytedance/Elkeid/agent/plugin"
-	"github.com/bytedance/Elkeid/agent/spec"
 	"github.com/bytedance/Elkeid/agent/transport"
 	"github.com/prometheus/procfs"
 	"go.uber.org/zap"
 )
-
-func getMemoryMap() map[string]string {
-	memoryMap := make(map[string]string, 20)
-	memoryStats := runtime.MemStats{}
-	runtime.ReadMemStats(&memoryStats)
-	memoryMap["data_type"] = "1003"
-	memoryMap["alloc"] = strconv.FormatUint(memoryStats.Alloc, 10)
-	memoryMap["total_alloc"] = strconv.FormatUint(memoryStats.TotalAlloc, 10)
-	memoryMap["sys"] = strconv.FormatUint(memoryStats.Sys, 10)
-	memoryMap["lookups"] = strconv.FormatUint(memoryStats.Lookups, 10)
-	memoryMap["mallocs"] = strconv.FormatUint(memoryStats.Mallocs, 10)
-	memoryMap["frees"] = strconv.FormatUint(memoryStats.Frees, 10)
-	memoryMap["heap_alloc"] = strconv.FormatUint(memoryStats.HeapAlloc, 10)
-	memoryMap["heap_sys"] = strconv.FormatUint(memoryStats.HeapSys, 10)
-	memoryMap["heap_idle"] = strconv.FormatUint(memoryStats.HeapIdle, 10)
-	memoryMap["heap_inuse"] = strconv.FormatUint(memoryStats.HeapInuse, 10)
-	memoryMap["heap_released"] = strconv.FormatUint(memoryStats.HeapReleased, 10)
-	memoryMap["heap_objects"] = strconv.FormatUint(memoryStats.HeapObjects, 10)
-	memoryMap["stack_inuse"] = strconv.FormatUint(memoryStats.StackInuse, 10)
-	memoryMap["stack_sys"] = strconv.FormatUint(memoryStats.StackSys, 10)
-	memoryMap["mspan_inuse"] = strconv.FormatUint(memoryStats.MSpanInuse, 10)
-	memoryMap["mspan_sys"] = strconv.FormatUint(memoryStats.MSpanSys, 10)
-	memoryMap["buckhash_sys"] = strconv.FormatUint(memoryStats.BuckHashSys, 10)
-	memoryMap["gc_sys"] = strconv.FormatUint(memoryStats.GCSys, 10)
-	memoryMap["other_sys"] = strconv.FormatUint(memoryStats.OtherSys, 10)
-	return memoryMap
-}
 
 type Heart struct {
 	io       uint64
@@ -54,35 +26,29 @@ func (h *Heart) Beat() {
 	report := make(map[string]string)
 	p, err := procfs.Self()
 	if err != nil {
-		zap.Error(err)
-		return
+		zap.S().Panic(err)
 	}
 	stat, err := p.Stat()
 	if err != nil {
-		zap.Error(err)
-		return
+		zap.S().Panic(err)
 	}
 	io, err := p.IO()
 	if err != nil {
-		zap.Error(err)
-		return
+		zap.S().Panic(err)
 	}
 	sys, err := procfs.NewDefaultFS()
 	if err != nil {
-		zap.Error(err)
-		return
+		zap.S().Panic(err)
 	}
 	sysStat, err := sys.Stat()
 	if err != nil {
-		zap.Error(err)
-		return
+		zap.S().Panic(err)
 	}
 	sysMem, err := sys.Meminfo()
 	if err != nil {
-		zap.Error(err)
-		return
+		zap.S().Panic(err)
 	}
-	if stat.RSS*os.Getpagesize() > 100000000 {
+	if stat.RSS*os.Getpagesize() > 100*1024*1024 {
 		if time.Now().Sub(h.lastFree) <= time.Minute*5 {
 			zap.S().Panic("Force GC frequency too fast")
 		}
@@ -92,9 +58,11 @@ func (h *Heart) Beat() {
 			zap.S().Panic(err)
 		}
 	}
-	report["kernel_version"] = common.KernelVersion
-	report["distro"] = common.Distro
+	report["kernel_version"] = global.KernelVersion
+	report["platform"] = global.Platform
+	report["platform_version"] = global.PlatformVersion
 	report["memory"] = strconv.Itoa(stat.RSS * os.Getpagesize())
+	report["net_type"] = transport.NetMode
 	report["data_type"] = "1000"
 	report["timestamp"] = strconv.FormatInt(time.Now().Unix(), 10)
 	if h.sys == 0 {
@@ -149,19 +117,23 @@ func (h *Heart) Beat() {
 	encodedPlugins, err := json.Marshal(plugins)
 	report["plugins"] = string(encodedPlugins)
 	zap.S().Infof("%+v", report)
-	err = transport.Send(&spec.Data{report})
-	if err != nil {
-		zap.S().Error(err)
+	select {
+	case global.GrpcChannel <- []*global.Record{{Message: report}}:
+	default:
+		zap.S().Panic("Detected channel is full")
 	}
 	h.sys = getTotal(sysStat)
 	h.cpu = stat.CPUTime()
 	h.io = io.ReadBytes + io.WriteBytes
 }
-func getTotal(sysStat procfs.Stat) float64 {
-	return sysStat.CPUTotal.Idle + sysStat.CPUTotal.IRQ + sysStat.CPUTotal.Iowait + sysStat.CPUTotal.Nice + sysStat.CPUTotal.SoftIRQ + sysStat.CPUTotal.System + sysStat.CPUTotal.User
-}
 
-func Start() {
+func Run() {
+	defer func() {
+		if err := recover(); err != nil {
+			time.Sleep(time.Second)
+			panic(err)
+		}
+	}()
 	ticker := time.NewTicker(time.Second * 30)
 	h := &Heart{}
 	h.Beat()
@@ -171,4 +143,7 @@ func Start() {
 			h.Beat()
 		}
 	}
+}
+func getTotal(sysStat procfs.Stat) float64 {
+	return sysStat.CPUTotal.Idle + sysStat.CPUTotal.IRQ + sysStat.CPUTotal.Iowait + sysStat.CPUTotal.Nice + sysStat.CPUTotal.SoftIRQ + sysStat.CPUTotal.System + sysStat.CPUTotal.User
 }
