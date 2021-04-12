@@ -39,9 +39,9 @@ Agent支持采用以下一种或多种方式连接到Server：
 当建立连接时，首先会尝试从`sd-0.pri`或`sd-1.pri`获取Server的地址并建立连接；如果都失败，便尝试直接与`lb-0.pri`或`lb-1.pri`建立连接；如果依然连接失败，会直接与`lb-0.pub`或`lb-1.pub`建立连接。
 ## 与Elkeid Driver协同工作
 Elkeid Driver作为Elkeid Agent的一个Plugin运行，由Manager API控制下发，具体请参见对应章节：
-> 如何编译 Elkeid Driver
+> [如何编译 Elkeid Driver]()
 >
-> 如何使用 Manager API
+> [如何使用 Manager API]()
 ## 需要的编译环境
 * Golang 1.16(必需)
 ## 快速开始
