@@ -1,0 +1,64 @@
+############################# Manager HTTP Settings #############################
+# port: the address the http server listens on.
+# innerauth:The encryption key for communication between hids manage centers.
+#           It is recommended to randomly generate a new one during each deployment.
+#           Each machine in the cluster needs to be configured consistently.
+# apiauth:
+#    enable: whether to enable token authentication for http
+#    secret: the initial key of apiauth,
+#            it is recommended to randomly generate a new one every time you deploy.(notice key is case-insensitive)
+http:
+  port: 6701
+  innerauth:
+    VUjQhmNlUHDotni9: sfhSDLz124J80ioGIyuWsTX9lDxwFdpk
+  apiauth:
+    enable: true
+    secret: ASpQO2kzFcosGHavUP9BJkn5pcFGIjeg
+
+############################# Manager Log Settings #############################
+# log.path: where to write logging data.
+# log.loglevel: where to write logging data.
+#         DebugLevel = -1
+#         InfoLevel = 0
+#         WarnLevel = 1
+#         ErrorLevel = 2
+log:
+  path: ./log/svr.log
+  loglevel: 0
+
+############################# Service Discovery Settings #############################
+# addr: addr list of service discovery.
+# name: the name registered to the service discovery, used to uniquely identify the hids manager.
+# credentials:  use to identify the manager when requesting the sd,
+#               ak/sk must be added to the configuration file for service discovery(notice ak is case-insensitive)
+sd:
+  addrs: ["127.0.0.1:8088"]
+  name: hids_manage
+  credentials:
+    ak: vEVL5zEvSiXDY1EI
+    sk: 2FfQR1FzxRqJRraOw4DGFH7UJieccrGi
+
+############################# Agent Center Settings #############################
+# name: the name of the Agent Center registered to the service discovery,which used to find the Agent Center address.
+# credentials:  use to identify the manager when requesting the server,
+#               ak/sk must be added to the configuration file of the Agent Center.(notice ak is case-insensitive)
+server:
+  name: hids_manage
+  credentials:
+    ak: 0376b2a4c481sef5
+    sk: 60b29se7164027072799f565eb964d91
+
+
+############################# Redis Settings #############################
+# addrs: addr list.
+# passwd: password,which can be empty.
+redis:
+  addrs:
+    - 127.0.0.1:6379
+  passwd:
+
+
+############################# Mongodb Settings #############################
+mongo:
+  uri: mongodb://hids:I7ILUz7WhOJUWygy@127.0.0.1:27000/hids_server?authSource=hids_server
+  dbname: hids_server

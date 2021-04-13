@@ -1,0 +1,104 @@
+[
+  {
+    "collection": "agent_heartbeat",
+    "index": [
+      {
+        "keys": {
+          "agent_id": 1
+        },
+        "unique": true
+      },            {
+        "keys": {
+          "first_heartbeat_time": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "last_heartbeat_time": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "tags": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv4": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "agent_task",
+    "index": [
+      {
+        "keys": {
+          "task_id": 1
+        },
+        "unique": true
+      },            {
+        "keys": {
+          "task_type": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "task_status": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "agent_subtask",
+    "index": [
+      {
+        "keys": {
+          "token": 1
+        },
+        "unique": true
+      },            {
+        "keys": {
+          "name": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "agent_id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "status": 1
+        },
+        "unique": false
+      }
+    ]
+  }
+]
