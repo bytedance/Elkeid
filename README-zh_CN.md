@@ -18,7 +18,7 @@ Elkeid 包含三个主要组件：
 
 ## 系统架构
 
-<img src="server/docs/Elkeid.png"/>
+<img src="Elkeid.png"/>
 
 目前，我们端上开源了Elkeid Agent && Driver，这两个组件已经在生产环境中部署和测试了数月，后台我们开源了AgentCenter，ServiceDiscovery，Manager，提供了基础的后台框架。欢迎任何建议和合作。
 
