@@ -25,6 +25,7 @@ Currently, we are only open-sourcing Elkeid Agent && Driver. Both components hav
 
 * #### [Elkeid Driver](https://github.com/bytedance/Elkeid/tree/main/driver)
 * #### [Elkeid Agent](https://github.com/bytedance/Elkeid/tree/main/agent)
+* #### [Elkeid Server](https://github.com/bytedance/Elkeid/tree/main/server)
 
 ## To be Continued 
 * Elkeid Server is under development. More Features are on the way.
