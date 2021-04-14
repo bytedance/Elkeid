@@ -12,6 +12,7 @@ Elkeid Server contains 4 modules:：
 2. In ServiceDiscovery (SD), each service module needs to register with SD regularly and synchronize service information, so as to ensure that the instances in each service module are visible to each other and facilitate direct communication. Since SD maintains the status information of each registered service, when a service user requests service discovery, SD will perform load balancing. For example, the Agent requests a list of AC instances, and SD directly returns the AC instance with the least load pressure.
 3. Manager is responsible for managing the entire back-end and providing related query and management interfaces. Including the management of the AC cluster, monitoring the status of the AC, and managing all agents through the AC, collecting the running status of the agent, and delivering tasks to the agent. At the same time, the manager also manages real-time and offline computing clusters.
 4. The real-time/offline computing module consumes the data collected by AgentCenter in the kafka cluster for real-time and offline analysis and processing. (This part is not open source yet)
+
 In short, AgentCenter collects Agent data, real-time/offline calculation module analyzes and processes the collected data, Manager manages AgentCenter and computing module, ServiceDiscovery connects all services and nodes.
 
 ## Features
