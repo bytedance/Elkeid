@@ -1,0 +1,160 @@
+connect01 connect01
+connect02 connect02
+execve01 execve01
+execve02 execve02
+execve03 execve03
+execve04 execve04
+execve05 execve05 -i 5 -n 32
+execveat01 execveat01
+execveat02 execveat02
+execveat03 execveat03
+bind01 bind01
+bind02 bind02
+bind03 bind03
+bind04 bind04
+bind05 bind05
+bind06 bind06
+mbind01 mbind01
+mbind02 mbind02
+mbind03 mbind03
+mbind04 mbind04
+fsopen01 fsopen01
+fsopen02 fsopen02
+mq_open01 mq_open01
+open01 open01
+open01A symlink01 -T open01
+open02 open02
+open03 open03
+open04 open04
+open05 open05
+open06 open06
+open07 open07
+open08 open08
+open09 open09
+open10 open10
+open11 open11
+open12 open12
+open13 open13
+open14 open14
+openat01 openat01
+openat02 openat02
+openat03 openat03
+openat201 openat201
+openat202 openat202
+openat203 openat203
+open_by_handle_at01 open_by_handle_at01
+open_by_handle_at02 open_by_handle_at02
+open_tree01 open_tree01
+open_tree02 open_tree02
+pidfd_open01 pidfd_open01
+pidfd_open02 pidfd_open02
+pidfd_open03 pidfd_open03
+perf_event_open01 perf_event_open01
+perf_event_open02 perf_event_open02
+ptrace01 ptrace01
+ptrace02 ptrace02
+ptrace03 ptrace03
+ptrace04 ptrace04
+ptrace05 ptrace05
+ptrace07 ptrace07
+ptrace08 ptrace08
+ptrace09 ptrace09
+ptrace10 ptrace10
+ptrace11 ptrace11
+mprotect01 mprotect01
+mprotect02 mprotect02
+mprotect03 mprotect03
+mprotect04 mprotect04
+rename01 rename01
+rename02 rename02
+rename03 rename03
+rename04 rename04
+rename05 rename05
+rename06 rename06
+rename07 rename07
+rename08 rename08
+rename09 rename09
+rename10 rename10
+rename11 rename11
+rename12 rename12
+rename13 rename13
+rename14 rename14
+renameat01 renameat01
+renameat201 renameat201
+renameat202 renameat202 -i 10
+chdir01A symlink01 -T chdir01
+chmod01A symlink01 -T chmod01
+link01 symlink01 -T link01
+link02 link02
+link03 link03
+link04 link04
+link05 link05
+link06 link06
+link07 link07
+link08 link08
+linkat01 linkat01
+linkat02 linkat02
+lstat01A symlink01 -T lstat01
+lstat01A_64 symlink01 -T lstat01_64
+mkdir05A symlink01 -T mkdir05
+mq_unlink01 mq_unlink01
+prot_hsymlinks prot_hsymlinks
+readlink01A symlink01 -T readlink01
+readlink01 readlink01
+readlink03 readlink03
+readlinkat01 readlinkat01
+readlinkat02 readlinkat02
+rename01A symlink01 -T rename01
+rmdir03A symlink01 -T rmdir03
+stat04 symlink01 -T stat04
+stat04_64 symlink01 -T stat04_64
+symlink01 symlink01
+symlink02 symlink02
+symlink03 symlink03
+symlink04 symlink04
+symlink05 symlink05
+symlinkat01 symlinkat01
+unlink01 symlink01 -T unlink01
+unlink05 unlink05
+unlink07 unlink07
+unlink08 unlink08
+unlinkat01 unlinkat01
+utime01A symlink01 -T utime01
+setsid01 setsid01
+prctl01 prctl01
+prctl02 prctl02
+prctl03 prctl03
+prctl04 prctl04
+prctl05 prctl05
+prctl06 prctl06
+prctl07 prctl07
+prctl08 prctl08
+prctl09 prctl09
+memfd_create01 memfd_create01
+memfd_create02 memfd_create02
+memfd_create03 memfd_create03
+memfd_create04 memfd_create04
+accept01 accept01
+accept02 accept02
+accept4_01 accept4_01
+kill02 kill02
+kill03 kill03
+kill05 kill05
+kill06 kill06
+kill07 kill07
+kill08 kill08
+kill09 kill09
+kill10 kill10
+kill11 kill11
+kill12 kill12
+tgkill01 tgkill01
+tgkill02 tgkill02
+tgkill03 tgkill03
+tkill01 tkill01
+tkill02 tkill02
+exit01 exit01
+exit02 exit02
+exit_group01 exit_group01
+rmdir01 rmdir01
+rmdir02 rmdir02
+rmdir03 rmdir03
