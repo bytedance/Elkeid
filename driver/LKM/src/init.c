@@ -81,7 +81,7 @@ module_init(kprobes_init);
 module_exit(kprobes_exit);
 
 MODULE_INFO(homepage, "https://github.com/bytedance/Elkeid");
-MODULE_VERSION("1.5.0.0");
+MODULE_VERSION("1.6.0.0");
 
 //MODULE_LICENSE("GPLv3");
 MODULE_LICENSE("GPL");
