@@ -19,7 +19,7 @@ Now we are more than happy to announce the open-source of Elkeid Agent and Elkei
 
 ## System Architecture
 
-<img src="server/docs/Elkeid.png"/>
+<img src="Elkeid.png"/>
 
 Currently, we are only open-sourcing Elkeid Agent && Driver. Both components have been deployed and tested in production environments for months. We welcome any suggestions and cooperation.
 
