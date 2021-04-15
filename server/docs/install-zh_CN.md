@@ -15,7 +15,7 @@
 ```
 git clone https://github.com/bytedance/Elkeid.git
 cd Elkeid/server/build && ./cert_gen.sh elkeid.com hids-svr elkeid@elkeid.com
-cp cert/* ../agent_center/conf/ 
+cp cert/* ../agent_center/conf/
 ```
 2. 替换Agent证书。
 ```
@@ -23,8 +23,10 @@ cp cert/ca.crt cert/client.crt cert/client.key ../../agent/transport/connection
 ```
 
 ## 编译elkeid Server二进制
+前置条件：Golang (建议使用版本>=1.15)
+> Golang的安装请参照官方文档：https://golang.org/doc/install
 ```
-cd server/build && ./build.sh
+cd Elkeid/server/build && ./build.sh
 ```
 编译后生成三个压缩包，将他们拷贝到对应的机器目录上进行部署
 ```
@@ -112,7 +114,13 @@ db.auth('hids', 'I7ILUz7WhOJUWygy')
 
 ### 部署 KAFKA
 #### Java安装
-先安装JAVA：https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html
+> 先安装JAVA，可参考：https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html
+以Debian9为例，这里演示单机部署
+```
+sudo apt-get update
+sudo apt-get install default-jre
+sudo apt-get install default-jdk
+```
 确认JAVA已经安装成功
 ```
 java -version
