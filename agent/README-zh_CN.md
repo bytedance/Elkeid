@@ -85,7 +85,7 @@ go build -o output/elkeid-agent
 > 不同机器间需要分发产物，在这里不做阐述
 ```
 mkdir -p /etc/elkeid
-cp elkeid-agent /etc/elkeid
+cp output/elkeid-agent /etc/elkeid
 ```
 后台启动即可：
 > 在这里没有提供进程守护与自保护，如有需要可以自行通过systemd/cron实现，这里不做要求
@@ -115,10 +115,8 @@ cat /etc/elkeid/log/elkeid-agent.log
 ### 编译插件
 在Agent启动完毕且状态正常后，说明Agent-Server已经建立了稳定的通信链路，但Agent本身只具有监控/通信/控制的功能，其他安全功能承载在其他插件上，所以我们需要对插件进行编译并下发。
 > 我们提供了预编好的插件，如果采用预编译插件可以直接跳过这步。
-* driver插件
-参见[driver插件编译](driver/README-zh_CN.md#编译)
-* jouran_watcher插件
-参见[jouran_watcher插件编译](jouran_watcher/README-zh_CN.md#编译)
+* driver插件：参见[driver插件编译](driver/README-zh_CN.md#编译)
+* jouran_watcher插件：参见[jouran_watcher插件编译](jouran_watcher/README-zh_CN.md#编译)
 编译完成后，你应该可以获得`driver`与`jouran_watcher`两个二进制文件。
 ### 上传插件
 计算上述两个二进制文件sha256，并上传至可访问的文件服务器，并获得相应的下载地址：
