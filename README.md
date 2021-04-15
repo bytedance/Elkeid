@@ -42,3 +42,4 @@ Lark Group
 ## License
 * Elkeid Driver: GPLv2
 * Elkeid Agent: Apache-2.0
+* Elkeid Server: Apache-2.0
