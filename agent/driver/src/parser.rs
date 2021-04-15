@@ -14,410 +14,410 @@ use serde::Serialize;
 use users::{Users, UsersCache};
 
 #[derive(Debug, Serialize)]
-struct CreateFile<'a> {
-    sid: &'a str,
-    pid_tree: &'a str,
-    pns: &'a str,
-    ppid: &'a str,
-    uid: &'a str,
-    sip: &'a str,
-    data_type: &'a str,
-    sport: &'a str,
-    socket_pid: &'a str,
-    socket_argv: &'a str,
-    comm: &'a str,
-    sessionid: &'a str,
-    root_pns: &'a str,
-    username: &'a str,
-    exe_hash: &'a str,
-    ppid_argv: &'a str,
-    pgid_argv: &'a str,
-    dip: &'a str,
-    pid: &'a str,
-    pgid: &'a str,
-    timestamp: &'a str,
-    exe: &'a str,
-    dport: &'a str,
-    sa_family: &'a str,
-    file_path: &'a str,
-    tgid: &'a str,
-    nodename: &'a str,
-    argv: &'a str,
-}
-
-#[derive(Debug, Serialize)]
-struct ProcFileHook<'a> {
-    module_name: &'a str,
-    data_type: &'a str,
-    timestamp: &'a str,
-    hidden: &'a str,
-}
-
-#[derive(Debug, Serialize)]
 struct LkmHidden<'a> {
+    hidden: &'a str,
     module_name: &'a str,
     timestamp: &'a str,
     data_type: &'a str,
-    hidden: &'a str,
-}
-
-#[derive(Debug, Serialize)]
-struct Prctl<'a> {
-    comm: &'a str,
-    uid: &'a str,
-    pid_tree: &'a str,
-    sessionid: &'a str,
-    pgid: &'a str,
-    username: &'a str,
-    exe: &'a str,
-    exe_hash: &'a str,
-    pid: &'a str,
-    ppid: &'a str,
-    root_pns: &'a str,
-    sid: &'a str,
-    option: &'a str,
-    new_name: &'a str,
-    nodename: &'a str,
-    pns: &'a str,
-    timestamp: &'a str,
-    ppid_argv: &'a str,
-    pgid_argv: &'a str,
-    argv: &'a str,
-    tgid: &'a str,
-    data_type: &'a str,
-}
-
-#[derive(Debug, Serialize)]
-struct Link<'a> {
-    run_path: &'a str,
-    root_pns: &'a str,
-    tgid: &'a str,
-    timestamp: &'a str,
-    sid: &'a str,
-    new_name: &'a str,
-    ppid_argv: &'a str,
-    pns: &'a str,
-    pgid_argv: &'a str,
-    old_name: &'a str,
-    data_type: &'a str,
-    argv: &'a str,
-    pid_tree: &'a str,
-    pgid: &'a str,
-    exe_hash: &'a str,
-    nodename: &'a str,
-    username: &'a str,
-    pid: &'a str,
-    sessionid: &'a str,
-    exe: &'a str,
-    ppid: &'a str,
-    uid: &'a str,
-    comm: &'a str,
-}
-
-#[derive(Debug, Serialize)]
-struct UpdateCred<'a> {
-    pgid: &'a str,
-    pgid_argv: &'a str,
-    res: &'a str,
-    old_uid: &'a str,
-    exe: &'a str,
-    ppid: &'a str,
-    comm: &'a str,
-    nodename: &'a str,
-    root_pns: &'a str,
-    exe_hash: &'a str,
-    argv: &'a str,
-    sid: &'a str,
-    old_username: &'a str,
-    uid: &'a str,
-    data_type: &'a str,
-    pid: &'a str,
-    pns: &'a str,
-    tgid: &'a str,
-    timestamp: &'a str,
-    ppid_argv: &'a str,
-    pid_tree: &'a str,
-    username: &'a str,
-    sessionid: &'a str,
-}
-
-#[derive(Debug, Serialize)]
-struct Connect<'a> {
-    ppid_argv: &'a str,
-    pgid_argv: &'a str,
-    data_type: &'a str,
-    argv: &'a str,
-    sid: &'a str,
-    pns: &'a str,
-    pid: &'a str,
-    dport: &'a str,
-    pid_tree: &'a str,
-    username: &'a str,
-    sport: &'a str,
-    nodename: &'a str,
-    exe_hash: &'a str,
-    connect_type: &'a str,
-    sa_family: &'a str,
-    comm: &'a str,
-    ppid: &'a str,
-    res: &'a str,
-    dip: &'a str,
-    root_pns: &'a str,
-    tgid: &'a str,
-    uid: &'a str,
-    pgid: &'a str,
-    sip: &'a str,
-    exe: &'a str,
-    sessionid: &'a str,
-    timestamp: &'a str,
-}
-
-#[derive(Debug, Serialize)]
-struct Execve<'a> {
-    nodename: &'a str,
-    ssh: &'a str,
-    sport: &'a str,
-    pid_tree: &'a str,
-    timestamp: &'a str,
-    exe: &'a str,
-    ld_preload: &'a str,
-    pgid_argv: &'a str,
-    stdout: &'a str,
-    stdin: &'a str,
-    data_type: &'a str,
-    sip: &'a str,
-    exe_hash: &'a str,
-    comm: &'a str,
-    socket_pid: &'a str,
-    pgid: &'a str,
-    uid: &'a str,
-    run_path: &'a str,
-    dport: &'a str,
-    res: &'a str,
-    pid: &'a str,
-    sessionid: &'a str,
-    pns: &'a str,
-    root_pns: &'a str,
-    username: &'a str,
-    dip: &'a str,
-    tty: &'a str,
-    ppid: &'a str,
-    tgid: &'a str,
-    socket_argv: &'a str,
-    sid: &'a str,
-    argv: &'a str,
-    ppid_argv: &'a str,
-    sa_family: &'a str,
-}
-
-#[derive(Debug, Serialize)]
-struct Rename<'a> {
-    timestamp: &'a str,
-    ppid_argv: &'a str,
-    root_pns: &'a str,
-    new_name: &'a str,
-    pid: &'a str,
-    ppid: &'a str,
-    run_path: &'a str,
-    pgid: &'a str,
-    pgid_argv: &'a str,
-    old_name: &'a str,
-    tgid: &'a str,
-    sessionid: &'a str,
-    pns: &'a str,
-    username: &'a str,
-    argv: &'a str,
-    exe: &'a str,
-    comm: &'a str,
-    exe_hash: &'a str,
-    pid_tree: &'a str,
-    sid: &'a str,
-    nodename: &'a str,
-    data_type: &'a str,
-    uid: &'a str,
-}
-
-#[derive(Debug, Serialize)]
-struct Dns<'a> {
-    dip: &'a str,
-    rcode: &'a str,
-    ppid_argv: &'a str,
-    comm: &'a str,
-    nodename: &'a str,
-    pgid: &'a str,
-    sip: &'a str,
-    dport: &'a str,
-    exe_hash: &'a str,
-    timestamp: &'a str,
-    root_pns: &'a str,
-    opcode: &'a str,
-    username: &'a str,
-    sa_family: &'a str,
-    query: &'a str,
-    pid: &'a str,
-    qr: &'a str,
-    tgid: &'a str,
-    data_type: &'a str,
-    exe: &'a str,
-    sessionid: &'a str,
-    pgid_argv: &'a str,
-    uid: &'a str,
-    pns: &'a str,
-    ppid: &'a str,
-    sid: &'a str,
-    sport: &'a str,
-    argv: &'a str,
-    pid_tree: &'a str,
 }
 
 #[derive(Debug, Serialize)]
 struct MemfdCreate<'a> {
-    pgid_argv: &'a str,
-    sid: &'a str,
-    sessionid: &'a str,
-    ppid_argv: &'a str,
-    comm: &'a str,
-    fdname: &'a str,
-    pgid: &'a str,
-    username: &'a str,
-    nodename: &'a str,
     flags: &'a str,
-    ppid: &'a str,
-    pns: &'a str,
-    root_pns: &'a str,
-    exe: &'a str,
-    data_type: &'a str,
-    exe_hash: &'a str,
-    argv: &'a str,
-    pid_tree: &'a str,
     uid: &'a str,
-    tgid: &'a str,
-    timestamp: &'a str,
-    pid: &'a str,
-}
-
-#[derive(Debug, Serialize)]
-struct Ptrace<'a> {
-    pns: &'a str,
-    data_type: &'a str,
-    ppid_argv: &'a str,
-    ptrace_request: &'a str,
-    data: &'a str,
-    pid_tree: &'a str,
-    uid: &'a str,
-    pid: &'a str,
     nodename: &'a str,
-    target_pid: &'a str,
-    ppid: &'a str,
-    timestamp: &'a str,
-    addr: &'a str,
-    pgid: &'a str,
-    exe_hash: &'a str,
-    comm: &'a str,
-    sessionid: &'a str,
-    argv: &'a str,
+    fdname: &'a str,
     pgid_argv: &'a str,
+    comm: &'a str,
+    pns: &'a str,
+    timestamp: &'a str,
+    data_type: &'a str,
+    argv: &'a str,
+    ppid: &'a str,
+    sessionid: &'a str,
+    ppid_argv: &'a str,
     sid: &'a str,
-    exe: &'a str,
     tgid: &'a str,
+    pgid: &'a str,
     root_pns: &'a str,
+    exe: &'a str,
     username: &'a str,
+    exe_hash: &'a str,
+    pid_tree: &'a str,
+    pid: &'a str,
 }
 
 #[derive(Debug, Serialize)]
-struct SyscallHook<'a> {
-    data_type: &'a str,
-    module_name: &'a str,
+struct ProcFileHook<'a> {
     timestamp: &'a str,
     hidden: &'a str,
-    syscall_number: &'a str,
+    data_type: &'a str,
+    module_name: &'a str,
 }
 
 #[derive(Debug, Serialize)]
-struct Setsid<'a> {
-    exe_hash: &'a str,
-    argv: &'a str,
+struct Link<'a> {
     pgid: &'a str,
+    exe: &'a str,
+    comm: &'a str,
     nodename: &'a str,
-    sessionid: &'a str,
+    username: &'a str,
+    exe_hash: &'a str,
+    pgid_argv: &'a str,
+    run_path: &'a str,
     ppid_argv: &'a str,
-    root_pns: &'a str,
-    pid: &'a str,
-    timestamp: &'a str,
     pid_tree: &'a str,
     tgid: &'a str,
-    pgid_argv: &'a str,
-    uid: &'a str,
-    exe: &'a str,
-    sid: &'a str,
-    comm: &'a str,
-    data_type: &'a str,
+    sessionid: &'a str,
     ppid: &'a str,
     pns: &'a str,
-    username: &'a str,
+    uid: &'a str,
+    sid: &'a str,
+    root_pns: &'a str,
+    data_type: &'a str,
+    new_name: &'a str,
+    argv: &'a str,
+    old_name: &'a str,
+    timestamp: &'a str,
+    pid: &'a str,
 }
 
 #[derive(Debug, Serialize)]
 struct Bind<'a> {
-    sip: &'a str,
-    data_type: &'a str,
-    res: &'a str,
-    ppid: &'a str,
     pid: &'a str,
-    nodename: &'a str,
-    sa_family: &'a str,
-    tgid: &'a str,
-    root_pns: &'a str,
-    timestamp: &'a str,
-    exe: &'a str,
-    sport: &'a str,
-    argv: &'a str,
+    sip: &'a str,
+    sessionid: &'a str,
+    data_type: &'a str,
     comm: &'a str,
     username: &'a str,
-    sessionid: &'a str,
-    pgid: &'a str,
-    pid_tree: &'a str,
-    sid: &'a str,
-    pgid_argv: &'a str,
-    uid: &'a str,
     exe_hash: &'a str,
+    argv: &'a str,
+    nodename: &'a str,
+    uid: &'a str,
+    res: &'a str,
+    timestamp: &'a str,
     ppid_argv: &'a str,
+    pgid: &'a str,
+    ppid: &'a str,
+    sa_family: &'a str,
+    pgid_argv: &'a str,
     pns: &'a str,
+    sid: &'a str,
+    root_pns: &'a str,
+    tgid: &'a str,
+    pid_tree: &'a str,
+    exe: &'a str,
+    sport: &'a str,
 }
 
 #[derive(Debug, Serialize)]
-struct InterruptsHook<'a> {
-    interrupts_number: &'a str,
+struct UpdateCred<'a> {
+    argv: &'a str,
+    sessionid: &'a str,
+    ppid: &'a str,
+    nodename: &'a str,
+    pns: &'a str,
+    old_username: &'a str,
+    exe_hash: &'a str,
+    exe: &'a str,
+    sid: &'a str,
+    old_uid: &'a str,
+    uid: &'a str,
+    data_type: &'a str,
+    root_pns: &'a str,
+    res: &'a str,
+    pgid: &'a str,
+    pid_tree: &'a str,
+    tgid: &'a str,
+    comm: &'a str,
     timestamp: &'a str,
+    ppid_argv: &'a str,
+    username: &'a str,
+    pgid_argv: &'a str,
+    pid: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+struct Rename<'a> {
+    tgid: &'a str,
+    nodename: &'a str,
+    pid: &'a str,
+    new_name: &'a str,
+    uid: &'a str,
+    pid_tree: &'a str,
+    sessionid: &'a str,
+    sid: &'a str,
+    exe_hash: &'a str,
+    username: &'a str,
+    data_type: &'a str,
+    argv: &'a str,
+    timestamp: &'a str,
+    pns: &'a str,
+    ppid: &'a str,
+    pgid: &'a str,
+    root_pns: &'a str,
+    comm: &'a str,
+    ppid_argv: &'a str,
+    pgid_argv: &'a str,
+    old_name: &'a str,
+    exe: &'a str,
+    run_path: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+struct Setsid<'a> {
+    tgid: &'a str,
+    sid: &'a str,
+    pgid_argv: &'a str,
+    username: &'a str,
+    argv: &'a str,
+    pns: &'a str,
+    sessionid: &'a str,
+    exe: &'a str,
+    timestamp: &'a str,
+    pid: &'a str,
+    comm: &'a str,
+    ppid: &'a str,
+    pid_tree: &'a str,
+    exe_hash: &'a str,
+    ppid_argv: &'a str,
+    root_pns: &'a str,
+    data_type: &'a str,
+    nodename: &'a str,
+    pgid: &'a str,
+    uid: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+struct Ptrace<'a> {
+    root_pns: &'a str,
+    timestamp: &'a str,
+    uid: &'a str,
+    pgid: &'a str,
+    sessionid: &'a str,
+    ppid: &'a str,
+    comm: &'a str,
+    addr: &'a str,
+    pid_tree: &'a str,
+    data_type: &'a str,
+    sid: &'a str,
+    data: &'a str,
+    pns: &'a str,
+    tgid: &'a str,
+    username: &'a str,
+    ptrace_request: &'a str,
+    pgid_argv: &'a str,
+    ppid_argv: &'a str,
+    exe: &'a str,
+    exe_hash: &'a str,
+    argv: &'a str,
+    pid: &'a str,
+    nodename: &'a str,
+    target_pid: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+struct SyscallHook<'a> {
+    timestamp: &'a str,
+    syscall_number: &'a str,
     data_type: &'a str,
     module_name: &'a str,
     hidden: &'a str,
 }
 
 #[derive(Debug, Serialize)]
-struct LoadModule<'a> {
-    pns: &'a str,
-    exe_hash: &'a str,
-    pid_tree: &'a str,
-    ppid_argv: &'a str,
+struct Execve<'a> {
+    dip: &'a str,
+    ld_preload: &'a str,
+    sip: &'a str,
+    socket_argv: &'a str,
+    stdin: &'a str,
     pgid: &'a str,
-    uid: &'a str,
     tgid: &'a str,
-    timestamp: &'a str,
-    data_type: &'a str,
-    argv: &'a str,
-    username: &'a str,
     sid: &'a str,
+    timestamp: &'a str,
+    sport: &'a str,
+    ssh: &'a str,
+    pid_tree: &'a str,
     pgid_argv: &'a str,
-    run_path: &'a str,
-    root_pns: &'a str,
-    ko_file: &'a str,
+    res: &'a str,
     sessionid: &'a str,
+    sa_family: &'a str,
     ppid: &'a str,
-    exe: &'a str,
+    uid: &'a str,
     pid: &'a str,
+    root_pns: &'a str,
+    data_type: &'a str,
+    ppid_argv: &'a str,
+    username: &'a str,
+    socket_pid: &'a str,
     comm: &'a str,
     nodename: &'a str,
+    argv: &'a str,
+    stdout: &'a str,
+    exe: &'a str,
+    dport: &'a str,
+    pns: &'a str,
+    run_path: &'a str,
+    exe_hash: &'a str,
+    tty: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+struct Prctl<'a> {
+    data_type: &'a str,
+    uid: &'a str,
+    ppid: &'a str,
+    pns: &'a str,
+    timestamp: &'a str,
+    ppid_argv: &'a str,
+    pid: &'a str,
+    tgid: &'a str,
+    sessionid: &'a str,
+    pid_tree: &'a str,
+    option: &'a str,
+    argv: &'a str,
+    pgid: &'a str,
+    exe_hash: &'a str,
+    comm: &'a str,
+    sid: &'a str,
+    username: &'a str,
+    new_name: &'a str,
+    exe: &'a str,
+    nodename: &'a str,
+    pgid_argv: &'a str,
+    root_pns: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+struct Connect<'a> {
+    pns: &'a str,
+    root_pns: &'a str,
+    nodename: &'a str,
+    res: &'a str,
+    pid: &'a str,
+    sid: &'a str,
+    pgid_argv: &'a str,
+    comm: &'a str,
+    connect_type: &'a str,
+    sport: &'a str,
+    ppid_argv: &'a str,
+    timestamp: &'a str,
+    exe: &'a str,
+    dport: &'a str,
+    exe_hash: &'a str,
+    uid: &'a str,
+    username: &'a str,
+    dip: &'a str,
+    argv: &'a str,
+    pid_tree: &'a str,
+    sa_family: &'a str,
+    sip: &'a str,
+    ppid: &'a str,
+    data_type: &'a str,
+    pgid: &'a str,
+    tgid: &'a str,
+    sessionid: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+struct LoadModule<'a> {
+    argv: &'a str,
+    root_pns: &'a str,
+    pid: &'a str,
+    tgid: &'a str,
+    uid: &'a str,
+    data_type: &'a str,
+    ppid: &'a str,
+    sid: &'a str,
+    exe: &'a str,
+    ko_file: &'a str,
+    pgid_argv: &'a str,
+    timestamp: &'a str,
+    pid_tree: &'a str,
+    pns: &'a str,
+    sessionid: &'a str,
+    pgid: &'a str,
+    comm: &'a str,
+    username: &'a str,
+    exe_hash: &'a str,
+    nodename: &'a str,
+    run_path: &'a str,
+    ppid_argv: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+struct InterruptsHook<'a> {
+    module_name: &'a str,
+    interrupts_number: &'a str,
+    data_type: &'a str,
+    timestamp: &'a str,
+    hidden: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+struct CreateFile<'a> {
+    ppid_argv: &'a str,
+    pgid: &'a str,
+    pid_tree: &'a str,
+    exe: &'a str,
+    sport: &'a str,
+    file_path: &'a str,
+    pgid_argv: &'a str,
+    sessionid: &'a str,
+    username: &'a str,
+    data_type: &'a str,
+    exe_hash: &'a str,
+    argv: &'a str,
+    pns: &'a str,
+    socket_pid: &'a str,
+    sip: &'a str,
+    sa_family: &'a str,
+    socket_argv: &'a str,
+    pid: &'a str,
+    nodename: &'a str,
+    ppid: &'a str,
+    tgid: &'a str,
+    dip: &'a str,
+    sid: &'a str,
+    comm: &'a str,
+    dport: &'a str,
+    uid: &'a str,
+    root_pns: &'a str,
+    timestamp: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+struct Dns<'a> {
+    username: &'a str,
+    ppid: &'a str,
+    qr: &'a str,
+    query: &'a str,
+    pgid_argv: &'a str,
+    argv: &'a str,
+    ppid_argv: &'a str,
+    exe: &'a str,
+    timestamp: &'a str,
+    dport: &'a str,
+    pid: &'a str,
+    sa_family: &'a str,
+    nodename: &'a str,
+    pid_tree: &'a str,
+    data_type: &'a str,
+    sip: &'a str,
+    pgid: &'a str,
+    rcode: &'a str,
+    exe_hash: &'a str,
+    uid: &'a str,
+    comm: &'a str,
+    sport: &'a str,
+    sid: &'a str,
+    pns: &'a str,
+    root_pns: &'a str,
+    tgid: &'a str,
+    sessionid: &'a str,
+    opcode: &'a str,
+    dip: &'a str,
 }
 
 pub struct Parser {
@@ -446,7 +446,16 @@ impl Parser {
 
     pub fn parse(&mut self, fields: Vec<&str>) -> Result<()> {
         match fields[1] {
-            "602" => {
+            "702" => {
+                let timestamp = Clock::now_since_epoch().as_secs().to_string();
+                self.sender.send(&LkmHidden {
+                    hidden: fields[3],
+                    module_name: fields[2],
+                    timestamp: &timestamp,
+                    data_type: fields[1],
+                })
+            }
+            "356" => {
                 let timestamp = Clock::now_since_epoch().as_secs().to_string();
                 let username = if let Ok(uid) = fields[0].parse::<u32>() {
                     match self.user_cache.get_user_by_uid(uid) {
@@ -485,122 +494,38 @@ impl Parser {
                 } else {
                     "-3".to_string()
                 };
-                let socket_argv = if let Ok(socket_pid) = fields[19].parse::<u32>() {
-                    self.argv_cache.get(&socket_pid)
-                } else {
-                    "-3".to_string()
-                };
-                self.sender.send(&CreateFile {
-                    sid: fields[7],
-                    pid_tree: &pid_tree,
-                    pns: fields[11],
-                    ppid: fields[4],
+                self.sender.send(&MemfdCreate {
+                    flags: fields[14],
                     uid: fields[0],
-                    sip: fields[16],
-                    data_type: fields[1],
-                    sport: fields[17],
-                    socket_pid: fields[19],
-                    socket_argv: &socket_argv,
+                    nodename: fields[9],
+                    fdname: fields[13],
+                    pgid_argv: &pgid_argv,
                     comm: fields[8],
+                    pns: fields[11],
+                    timestamp: &timestamp,
+                    data_type: fields[1],
+                    argv: &argv,
+                    ppid: fields[4],
                     sessionid: fields[10],
+                    ppid_argv: &ppid_argv,
+                    sid: fields[7],
+                    tgid: fields[6],
+                    pgid: fields[5],
                     root_pns: fields[12],
+                    exe: fields[2],
                     username: &username,
                     exe_hash: &exe_hash,
-                    ppid_argv: &ppid_argv,
-                    pgid_argv: &pgid_argv,
-                    dip: fields[14],
+                    pid_tree: &pid_tree,
                     pid: fields[3],
-                    pgid: fields[5],
-                    timestamp: &timestamp,
-                    exe: fields[2],
-                    dport: fields[15],
-                    sa_family: fields[18],
-                    file_path: fields[13],
-                    tgid: fields[6],
-                    nodename: fields[9],
-                    argv: &argv,
                 })
             }
             "700" => {
                 let timestamp = Clock::now_since_epoch().as_secs().to_string();
                 self.sender.send(&ProcFileHook {
-                    module_name: fields[2],
-                    data_type: fields[1],
                     timestamp: &timestamp,
                     hidden: fields[3],
-                })
-            }
-            "702" => {
-                let timestamp = Clock::now_since_epoch().as_secs().to_string();
-                self.sender.send(&LkmHidden {
+                    data_type: fields[1],
                     module_name: fields[2],
-                    timestamp: &timestamp,
-                    data_type: fields[1],
-                    hidden: fields[3],
-                })
-            }
-            "157" => {
-                let timestamp = Clock::now_since_epoch().as_secs().to_string();
-                let username = if let Ok(uid) = fields[0].parse::<u32>() {
-                    match self.user_cache.get_user_by_uid(uid) {
-                        Some(n) => n.name().to_str().unwrap_or_default().to_owned(),
-                        None => "-3".to_string(),
-                    }
-                } else {
-                    "-3".to_string()
-                };
-                let exe_hash = if fields[2] != "-1" && fields[2] != "" {
-                    self.file_hash_cache.get(fields[2])
-                } else {
-                    "-3".to_string()
-                };
-                let pid_tree = if let Ok(pid) = fields[3].parse::<u32>() {
-                    let pid_tree = match self.pid_tree_cache.get(&pid) {
-                        Some(t) => t,
-                        None => "-3",
-                    };
-                    pid_tree
-                } else {
-                    "-3"
-                };
-                let argv = if let Ok(pid) = fields[3].parse::<u32>() {
-                    self.argv_cache.get(&pid)
-                } else {
-                    "-3".to_string()
-                };
-                let pgid_argv = if let Ok(pgid_id) = fields[5].parse::<u32>() {
-                    self.argv_cache.get(&pgid_id)
-                } else {
-                    "-3".to_string()
-                };
-                let ppid_argv = if let Ok(ppid) = fields[4].parse::<u32>() {
-                    self.argv_cache.get(&ppid)
-                } else {
-                    "-3".to_string()
-                };
-                self.sender.send(&Prctl {
-                    comm: fields[8],
-                    uid: fields[0],
-                    pid_tree: &pid_tree,
-                    sessionid: fields[10],
-                    pgid: fields[5],
-                    username: &username,
-                    exe: fields[2],
-                    exe_hash: &exe_hash,
-                    pid: fields[3],
-                    ppid: fields[4],
-                    root_pns: fields[12],
-                    sid: fields[7],
-                    option: fields[13],
-                    new_name: fields[14],
-                    nodename: fields[9],
-                    pns: fields[11],
-                    timestamp: &timestamp,
-                    ppid_argv: &ppid_argv,
-                    pgid_argv: &pgid_argv,
-                    argv: &argv,
-                    tgid: fields[6],
-                    data_type: fields[1],
                 })
             }
             "86" => {
@@ -643,29 +568,95 @@ impl Parser {
                     "-3".to_string()
                 };
                 self.sender.send(&Link {
-                    run_path: fields[13],
-                    root_pns: fields[12],
-                    tgid: fields[6],
-                    timestamp: &timestamp,
-                    sid: fields[7],
-                    new_name: fields[15],
-                    ppid_argv: &ppid_argv,
-                    pns: fields[11],
-                    pgid_argv: &pgid_argv,
-                    old_name: fields[14],
-                    data_type: fields[1],
-                    argv: &argv,
-                    pid_tree: &pid_tree,
                     pgid: fields[5],
-                    exe_hash: &exe_hash,
+                    exe: fields[2],
+                    comm: fields[8],
                     nodename: fields[9],
                     username: &username,
-                    pid: fields[3],
+                    exe_hash: &exe_hash,
+                    pgid_argv: &pgid_argv,
+                    run_path: fields[13],
+                    ppid_argv: &ppid_argv,
+                    pid_tree: &pid_tree,
+                    tgid: fields[6],
                     sessionid: fields[10],
-                    exe: fields[2],
                     ppid: fields[4],
+                    pns: fields[11],
                     uid: fields[0],
+                    sid: fields[7],
+                    root_pns: fields[12],
+                    data_type: fields[1],
+                    new_name: fields[15],
+                    argv: &argv,
+                    old_name: fields[14],
+                    timestamp: &timestamp,
+                    pid: fields[3],
+                })
+            }
+            "49" => {
+                let timestamp = Clock::now_since_epoch().as_secs().to_string();
+                let username = if let Ok(uid) = fields[0].parse::<u32>() {
+                    match self.user_cache.get_user_by_uid(uid) {
+                        Some(n) => n.name().to_str().unwrap_or_default().to_owned(),
+                        None => "-3".to_string(),
+                    }
+                } else {
+                    "-3".to_string()
+                };
+                let exe_hash = if fields[2] != "-1" && fields[2] != "" {
+                    self.file_hash_cache.get(fields[2])
+                } else {
+                    "-3".to_string()
+                };
+                let pid_tree = if let Ok(pid) = fields[3].parse::<u32>() {
+                    let pid_tree = match self.pid_tree_cache.get(&pid) {
+                        Some(t) => t,
+                        None => "-3",
+                    };
+                    pid_tree
+                } else {
+                    "-3"
+                };
+                let argv = if let Ok(pid) = fields[3].parse::<u32>() {
+                    self.argv_cache.get(&pid)
+                } else {
+                    "-3".to_string()
+                };
+                let pgid_argv = if let Ok(pgid_id) = fields[5].parse::<u32>() {
+                    self.argv_cache.get(&pgid_id)
+                } else {
+                    "-3".to_string()
+                };
+                let ppid_argv = if let Ok(ppid) = fields[4].parse::<u32>() {
+                    self.argv_cache.get(&ppid)
+                } else {
+                    "-3".to_string()
+                };
+                self.sender.send(&Bind {
+                    pid: fields[3],
+                    sip: fields[14],
+                    sessionid: fields[10],
+                    data_type: fields[1],
                     comm: fields[8],
+                    username: &username,
+                    exe_hash: &exe_hash,
+                    argv: &argv,
+                    nodename: fields[9],
+                    uid: fields[0],
+                    res: fields[16],
+                    timestamp: &timestamp,
+                    ppid_argv: &ppid_argv,
+                    pgid: fields[5],
+                    ppid: fields[4],
+                    sa_family: fields[13],
+                    pgid_argv: &pgid_argv,
+                    pns: fields[11],
+                    sid: fields[7],
+                    root_pns: fields[12],
+                    tgid: fields[6],
+                    pid_tree: &pid_tree,
+                    exe: fields[2],
+                    sport: fields[15],
                 })
             }
             "604" => {
@@ -712,32 +703,32 @@ impl Parser {
                     "-3".to_string()
                 };
                 self.sender.send(&UpdateCred {
-                    pgid: fields[5],
-                    pgid_argv: &pgid_argv,
-                    res: fields[15],
-                    old_uid: fields[14],
-                    exe: fields[2],
-                    ppid: fields[4],
-                    comm: fields[8],
-                    nodename: fields[9],
-                    root_pns: fields[12],
-                    exe_hash: &exe_hash,
                     argv: &argv,
-                    sid: fields[7],
+                    sessionid: fields[10],
+                    ppid: fields[4],
+                    nodename: fields[9],
+                    pns: fields[11],
                     old_username: &old_username,
+                    exe_hash: &exe_hash,
+                    exe: fields[2],
+                    sid: fields[7],
+                    old_uid: fields[14],
                     uid: fields[0],
                     data_type: fields[1],
-                    pid: fields[3],
-                    pns: fields[11],
+                    root_pns: fields[12],
+                    res: fields[15],
+                    pgid: fields[5],
+                    pid_tree: fields[13],
                     tgid: fields[6],
+                    comm: fields[8],
                     timestamp: &timestamp,
                     ppid_argv: &ppid_argv,
-                    pid_tree: fields[13],
                     username: &username,
-                    sessionid: fields[10],
+                    pgid_argv: &pgid_argv,
+                    pid: fields[3],
                 })
             }
-            "42" => {
+            "82" => {
                 let timestamp = Clock::now_since_epoch().as_secs().to_string();
                 let username = if let Ok(uid) = fields[0].parse::<u32>() {
                     match self.user_cache.get_user_by_uid(uid) {
@@ -776,34 +767,164 @@ impl Parser {
                 } else {
                     "-3".to_string()
                 };
-                self.sender.send(&Connect {
-                    ppid_argv: &ppid_argv,
-                    pgid_argv: &pgid_argv,
+                self.sender.send(&Rename {
+                    tgid: fields[6],
+                    nodename: fields[9],
+                    pid: fields[3],
+                    new_name: fields[15],
+                    uid: fields[0],
+                    pid_tree: &pid_tree,
+                    sessionid: fields[10],
+                    sid: fields[7],
+                    exe_hash: &exe_hash,
+                    username: &username,
                     data_type: fields[1],
                     argv: &argv,
-                    sid: fields[7],
+                    timestamp: &timestamp,
                     pns: fields[11],
-                    pid: fields[3],
-                    dport: fields[16],
-                    pid_tree: &pid_tree,
+                    ppid: fields[4],
+                    pgid: fields[5],
+                    root_pns: fields[12],
+                    comm: fields[8],
+                    ppid_argv: &ppid_argv,
+                    pgid_argv: &pgid_argv,
+                    old_name: fields[14],
+                    exe: fields[2],
+                    run_path: fields[13],
+                })
+            }
+            "112" => {
+                let timestamp = Clock::now_since_epoch().as_secs().to_string();
+                let username = if let Ok(uid) = fields[0].parse::<u32>() {
+                    match self.user_cache.get_user_by_uid(uid) {
+                        Some(n) => n.name().to_str().unwrap_or_default().to_owned(),
+                        None => "-3".to_string(),
+                    }
+                } else {
+                    "-3".to_string()
+                };
+                let exe_hash = if fields[2] != "-1" && fields[2] != "" {
+                    self.file_hash_cache.get(fields[2])
+                } else {
+                    "-3".to_string()
+                };
+                let pid_tree = if let Ok(pid) = fields[3].parse::<u32>() {
+                    let pid_tree = match self.pid_tree_cache.get(&pid) {
+                        Some(t) => t,
+                        None => "-3",
+                    };
+                    pid_tree
+                } else {
+                    "-3"
+                };
+                let argv = if let Ok(pid) = fields[3].parse::<u32>() {
+                    self.argv_cache.get(&pid)
+                } else {
+                    "-3".to_string()
+                };
+                let pgid_argv = if let Ok(pgid_id) = fields[5].parse::<u32>() {
+                    self.argv_cache.get(&pgid_id)
+                } else {
+                    "-3".to_string()
+                };
+                let ppid_argv = if let Ok(ppid) = fields[4].parse::<u32>() {
+                    self.argv_cache.get(&ppid)
+                } else {
+                    "-3".to_string()
+                };
+                self.sender.send(&Setsid {
+                    tgid: fields[6],
+                    sid: fields[7],
+                    pgid_argv: &pgid_argv,
                     username: &username,
-                    sport: fields[18],
-                    nodename: fields[9],
-                    exe_hash: &exe_hash,
-                    connect_type: fields[13],
-                    sa_family: fields[14],
+                    argv: &argv,
+                    pns: fields[11],
+                    sessionid: fields[10],
+                    exe: fields[2],
+                    timestamp: &timestamp,
+                    pid: fields[3],
                     comm: fields[8],
                     ppid: fields[4],
-                    res: fields[19],
-                    dip: fields[15],
+                    pid_tree: &pid_tree,
+                    exe_hash: &exe_hash,
+                    ppid_argv: &ppid_argv,
                     root_pns: fields[12],
-                    tgid: fields[6],
+                    data_type: fields[1],
+                    nodename: fields[9],
+                    pgid: fields[5],
+                    uid: fields[0],
+                })
+            }
+            "101" => {
+                let timestamp = Clock::now_since_epoch().as_secs().to_string();
+                let username = if let Ok(uid) = fields[0].parse::<u32>() {
+                    match self.user_cache.get_user_by_uid(uid) {
+                        Some(n) => n.name().to_str().unwrap_or_default().to_owned(),
+                        None => "-3".to_string(),
+                    }
+                } else {
+                    "-3".to_string()
+                };
+                let exe_hash = if fields[2] != "-1" && fields[2] != "" {
+                    self.file_hash_cache.get(fields[2])
+                } else {
+                    "-3".to_string()
+                };
+                if let Ok(pid) = fields[3].parse::<u32>() {
+                    if fields[17] != "" && fields[17] != "-1" {
+                        self.pid_tree_cache.put(pid, fields[17].to_string());
+                    }
+                }
+                let argv = if let Ok(pid) = fields[3].parse::<u32>() {
+                    self.argv_cache.get(&pid)
+                } else {
+                    "-3".to_string()
+                };
+                let pgid_argv = if let Ok(pgid_id) = fields[5].parse::<u32>() {
+                    self.argv_cache.get(&pgid_id)
+                } else {
+                    "-3".to_string()
+                };
+                let ppid_argv = if let Ok(ppid) = fields[4].parse::<u32>() {
+                    self.argv_cache.get(&ppid)
+                } else {
+                    "-3".to_string()
+                };
+                self.sender.send(&Ptrace {
+                    root_pns: fields[12],
+                    timestamp: &timestamp,
                     uid: fields[0],
                     pgid: fields[5],
-                    sip: fields[17],
-                    exe: fields[2],
                     sessionid: fields[10],
+                    ppid: fields[4],
+                    comm: fields[8],
+                    addr: fields[15],
+                    pid_tree: fields[17],
+                    data_type: fields[1],
+                    sid: fields[7],
+                    data: fields[16],
+                    pns: fields[11],
+                    tgid: fields[6],
+                    username: &username,
+                    ptrace_request: fields[13],
+                    pgid_argv: &pgid_argv,
+                    ppid_argv: &ppid_argv,
+                    exe: fields[2],
+                    exe_hash: &exe_hash,
+                    argv: &argv,
+                    pid: fields[3],
+                    nodename: fields[9],
+                    target_pid: fields[14],
+                })
+            }
+            "701" => {
+                let timestamp = Clock::now_since_epoch().as_secs().to_string();
+                self.sender.send(&SyscallHook {
                     timestamp: &timestamp,
+                    syscall_number: fields[4],
+                    data_type: fields[1],
+                    module_name: fields[2],
+                    hidden: fields[3],
                 })
             }
             "59" => {
@@ -847,43 +968,43 @@ impl Parser {
                     "-3".to_string()
                 };
                 self.sender.send(&Execve {
-                    nodename: fields[9],
-                    ssh: fields[27],
-                    sport: fields[22],
-                    pid_tree: fields[24],
-                    timestamp: &timestamp,
-                    exe: fields[2],
-                    ld_preload: fields[28],
-                    pgid_argv: &pgid_argv,
-                    stdout: fields[18],
-                    stdin: fields[17],
-                    data_type: fields[1],
-                    sip: fields[21],
-                    exe_hash: &exe_hash,
-                    comm: fields[8],
-                    socket_pid: fields[26],
-                    pgid: fields[5],
-                    uid: fields[0],
-                    run_path: fields[15],
-                    dport: fields[20],
-                    res: fields[29],
-                    pid: fields[3],
-                    sessionid: fields[10],
-                    pns: fields[11],
-                    root_pns: fields[12],
-                    username: &username,
                     dip: fields[19],
-                    tty: fields[25],
-                    ppid: fields[4],
-                    tgid: fields[6],
+                    ld_preload: fields[28],
+                    sip: fields[21],
                     socket_argv: &socket_argv,
+                    stdin: fields[17],
+                    pgid: fields[5],
+                    tgid: fields[6],
                     sid: fields[7],
-                    argv: fields[14],
-                    ppid_argv: &ppid_argv,
+                    timestamp: &timestamp,
+                    sport: fields[22],
+                    ssh: fields[27],
+                    pid_tree: fields[24],
+                    pgid_argv: &pgid_argv,
+                    res: fields[29],
+                    sessionid: fields[10],
                     sa_family: fields[23],
+                    ppid: fields[4],
+                    uid: fields[0],
+                    pid: fields[3],
+                    root_pns: fields[12],
+                    data_type: fields[1],
+                    ppid_argv: &ppid_argv,
+                    username: &username,
+                    socket_pid: fields[26],
+                    comm: fields[8],
+                    nodename: fields[9],
+                    argv: fields[14],
+                    stdout: fields[18],
+                    exe: fields[2],
+                    dport: fields[20],
+                    pns: fields[11],
+                    run_path: fields[15],
+                    exe_hash: &exe_hash,
+                    tty: fields[25],
                 })
             }
-            "82" => {
+            "157" => {
                 let timestamp = Clock::now_since_epoch().as_secs().to_string();
                 let username = if let Ok(uid) = fields[0].parse::<u32>() {
                     match self.user_cache.get_user_by_uid(uid) {
@@ -922,30 +1043,243 @@ impl Parser {
                 } else {
                     "-3".to_string()
                 };
-                self.sender.send(&Rename {
-                    timestamp: &timestamp,
-                    ppid_argv: &ppid_argv,
-                    root_pns: fields[12],
-                    new_name: fields[15],
-                    pid: fields[3],
-                    ppid: fields[4],
-                    run_path: fields[13],
-                    pgid: fields[5],
-                    pgid_argv: &pgid_argv,
-                    old_name: fields[14],
-                    tgid: fields[6],
-                    sessionid: fields[10],
-                    pns: fields[11],
-                    username: &username,
-                    argv: &argv,
-                    exe: fields[2],
-                    comm: fields[8],
-                    exe_hash: &exe_hash,
-                    pid_tree: &pid_tree,
-                    sid: fields[7],
-                    nodename: fields[9],
+                self.sender.send(&Prctl {
                     data_type: fields[1],
                     uid: fields[0],
+                    ppid: fields[4],
+                    pns: fields[11],
+                    timestamp: &timestamp,
+                    ppid_argv: &ppid_argv,
+                    pid: fields[3],
+                    tgid: fields[6],
+                    sessionid: fields[10],
+                    pid_tree: &pid_tree,
+                    option: fields[13],
+                    argv: &argv,
+                    pgid: fields[5],
+                    exe_hash: &exe_hash,
+                    comm: fields[8],
+                    sid: fields[7],
+                    username: &username,
+                    new_name: fields[14],
+                    exe: fields[2],
+                    nodename: fields[9],
+                    pgid_argv: &pgid_argv,
+                    root_pns: fields[12],
+                })
+            }
+            "42" => {
+                let timestamp = Clock::now_since_epoch().as_secs().to_string();
+                let username = if let Ok(uid) = fields[0].parse::<u32>() {
+                    match self.user_cache.get_user_by_uid(uid) {
+                        Some(n) => n.name().to_str().unwrap_or_default().to_owned(),
+                        None => "-3".to_string(),
+                    }
+                } else {
+                    "-3".to_string()
+                };
+                let exe_hash = if fields[2] != "-1" && fields[2] != "" {
+                    self.file_hash_cache.get(fields[2])
+                } else {
+                    "-3".to_string()
+                };
+                let pid_tree = if let Ok(pid) = fields[3].parse::<u32>() {
+                    let pid_tree = match self.pid_tree_cache.get(&pid) {
+                        Some(t) => t,
+                        None => "-3",
+                    };
+                    pid_tree
+                } else {
+                    "-3"
+                };
+                let argv = if let Ok(pid) = fields[3].parse::<u32>() {
+                    self.argv_cache.get(&pid)
+                } else {
+                    "-3".to_string()
+                };
+                let pgid_argv = if let Ok(pgid_id) = fields[5].parse::<u32>() {
+                    self.argv_cache.get(&pgid_id)
+                } else {
+                    "-3".to_string()
+                };
+                let ppid_argv = if let Ok(ppid) = fields[4].parse::<u32>() {
+                    self.argv_cache.get(&ppid)
+                } else {
+                    "-3".to_string()
+                };
+                self.sender.send(&Connect {
+                    pns: fields[11],
+                    root_pns: fields[12],
+                    nodename: fields[9],
+                    res: fields[19],
+                    pid: fields[3],
+                    sid: fields[7],
+                    pgid_argv: &pgid_argv,
+                    comm: fields[8],
+                    connect_type: fields[13],
+                    sport: fields[18],
+                    ppid_argv: &ppid_argv,
+                    timestamp: &timestamp,
+                    exe: fields[2],
+                    dport: fields[16],
+                    exe_hash: &exe_hash,
+                    uid: fields[0],
+                    username: &username,
+                    dip: fields[15],
+                    argv: &argv,
+                    pid_tree: &pid_tree,
+                    sa_family: fields[14],
+                    sip: fields[17],
+                    ppid: fields[4],
+                    data_type: fields[1],
+                    pgid: fields[5],
+                    tgid: fields[6],
+                    sessionid: fields[10],
+                })
+            }
+            "603" => {
+                let timestamp = Clock::now_since_epoch().as_secs().to_string();
+                let username = if let Ok(uid) = fields[0].parse::<u32>() {
+                    match self.user_cache.get_user_by_uid(uid) {
+                        Some(n) => n.name().to_str().unwrap_or_default().to_owned(),
+                        None => "-3".to_string(),
+                    }
+                } else {
+                    "-3".to_string()
+                };
+                let exe_hash = if fields[2] != "-1" && fields[2] != "" {
+                    self.file_hash_cache.get(fields[2])
+                } else {
+                    "-3".to_string()
+                };
+                if let Ok(pid) = fields[3].parse::<u32>() {
+                    if fields[14] != "" && fields[14] != "-1" {
+                        self.pid_tree_cache.put(pid, fields[14].to_string());
+                    }
+                }
+                let argv = if let Ok(pid) = fields[3].parse::<u32>() {
+                    self.argv_cache.get(&pid)
+                } else {
+                    "-3".to_string()
+                };
+                let pgid_argv = if let Ok(pgid_id) = fields[5].parse::<u32>() {
+                    self.argv_cache.get(&pgid_id)
+                } else {
+                    "-3".to_string()
+                };
+                let ppid_argv = if let Ok(ppid) = fields[4].parse::<u32>() {
+                    self.argv_cache.get(&ppid)
+                } else {
+                    "-3".to_string()
+                };
+                self.sender.send(&LoadModule {
+                    argv: &argv,
+                    root_pns: fields[12],
+                    pid: fields[3],
+                    tgid: fields[6],
+                    uid: fields[0],
+                    data_type: fields[1],
+                    ppid: fields[4],
+                    sid: fields[7],
+                    exe: fields[2],
+                    ko_file: fields[13],
+                    pgid_argv: &pgid_argv,
+                    timestamp: &timestamp,
+                    pid_tree: fields[14],
+                    pns: fields[11],
+                    sessionid: fields[10],
+                    pgid: fields[5],
+                    comm: fields[8],
+                    username: &username,
+                    exe_hash: &exe_hash,
+                    nodename: fields[9],
+                    run_path: fields[15],
+                    ppid_argv: &ppid_argv,
+                })
+            }
+            "703" => {
+                let timestamp = Clock::now_since_epoch().as_secs().to_string();
+                self.sender.send(&InterruptsHook {
+                    module_name: fields[2],
+                    interrupts_number: fields[4],
+                    data_type: fields[1],
+                    timestamp: &timestamp,
+                    hidden: fields[3],
+                })
+            }
+            "602" => {
+                let timestamp = Clock::now_since_epoch().as_secs().to_string();
+                let username = if let Ok(uid) = fields[0].parse::<u32>() {
+                    match self.user_cache.get_user_by_uid(uid) {
+                        Some(n) => n.name().to_str().unwrap_or_default().to_owned(),
+                        None => "-3".to_string(),
+                    }
+                } else {
+                    "-3".to_string()
+                };
+                let exe_hash = if fields[2] != "-1" && fields[2] != "" {
+                    self.file_hash_cache.get(fields[2])
+                } else {
+                    "-3".to_string()
+                };
+                let pid_tree = if let Ok(pid) = fields[3].parse::<u32>() {
+                    let pid_tree = match self.pid_tree_cache.get(&pid) {
+                        Some(t) => t,
+                        None => "-3",
+                    };
+                    pid_tree
+                } else {
+                    "-3"
+                };
+                let argv = if let Ok(pid) = fields[3].parse::<u32>() {
+                    self.argv_cache.get(&pid)
+                } else {
+                    "-3".to_string()
+                };
+                let pgid_argv = if let Ok(pgid_id) = fields[5].parse::<u32>() {
+                    self.argv_cache.get(&pgid_id)
+                } else {
+                    "-3".to_string()
+                };
+                let ppid_argv = if let Ok(ppid) = fields[4].parse::<u32>() {
+                    self.argv_cache.get(&ppid)
+                } else {
+                    "-3".to_string()
+                };
+                let socket_argv = if let Ok(socket_pid) = fields[19].parse::<u32>() {
+                    self.argv_cache.get(&socket_pid)
+                } else {
+                    "-3".to_string()
+                };
+                self.sender.send(&CreateFile {
+                    ppid_argv: &ppid_argv,
+                    pgid: fields[5],
+                    pid_tree: &pid_tree,
+                    exe: fields[2],
+                    sport: fields[17],
+                    file_path: fields[13],
+                    pgid_argv: &pgid_argv,
+                    sessionid: fields[10],
+                    username: &username,
+                    data_type: fields[1],
+                    exe_hash: &exe_hash,
+                    argv: &argv,
+                    pns: fields[11],
+                    socket_pid: fields[19],
+                    sip: fields[16],
+                    sa_family: fields[18],
+                    socket_argv: &socket_argv,
+                    pid: fields[3],
+                    nodename: fields[9],
+                    ppid: fields[4],
+                    tgid: fields[6],
+                    dip: fields[14],
+                    sid: fields[7],
+                    comm: fields[8],
+                    dport: fields[15],
+                    uid: fields[0],
+                    root_pns: fields[12],
+                    timestamp: &timestamp,
                 })
             }
             "601" => {
@@ -988,369 +1322,35 @@ impl Parser {
                     "-3".to_string()
                 };
                 self.sender.send(&Dns {
-                    dip: fields[15],
-                    rcode: fields[21],
-                    ppid_argv: &ppid_argv,
-                    comm: fields[8],
-                    nodename: fields[9],
-                    pgid: fields[5],
-                    sip: fields[17],
-                    dport: fields[16],
-                    exe_hash: &exe_hash,
-                    timestamp: &timestamp,
-                    root_pns: fields[12],
-                    opcode: fields[20],
                     username: &username,
-                    sa_family: fields[14],
-                    query: fields[13],
-                    pid: fields[3],
+                    ppid: fields[4],
                     qr: fields[19],
-                    tgid: fields[6],
-                    data_type: fields[1],
-                    exe: fields[2],
-                    sessionid: fields[10],
+                    query: fields[13],
                     pgid_argv: &pgid_argv,
+                    argv: &argv,
+                    ppid_argv: &ppid_argv,
+                    exe: fields[2],
+                    timestamp: &timestamp,
+                    dport: fields[16],
+                    pid: fields[3],
+                    sa_family: fields[14],
+                    nodename: fields[9],
+                    pid_tree: &pid_tree,
+                    data_type: fields[1],
+                    sip: fields[17],
+                    pgid: fields[5],
+                    rcode: fields[21],
+                    exe_hash: &exe_hash,
                     uid: fields[0],
-                    pns: fields[11],
-                    ppid: fields[4],
-                    sid: fields[7],
+                    comm: fields[8],
                     sport: fields[18],
-                    argv: &argv,
-                    pid_tree: &pid_tree,
-                })
-            }
-            "356" => {
-                let timestamp = Clock::now_since_epoch().as_secs().to_string();
-                let username = if let Ok(uid) = fields[0].parse::<u32>() {
-                    match self.user_cache.get_user_by_uid(uid) {
-                        Some(n) => n.name().to_str().unwrap_or_default().to_owned(),
-                        None => "-3".to_string(),
-                    }
-                } else {
-                    "-3".to_string()
-                };
-                let exe_hash = if fields[2] != "-1" && fields[2] != "" {
-                    self.file_hash_cache.get(fields[2])
-                } else {
-                    "-3".to_string()
-                };
-                let pid_tree = if let Ok(pid) = fields[3].parse::<u32>() {
-                    let pid_tree = match self.pid_tree_cache.get(&pid) {
-                        Some(t) => t,
-                        None => "-3",
-                    };
-                    pid_tree
-                } else {
-                    "-3"
-                };
-                let argv = if let Ok(pid) = fields[3].parse::<u32>() {
-                    self.argv_cache.get(&pid)
-                } else {
-                    "-3".to_string()
-                };
-                let pgid_argv = if let Ok(pgid_id) = fields[5].parse::<u32>() {
-                    self.argv_cache.get(&pgid_id)
-                } else {
-                    "-3".to_string()
-                };
-                let ppid_argv = if let Ok(ppid) = fields[4].parse::<u32>() {
-                    self.argv_cache.get(&ppid)
-                } else {
-                    "-3".to_string()
-                };
-                self.sender.send(&MemfdCreate {
-                    pgid_argv: &pgid_argv,
                     sid: fields[7],
-                    sessionid: fields[10],
-                    ppid_argv: &ppid_argv,
-                    comm: fields[8],
-                    fdname: fields[13],
-                    pgid: fields[5],
-                    username: &username,
-                    nodename: fields[9],
-                    flags: fields[14],
-                    ppid: fields[4],
                     pns: fields[11],
                     root_pns: fields[12],
-                    exe: fields[2],
-                    data_type: fields[1],
-                    exe_hash: &exe_hash,
-                    argv: &argv,
-                    pid_tree: &pid_tree,
-                    uid: fields[0],
                     tgid: fields[6],
-                    timestamp: &timestamp,
-                    pid: fields[3],
-                })
-            }
-            "101" => {
-                let timestamp = Clock::now_since_epoch().as_secs().to_string();
-                let username = if let Ok(uid) = fields[0].parse::<u32>() {
-                    match self.user_cache.get_user_by_uid(uid) {
-                        Some(n) => n.name().to_str().unwrap_or_default().to_owned(),
-                        None => "-3".to_string(),
-                    }
-                } else {
-                    "-3".to_string()
-                };
-                let exe_hash = if fields[2] != "-1" && fields[2] != "" {
-                    self.file_hash_cache.get(fields[2])
-                } else {
-                    "-3".to_string()
-                };
-                if let Ok(pid) = fields[3].parse::<u32>() {
-                    if fields[17] != "" && fields[17] != "-1" {
-                        self.pid_tree_cache.put(pid, fields[17].to_string());
-                    }
-                }
-                let argv = if let Ok(pid) = fields[3].parse::<u32>() {
-                    self.argv_cache.get(&pid)
-                } else {
-                    "-3".to_string()
-                };
-                let pgid_argv = if let Ok(pgid_id) = fields[5].parse::<u32>() {
-                    self.argv_cache.get(&pgid_id)
-                } else {
-                    "-3".to_string()
-                };
-                let ppid_argv = if let Ok(ppid) = fields[4].parse::<u32>() {
-                    self.argv_cache.get(&ppid)
-                } else {
-                    "-3".to_string()
-                };
-                self.sender.send(&Ptrace {
-                    pns: fields[11],
-                    data_type: fields[1],
-                    ppid_argv: &ppid_argv,
-                    ptrace_request: fields[13],
-                    data: fields[16],
-                    pid_tree: fields[17],
-                    uid: fields[0],
-                    pid: fields[3],
-                    nodename: fields[9],
-                    target_pid: fields[14],
-                    ppid: fields[4],
-                    timestamp: &timestamp,
-                    addr: fields[15],
-                    pgid: fields[5],
-                    exe_hash: &exe_hash,
-                    comm: fields[8],
                     sessionid: fields[10],
-                    argv: &argv,
-                    pgid_argv: &pgid_argv,
-                    sid: fields[7],
-                    exe: fields[2],
-                    tgid: fields[6],
-                    root_pns: fields[12],
-                    username: &username,
-                })
-            }
-            "701" => {
-                let timestamp = Clock::now_since_epoch().as_secs().to_string();
-                self.sender.send(&SyscallHook {
-                    data_type: fields[1],
-                    module_name: fields[2],
-                    timestamp: &timestamp,
-                    hidden: fields[3],
-                    syscall_number: fields[4],
-                })
-            }
-            "112" => {
-                let timestamp = Clock::now_since_epoch().as_secs().to_string();
-                let username = if let Ok(uid) = fields[0].parse::<u32>() {
-                    match self.user_cache.get_user_by_uid(uid) {
-                        Some(n) => n.name().to_str().unwrap_or_default().to_owned(),
-                        None => "-3".to_string(),
-                    }
-                } else {
-                    "-3".to_string()
-                };
-                let exe_hash = if fields[2] != "-1" && fields[2] != "" {
-                    self.file_hash_cache.get(fields[2])
-                } else {
-                    "-3".to_string()
-                };
-                let pid_tree = if let Ok(pid) = fields[3].parse::<u32>() {
-                    let pid_tree = match self.pid_tree_cache.get(&pid) {
-                        Some(t) => t,
-                        None => "-3",
-                    };
-                    pid_tree
-                } else {
-                    "-3"
-                };
-                let argv = if let Ok(pid) = fields[3].parse::<u32>() {
-                    self.argv_cache.get(&pid)
-                } else {
-                    "-3".to_string()
-                };
-                let pgid_argv = if let Ok(pgid_id) = fields[5].parse::<u32>() {
-                    self.argv_cache.get(&pgid_id)
-                } else {
-                    "-3".to_string()
-                };
-                let ppid_argv = if let Ok(ppid) = fields[4].parse::<u32>() {
-                    self.argv_cache.get(&ppid)
-                } else {
-                    "-3".to_string()
-                };
-                self.sender.send(&Setsid {
-                    exe_hash: &exe_hash,
-                    argv: &argv,
-                    pgid: fields[5],
-                    nodename: fields[9],
-                    sessionid: fields[10],
-                    ppid_argv: &ppid_argv,
-                    root_pns: fields[12],
-                    pid: fields[3],
-                    timestamp: &timestamp,
-                    pid_tree: &pid_tree,
-                    tgid: fields[6],
-                    pgid_argv: &pgid_argv,
-                    uid: fields[0],
-                    exe: fields[2],
-                    sid: fields[7],
-                    comm: fields[8],
-                    data_type: fields[1],
-                    ppid: fields[4],
-                    pns: fields[11],
-                    username: &username,
-                })
-            }
-            "49" => {
-                let timestamp = Clock::now_since_epoch().as_secs().to_string();
-                let username = if let Ok(uid) = fields[0].parse::<u32>() {
-                    match self.user_cache.get_user_by_uid(uid) {
-                        Some(n) => n.name().to_str().unwrap_or_default().to_owned(),
-                        None => "-3".to_string(),
-                    }
-                } else {
-                    "-3".to_string()
-                };
-                let exe_hash = if fields[2] != "-1" && fields[2] != "" {
-                    self.file_hash_cache.get(fields[2])
-                } else {
-                    "-3".to_string()
-                };
-                let pid_tree = if let Ok(pid) = fields[3].parse::<u32>() {
-                    let pid_tree = match self.pid_tree_cache.get(&pid) {
-                        Some(t) => t,
-                        None => "-3",
-                    };
-                    pid_tree
-                } else {
-                    "-3"
-                };
-                let argv = if let Ok(pid) = fields[3].parse::<u32>() {
-                    self.argv_cache.get(&pid)
-                } else {
-                    "-3".to_string()
-                };
-                let pgid_argv = if let Ok(pgid_id) = fields[5].parse::<u32>() {
-                    self.argv_cache.get(&pgid_id)
-                } else {
-                    "-3".to_string()
-                };
-                let ppid_argv = if let Ok(ppid) = fields[4].parse::<u32>() {
-                    self.argv_cache.get(&ppid)
-                } else {
-                    "-3".to_string()
-                };
-                self.sender.send(&Bind {
-                    sip: fields[14],
-                    data_type: fields[1],
-                    res: fields[16],
-                    ppid: fields[4],
-                    pid: fields[3],
-                    nodename: fields[9],
-                    sa_family: fields[13],
-                    tgid: fields[6],
-                    root_pns: fields[12],
-                    timestamp: &timestamp,
-                    exe: fields[2],
-                    sport: fields[15],
-                    argv: &argv,
-                    comm: fields[8],
-                    username: &username,
-                    sessionid: fields[10],
-                    pgid: fields[5],
-                    pid_tree: &pid_tree,
-                    sid: fields[7],
-                    pgid_argv: &pgid_argv,
-                    uid: fields[0],
-                    exe_hash: &exe_hash,
-                    ppid_argv: &ppid_argv,
-                    pns: fields[11],
-                })
-            }
-            "703" => {
-                let timestamp = Clock::now_since_epoch().as_secs().to_string();
-                self.sender.send(&InterruptsHook {
-                    interrupts_number: fields[4],
-                    timestamp: &timestamp,
-                    data_type: fields[1],
-                    module_name: fields[2],
-                    hidden: fields[3],
-                })
-            }
-            "603" => {
-                let timestamp = Clock::now_since_epoch().as_secs().to_string();
-                let username = if let Ok(uid) = fields[0].parse::<u32>() {
-                    match self.user_cache.get_user_by_uid(uid) {
-                        Some(n) => n.name().to_str().unwrap_or_default().to_owned(),
-                        None => "-3".to_string(),
-                    }
-                } else {
-                    "-3".to_string()
-                };
-                let exe_hash = if fields[2] != "-1" && fields[2] != "" {
-                    self.file_hash_cache.get(fields[2])
-                } else {
-                    "-3".to_string()
-                };
-                if let Ok(pid) = fields[3].parse::<u32>() {
-                    if fields[14] != "" && fields[14] != "-1" {
-                        self.pid_tree_cache.put(pid, fields[14].to_string());
-                    }
-                }
-                let argv = if let Ok(pid) = fields[3].parse::<u32>() {
-                    self.argv_cache.get(&pid)
-                } else {
-                    "-3".to_string()
-                };
-                let pgid_argv = if let Ok(pgid_id) = fields[5].parse::<u32>() {
-                    self.argv_cache.get(&pgid_id)
-                } else {
-                    "-3".to_string()
-                };
-                let ppid_argv = if let Ok(ppid) = fields[4].parse::<u32>() {
-                    self.argv_cache.get(&ppid)
-                } else {
-                    "-3".to_string()
-                };
-                self.sender.send(&LoadModule {
-                    pns: fields[11],
-                    exe_hash: &exe_hash,
-                    pid_tree: fields[14],
-                    ppid_argv: &ppid_argv,
-                    pgid: fields[5],
-                    uid: fields[0],
-                    tgid: fields[6],
-                    timestamp: &timestamp,
-                    data_type: fields[1],
-                    argv: &argv,
-                    username: &username,
-                    sid: fields[7],
-                    pgid_argv: &pgid_argv,
-                    run_path: fields[15],
-                    root_pns: fields[12],
-                    ko_file: fields[13],
-                    sessionid: fields[10],
-                    ppid: fields[4],
-                    exe: fields[2],
-                    pid: fields[3],
-                    comm: fields[8],
-                    nodename: fields[9],
+                    opcode: fields[20],
+                    dip: fields[15],
                 })
             }
             _ => {
