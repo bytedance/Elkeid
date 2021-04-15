@@ -20,7 +20,7 @@ In theory, all Linux distribution systems are compatible, but only Debian (inclu
 We recommend running the Elkeid Agent with **root privileges** in a **physical machine** or a **virtual machine** instead of a container for better compatibility with the current plugins.
 
 ## Compilation Environment Requirements
-* Golang 1.15(Recommended)
+* Golang 1.16(Required)
 ## To Start Using Elkeid Agent
 ```
 git clone --recursive https://github.com/bytedance/Elkeid

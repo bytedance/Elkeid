@@ -6,13 +6,10 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
 
-	"github.com/bytedance/Elkeid/agent/plugin/procotol"
-	"github.com/bytedance/Elkeid/agent/spec"
 	"github.com/prometheus/procfs"
 	"github.com/tinylib/msgp/msgp"
 	"go.uber.org/atomic"
@@ -35,6 +32,7 @@ type Plugin struct {
 	IO         uint64
 	CPU        float64
 	reader     *msgp.Reader
+	exited     atomic.Value
 	Counter    atomic.Uint64
 }
 
@@ -61,6 +59,7 @@ func (p *Plugin) PID() int {
 // Close func is used to close this plugin,
 // when closing it will kill all processes under the same process group
 func (p *Plugin) Close(timeout bool) {
+	p.exited.Store(true)
 	if p.conn != nil {
 		p.conn.Close()
 	}
@@ -76,15 +75,15 @@ func (p *Plugin) Close(timeout bool) {
 }
 
 // Receive func is used to read data from the socket connection of plugin
-func (p *Plugin) Receive() (*spec.Data, error) {
-	data := &spec.Data{}
+func (p *Plugin) Receive() (*PluginData, error) {
+	data := &PluginData{}
 	err := data.DecodeMsg(p.reader)
 	p.Counter.Add(uint64(len(*data)))
 	return data, err
 }
 
 // Send func is used to send tasks to this plugin
-func (p *Plugin) Send(t spec.Task) error {
+func (p *Plugin) Send(t Task) error {
 	w := msgp.NewWriter(p.conn)
 	err := t.EncodeMsg(w)
 	if err != nil {
@@ -121,7 +120,7 @@ func (p *Plugin) Connected() bool {
 // Connect func is used to verify the connection request,
 // if the pgid is inconsistent, an error will be returned
 // Note that it is necessary to call Server's Delete func to clean up after this func returns error
-func (p *Plugin) Connect(req procotol.RegistRequest, conn net.Conn) error {
+func (p *Plugin) Connect(req RegistRequest, conn net.Conn) error {
 	if p.conn != nil {
 		return errors.New("The same plugin has been connected, it may be a malicious attack")
 	}
@@ -159,10 +158,6 @@ func (p *Plugin) Connect(req procotol.RegistRequest, conn net.Conn) error {
 // NewPlugin func creates a new plugin instance
 func NewPlugin(name, version, checksum, runPath string) (*Plugin, error) {
 	var err error
-	runPath, err = filepath.Abs(runPath)
-	if err != nil {
-		return nil, err
-	}
 	dir, file := path.Split(runPath)
 	zap.S().Infof("Plugin work directory: %s", dir)
 	c := exec.Command(runPath)
@@ -177,6 +172,8 @@ func NewPlugin(name, version, checksum, runPath string) (*Plugin, error) {
 		return nil, err
 	}
 	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pgid: 0}
-	p := Plugin{cmd: c, name: name, version: version, checksum: checksum}
+	exited := atomic.Value{}
+	exited.Store(false)
+	p := Plugin{cmd: c, name: name, version: version, checksum: checksum, exited: exited}
 	return &p, nil
 }
