@@ -47,6 +47,7 @@ Elkeid Driver作为Elkeid Agent的一个Plugin运行，由Manager API控制下�
 > 快速开始的定义/目标：端上安全功能全部开启，Agent与Server连接正常，在后端可以正常看到相关数据。
 ### 前提条件与依赖
 Server部署完成，工作正常。具体请查阅[Server部署文档](../server/server/docs/install-zh_CN.md)
+
 部署完成后，你应该获取了以下资源：
 * ServiceDiscovery地址(记为sd_host)及端口(记为sd_port)
 * Manager地址(记为ma_host)及端口(记为ma_port)
@@ -54,6 +55,7 @@ Server部署完成，工作正常。具体请查阅[Server部署文档](../serve
 * 安全凭证:ca.crt/client.crt/client.key
 ### 配置Agent
 将上述安全凭证分别替换至[客户端CA证书](transport/connection/ca.crt);[客户端证书](transport/connection/client.crt);[客户端私钥](transport/connection/client.key)。
+
 修改[`product.go`](transport/connection/product.go)文件为以下内容：
 ```
 package connection
@@ -117,6 +119,7 @@ cat /etc/elkeid/log/elkeid-agent.log
 > 我们提供了预编好的插件，如果采用预编译插件可以直接跳过这步。
 * driver插件：参见[driver插件编译](driver/README-zh_CN.md#编译)
 * jouran_watcher插件：参见[jouranl_watcher插件编译](jouranl_watcher/README-zh_CN.md#编译)
+
 编译完成后，你应该可以获得`driver`与`jouranl_watcher`两个二进制文件。
 ### 上传插件
 计算上述两个二进制文件sha256，并上传至可访问的文件服务器，并获得相应的下载地址：
@@ -138,6 +141,7 @@ https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/djour
 ### 配置插件
 在配置插件前需要鉴权Manager API：
 > 详细参见[API接口文档](../server/README-zh_CN.md#api接口文档)
+>
 > 如果在部署Manager时修改了`username`和`password`，下面也记得做对应修改
 ```
 curl --location --request POST 'http://m_host:m_port/api/v1/user/login' \
@@ -156,7 +160,7 @@ curl --location --request POST 'http://m_host:m_port/api/v1/user/login' \
     }
 }
 ```
-将token加到配置插件的请求中，并根据插件名、插件版本、插件sha256、插件下载地址编写请求body：
+将token加到配置插件的请求头中，并根据插件名、插件版本、插件sha256、插件下载地址编写请求body：
 ```
 curl --location --request GET 'http://m_host:m_port/api/v1/agent/createTask/config' -H "token:BUVUDcxsaf%^&%4643667" --data-raw '{
     "id_list": [
