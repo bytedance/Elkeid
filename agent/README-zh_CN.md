@@ -111,13 +111,13 @@ cat /etc/elkeid/log/elkeid-agent.log
 2021-04-15T15:32:58.118+0800    INFO    transport/client.go:69
 2021-04-15T15:33:27.939+0800    INFO    report/report.go:119    map[cpu:0.00101 data_type:1000 io:0 kernel_version:4-amd64 memory:14602240 net_type:sd platform:debian platform_version:9 plugins:[] slab:1273792 timestamp:1618472007]
 ```
-可以看到日志里面打印出了AgentID:f4c6d306-3d4b-4eb7-abe7-b15757acbb27，我们下面将会以这个AgentID为例进行配置。
+可以看到日志里面打印出了`AgentID:f4c6d306-3d4b-4eb7-abe7-b15757acbb27`，我们下面将会以这个AgentID为例进行配置。
 ### 编译插件
 在Agent启动完毕且状态正常后，说明Agent-Server已经建立了稳定的通信链路，但Agent本身只具有监控/通信/控制的功能，其他安全功能承载在其他插件上，所以我们需要对插件进行编译并下发。
 > 我们提供了预编好的插件，如果采用预编译插件可以直接跳过这步。
 * driver插件：参见[driver插件编译](driver/README-zh_CN.md#编译)
-* jouran_watcher插件：参见[jouran_watcher插件编译](jouran_watcher/README-zh_CN.md#编译)
-编译完成后，你应该可以获得`driver`与`jouran_watcher`两个二进制文件。
+* jouran_watcher插件：参见[jouranl_watcher插件编译](jouranl_watcher/README-zh_CN.md#编译)
+编译完成后，你应该可以获得`driver`与`jouranl_watcher`两个二进制文件。
 ### 上传插件
 计算上述两个二进制文件sha256，并上传至可访问的文件服务器，并获得相应的下载地址：
 > 我们已经上传了预编译好的插件，如果采用预编译插件可以直接跳过这步，下面也会以我们预编译好的插件地址为例。
