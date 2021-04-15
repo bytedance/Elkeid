@@ -12,7 +12,7 @@
 ## 更换Agent-AgentCenter通信证书
 生产环境部署，强烈建议执行此部署，替换Agent-AgentCenter通信证书。若测试环境，可忽略这个步骤。
 1. 随机生成证书。并替换AgentCenter证书。
-``` 
+```
 git clone https://github.com/bytedance/Elkeid.git
 cd Elkeid/server/build && ./cert_gen.sh elkeid.com hids-svr elkeid@elkeid.com
 cp cert/* ../agent_center/conf/ 
@@ -22,8 +22,7 @@ cp cert/* ../agent_center/conf/
 cp cert/ca.crt cert/client.crt cert/client.key ../../agent/transport/connection
 ```
 
-## 部署流程
-### 编译二进制
+## 编译elkeid Server二进制
 ```
 cd server/build && ./build.sh
 ```
@@ -34,7 +33,9 @@ agent_center-xxx.tar.gz
 Manager-xxx.tar.gz
 ```
 
-### 部署 MongoDB 
+## 部署依赖组件
+> 非生产环境下，Mongodb、KAFKA、Redis都可以使用docker部署，具体可参考docker官方文档
+### 部署 MongoDB
 官网下载页面 https://www.mongodb.com/try/download/community
 > 推荐以集群部署，具体参照官方文档 https://docs.mongodb.com/manual/administration/install-community/
 
@@ -79,7 +80,7 @@ security:
 ./bin/mongod --config ./mongodb.conf
 ```
 
-新增管理员和普通用户
+新增管理员和普通用户，并设置密码(设置的账号密码需要与manager/conf/svr.yml文件的mongo.url配置中保持一致)
 ```
 ./bin/mongo 127.0.0.1:27000
 
@@ -157,7 +158,7 @@ bin/kafka-console-producer.sh --broker-list 127.0.0.1:9092 --topic hids_svr
 ```
 bin/kafka-console-consumer.sh --bootstrap-server 127.0.0.1:9092 --topic hids_svr --from-beginning
 ```
-### 部署 Redis 
+### 部署 Redis
 官网下载页面 https://redis.io/download
 ```
 wget https://download.redis.io/releases/redis-6.2.1.tar.gz
@@ -183,6 +184,7 @@ cluster-enabled yes
 > 如果是单节点的redis集群，运行可能会遇到报错 CLUSTERDOWN Hash slot not served，需要执行如下命令修复：
 redis-cli --cluster fix 127.0.0.1:6379
 
+## 部署Elkeid Server
 ### 部署 ServiceDiscovery
 1. 将第一步生成的 service_discovery-xxx.tar.gz 拷贝到SD集群各服务器上，并解压。
 ```
@@ -212,14 +214,16 @@ Auth.Keys: 鉴权秘钥列表，客户端（AC/Manager）需要拿到这个的�
 ```
 tar xvfz manager-xxx.tar.gz
 ```
-2. 修改Manager的配置conf/svr.yml
+2. 修改Manager的配置conf/svr.yml。
 主要是改3个地方：
 ```
 redis.addrs 是redis集群的地址列表。
 mongo.uri 是mongodb集群的uri地址。
 sd.addrs 是服务发现集群的地址列表。
 ```
-3. 服务初始化
+3. 服务初始化。
+请保存好新增的用户名和密码，在后续Manager API接口/api/v1/user/login中需要用到。
+Mongodb未加索引会影响系统性能，所以请确保系统必要的字段都加上索引。
 ```
 #新增用户
 ./init -c conf/svr.yml -t addUser -u test1 -p 22222
@@ -266,4 +270,4 @@ AgentCenter会在6753端口开放pprof服务，用于debug。
 cd server/agent_center/test && go run grpc_client.go
 ```
 
-部署Agent，即可通过API查看Agent在线情况，以及消费KAFKA数据。
+将ServerDiscovery的地址配置到[Agent](../../agent/README-zh_CN.md)中，编译并部署Agent，即可通过[Manager API](../README-zh_CN.md)查看Agent在线情况，以及消费KAFKA数据。

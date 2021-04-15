@@ -12,7 +12,7 @@ English | [简体中文](install-zh_CN.md)
 ## Replace Agent-AgentCenter communication certificate
 If it is deployed in a production environment, it is strongly recommended replacing the Agent-AgentCenter communication certificate. If it is a test environment, you can ignore this step.
 1. Generate a certificate randomly and replace the AgentCenter certificate.
-``` 
+```
 git clone https://github.com/bytedance/Elkeid.git
 cd Elkeid/server/build && ./cert_gen.sh elkeid.com hids-svr elkeid@elkeid.com
 cp cert/* ../agent_center/conf/ 
@@ -22,8 +22,7 @@ cp cert/* ../agent_center/conf/
 cp cert/ca.crt cert/client.crt cert/client.key ../../agent/transport/connection
 ```
 
-## Deployment process
-### Compile the binary
+## Compile the binary
 ```
 cd server/build && ./build.sh
 ```
@@ -34,7 +33,9 @@ agent_center-xxx.tar.gz
 manager-xxx.tar.gz
 ```
 
-### Deploy MongoDB 
+## Deployment components
+> In a non-production environment, Mongodb, KAFKA, and Redis can all be deployed using docker. For details, please refer to the official documentation of docker.
+### Deploy MongoDB
 Official website download page https://www.mongodb.com/try/download/community
 > It is recommended to deploy in clusters, refer to official documents for details https://docs.mongodb.com/manual/administration/install-community/
 
@@ -79,7 +80,7 @@ Start service
 ./bin/mongod --config ./mongodb.conf
 ```
 
-Add administrators and normal users
+Add administrators and normal users.(the account and password must be consistent with the mongo.url in the manager/conf/svr.yml file)
 ```
 ./bin/mongo 127.0.0.1:27000
 
@@ -180,6 +181,7 @@ cluster-enabled yes
 > If it is a single-node redis cluster, you may encounter an error CLUSTERDOWN Hash slot not served during operation, and you need to execute the following commands to fix:
 redis-cli --cluster fix 127.0.0.1:6379
 
+## Deployment Elkeid Server
 ### Deploy ServiceDiscovery
 1. Copy the service_discovery-xxx.tar.gz generated in the first step to each server of the SD cluster and decompress it.
 ```
@@ -217,6 +219,8 @@ mongo.uri: the uri address of the mongodb cluster.
 sd.addrs: the address list of the service discovery cluster.
 ```
 3. Service initialization
+Please save the user name and password, which will be used in the Manager API /api/v1/user/login.
+DB indexes will affect system performance, so please ensure that the necessary fields are indexed.
 ```
 #Create new users
 ./init -c conf/svr.yml -t addUser -u test1 -p 22222
@@ -263,4 +267,4 @@ You can run a test script to simply verify connectivity
 cd server/agent_center/test && go run grpc_client.go
 ```
 
-Deploy the Agent, you can check the Agent's online status through the API, and consume KAFKA data.
+Configure the address of ServerDiscovery to [Agent](../../agent/README.md), then compile and deploy it, you can check the Agent's online status through the [Manager API](../README-zh_CN.md) or consume KAFKA data.
