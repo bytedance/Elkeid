@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"os"
-	"os/exec"
 	"sync"
 	"time"
 
@@ -77,8 +76,13 @@ func handleReceive(wg *sync.WaitGroup, c global.Transfer_TransferClient) {
 						zap.S().Errorf("Download error:%+v", err)
 						continue
 					}
-					s.Close()
-					os.Exit(0)
+					err = os.Rename("elkeid-agent.tmp", "elkeid-agent")
+					if err == nil {
+						s.Close()
+						os.Exit(0)
+					} else {
+						os.Remove("elkeid-agent")
+					}
 				}
 			default:
 				p, ok := s.Get(config.Name)
