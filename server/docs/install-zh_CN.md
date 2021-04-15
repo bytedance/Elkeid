@@ -115,6 +115,7 @@ db.auth('hids', 'I7ILUz7WhOJUWygy')
 ### 部署 KAFKA
 #### Java安装
 > 先安装JAVA，可参考：https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html
+
 以Debian9为例，这里演示单机部署
 ```
 sudo apt-get update

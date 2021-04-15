@@ -116,6 +116,7 @@ db.auth('hids', 'I7ILUz7WhOJUWygy')
 ### Deploy KAFKA
 #### Java installation
 > Install JAVA first, you can refer: https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html
+
 Here take Debian9 as an example to install
 ```
 sudo apt-get update
