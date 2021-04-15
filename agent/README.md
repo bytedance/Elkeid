@@ -50,6 +50,44 @@ Golang 1.16 (required)
 Because the entire `Plugin-Agent-Server` system has a certain threshold to get started, we will further explain the relevant content here so that everyone can quickly start this project.
 > Definition/Objective of Quick Start: All security functions on the host are enabled, the Agent and Server are connected successfully, and the data can be seen successfully in Kafka.
 ### Preconditions and dependencies
-Waiting for translating...
+Server deployment is complete and working normally. For details, please refer to the [Server deployment document](server/docs/install.md).
+
+After the deployment is complete, you should have the following resources:
+
+* ServiceDiscovery address (denoted as sd_host) and port (denoted as sd_port)
+Manager address (denoted as ma_host) and port (denoted as ma_port)
+* AgentCenter address (denoted as ac_host) and port (denoted as ac_port)
+* Security credentials: ca.crt/client.crt/client.key
+### Configure Agent
+Replace the above security credentials with the [CA certificate](transport/connection/ca.crt); [client certificate](transport/connection/client.crt); [client private key](transport/connection/ca.key).
+
+Modify the [product.go](transport/connection/product.go) to the following content:
+```
+package connection
+
+import _ "embed"
+
+//go:embed client.key
+var ClientKey []byte
+
+//go:embed client.crt
+var ClientCert []byte
+
+//go:embed ca.crt
+var CaCert []byte
+
+func init() {
+	sd["sd"] = "sd_host:sd_port"
+	priLB["ac"] = "ac_host:ac_port"  
+	setDialOptions(CaCert, ClientKey, ClientCert, "elkeid.com")
+}
+```
+### Compile Agent
+```
+mkdir output
+go build -o output/elkeid-agent
+```
+### Install and start the Agent
+TODO.....
 ## License
 Elkeid Agent are distributed under the Apache-2.0 license.
