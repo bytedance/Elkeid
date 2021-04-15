@@ -19,7 +19,7 @@ Now we are more than happy to announce the open-source of Elkeid Agent and Elkei
 * **Kernel + User Space**  Elkeid Agent provides User Space detection abilities, including file audition, in-house rule detection, and primary allowlists.
 * **Easy to be integrated**  Elkeid could empower any User Space agents far beyond Host Intrusion usages with the detailed and reliable data flow. A wide user action audition could benefit both Behavior Analysis and Compliance requests. When integrated with NIDS, security analyzers could build a comprehensive Provenance Graph from the network connections, along with high traceable process trees and file auditions.
 
-The AgentCenter, ServiceDiscovery and Manager modules are open sourced from the backend of the project, providing a fundamental backend framework with the following highlights:
+Elkeid Server is composed of AgentCenter, ServiceDiscovery, and Manager, and provides a basic backend framework with the following highlights:
 * **a backend framework with the ability to handle millions of agents**
 * **distrubuted, decentralized and high-availability for clusters**
 * **deployment procedure with simple operations, less dependencies of third-parties and easy maintenance**
