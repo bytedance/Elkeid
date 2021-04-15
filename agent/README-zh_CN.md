@@ -53,7 +53,7 @@ Server部署完成，工作正常。具体请查阅[Server部署文档](../serve
 * AgentCenter地址(记为ac_host)及端口(记为ac_port)
 * 安全凭证:ca.crt/client.crt/client.key
 ### 配置Agent
-将上述安全凭证分别替换至[客户端CA证书](transport/product/ca.crt);[客户端证书](transport/product/client.crt);[客户端私钥](transport/product/client.key)。
+将上述安全凭证分别替换至[客户端CA证书](transport/connection/ca.crt);[客户端证书](transport/connection/client.crt);[客户端私钥](transport/connection/client.key)。
 修改[`product.go`](transport/connection/product.go)文件为以下内容：
 ```
 package connection
