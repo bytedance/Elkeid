@@ -11,7 +11,7 @@ mod watcher;
 const SENDER_SLEEP_INTERVAL: Duration = Duration::from_millis(126);
 const SOCK_PATH: &str = "../../plugin.sock";
 const NAME: &str = "journal_watcher";
-const VERSION: &str = "1.0.0.4";
+const VERSION: &str = "1.6.0.0";
 
 fn main() {
     let (sender, receiver) = plugin_builder::Builder::new(SOCK_PATH, NAME, VERSION)

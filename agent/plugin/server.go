@@ -4,18 +4,14 @@ import (
 	"io"
 	"net"
 	"os"
-	"strings"
 	"sync"
+	"syscall"
 	"time"
 
-	"github.com/bytedance/Elkeid/agent/plugin/procotol"
-	"github.com/bytedance/Elkeid/agent/transport"
-
+	"github.com/bytedance/Elkeid/agent/global"
 	"github.com/tinylib/msgp/msgp"
 	"go.uber.org/zap"
 )
-
-var SocketPath = "plugin.sock"
 
 // Server is the unix doamin socket listener of the plugin, and it maintains a plugin map
 type Server struct {
@@ -90,10 +86,8 @@ var instance *Server
 // GetServer func is used to obtain the server instance, please note: this function is not concurrently safe
 func GetServer() (*Server, error) {
 	if instance == nil {
-		err := os.RemoveAll("plugin.sock")
-		if err != nil {
-			return nil, err
-		}
+		syscall.Unlink("plugin.sock")
+		os.RemoveAll("plugin.sock")
 		l, err := net.Listen("unix", "plugin.sock")
 		if err != nil {
 			return nil, err
@@ -118,14 +112,11 @@ func Run() {
 	for {
 		conn, err := s.l.Accept()
 		if err != nil {
-			if !strings.Contains(err.Error(), "use of closed network connection") {
-				zap.S().Panicf("Accept connect error: %v", err)
-			}
-			return
+			zap.S().Errorf("Accept connect error: %v", err)
 		}
 		go func() {
 			r := msgp.NewReader(conn)
-			req := procotol.RegistRequest{}
+			req := RegistRequest{}
 			err := (&req).DecodeMsg(r)
 			if err != nil {
 				zap.S().Error(err)
@@ -155,13 +146,16 @@ func Run() {
 						if err != io.EOF {
 							zap.S().Error(err)
 						}
-						s.Delete(req.Name)
+						if !p.exited.Load().(bool) {
+							s.Delete(req.Name)
+						}
 						return
 					}
-					err = transport.Send(data)
-					if err != nil {
-						zap.S().Error(err)
+					message := []*global.Record{}
+					for _, i := range *data {
+						message = append(message, &global.Record{Message: i})
 					}
+					global.GrpcChannel <- message
 				}
 			}()
 		}()

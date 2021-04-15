@@ -1,0 +1,58 @@
+syntax = "proto3";
+option go_package = "global";
+package proto;
+
+message  RawData {
+  repeated string IntranetIPv4 = 1; //内网IPv4列表
+  repeated string ExtranetIPv4 = 2; //外网IPv4列表
+  repeated string IntranetIPv6 = 3;
+  repeated string ExtranetIPv6 = 4;
+
+  string Hostname = 5;
+  string AgentID = 6;
+  int64 Timestamp =7;  //Agent数据上报时间
+  string Version = 8;  //Agent版本
+  repeated Record Pkg = 9;
+}
+
+message Record {
+  //map.data_type = 数据类型; map.req_token = token
+  //其中 map.req_token = token 用于与ModulesCtrlMessage token相对应 （Issues #1）
+  map<string, string> message = 1;
+}
+
+
+message Command {
+  int32 AgentCtrl = 1; // 控制指令
+  PluginTask Task = 2; // 功能模块指令
+  repeated ConfigItem Config = 3;
+}
+
+message PluginTask{
+  // 插件名字
+  string Name = 1;
+  // JSON
+  string Data = 2;
+  // 对账
+  string Token = 3;
+}
+
+message ConfigItem{
+  string Name = 1;
+  string Version = 2;
+  string SHA256 = 3;
+  repeated string DownloadURL = 4;
+  string Detail = 5;
+}
+
+message ModulesCtrlMessage {
+  map<string, string> message = 1;
+}
+
+message ConfMessage {
+  repeated string message = 1;
+}
+
+service Transfer {
+  rpc Transfer (stream RawData) returns (stream Command){}
+}

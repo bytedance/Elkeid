@@ -1,0 +1,46 @@
+syntax = "proto3";
+option go_package = "pb";
+package proto;
+
+//agent --> server
+message  RawData {
+  repeated string IntranetIPv4 = 1; // Intranet IPv4 list
+  repeated string ExtranetIPv4 = 2; // Extranet IPv4 list
+  repeated string IntranetIPv6 = 3; // Intranet IPv6 list
+  repeated string ExtranetIPv6 = 4; // Extranet IPv6 list
+
+  string Hostname = 5;
+  string AgentID = 6;  //Agent unique identification ID
+  int64 Timestamp =7;
+  string Version = 8;  //Agent version
+  repeated Record Pkg = 9;
+}
+
+message Record {
+  map<string, string> message = 1;
+}
+
+//server --> agent
+message Command {
+  int32 AgentCtrl = 1; // Agent control command
+  PluginTask Task = 2; // Agent task
+  repeated ConfigItem Config = 3; // Plugin/Agent-host config
+}
+
+message PluginTask{
+  string Name = 1; // Plugin name, which used to uniquely identify different plugins
+  string Data = 2; // Data transparently transmitted to the plugin
+  string Token = 3; // The token is used for reconciliation
+}
+
+message ConfigItem{
+  string Name = 1;
+  string Version = 2;
+  string SHA256 = 3;
+  repeated string DownloadURL = 4;
+  string Detail = 5; //
+}
+
+service Transfer {
+  rpc Transfer (stream RawData) returns (stream Command){}
+}
