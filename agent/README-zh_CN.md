@@ -71,7 +71,7 @@ var CaCert []byte
 
 func init() {
 	sd["sd"] = "sd_host:sd_port"
-  priLB["ac"] = "ac_host:ac_port"  
+	priLB["ac"] = "ac_host:ac_port"  
 	setDialOptions(CaCert, ClientKey, ClientCert, "hids_svr.github.com")
 }
 ```
