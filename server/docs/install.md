@@ -25,6 +25,7 @@ cp cert/ca.crt cert/client.crt cert/client.key ../../agent/transport/connection
 
 ## Compile the binary
 requirement：Golang (recommended version>=1.15)
+> Please refer to the official documentation for the installation of Golang: https://golang.org/doc/install
 ```
 cd Elkeid/server/build && ./build.sh
 ```
@@ -114,7 +115,14 @@ db.auth('hids', 'I7ILUz7WhOJUWygy')
 
 ### Deploy KAFKA
 #### Java installation
-Install JAVA first: https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html
+> Install JAVA first, you can refer: https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html
+Here take Debian9 as an example to install
+```
+sudo apt-get update
+sudo apt-get install default-jre
+sudo apt-get install default-jdk
+```
+确认JAVA已经安装成功
 Confirm that JAVA has been installed successfully
 ```
 java -version
