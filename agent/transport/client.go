@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"os"
-	"os/exec"
 	"sync"
 	"time"
 
@@ -72,28 +71,18 @@ func handleReceive(wg *sync.WaitGroup, c global.Transfer_TransferClient) {
 			switch config.Name {
 			case "host":
 				if config.Version != global.Version {
-					err = Download(config.DownloadURL, "/tmp/elkeid-agent.pkg", config.SHA256)
+					err = Download(config.DownloadURL, "elkeid-agent.tmp", config.SHA256)
 					if err != nil {
 						zap.S().Errorf("Download error:%+v", err)
 						continue
 					}
-					var cmd *exec.Cmd
-					if global.PlatformFamily == "debian" {
-						cmd = exec.Command("dpkg", "-i", "/tmp/elkeid-agent.pkg")
-					} else if global.PlatformFamily == "centos" {
-						cmd = exec.Command("rpm", "--force", "-i", "/tmp/elkeid-agent.pkg")
+					err = os.Rename("elkeid-agent.tmp", "elkeid-agent")
+					if err == nil {
+						s.Close()
+						os.Exit(0)
 					} else {
-						zap.S().Errorf("Unknow os reelase")
-						continue
+						os.Remove("elkeid-agent")
 					}
-					cmd.Env = []string{"PATH=/bin:/usr/bin:/sbin:/usr/sbin"}
-					err = cmd.Run()
-					if err != nil {
-						zap.S().Errorf("Command run error:%+v", err)
-						continue
-					}
-					s.Close()
-					os.Exit(0)
 				}
 			default:
 				p, ok := s.Get(config.Name)
