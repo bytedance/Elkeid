@@ -31,7 +31,7 @@ Currently,  We welcome any suggestions and cooperation.
 * #### [Elkeid Server](https://github.com/bytedance/Elkeid/tree/main/server)
 
 ## To be Continued 
-* Elkeid Server is continually being developed. More features are coming soon.
+* Elkeid is continually being developed. More features are coming soon.
 
 ## Contact us && Cooperation
 

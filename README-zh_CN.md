@@ -31,7 +31,7 @@ Elkeid 包含两大部分：
 * #### [Elkeid Server](https://github.com/bytedance/Elkeid/tree/main/server)
 
 ## To be Continued
-* Elkeid Server还在持续迭代中，更多功能即将推出。
+* Elkeid项目还在持续迭代中，更多功能即将推出。
 
 ## Contact us && Cooperation
 
