@@ -122,16 +122,16 @@ cat /etc/elkeid/log/elkeid-agent.log
 
 编译完成后，你应该可以获得`driver`与`jouranl_watcher`两个二进制文件。
 ### 上传插件
-计算上述两个二进制文件sha256，并上传至可访问的文件服务器，并获得相应的下载地址：
+计算上述两个二进制文件`sha256`，并上传至可访问的文件服务器，并获得相应的下载地址：
 > 我们已经上传了预编译好的插件，如果采用预编译插件可以直接跳过这步，下面也会以我们预编译好的插件地址为例。
-* driver插件(sha256:a9ab7a2eda69b83d830a6061a393f886a7b125ea63e7ae1df4a276105764b37d)
+* driver插件(sha256:`a9ab7a2eda69b83d830a6061a393f886a7b125ea63e7ae1df4a276105764b37d`)
 ```
 https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg
 https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg
 https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg
 https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg
 ```
-* jouran_watcher插件(sha256:a0c065514debf6f2109aa873ece86ec89b0e6ccedfa05c124b5863a4568ee20c)
+* jouran_watcher插件(sha256:`a0c065514debf6f2109aa873ece86ec89b0e6ccedfa05c124b5863a4568ee20c`)
 ```
 https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg
 https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg
