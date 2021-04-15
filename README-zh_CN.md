@@ -5,7 +5,7 @@
 Elkeid是一个云原生的基于主机的入侵检测解决方案。
 
 Elkeid 包含两大部分：
-* **Elkeid Agent**与**Elkeid Driver**作为数据采集层，它在Linux系统的内核和用户空间上均可使用，从而提供了具有更好性能的且更丰富的数据。 
+* **Elkeid Agent**与**Elkeid Driver**作为数据采集层，它在Linux系统的内核和用户空间上均可使用，从而提供了具有更好性能的且更丰富的数据。
 * **Elkeid Server**可以提供百万级Agent的接入能力，采集Agent数据，支持控制与策略下发。包含实时、离线计算模块，对采集上来的数据进行分析和检测。又有自带的服务发现和管理系统，方便对整个后台管理和操作。
 
 ## 系统架构
@@ -26,9 +26,9 @@ Elkeid 包含两大部分：
 
 欢迎任何建议与合作
 
-* #### [Elkeid Driver](https://github.com/bytedance/Elkeid/tree/main/driver)
-* #### [Elkeid Agent](https://github.com/bytedance/Elkeid/tree/main/agent)
-* #### [Elkeid Server](https://github.com/bytedance/Elkeid/tree/main/server)
+* #### [Elkeid Driver](driver)
+* #### [Elkeid Agent](agent)
+* #### [Elkeid Server](server)
 
 ## To be Continued
 * Elkeid项目还在持续迭代中，更多功能即将推出。
