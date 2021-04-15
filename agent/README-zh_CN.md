@@ -116,14 +116,14 @@ cat /etc/elkeid/log/elkeid-agent.log
 可以看到日志里面打印出了AgentID:`f4c6d306-3d4b-4eb7-abe7-b15757acbb27`，我们下面将会以这个AgentID为例进行配置。
 ### 编译插件
 在Agent启动完毕且状态正常后，说明Agent-Server已经建立了稳定的通信链路，但Agent本身只具有监控/通信/控制的功能，其他安全功能承载在其他插件上，所以我们需要对插件进行编译并下发。
-> 我们提供了预编好的插件，如果采用预编译插件可以直接跳过这步。
+> 我们提供了预编好的插件，如果采用预编译插件可以直接**跳过这步**。
 * driver插件：参见[driver插件编译](driver/README-zh_CN.md#编译)
 * jouran_watcher插件：参见[jouranl_watcher插件编译](jouranl_watcher/README-zh_CN.md#编译)
 
 编译完成后，你应该可以获得`driver`与`jouranl_watcher`两个二进制文件。
 ### 上传插件
 计算上述两个二进制文件`sha256`，并上传至可访问的文件服务器，并获得相应的下载地址：
-> 我们已经上传了预编译好的插件，如果采用预编译插件可以直接跳过这步，下面也会以我们预编译好的插件地址为例。
+> 我们已经上传了预编译好的插件，如果采用预编译插件可以直接**跳过这步**，下面也会以我们预编译好的插件地址为例。
 * driver插件(sha256:`a9ab7a2eda69b83d830a6061a393f886a7b125ea63e7ae1df4a276105764b37d`)
 ```
 https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg
