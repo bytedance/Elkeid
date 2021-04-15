@@ -15,7 +15,7 @@
 ```
 git clone https://github.com/bytedance/Elkeid.git
 cd Elkeid/server/build && ./cert_gen.sh elkeid.com hids-svr elkeid@elkeid.com
-cp cert/* ../agent_center/conf/ 
+cp cert/* ../agent_center/conf/
 ```
 2. 替换Agent证书。
 ```
@@ -23,8 +23,9 @@ cp cert/ca.crt cert/client.crt cert/client.key ../../agent/transport/connection
 ```
 
 ## 编译elkeid Server二进制
+前置条件：Golang (建议使用版本>=1.15)
 ```
-cd server/build && ./build.sh
+cd Elkeid/server/build && ./build.sh
 ```
 编译后生成三个压缩包，将他们拷贝到对应的机器目录上进行部署
 ```

@@ -15,7 +15,8 @@ If it is deployed in a production environment, it is strongly recommended replac
 ```
 git clone https://github.com/bytedance/Elkeid.git
 cd Elkeid/server/build && ./cert_gen.sh elkeid.com hids-svr elkeid@elkeid.com
-cp cert/* ../agent_center/conf/ 
+cp cert/* ../agent_center/conf/
+cd ../../
 ```
 2. Replace Agent certificate.
 ```
@@ -23,8 +24,9 @@ cp cert/ca.crt cert/client.crt cert/client.key ../../agent/transport/connection
 ```
 
 ## Compile the binary
+requirement：Golang (recommended version>=1.15)
 ```
-cd server/build && ./build.sh
+cd Elkeid/server/build && ./build.sh
 ```
 Generate three compressed packages after compilation, copy them to the corresponding machine for deployment
 ```
