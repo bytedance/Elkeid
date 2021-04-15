@@ -24,8 +24,8 @@ Elkeid Agent基于Golang构建，但其他功能插件可以用不同的语言�
 在编译前，请确认Agent所依赖的安全凭证以及证书与Server的保持一致，如果不一致请手动进行替换。详情请查看[更换Agent-AgentCenter通信证书](../server/docs/install-zh_CN.md#更换agent-agentcenter通信证书)
 
 Agent支持采用以下一种或多种方式连接到Server：
-* sd
-* load balance/passthrough
+* ServiceDiscovery
+* LoadBalance/Passthrough
 
 如果同时开启了多种方式，那么在连接时，优先级为：sd > load balance/passthrough (内网) >  load balance/passthrough (外网) 。并且，每种连接方式都可以配置多个目的地址，当处在复杂网络环境下时，这个功能十分有用，具体配置位于[`product.go`](transport/connection/product.go)文件中，可以根据需要进行修改，下面为一个样例：
 ```
