@@ -35,8 +35,8 @@ func init() {
 	JM = newJobManager()
 	//cron job init
 	CM = NewCronJobManager()
-	CM.add("Server_AgentStat", 10, 1, 120)
-	CM.add("Server_AgentList", 10, 2, 20)
+	CM.add("Server_AgentStat", 90, 1, 120)
+	CM.add("Server_AgentList", 30, 2, 20)
 }
 
 //cron job manage
