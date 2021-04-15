@@ -7,7 +7,7 @@
 | Redis |  | 如Agent数>1w，建议集群部署 |
 | ServiceDiscovery集群 | 4C8G | 1-5台（Agent数<1w可单机部署） |
 | Manager集群 | 4C8G | 1-5台（Agent数<1w可单机部署） |
-| AgentCenter集群 | 8C8G | Agent数/1500 |
+| AgentCenter集群 | 8C8G | Agent数/1600 |
 
 ## 更换Agent-AgentCenter通信证书
 生产环境部署，强烈建议执行此部署，替换Agent-AgentCenter通信证书。若测试环境，可忽略这个步骤。

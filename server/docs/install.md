@@ -7,7 +7,7 @@ English | [简体中文](install-zh_CN.md)
 | Redis | | If the number of Agents> 1w, cluster deployment is recommended |
 | ServiceDiscovery cluster | 4C8G | 1-5 (If agent number <1w, can be deployed standalone) |
 | Manager cluster | 4C8G | 1-5 (If agent number <1w, can be deployed standalone) |
-| AgentCenter cluster | 8C8G | Number of Agents/1500 |
+| AgentCenter cluster | 8C8G | Number of Agents/1600 |
 
 ## Replace Agent-AgentCenter communication certificate
 If it is deployed in a production environment, it is strongly recommended replacing the Agent-AgentCenter communication certificate. If it is a test environment, you can ignore this step.
