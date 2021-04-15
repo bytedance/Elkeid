@@ -258,4 +258,9 @@ AgentCenter will open the pprof service on port 6753 for debugging.
 
 > In addition, please ensure that the communication between the Kafka cluster and the AgentCenter cluster machines is reachable.
 ## Start using
+You can run a test script to simply verify connectivity
+```
+cd server/agent_center/test && go run grpc_client.go
+```
+
 Deploy the Agent, you can check the Agent's online status through the API, and consume KAFKA data.

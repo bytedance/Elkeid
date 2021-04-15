@@ -20,10 +20,12 @@ var (
 	defaultClientCrtFile1 = "../conf/client.crt"
 
 	tlsServerName1 = "elkeid.com"
+	ServerPort     = "127.0.0.1:6751"
+	AgentCount     = 1
 )
 
 func main() {
-	port := "127.0.0.1:6751"
+	port := ServerPort
 	certificate, err := tls.LoadX509KeyPair(defaultClientCrtFile1, defaultClientKeyFile1)
 	if err != nil {
 		fmt.Println(err)
@@ -50,8 +52,8 @@ func main() {
 	conn, _ := grpc.Dial(
 		port, grpc.WithTransportCredentials(creds), grpc.WithTimeout(10*time.Second),
 	)
-	for i := 0; i <= 0; i++ {
-		go Transfer(conn, fmt.Sprintf("4442222-3365-4905-b417-331e18333%d", i), fmt.Sprintf("10.225.85.%d", i), fmt.Sprintf("10-225-85-%d", i))
+	for i := 0; i < AgentCount; i++ {
+		go Transfer(conn, fmt.Sprintf("4442222-3365-4905-b417-331e18333%d", i), fmt.Sprintf("10.10.85.%d", i), fmt.Sprintf("10-10-85-%d", i))
 	}
 	select {}
 }

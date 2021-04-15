@@ -261,4 +261,9 @@ AgentCenter会在6753端口开放pprof服务，用于debug。
 
 > 另外请确保Kafka集群和AgentCenter集群机器之间的通信畅通。
 ## 开始使用
+安装完成后，可跑测试脚本简单验证连通性
+```
+cd server/agent_center/test && go run grpc_client.go
+```
+
 部署Agent，即可通过API查看Agent在线情况，以及消费KAFKA数据。

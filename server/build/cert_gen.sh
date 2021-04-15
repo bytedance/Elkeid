@@ -12,6 +12,14 @@ fi
 mkdir cert
 cd cert
 
+CA_CONFIG="
+[req]
+distinguished_name=dn
+[ dn ]
+[ ext ]
+basicConstraints=CA:TRUE,pathlen:0
+"
+
 cat << EOF > "v3.ext"
 authorityKeyIdentifier=keyid,issuer
 basicConstraints=CA:FALSE
@@ -23,7 +31,7 @@ EOF
 
 #ca 证书  /etc/ssl/openssl.cnf
 openssl genrsa -out ca.key 2048
-openssl req -new -x509 -days 36500 -subj "/C=GB/L=China/O=$2/CN=$3" -key ca.key -out ca.crt
+openssl req  -config <(echo "$CA_CONFIG") -new -x509 -days 36500 -subj "/C=GB/L=China/O=$2/CN=$3" -key ca.key -out ca.crt
 openssl x509 -noout -text -in ca.crt
 
 #server
