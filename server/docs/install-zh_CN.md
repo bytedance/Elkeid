@@ -270,4 +270,9 @@ AgentCenter会在6753端口开放pprof服务，用于debug。
 cd server/agent_center/test && go run grpc_client.go
 ```
 
-将ServerDiscovery的地址配置到[Agent](../../agent/README-zh_CN.md)中，编译并部署Agent，即可通过[Manager API](../README-zh_CN.md)查看Agent在线情况，以及消费KAFKA数据。
+将ServerDiscovery的地址配置到[Agent](../../agent/README-zh_CN.md)中，编译并部署Agent，即可通过[Manager API](../README-zh_CN.md)查看Agent在线情况。
+
+可以从KAFKA中消费Agent数据进行后续处理。
+```
+bin/kafka-console-consumer.sh --bootstrap-server 127.0.0.1:9092 --topic hids_svr --from-beginning
+```

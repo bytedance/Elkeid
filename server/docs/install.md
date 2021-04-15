@@ -268,3 +268,8 @@ cd server/agent_center/test && go run grpc_client.go
 ```
 
 Configure the address of ServerDiscovery to [Agent](../../agent/README.md), then compile and deploy it, you can check the Agent's online status through the [Manager API](../README-zh_CN.md) or consume KAFKA data.
+
+Agent data can be consumed from KAFKA:
+```
+bin/kafka-console-consumer.sh --bootstrap-server 127.0.0.1:9092 --topic hids_svr --from-beginning
+```
