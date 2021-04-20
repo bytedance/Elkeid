@@ -21,6 +21,7 @@ In short, AgentCenter collects Agent data, real-time/offline calculation module 
 - Simple deployment, few dependencies and easy maintenance
 
 ## Deployment document
+- [Docker test deployment document](docs/docker-install.md)
 - [deployment document](docs/install.md)
 
 ## API interface documentation

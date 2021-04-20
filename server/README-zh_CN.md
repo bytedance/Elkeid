@@ -21,6 +21,7 @@ Elkeid 后台大体包含4个模块：
 - 部署简单，依赖少，便于维护
 
 ## 部署文档
+- [docker体验文档](docs/docker-install-zh_CN.md)
 - [部署文档](docs/install-zh_CN.md)
 
 ## API接口文档
