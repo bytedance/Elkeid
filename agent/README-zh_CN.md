@@ -118,9 +118,9 @@ cat /etc/elkeid/log/elkeid-agent.log
 在Agent启动完毕且状态正常后，说明Agent-Server已经建立了稳定的通信链路，但Agent本身只具有监控/通信/控制的功能，其他安全功能承载在其他插件上，所以我们需要对插件进行编译并下发。
 > 我们提供了预编好的插件，如果采用预编译插件可以直接**跳过这步**。
 * driver插件：参见[driver插件编译](driver/README-zh_CN.md#编译)
-* jouran_watcher插件：参见[jouranl_watcher插件编译](jouranl_watcher/README-zh_CN.md#编译)
+* journal_watcher插件：参见[journal_watcher插件编译](journal_watcher/README-zh_CN.md#编译)
 
-编译完成后，你应该可以获得`driver`与`jouranl_watcher`两个二进制文件。
+编译完成后，你应该可以获得`driver`与`journal_watcher`两个二进制文件。
 ### 上传插件
 计算上述两个二进制文件`sha256`，并上传至可访问的文件服务器，并获得相应的下载地址：
 > 我们已经上传了预编译好的插件，如果采用预编译插件可以直接**跳过这步**，下面也会以我们预编译好的插件地址为例。
@@ -131,7 +131,7 @@ https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_
 https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg
 https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg
 ```
-* jouran_watcher插件(sha256:`a0c065514debf6f2109aa873ece86ec89b0e6ccedfa05c124b5863a4568ee20c`)
+* journal_watcher插件(sha256:`a0c065514debf6f2109aa873ece86ec89b0e6ccedfa05c124b5863a4568ee20c`)
 ```
 https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg
 https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg
