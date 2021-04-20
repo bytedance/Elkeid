@@ -63,3 +63,15 @@ cd agent_center  && ./agent_center
 #If the service is normal, it can be run in the background
 #nohup ./agent_center>/dev/null 2>&1 &
 ```
+## Start using
+You can run a test script to simply verify connectivity
+```
+cd server/agent_center/test && go run grpc_client.go
+```
+
+Configure the address of ServerDiscovery to [Agent](../../agent/README.md), then compile and deploy it, you can check the Agent's online status through the [Manager API](../README-zh_CN.md) or consume KAFKA data.
+
+Agent data can be consumed from KAFKA:
+```
+cd server/agent_center/test && go run kafka_comsumer.go
+```

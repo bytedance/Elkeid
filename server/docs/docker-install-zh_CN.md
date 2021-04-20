@@ -11,7 +11,7 @@ Golang >=1.15(建议)
 > Docker安装请参考官方文档：https://docs.docker.com/engine/install/  
 > Docker-Compose安装请参考官方文档: https://docs.docker.com/compose/install/
 
-##  使用步骤
+##  安装步骤
 Step1. 下载源码
 ```
 git clone https://github.com/bytedance/Elkeid.git
@@ -62,4 +62,15 @@ tar xvf agent_center-*.tar.gz
 cd agent_center  && ./agent_center
 #如果服务无异常，也可放后台运行  
 #nohup ./agent_center>/dev/null 2>&1 &
+```
+## 开始使用
+安装完成后，可跑测试脚本简单验证连通性
+```
+cd server/agent_center/test && go run grpc_client.go
+```
+将ServerDiscovery的地址配置到[Agent](../../agent/README-zh_CN.md)中，编译并部署Agent，即可通过[Manager API](../README-zh_CN.md)查看Agent在线情况。
+
+可以从KAFKA中消费Agent数据进行后续处理。
+```
+cd server/agent_center/test && go run kafka_comsumer.go
 ```
