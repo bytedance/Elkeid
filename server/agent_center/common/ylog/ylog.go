@@ -131,7 +131,7 @@ func Infof(msg string, format string, v ...interface{}) {
 
 func Debugf(msg string, format string, v ...interface{}) {
 	if defaultLogger == nil {
-		fmt.Printf(format+"\n", v...)
+		//fmt.Printf(format+"\n", v...)
 		return
 	}
 	if defaultLogger.lvl <= DebugLevel {

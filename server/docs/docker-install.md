@@ -6,10 +6,10 @@ This version only includes Server, Agent please run on the corresponding machine
 ##  Requirements
 docker-ce >= 18  
 docker-compose >= 1.20  
-Golang >=1.15(建议)
-> Golang安装请参照官方文档：https://golang.org/doc/install  
-> Docker安装请参考官方文档：https://docs.docker.com/engine/install/  
-> Docker-Compose安装请参考官方文档: https://docs.docker.com/compose/install/
+Golang >=1.15(recommended)
+> Please refer to the official documentation for Golang installation：https://golang.org/doc/install  
+> Please refer to the official documentation for Docker installation：https://docs.docker.com/engine/install/  
+> Please refer to the official documentation for Docker-Compose installation: https://docs.docker.com/compose/install/
 
 ##  Installation
 Step1. Download source code
@@ -29,7 +29,7 @@ Step3. Compile and copy the compressed package to the corresponding directory
 ```
 cd Elkeid/server/build && ./build.sh 
 
-# 将生成3个压缩包
+# 3 compressed packages will be generated
 #service_discovery-*.tar.gz
 #manager-*.tar.gz
 #gent_center-*.tar.gz
