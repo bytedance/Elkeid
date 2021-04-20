@@ -21,7 +21,7 @@ In short, AgentCenter collects Agent data, real-time/offline calculation module 
 - Simple deployment, few dependencies and easy maintenance
 
 ## Deployment document
-- [Full version deployment document](docs/install.md)
+- [deployment document](docs/install.md)
 
 ## API interface documentation
 The Manger API uses token for authentication. Before calling all other interfaces, you need to use the /api/v1/user/login interface to get the token.
