@@ -90,56 +90,51 @@ func (l *YLog) Println(v ...interface{}) {
 }
 
 func Fatalf(msg string, format string, v ...interface{}) {
+	if defaultLogger == nil {
+		fmt.Printf(format+"\n", v...)
+		return
+	}
 	if defaultLogger.lvl <= FatalLevel {
-		if defaultLogger == nil {
-			fmt.Printf(format+"\n", v...)
-			return
-		}
-
 		defaultLogger.provider.Fatal(msg, zap.String("info", fmt.Sprintf(format, v...)))
 	}
 }
 
 func Errorf(msg string, format string, v ...interface{}) {
+	if defaultLogger == nil {
+		fmt.Printf(format+"\n", v...)
+		return
+	}
 	if defaultLogger.lvl <= ErrorLevel {
-		if defaultLogger == nil {
-			fmt.Printf(format+"\n", v...)
-			return
-		}
-
 		defaultLogger.provider.Error(msg, zap.String("info", fmt.Sprintf(format, v...)))
 	}
 }
 
 func Warnf(msg string, format string, v ...interface{}) {
+	if defaultLogger == nil {
+		fmt.Printf(format+"\n", v...)
+		return
+	}
 	if defaultLogger.lvl <= WarnLevel {
-		if defaultLogger == nil {
-			fmt.Printf(format+"\n", v...)
-			return
-		}
-
 		defaultLogger.provider.Warn(msg, zap.String("info", fmt.Sprintf(format, v...)))
 	}
 }
 
 func Infof(msg string, format string, v ...interface{}) {
+	if defaultLogger == nil {
+		fmt.Printf(format+"\n", v...)
+		return
+	}
 	if defaultLogger.lvl <= InfoLevel {
-		if defaultLogger == nil {
-			fmt.Printf(format+"\n", v...)
-			return
-		}
-
 		defaultLogger.provider.Info(msg, zap.String("info", fmt.Sprintf(format, v...)))
 	}
 }
 
 func Debugf(msg string, format string, v ...interface{}) {
+	if defaultLogger == nil {
+		//fmt.Printf(format+"\n", v...)
+		return
+	}
 	if defaultLogger.lvl <= DebugLevel {
-		if defaultLogger == nil {
-			fmt.Printf(format+"\n", v...)
-			return
-		}
-
 		defaultLogger.provider.Debug(msg, zap.String("info", fmt.Sprintf(format, v...)))
 	}
 }

@@ -1,0 +1,65 @@
+version: "3"
+services:
+  elkeid_zookeeper:
+    image: 'bitnami/zookeeper:latest'
+    container_name: elkeid_zookeeper
+    restart: always
+    networks:
+      - elkeid_net
+    ports:
+      - '2182:2181'
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+  elkeid_kafka:
+    image: 'bitnami/kafka:latest'
+    container_name: elkeid_kafka
+    user: root
+    restart: always
+    networks:
+      - elkeid_net
+    ports:
+      - '9092:9092'
+    volumes:
+      - ./kafkaData:/bitnami/kafka
+    environment:
+      - KAFKA_MESSAGE_MAX_BYTES=10485760
+      - KAFKA_BROKER_ID=1
+      - KAFKA_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092
+      - KAFKA_ZOOKEEPER_CONNECT=elkeid_zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CREATE_TOPICS="hids_svr:100:0"
+    depends_on:
+      - elkeid_zookeeper
+  elkeid_redis:
+    image: redis:6.2.1
+    container_name: elkeid_redis
+    restart: always
+    networks:
+      - elkeid_net
+    ports:
+      - 6379:6379
+    volumes:
+      - ./redis.conf:/redis.conf
+    command: redis-server /redis.conf
+  elkeid_mongodb:
+    image: aashreys/mongo-auth:latest
+    container_name: elkeid_mongodb
+    restart: always
+    networks:
+      - elkeid_net
+    ports:
+      - 27000:27017
+    environment:
+      - AUTH=yes
+      - MONGODB_ADMIN_USER=admin
+      - MONGODB_ADMIN_PASS=q50stucaziKZw6DG
+      - MONGODB_APPLICATION_DATABASE=hids_server
+      - MONGODB_APPLICATION_USER=hids
+      - MONGODB_APPLICATION_PASS=I7ILUz7WhOJUWygy
+    volumes:
+      - ./mongodb_data:/data/db
+
+networks:
+  elkeid_net:
+    driver: bridge
