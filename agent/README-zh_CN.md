@@ -162,7 +162,7 @@ curl --location --request POST 'http://m_host:m_port/api/v1/user/login' \
 ```
 将token加到配置插件的请求头中，并根据插件名、插件版本、插件sha256、插件下载地址编写请求body：
 ```
-curl --location --request GET 'http://m_host:m_port/api/v1/agent/createTask/config' -H "token:BUVUDcxsaf%^&%4643667" --data-raw '{
+curl --location --request POST 'http://m_host:m_port/api/v1/agent/createTask/config' -H "token:BUVUDcxsaf%^&%4643667" --data-raw '{
     "id_list": [
         "f4c6d306-3d4b-4eb7-abe7-b15757acbb27"
     ],
@@ -198,7 +198,7 @@ curl --location --request GET 'http://m_host:m_port/api/v1/agent/createTask/conf
 ### 下发配置
 通过上述得到的task_id，我们构造以下请求：
 ```
-curl --location --request GET 'http://m_host:m_port/api/v1/agent/controlTask' -H "token:BUVUDcxsaf%^&%4643667" --data-raw '{
+curl --location --request POST 'http://m_host:m_port/api/v1/agent/controlTask' -H "token:BUVUDcxsaf%^&%4643667" --data-raw '{
     "task_id": "1618474279380056335bbGGcn",
     "action": "run",
     "rolling_percent": 1,
