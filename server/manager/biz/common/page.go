@@ -2,7 +2,7 @@ package common
 
 import (
 	"context"
-	"github.com/bytedance/Elkeid/server/manger/infra/ylog"
+	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"

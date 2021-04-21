@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/bytedance/Elkeid/server/manger/biz"
-	"github.com/bytedance/Elkeid/server/manger/infra"
-	"github.com/bytedance/Elkeid/server/manger/infra/discovery"
-	"github.com/bytedance/Elkeid/server/manger/infra/ylog"
+	"github.com/bytedance/Elkeid/server/manager/biz"
+	"github.com/bytedance/Elkeid/server/manager/infra"
+	"github.com/bytedance/Elkeid/server/manager/infra/discovery"
+	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	"github.com/gin-gonic/gin"
 	"os/signal"
 	"syscall"

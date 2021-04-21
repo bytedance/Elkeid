@@ -1,13 +1,10 @@
-module github.com/bytedance/Elkeid/server/manger
+module github.com/bytedance/Elkeid/server/manager
 
 go 1.15
 
 require (
-	github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802
-	github.com/aws/aws-sdk-go v1.34.28
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gin-gonic/gin v1.6.3
-	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-redis/redis/v8 v8.8.0
 	github.com/levigross/grequests v0.0.0-20190908174114-253788527a1a
 	github.com/onsi/ginkgo v1.15.1 // indirect

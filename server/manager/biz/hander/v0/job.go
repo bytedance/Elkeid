@@ -1,7 +1,7 @@
 package v0
 
 import (
-	"github.com/bytedance/Elkeid/server/manger/distribute/job"
+	"github.com/bytedance/Elkeid/server/manager/distribute/job"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )

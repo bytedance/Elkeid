@@ -1,7 +1,7 @@
 package task
 
 import (
-	"github.com/bytedance/Elkeid/server/manger/infra/ylog"
+	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 )
 
 const (

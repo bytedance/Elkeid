@@ -3,10 +3,10 @@ package v1
 import (
 	"context"
 	"fmt"
-	"github.com/bytedance/Elkeid/server/manger/biz/common"
-	"github.com/bytedance/Elkeid/server/manger/biz/midware"
-	"github.com/bytedance/Elkeid/server/manger/infra"
-	"github.com/bytedance/Elkeid/server/manger/infra/ylog"
+	"github.com/bytedance/Elkeid/server/manager/biz/common"
+	"github.com/bytedance/Elkeid/server/manager/biz/midware"
+	"github.com/bytedance/Elkeid/server/manager/infra"
+	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 )

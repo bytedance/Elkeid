@@ -2,7 +2,7 @@ package job
 
 import (
 	"fmt"
-	"github.com/bytedance/Elkeid/server/manger/infra"
+	"github.com/bytedance/Elkeid/server/manager/infra"
 )
 
 var (
