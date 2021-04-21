@@ -234,7 +234,7 @@ Please save the user name and password, which will be used in the Manager API /a
 DB indexes will affect system performance, so please ensure that the necessary fields are indexed.
 ```
 #Create new users
-./init -c conf/svr.yml -t addUser -u test1 -p 22222
+./init -c conf/svr.yml -t addUser -u hids_test -p hids_test
 
 #Add Mongodb index
 ./init -c conf/svr.yml -t addIndex -f conf/index.json

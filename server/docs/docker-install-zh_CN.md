@@ -6,7 +6,7 @@ Docker版只为快速体验使用，请不要在生产环境下使用!
 ##  依赖
 docker-ce >= 18  
 docker-compose >= 1.20  
-Golang >=1.15(建议)
+Golang >=1.16(建议)
 > Golang安装请参照官方文档：https://golang.org/doc/install  
 > Docker安装请参考官方文档：https://docs.docker.com/engine/install/  
 > Docker-Compose安装请参考官方文档: https://docs.docker.com/compose/install/
@@ -22,6 +22,16 @@ cd Elkeid/server/build
 docker-compose up
 #如果服务无异常，可以放后台运行
 # docker-compose up -d
+```
+服务起来后，`docker ps`会看到4个docker服务elkeid_kafka、elkeid_mongodb、elkeid_redis、elkeid_zookeeper
+
+修复redis状态（为了简便，redis集群只起了一个实例，需要手动修复集群状态）
+```
+docker exec -it elkeid_redis sh
+
+#进入docker后执行
+redis-cli --cluster fix 127.0.0.1:6379
+#遇到Fix these slots by covering with a random node? (type 'yes' to accept)，输入yes即可
 ```
 > 如果提示获取 docker image 失败，请检查网络并重试，或者给 docker pull 挂上 http/https 代理
 
@@ -47,7 +57,7 @@ tar xvf manager-*.tar.gz
 cd manager 
 
 #新增用户
-./init -c conf/svr.yml -t addUser -u test_hids -p test_hids
+./init -c conf/svr.yml -t addUser -u hids_test -p hids_test
 
 #index新增Mongodb索引
 ./init -c conf/svr.yml -t addIndex -f conf/index.json
