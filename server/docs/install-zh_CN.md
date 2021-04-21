@@ -235,7 +235,7 @@ sd.addrs 是服务发现集群的地址列表。
 Mongodb未加索引会影响系统性能，所以请确保系统必要的字段都加上索引。
 ```
 #新增用户
-./init -c conf/svr.yml -t addUser -u test1 -p 22222
+./init -c conf/svr.yml -t addUser -u hids_test -p hids_test
 
 #index新增Mongodb索引
 ./init -c conf/svr.yml -t addIndex -f conf/index.json
