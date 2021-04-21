@@ -160,7 +160,7 @@ curl --location --request POST 'http://m_host:m_port/api/v1/user/login' \
     }
 }
 ```
-将token加到配置插件的请求头中，并根据插件名、插件版本、插件sha256、插件下载地址编写请求body：
+将token加到配置插件的请求头中，并根据需要下发的AgentID、插件名、插件版本、插件sha256、插件下载地址编写请求body：
 ```
 curl --location --request POST 'http://m_host:m_port/api/v1/agent/createTask/config' -H "token:BUVUDcxsaf%^&%4643667" --data-raw '{
     "id_list": [
