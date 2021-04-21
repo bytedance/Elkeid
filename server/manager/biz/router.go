@@ -1,9 +1,9 @@
 package biz
 
 import (
-	v0 "github.com/bytedance/Elkeid/server/manger/biz/hander/v0"
-	v1 "github.com/bytedance/Elkeid/server/manger/biz/hander/v1"
-	"github.com/bytedance/Elkeid/server/manger/biz/midware"
+	v0 "github.com/bytedance/Elkeid/server/manager/biz/hander/v0"
+	v1 "github.com/bytedance/Elkeid/server/manager/biz/hander/v1"
+	"github.com/bytedance/Elkeid/server/manager/biz/midware"
 	"github.com/gin-gonic/gin"
 )
 

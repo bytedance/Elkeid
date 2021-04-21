@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/bytedance/Elkeid/server/manger/infra/discovery"
-	"github.com/bytedance/Elkeid/server/manger/infra/ylog"
+	"github.com/bytedance/Elkeid/server/manager/infra/discovery"
+	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	"github.com/go-redis/redis/v8"
 	"github.com/levigross/grequests"
 	"sync"
@@ -136,7 +136,7 @@ func (sj *SimpleJob) Distribute(k, v interface{}) error {
 		return err
 	}
 	sj.Rds.HSet(ctx, statKey, fmt.Sprintf("%s_distribute", LocalHost), "ok")
-	//把任务分发到所有github.com/bytedance/Elkeid/server/manger机器
+	//把任务分发到所有github.com/bytedance/Elkeid/server/manager机器
 	hosts := discovery.GetHosts()
 	ylog.Debugf("SimpleJob", "[job] distribute hosts: %v", hosts)
 	items := jobs.([]JobArgs)

@@ -2,9 +2,9 @@ package discovery
 
 import (
 	"fmt"
-	"github.com/bytedance/Elkeid/server/manger/biz/midware"
-	"github.com/bytedance/Elkeid/server/manger/infra"
-	"github.com/bytedance/Elkeid/server/manger/infra/ylog"
+	"github.com/bytedance/Elkeid/server/manager/biz/midware"
+	"github.com/bytedance/Elkeid/server/manager/infra"
+	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	"github.com/levigross/grequests"
 	"math/rand"
 	"time"

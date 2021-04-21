@@ -3,7 +3,7 @@ package discovery
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/bytedance/Elkeid/server/manger/infra"
+	"github.com/bytedance/Elkeid/server/manager/infra"
 	"github.com/levigross/grequests"
 	"math/rand"
 	"time"

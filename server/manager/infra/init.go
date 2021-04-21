@@ -3,10 +3,10 @@ package infra
 import (
 	"flag"
 	"fmt"
-	"github.com/bytedance/Elkeid/server/manger/infra/mongodb"
-	"github.com/bytedance/Elkeid/server/manger/infra/redis"
-	"github.com/bytedance/Elkeid/server/manger/infra/userconfig"
-	"github.com/bytedance/Elkeid/server/manger/infra/ylog"
+	"github.com/bytedance/Elkeid/server/manager/infra/mongodb"
+	"github.com/bytedance/Elkeid/server/manager/infra/redis"
+	"github.com/bytedance/Elkeid/server/manager/infra/userconfig"
+	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	"os"
 	"strings"
 )

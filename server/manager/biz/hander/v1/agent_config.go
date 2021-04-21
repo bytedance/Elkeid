@@ -2,10 +2,10 @@ package v1
 
 import (
 	"context"
-	"github.com/bytedance/Elkeid/server/manger/biz/common"
-	"github.com/bytedance/Elkeid/server/manger/infra"
-	. "github.com/bytedance/Elkeid/server/manger/infra/def"
-	"github.com/bytedance/Elkeid/server/manger/infra/ylog"
+	"github.com/bytedance/Elkeid/server/manager/biz/common"
+	"github.com/bytedance/Elkeid/server/manager/infra"
+	. "github.com/bytedance/Elkeid/server/manager/infra/def"
+	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
