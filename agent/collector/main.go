@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"cgithub.com/bytedance/Elkeid/agent/support/go/libmongoose"
 	"github.com/bytedance/Elkeid/agent/collector/socket"
+	"github.com/bytedance/Elkeid/agent/support/go/libmongoose"
 	"github.com/prometheus/procfs"
 	"github.com/rjeczalik/notify"
 	"go.uber.org/atomic"
