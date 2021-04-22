@@ -3,8 +3,8 @@ module github.com/bytedance/Elkeid/agent/collector
 go 1.16
 
 require (
-	github.com/bytedance/Elkeid/agent/support/go/libmongoose v0.0.1
 	github.com/GehirnInc/crypt v0.0.0-20200316065508-bb7000b8a962
+	github.com/bytedance/Elkeid/agent/support/go/libmongoose v0.0.0-20210422101703-df1bd8b8470e // indirect
 	github.com/deckarep/golang-set v1.7.1
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/karrick/godirwalk v1.16.1
