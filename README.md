@@ -43,3 +43,9 @@ Lark Group
 * Elkeid Driver: GPLv2
 * Elkeid Agent: Apache-2.0
 * Elkeid Server: Apache-2.0
+
+
+## 404StarLink 2.0 - Galaxy
+![](https://github.com/knownsec/404StarLink-Project/raw/master/logo.png)
+
+Elkeid has joined 404Team [404StarLink 2.0 - Galaxy](https://github.com/knownsec/404StarLink2.0-Galaxy)
