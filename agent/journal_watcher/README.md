@@ -42,4 +42,4 @@ const PLUGIN_VERSION:&str = "1.0.0.0";
 These can be configured as required, but remember those constants need to be consistent with the [agent's parameters ](../README.md#parameters-and-options) and [agent's config.yaml](../README.md#config-file).
 
 ## License
-Journal Watcher Plugin are distributed under the LGPL-2.1 license.
+Journal Watcher Plugin is distributed under the LGPL-2.1 license.
