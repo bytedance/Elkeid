@@ -1,5 +1,5 @@
 English | [简体中文](README-zh_CN.md)
-## About Driver Plugin
+## About collector Plugin
 The collector plugin periodically scans the relevant assets and configurations on the host, parses and standardizes the data, and reports it to the server, and can further link threat intelligence as needed to improve the baseline security level of the host. In addition, it is worth mentioning that in some data collection, we support the collection of related assets in the container on the host to enrich my asset database.
 
 ## Supported Platforms
