@@ -120,10 +120,10 @@ cat /etc/elkeid/log/elkeid-agent.log
 * driver插件：参见[driver插件编译](driver/README-zh_CN.md#编译)
 * journal_watcher插件：参见[journal_watcher插件编译](journal_watcher/README-zh_CN.md#编译)
 * collector插件：参见[collector插件编译](collector/README-zh_CN.md#编译)
-* 
+
 编译完成后，你应该可以获得`driver` `journal_watcher` `collector`三个二进制文件。
 ### 上传插件
-计算上述两个二进制文件`sha256`，并上传至可访问的文件服务器，并获得相应的下载地址：
+计算上述两个三进制文件`sha256`，并上传至可访问的文件服务器，并获得相应的下载地址：
 > 我们已经上传了预编译好的插件，如果采用预编译插件可以直接**跳过这步**，下面也会以我们预编译好的插件地址为例。
 * driver插件(sha256:`a9ab7a2eda69b83d830a6061a393f886a7b125ea63e7ae1df4a276105764b37d`)
 ```
