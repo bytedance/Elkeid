@@ -119,8 +119,9 @@ cat /etc/elkeid/log/elkeid-agent.log
 > 我们提供了预编好的插件，如果采用预编译插件可以直接**跳过这步**。
 * driver插件：参见[driver插件编译](driver/README-zh_CN.md#编译)
 * journal_watcher插件：参见[journal_watcher插件编译](journal_watcher/README-zh_CN.md#编译)
-
-编译完成后，你应该可以获得`driver`与`journal_watcher`两个二进制文件。
+* collector插件：参见[collector插件编译](collector/README-zh_CN.md#编译)
+* 
+编译完成后，你应该可以获得`driver` `journal_watcher` `collector`三个二进制文件。
 ### 上传插件
 计算上述两个二进制文件`sha256`，并上传至可访问的文件服务器，并获得相应的下载地址：
 > 我们已经上传了预编译好的插件，如果采用预编译插件可以直接**跳过这步**，下面也会以我们预编译好的插件地址为例。
@@ -137,6 +138,13 @@ https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journa
 https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg
 https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg
 https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg
+```
+* collector插件(sha256:`f6e0b34de998844cbfc95ae0e47d39225c2449833657a6a6289d9722d8e2fdc8`)
+```
+https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector_1.6.0.0_amd64.plg
+https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector_1.6.0.0_amd64.plg
+https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector_1.6.0.0_amd64.plg
+https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector_1.6.0.0_amd64.plg
 ```
 ### 配置插件
 在配置插件前需要鉴权Manager API：
@@ -184,6 +192,15 @@ curl --location --request POST 'http://m_host:m_port/api/v1/agent/createTask/con
                 ],
                 "version": "1.6.0.0",
                 "sha256": "a0c065514debf6f2109aa873ece86ec89b0e6ccedfa05c124b5863a4568ee20c",
+                "detail": ""
+            },
+	    {
+                "name": "collector",
+                "download_url": [
+                    "https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector_1.6.0.0_amd64.plg","https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector_1.6.0.0_amd64.plg","https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector_1.6.0.0_amd64.plg","https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector_1.6.0.0_amd64.plg"
+                ],
+                "version": "1.6.0.0",
+                "sha256": "f6e0b34de998844cbfc95ae0e47d39225c2449833657a6a6289d9722d8e2fdc8",
                 "detail": ""
             }
         ]
