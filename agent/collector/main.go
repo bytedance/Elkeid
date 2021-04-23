@@ -31,7 +31,7 @@ type container struct {
 
 func main() {
 	// Connect to agent
-	c, err := libmongoose.Connect("../../plugin.sock", "collector", "1.0.0.26")
+	c, err := libmongoose.Connect("../../plugin.sock", "collector", "1.6.0.0")
 	if err != nil {
 		zap.S().Error(err)
 		return
