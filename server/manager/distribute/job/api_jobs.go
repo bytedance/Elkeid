@@ -22,7 +22,7 @@ const (
 	HttpMethodGet  = "GET"
 	HttpMethodPost = "POST"
 
-	serverRegisterName = "hids_svr_http"
+	serverRegisterFormat = "%s_http"
 )
 
 var (
@@ -30,14 +30,14 @@ var (
 		//server api
 		"Server_AgentStat": {
 			"path":          "/conn/stat",
-			"register_name": serverRegisterName,
+			"register_name": fmt.Sprintf(serverRegisterFormat, infra.SvrName),
 			"method":        HttpMethodGet,
 			"scheme":        "https",
 			"timeout":       2,
 		},
 		"Server_AgentList": {
 			"path":          "/conn/list",
-			"register_name": serverRegisterName,
+			"register_name": fmt.Sprintf(serverRegisterFormat, infra.SvrName),
 			"method":        HttpMethodGet,
 			"scheme":        "https",
 			"timeout":       2,
@@ -46,21 +46,21 @@ var (
 		//agent api
 		"Agent_Config": {
 			"path":          "/command",
-			"register_name": serverRegisterName,
+			"register_name": fmt.Sprintf(serverRegisterFormat, infra.SvrName),
 			"method":        HttpMethodPost,
 			"scheme":        "https",
 			"timeout":       2,
 		},
 		"Agent_Ctrl": {
 			"path":          "/command",
-			"register_name": serverRegisterName,
+			"register_name": fmt.Sprintf(serverRegisterFormat, infra.SvrName),
 			"method":        HttpMethodPost,
 			"scheme":        "https",
 			"timeout":       2,
 		},
 		"Agent_Task": {
 			"path":          "/command",
-			"register_name": serverRegisterName,
+			"register_name": fmt.Sprintf(serverRegisterFormat, infra.SvrName),
 			"method":        HttpMethodPost,
 			"scheme":        "https",
 			"timeout":       2,

@@ -151,6 +151,7 @@ https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector_1
 > 详细参见[API接口文档](../server/README-zh_CN.md#api接口文档)
 >
 > 如果在部署Manager时修改了`username`和`password`，下面也记得做对应修改
+>
 ```
 curl --location --request POST 'http://m_host:m_port/api/v1/user/login' \
 --data-raw '{
@@ -158,7 +159,7 @@ curl --location --request POST 'http://m_host:m_port/api/v1/user/login' \
     "password": "hids_test"
 }'
 ```
-回应中带着鉴权的token：
+回应中带着鉴权的token（后面的其他接口请求都需要header带上这个token）：
 ```
 {
     "code": 0,
@@ -167,6 +168,15 @@ curl --location --request POST 'http://m_host:m_port/api/v1/user/login' \
         "token": "BUVUDcxsaf%^&%4643667"
     }
 }
+```
+注意首次使用时，需要设置agent默认配置，可以设置为空(为空意味着新接入的agent不会自动开启任何插件):
+```
+curl --location --request POST 'http://127.0.0.1:6701/api/v1/agent/updateDefaultConfig' -H "token:BUVUDcxsaf%^&%4643667" \
+--data-raw '{
+    "type": "agent_config",
+    "version": 0,
+    "config": []
+}'
 ```
 将token加到配置插件的请求头中，并根据需要下发的AgentID、插件名、插件版本、插件sha256、插件下载地址编写请求body：
 ```

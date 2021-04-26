@@ -43,7 +43,7 @@ sd:
 # credentials:  use to identify the manager when requesting the server,
 #               ak/sk must be added to the configuration file of the Agent Center.(notice ak is case-insensitive)
 server:
-  name: hids_manage
+  name: hids_svr
   credentials:
     ak: 0376b2a4c481sef5
     sk: 60b29se7164027072799f565eb964d91
