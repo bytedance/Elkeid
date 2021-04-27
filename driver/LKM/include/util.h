@@ -156,7 +156,7 @@ static __always_inline char *smith_d_path(const struct path *path, char *buf, in
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(5, 8, 0)
 #include <linux/mmap_lock.h>
-#else
+#elif !defined(_LINUX_MMAP_LOCK_H)
 static inline bool mmap_read_trylock(struct mm_struct *mm)
 {
     return down_read_trylock(&mm->mmap_sem) != 0;
