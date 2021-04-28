@@ -49,7 +49,7 @@ Step4. Start ServiceDiscovery
 tar xvf service_discovery-*.tar.gz
 cd service_discovery && ./sd
 #If the service is normal, it can be run in the background  
-#nohup ./sd>/dev/null 2>&1 &
+nohup ./sd>/dev/null 2>&1 &
 ```
 Step5. Start Manager
 ```
@@ -64,14 +64,14 @@ cd manager
 
 ./manager
 #If the service is normal, it can be run in the background
-#nohup ./manager>/dev/null 2>&1 &
+nohup ./manager>/dev/null 2>&1 &
 ```
 Step6. Start AgentCenter
 ```
 tar xvf agent_center-*.tar.gz
 cd agent_center  && ./agent_center
 #If the service is normal, it can be run in the background
-#nohup ./agent_center>/dev/null 2>&1 &
+nohup ./agent_center>/dev/null 2>&1 &
 ```
 ## Start using
 You can run a test script to simply verify connectivity
