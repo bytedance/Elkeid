@@ -32,6 +32,9 @@ Elkeid Server由AgentCenter、ServiceDiscovery、Manager几部分组成，提供
 * #### [Elkeid Agent](agent)
 * #### [Elkeid Server](server)
 
+## Q&A
+ [Question and Answer](server/docs/qa-zh_CN.md)
+
 ## To be Continued
 * Elkeid项目还在持续迭代中，更多功能即将推出。
 
@@ -48,7 +51,7 @@ Lark Group
 
 
 # 404StarLink 2.0 - Galaxy
-![](https://github.com/knownsec/404StarLink-Project/raw/master/logo.png) 
+![](https://github.com/knownsec/404StarLink-Project/raw/master/logo.png)
 
 同时，Elkeid 也是 404Team [星链计划2.0](https://github.com/knownsec/404StarLink2.0-Galaxy)中的一环，如果对星链计划感兴趣的小伙伴可以点击下方链接了解。
 [https://github.com/knownsec/404StarLink2.0-Galaxy](https://github.com/knownsec/404StarLink2.0-Galaxy)
