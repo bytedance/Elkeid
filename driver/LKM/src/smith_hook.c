@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-3.0
 /*
  * smith_hook.c
  *
@@ -970,13 +970,13 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
     exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
-    //exe filter check and argv filter check
-    if (execve_exe_check(exe_path) || execve_argv_check(data->argv))
-        goto out;
-
     tty = get_current_tty();
     if(tty && strlen(tty->name) > 0)
         tty_name = tty->name;
+
+    //exe filter check and argv filter check
+    if (execve_exe_check(exe_path) || execve_argv_check(data->argv))
+        goto out;
 
     get_process_socket(&sip4, &sip6, &sport, &dip4, &dip6, &dport,
                        &socket_pname, &socket_pname_buf, &socket_pid,
@@ -1060,6 +1060,9 @@ out:
 
     if (data->free_ssh_connection)
         kfree(data->ssh_connection);
+
+    if(tty)
+        tty_kref_put(tty);
 
     return 0;
 }
