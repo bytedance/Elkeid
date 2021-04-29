@@ -68,7 +68,7 @@ static __always_inline char *smith_get_pid_tree(int limit)
         rcu_read_lock();
         task = rcu_dereference(task->real_parent);
         put_task_struct(old_task);
-        if (!task || task->pid == 1) {
+        if (!task || task->pid == 0) {
             rcu_read_unlock();
             break;
         }
@@ -92,10 +92,26 @@ static __always_inline char *smith_get_pid_tree(int limit)
     return tmp_data;
 }
 
-/* pagefault_disable/enable could trigger resched */
+/*
+ * Kernel >= 4.2 (4.2.0 included):
+ *     current->pagefault_disabled introduced, __do_page_fault will cease
+ *     the process of user-mode address if this value is non-zero or the
+ *     context is in irq (in_atomic)
+ *
+ * Kernel < 4.2:
+ *     __do_page_fault just cease when atomic-context is detected when
+ *     processing page fault due to user-mode address
+ *
+ *     WARNING: pagefault_enable could trigger re-schedulinga, that's not
+ *     allowed under atomic-context of kprobe callback
+ */
 static inline void smith_pagefault_disable(void)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
+    pagefault_disable();
+#else
     preempt_disable();
+#endif
 #if 0
     preempt_count_inc();
     /*
@@ -109,7 +125,9 @@ static inline void smith_pagefault_disable(void)
 /* from kernel 3.14.0, preempt_enable_no_resched() only defined for kernel */
 static inline void smith_pagefault_enable(void)
 {
-#ifdef CONFIG_PREEMPT
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
+    pagefault_enable();
+#elif defined(CONFIG_PREEMPT)
     #ifdef preempt_enable_no_resched
     preempt_enable_no_resched();
 #else
@@ -120,7 +138,7 @@ static inline void smith_pagefault_enable(void)
     barrier();
     preempt_count_dec();
 #endif
-#else /* !CONFIG_PREEMPT */
+#else /* < 4.2.0 && !CONFIG_PREEMPT */
     preempt_enable();
 #endif
 }
@@ -278,21 +296,11 @@ static inline unsigned int __get_pid_ns_inum(void) {
 }
 
 static inline int __get_pgid(void) {
-    struct task_struct *task;
-    task = pid_task(task_pgrp(current), PIDTYPE_PID);
-    if(task != NULL)
-        return task->pid;
-    else
-        return -1;
+    return task_pgrp_vnr(current);
 }
 
 static inline int __get_sid(void) {
-    struct task_struct *task;
-    task = pid_task(task_session(current), PIDTYPE_PID);
-    if(task != NULL)
-        return task->pid;
-    else
-        return -1;
+    return task_session_vnr(current);
 }
 
 #endif /* UTIL_H */
