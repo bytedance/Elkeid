@@ -214,7 +214,7 @@ Auth.Keys: List of authentication keys. The client (AgentCenter/Manager) needs t
 ```
 ./sd
 #If the service is normal, it can also run in the background
-#nohup ./sd>/dev/null 2>&1 &
+nohup ./sd>/dev/null 2>&1 &
 ```
 
 ### Deployment Manager
@@ -243,7 +243,7 @@ DB indexes will affect system performance, so please ensure that the necessary f
 ```
 ./manager -c conf/svr.yml
 #If the service is normal, it can also run in the background
-#nohup ./manager -c conf/svr.yml>/dev/null 2>&1 &
+nohup ./manager -c conf/svr.yml>/dev/null 2>&1 &
 ```
 > Manager will open HTTP service on port 6701 for API access and internal communication.
 
@@ -265,7 +265,7 @@ kafka.addrs: the address list of the kafka cluster.
 ```
 ./agent_center -c conf/svr.yml
 #If the service is normal, it can also run in the background
-#nohup ./agent_center -c conf/svr.yml>/dev/null 2>&1 &
+nohup ./agent_center -c conf/svr.yml>/dev/null 2>&1 &
 ```
 > AgentCenter will open RPC service on port 6751. Please keep this port reachable to all Agent machines.
 AgentCenter will open HTTP service on port 6752, please keep this port reachable with all Manager machines.

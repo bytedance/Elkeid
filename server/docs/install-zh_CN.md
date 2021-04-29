@@ -215,7 +215,7 @@ Auth.Keys: 鉴权秘钥列表，客户端（AC/Manager）需要拿到这个的�
 ```
 ./sd
 #如果服务无异常，也可放后台运行  
-#nohup ./sd>/dev/null 2>&1 &
+nohup ./sd>/dev/null 2>&1 &
 ```
 
 ### 部署 Manager
@@ -244,7 +244,7 @@ Mongodb未加索引会影响系统性能，所以请确保系统必要的字段�
 ```
 ./manager -c conf/svr.yml
 #如果服务无异常，也可放后台运行  
-#nohup ./Manager -c conf/svr.yml>/dev/null 2>&1 &
+nohup ./Manager -c conf/svr.yml>/dev/null 2>&1 &
 ```
 > Manager会在6701端口开放HTTP服务，用于对外API访问和内部通信。
 
@@ -266,7 +266,7 @@ kafka.addrs 是kafka集群的地址列表。
 ```
 ./agent_center -c conf/svr.yml
 #如果服务无异常，也可放后台运行  
-#nohup ./agent_center -c conf/svr.yml>/dev/null 2>&1 &
+nohup ./agent_center -c conf/svr.yml>/dev/null 2>&1 &
 ```
 > AgentCenter会在6751端口开放RPC服务，请保持此端口与所有Agent机器通信畅通。
 AgentCenter会在6752端口开放HTTP服务，请保持此端口与所有Manager机器通信畅通。

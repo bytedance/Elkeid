@@ -49,7 +49,7 @@ Step4. 启动ServiceDiscovery
 tar xvf service_discovery-*.tar.gz
 cd service_discovery && ./sd
 #如果服务无异常，也可放后台运行  
-#nohup ./sd>/dev/null 2>&1 &
+nohup ./sd>/dev/null 2>&1 &
 ```
 Step5. 启动Manager
 ```
@@ -64,14 +64,14 @@ cd manager
 
 ./manager
 #如果服务无异常，也可放后台运行  
-#nohup ./manager>/dev/null 2>&1 &
+nohup ./manager>/dev/null 2>&1 &
 ```
 Step6. 启动AgentCenter
 ```
 tar xvf agent_center-*.tar.gz
 cd agent_center  && ./agent_center
 #如果服务无异常，也可放后台运行  
-#nohup ./agent_center>/dev/null 2>&1 &
+nohup ./agent_center>/dev/null 2>&1 &
 ```
 ## 开始使用
 安装完成后，可跑测试脚本简单验证连通性
