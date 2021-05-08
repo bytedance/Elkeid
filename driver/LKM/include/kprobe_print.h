@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-3.0 */
 #undef PRINT_EVENT_SYSTEM
 #define PRINT_EVENT_SYSTEM kprobe_print
 

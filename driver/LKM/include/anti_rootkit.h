@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0 */
 #ifndef __ANTI_ROOTKIT_H
 #define __ANTI_ROOTKIT_H
-#include <asm/asm-offsets.h>
 #include <linux/syscalls.h>
 #include <linux/module.h>
 #include <linux/mutex.h>

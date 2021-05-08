@@ -98,8 +98,4 @@
 #define P_GET_SYSCALL_NAME(x) P_SYSCALL_PREFIX(x)
 #define P_GET_COMPAT_SYSCALL_NAME(x) P_COMPAT_SYSCALL_PREFIX(x)
 
-static struct files_struct *(*get_files_struct_sym) (struct task_struct * task);
-
-static void (*put_files_struct_sym) (struct files_struct * files);
-
 #endif /* SMITH_HOOK_H */

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-3.0 */
 
 #ifndef _TRACE_EVENT_H
 #define _TRACE_EVENT_H
