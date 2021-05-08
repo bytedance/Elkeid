@@ -6,6 +6,13 @@
 #include "../include/util.h"
 #include <linux/version.h>
 #include <linux/kallsyms.h>
+#include <linux/kprobes.h>
+/* kernel version after 5.8 should use api in linux/mmap_lock.h
+   ref: https://lkml.org/lkml/2020/6/4/28
+*/
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+#include <linux/mmap_lock.h>
+#endif
 
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
@@ -40,7 +47,7 @@ unsigned long smith_kallsyms_lookup_name(const char *name)
         if (!kallsyms_lookup_name_sym) {
                 kallsyms_lookup_name_sym = (void *)get_kallsyms_func();
                 if(!kallsyms_lookup_name_sym)
-                        reutrn 0;
+                        return 0;
         }
         return kallsyms_lookup_name_sym(name);
 }
