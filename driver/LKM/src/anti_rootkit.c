@@ -21,10 +21,14 @@
 
 static int (*ckt) (unsigned long addr) = NULL;
 
+#ifdef CONFIG_X86
 static unsigned long *idt = NULL;
+#endif
+
 static unsigned long *sct = NULL;
 static struct kset *mod_kset = NULL;
-
+static struct mutex *mod_lock = NULL;
+struct module *(*mod_find_module)(const char *name);
 static void work_func(struct work_struct *dummy);
 
 static DECLARE_DELAYED_WORK(work, work_func);
@@ -34,10 +38,7 @@ static DECLARE_DELAYED_WORK(work, work_func);
     ((uintptr_t)x < ((uintptr_t)y+(uintptr_t)z)) \
 )
 
-static struct module *get_module_from_addr(unsigned long addr)
-{
-    return __module_address(addr);
-}
+static struct module *(*get_module_from_addr)(unsigned long addr);
 
 static const char *find_hidden_module(unsigned long addr)
 {
@@ -86,8 +87,18 @@ static const char *find_hidden_module(unsigned long addr)
     return mod_name;
 }
 
+static void module_list_lock(void)
+{
+    if (likely(mod_lock))
+		mutex_lock(mod_lock);
+}
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
+static void module_list_unlock(void)
+{
+    if (likely(mod_lock))
+		mutex_unlock(mod_lock);
+
+}
 
 static void analyze_syscalls(void)
 {
@@ -104,14 +115,14 @@ static void analyze_syscalls(void)
 		addr = sct[i];
 	
 		if (!ckt(addr)) {
-			mutex_lock(&module_mutex);
+			module_list_lock();
 			mod = get_module_from_addr(addr);
 			if (mod) {
 				mod_name = mod->name;
 			} else {
 				const char* name = find_hidden_module(addr);
 				if (IS_ERR_OR_NULL(name)) {
-				    mutex_unlock(&module_mutex);
+				    module_list_unlock();
 				    continue;
 				}
 
@@ -119,14 +130,15 @@ static void analyze_syscalls(void)
 			}
 			
 			syscall_print(mod_name, i);
-			mutex_unlock(&module_mutex);
+			module_list_unlock();
 		}
 	}
 }
 
 static void analyze_interrupts(void)
 {
-    int i;
+#ifdef CONFIG_X86
+	int i;
 	unsigned long addr;
 	struct module *mod;
 
@@ -138,7 +150,7 @@ static void analyze_interrupts(void)
 
 		addr = idt[i];
 		if (!ckt(addr)) {
-			mutex_lock(&module_mutex);
+			module_list_lock();
 
 			mod = get_module_from_addr(addr);
 			if (mod) {
@@ -146,7 +158,7 @@ static void analyze_interrupts(void)
 			} else {
 				const char *name = find_hidden_module(addr);
 				if (IS_ERR_OR_NULL(name)) {
-				    mutex_unlock(&module_mutex);
+				    module_list_unlock();
 				    continue;
 				}
 
@@ -154,9 +166,10 @@ static void analyze_interrupts(void)
 			}
 
 			interrupts_print(mod_name, i);
-			mutex_unlock(&module_mutex);
+			module_list_unlock();
 		}
 	}
+#endif
 }
 
 static void analyze_modules(void)
@@ -175,7 +188,7 @@ static void analyze_modules(void)
 
 		kobj = container_of(cur, struct module_kobject, kobj);
 		if (kobj && kobj->mod && kobj->mod->name) {
-			if (!find_module(kobj->mod->name))
+			if (mod_find_module && !mod_find_module(kobj->mod->name))
 				mod_print(kobj->mod->name);
 		}
 	}
@@ -184,10 +197,10 @@ static void analyze_modules(void)
 
 static void analyze_fops(void)
 {
+    struct module *mod = NULL;
     unsigned long addr;
 	const char *mod_name;
 	struct file *fp;
-	struct module *mod;
 
 	fp = filp_open("/proc", O_RDONLY, S_IRUSR);
 	if (IS_ERR_OR_NULL(fp)) {
@@ -207,22 +220,20 @@ static void analyze_fops(void)
 #endif
 
 	if (!ckt(addr)) {
-		mutex_lock(&module_mutex);
-		mod = get_module_from_addr(addr);
+		module_list_lock();
+		if (get_module_from_addr)
+		    mod = get_module_from_addr(addr);
 		mod_name = mod ? mod->name : find_hidden_module(addr);
 		if (!IS_ERR_OR_NULL(mod_name))
 			fops_print(mod_name);
-		mutex_unlock(&module_mutex);
+		module_list_unlock();
 	}
 	filp_close(fp, NULL);
 }
 
-#endif // LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-
-
 static void anti_rootkit_check(void)
 {
-    analyze_fops();
+	analyze_fops();
 	analyze_syscalls();
 	analyze_modules();
 	analyze_interrupts();
@@ -230,10 +241,8 @@ static void anti_rootkit_check(void)
 
 static void work_func(struct work_struct *dummy)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
     anti_rootkit_check();
 	schedule_delayed_work(&work, round_jiffies_relative(DEFERRED_CHECK_TIMEOUT));
-#endif
 }
 
 static void init_del_workqueue(void)
@@ -249,11 +258,16 @@ static void exit_del_workqueue(void)
 static int __init anti_rootkit_init(void)
 {
     struct kset **kset;
-
+#ifdef CONFIG_X86
     idt = (void *)smith_kallsyms_lookup_name("idt_table");
+#endif
+
     sct = (void *)smith_kallsyms_lookup_name("sys_call_table");
     ckt = (void *)smith_kallsyms_lookup_name("core_kernel_text");
     kset = (void *)smith_kallsyms_lookup_name("module_kset");
+	mod_lock = (void *)smith_kallsyms_lookup_name("module_lock");
+	mod_find_module = (void *)smith_kallsyms_lookup_name("find_module");
+    get_module_from_addr = (void *)smith_kallsyms_lookup_name("__module_address");
     if (kset)
         mod_kset = *kset;
     init_del_workqueue();
@@ -266,6 +280,6 @@ static void anti_rootkit_exit(void)
     exit_del_workqueue();
 }
 
-#if (ANTI_ROOTKIT_CHECK == 1 && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0))
+#if ANTI_ROOTKIT_CHECK
 KPROBE_INITCALL(anti_rootkit_init, anti_rootkit_exit);
 #endif

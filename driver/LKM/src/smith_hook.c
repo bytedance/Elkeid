@@ -13,7 +13,8 @@
 #define EXIT_PROTECT 0
 #define SANDBOX 0
 
-#define MAXACTIVE 24 * NR_CPUS
+#define MAXACTIVE (24 * NR_CPUS)
+#define SMITH_MAX_ARG_STRINGS (16)
 
 // Hook on-off
 int CONNECT_HOOK = 1;
@@ -140,9 +141,8 @@ int count(struct user_arg_ptr argv, int max)
 				break;
 			if (IS_ERR(p))
 				return -EFAULT;
-			if (i >= max)
-				return -E2BIG;
-			++i;
+			if (++i >= max)
+				break;
 			if (fatal_signal_pending(current))
 				return -ERESTARTNOHAND;
 		}
@@ -164,9 +164,8 @@ int execve_count(char **argv, int max)
             if (!p)
                 break;
             argv++;
-            if (i++ >= max)
-                return -E2BIG;
-
+            if (++i >= max)
+                break;
             if (fatal_signal_pending(current))
                 return -ERESTARTNOHAND;
         }
@@ -174,104 +173,48 @@ int execve_count(char **argv, int max)
     return i;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 5, 0)
-struct kmem_cache *files_cachep;
-
-static void close_files(struct files_struct *files)
+/* 
+ *  in atomic state we can't call get_files_struct(), since it
+ *  will call task_lock() internally
+ *
+ *  with the task was already referenced by us, the racing
+ *  possiblity with actuall fdtable-destruction is very little.
+ */
+static struct files_struct *smith_get_files_struct(struct task_struct *task)
 {
-	int i, j;
-	struct fdtable *fdt;
-
-	j = 0;
-
-	/*
-	 * It is safe to dereference the fd table without RCU or
-	 * ->file_lock because this is the last reference to the
-	 * files structure.
-	 */
-	fdt = files_fdtable(files);
-	for (;;) {
-		unsigned long set;
-		i = j * __NFDBITS;
-		if (i >= fdt->max_fds)
-			break;
-		set = fdt->open_fds->fds_bits[j++];
-		while (set) {
-			if (set & 1) {
-				struct file *file = xchg(&fdt->fd[i], NULL);
-				if (file) {
-					filp_close(file, files);
-				}
-			}
-			i++;
-			set >>= 1;
-		}
-	}
-}
-
-struct file *fget_raw(unsigned int fd)
-{
-	struct file *file;
-	struct files_struct *files;
-
-	files = get_files_struct_sym(current);
-	if (!files)
+    struct files_struct *files = task->files;
+    if (!files)
         return NULL;
 
-	rcu_read_lock();
-	file = fcheck_files(files, fd);
-	if (file) {
-		/* File object ref couldn't be taken */
-		if (!atomic_long_inc_not_zero(&file->f_count))
-			file = NULL;
-	}
-	rcu_read_unlock();
+    if (atomic_add_unless(&files->count, 1, 0) > 0)
+        return files;
 
-	put_files_struct_sym(files);
-	return file;
+    /* we are in the race of files-destroy */
+    return NULL;
 }
 
-struct files_struct *get_files_struct(struct task_struct *task)
+static void (*put_files_struct_sym) (struct files_struct * files);
+static void smith_put_files_struct(struct files_struct *files)
 {
-	struct files_struct *files;
-
-	task_lock(task);
-	files = task->files;
-	if (files)
-		atomic_inc(&files->count);
-	task_unlock(task);
-
-	return files;
+    if (put_files_struct_sym) {
+        put_files_struct_sym(files);
+    } else {
+        /* just for reminder, the actual execution won't be here,
+           since the ko won't load if put_files_sturct is absent */
+        atomic_dec(&files->count);
+    }
 }
 
-void put_files_struct(struct files_struct *files)
-{
-	struct fdtable *fdt;
-
-	if (atomic_dec_and_test(&files->count)) {
-		close_files(files);
-		/*
-		 * Free the fd and fdset arrays if we expanded them.
-		 * If the fdtable was embedded, pass files for freeing
-		 * at the end of the RCU grace period. Otherwise,
-		 * you can free files immediately.
-		 */
-		fdt = files_fdtable(files);
-		if (fdt != &files->fdtab)
-			kmem_cache_free(files_cachep, files);
-		free_fdtable(fdt);
-	}
-}
-
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+#define smith_lookup_fd          files_lookup_fd_rcu
+#else
+#define smith_lookup_fd          fcheck_files
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 5, 0)
 static int __init files_struct_symbols_init(void)
 {
-	void *ptr = (void *)get_files_struct;
-	if (!ptr)
-		return -ENODEV;
-	get_files_struct_sym = ptr;
+	void *ptr;
 
 	ptr = (void *)put_files_struct;
 	if (!ptr)
@@ -283,10 +226,7 @@ static int __init files_struct_symbols_init(void)
 #else
 static int __init files_struct_symbols_init(void)
 {
-    void *ptr = (void *)smith_kallsyms_lookup_name("get_files_struct");
-    if (!ptr)
-        return -ENODEV;
-    get_files_struct_sym = ptr;
+    void *ptr;
 
     ptr = (void *)smith_kallsyms_lookup_name("put_files_struct");
     if (!ptr)
@@ -326,7 +266,7 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
         if (limit_index > EXECVE_GET_SOCK_PID_LIMIT)
             break;
 
-        files = get_files_struct_sym(task);
+        files = smith_get_files_struct(task);
         if (!files)
             goto next_task;
 
@@ -340,7 +280,7 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
                 break;
 
             rcu_read_lock();
-            file = fcheck_files(files, i);
+            file = smith_lookup_fd(files, i);
             if (!file || !get_file_rcu(file)) {
                 rcu_read_unlock();
                 continue;
@@ -382,7 +322,7 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
                             *sa_family = sk->sk_family;
                             break;
 #if IS_ENABLED(CONFIG_IPV6)
-                        case AF_INET6:
+                            case AF_INET6:
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
 						    memcpy(dip6, &(sk->sk_v6_daddr), sizeof(sk->sk_v6_daddr));
 						    memcpy(sip6, &(sk->sk_v6_rcv_saddr), sizeof(sk->sk_v6_rcv_saddr));
@@ -401,10 +341,10 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
                     }
                 }
             }
-            next_file:
+next_file:
             fput(file);
         }
-        put_files_struct_sym(files);
+        smith_put_files_struct(files);
 
         if (socket_check) {
             *socket_pid = task->pid;
@@ -414,7 +354,7 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
         } else {
             struct task_struct *old_task;
 
-            next_task:
+next_task:
             old_task = task;
             rcu_read_lock();
             task = rcu_dereference(task->real_parent);
@@ -1083,7 +1023,7 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 	const char __user *native;
 
 	env_len = count(env_ptr, MAX_ARG_STRINGS);
-	argv_len = count(argv_ptr, MAX_ARG_STRINGS);
+	argv_len = count(argv_ptr, SMITH_MAX_ARG_STRINGS);
 	argv_res_len = 256 * argv_len;
 
 	if (argv_len > 0) {
@@ -1268,7 +1208,7 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
 
     env_len = execve_count(env, MAX_ARG_STRINGS);
     argv_res_len = 256 * argv_len;
-    argv_len = execve_count(argv, MAX_ARG_STRINGS);
+    argv_len = execve_count(argv, SMITH_MAX_ARG_STRINGS);
 
     //get execve args data
     if (argv_len > 0) {
@@ -1963,7 +1903,7 @@ int call_usermodehelper_exec_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if (IS_ERR_OR_NULL(path))
         return 0;
 
-    argv_len = execve_count(argv, MAX_ARG_STRINGS);
+    argv_len = execve_count(argv, SMITH_MAX_ARG_STRINGS);
     argv_res_len = 256 * argv_len;
 
     //get execve args data
@@ -2283,7 +2223,7 @@ int open_pre_handler(struct kprobe *p, struct pt_regs *regs)
     open_print(exe_path, filename, (int)p_get_arg2(regs),
                (umode_t)p_get_arg3(regs));
 
-    out:
+out:
     if (buffer)
         kfree(buffer);
 
@@ -2296,10 +2236,11 @@ int nanosleep_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     char *exe_path = DEFAULT_RET_STR;
     char *buffer = NULL;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
-    struct timespec64 tu;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
+    struct __kernel_timespec *ts;
+    struct timespec64 tu = {0, 0};
 #else
-    struct timespec tu;
+    struct timespec tu = {0, 0};
 #endif
     void *tmp;
 
@@ -2307,25 +2248,30 @@ int nanosleep_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if (IS_ERR_OR_NULL(tmp))
         return 0;
 
-    if (smith_copy_from_user(&tu, (struct timespec __user *)tmp, sizeof(tu)))
-    return 0;
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
-    if (!timespec64_valid(&tu))
-#else
-    if (!timespec_valid(&tu))
-#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
+    ts = (struct __kernel_timespec __user *)tmp;
+    if (get_timespec64(&tu, ts))
         return 0;
 
-    buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
-    exe_path = smith_get_exe_file(buffer, PATH_MAX);
+    if (!timespec64_valid(&tu))
+        return 0;
+#else
+    if (smith_copy_from_user(&tu, (void __user *)tmp, sizeof(tu)))
+        return 0;
+    if (!timespec_valid(&tu))
+        return 0;
+#endif
 
-    nanosleep_print(exe_path, tu.tv_sec, tu.tv_nsec);
+     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
+     exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
-    if (buffer)
+     /* Year-2038 issue: signed-32bit will overflow */
+     nanosleep_print(exe_path, (long long)tu.tv_sec, tu.tv_nsec);
+
+     if (buffer)
         kfree(buffer);
 
-    return 0;
+     return 0;
 }
 
 void kill_and_tkill_handler(int type, pid_t pid, int sig)
