@@ -193,13 +193,24 @@ static __always_inline char *smith_get_exe_file(char *buffer, int size)
     if (!buffer || !current->mm)
         return exe_file_str;
 
+/* After version 5.8, the "mmap_sem" has been deprecated. Use api in linux/mmap_lock.h
+   For more, check the comments before #include<linux/mmap_lock.h> above.
+*/
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
     if (mmap_read_trylock(current->mm)) {
+#else
+    if (down_read_trylock(&current->mm->mmap_sem)) {
+#endif
         if (current->mm->exe_file) {
             exe_file_str =
                     smith_d_path(&current->mm->exe_file->f_path, buffer,
                                  size);
         }
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
         mmap_read_unlock(current->mm);
+#else
+        up_read(&current->mm->mmap_sem);
+#endif
     }
 
     return exe_file_str;
