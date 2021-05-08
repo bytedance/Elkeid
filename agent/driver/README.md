@@ -5,7 +5,7 @@ The Driver Plugin is used to manage the kernel module (install/uninstall/update)
 It can receive and parse the data from the kernel module, enrich the data flow, and then forward it to the Agent.
 
 ## Supported Platforms
-Same as [AgentSmith-HIDS Agent](../README.md#supported-platforms)
+Same as [Elkeid Agent](../README.md#supported-platforms)
 
 ## Compilation Environment Requirements
 * Rust 1.48.0
@@ -63,4 +63,4 @@ cat hids_driver-1.0.0.0-4.14-amd64.sha256
 Finally, set your file server address in the `config.ko_url` ist (there can be multiple addresses), so that when the plugin starts, the ko file that is compatible with the [LKM](../../driver) and kernel version will be automatically downloaded.
 
 ## License
-Driver Plugin are distributed under the Apache-2.0 license.
+Driver Plugin is distributed under the Apache-2.0 license.

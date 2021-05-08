@@ -1,0 +1,32 @@
+############################# HTTP Settings #############################
+# Ip: bind ip address
+# port: the address the http server listens on.
+Server:
+  Ip: "127.0.0.1"
+  Port: 8088
+
+############################# Cluster Settings #############################
+#Mode: "config"
+#Members: server ip:port list
+Cluster:
+  Mode: "config"
+  Members: ["127.0.0.1:8088"]
+
+############################# Log Settings #############################
+# log.path: where to write logging data.
+# log.loglevel: where to write logging data.
+#         DebugLevel = -1
+#         InfoLevel = 0
+#         WarnLevel = 1
+#         ErrorLevel = 2
+log:
+  path: ./service_discovery.log
+  loglevel: 0
+
+############################# Auth Settings #############################
+Auth:
+  Enable: true
+  Keys:
+    7abyAiYf56JOWGHp: L3E56PpoCoKktzUSlZc1zQdq1x2n9ign
+    vEVL5zEvSiXDY1EI: 2FfQR1FzxRqJRraOw4DGFH7UJieccrGi
+    yI8euTcZY5AtHwGn: nOi9GxLOT5egZUlTXwnBpQRhK5u5Yllb

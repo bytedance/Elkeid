@@ -52,6 +52,7 @@ static inline unsigned long p_regs_get_arg6(struct pt_regs *p_regs) {
 }
 #endif
 
+// Only Get Syscall Functions Parameter Can Use p_get_arg()
 static inline unsigned long p_get_arg1(struct pt_regs *p_regs) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0) && defined(CONFIG_ARCH_HAS_SYSCALL_WRAPPER)
     return p_regs_get_arg1((struct pt_regs *)p_regs_get_arg1(p_regs));
@@ -98,67 +99,5 @@ static inline unsigned long p_get_arg6(struct pt_regs *p_regs) {
 #else
     return p_regs_get_arg6(p_regs);
 #endif
-}
-
-static inline int get_current_uid(void) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
-    return current->real_cred->uid.val;
-#else
-    return current->real_cred->uid;
-#endif
-}
-
-static inline int get_current_euid(void) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
-    return current->real_cred->euid.val;
-#else
-    return current->real_cred->euid;
-#endif
-}
-
-static void *__get_dns_query(unsigned char *data, int index, char *res) {
-    int i;
-    int flag = -1;
-    int len;
-    len = strlen(data + index);
-
-    for (i = 0; i < len; i++) {
-        if (flag == -1) {
-            flag = (data + index)[i];
-        } else if (flag == 0) {
-            flag = (data + index)[i];
-            res[i - 1] = 46;
-        } else {
-            res[i - 1] = (data + index)[i];
-            flag = flag - 1;
-        }
-    }
-    return 0;
-}
-
-static inline unsigned int __get_sessionid(void) {
-    unsigned int sessionid = 0;
-#ifdef CONFIG_AUDITSYSCALL
-    sessionid = current->sessionid;
-#endif
-    return sessionid;
-}
-
-static inline int __get_pgid(void) {
-    struct task_struct *task;
-    task = pid_task(task_pgrp(current), PIDTYPE_PID);
-    if(task != NULL)
-        return task->pid;
-    else
-        return -1;
-}
-
-static inline int __get_sid(void) {
-    struct task_struct *task;
-    task = pid_task(task_session(current), PIDTYPE_PID);
-    if(task != NULL)
-        return task->pid;
-    else
-        return -1;
 }
 #endif

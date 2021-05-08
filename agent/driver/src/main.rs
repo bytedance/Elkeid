@@ -23,7 +23,7 @@ fn safety_exit() {
 }
 
 fn main() {
-    let (sender, receiver) = Builder::new(SOCKET_PATH, NAME, VERSION).unwrap().build();
+    let (sender, receiver) = Builder::new(SOCKET_PATH, "driver", VERSION).unwrap().build();
     if let Some(dmesg) = check_crash() {
         error!("Detect latest kernel panic, dmesg:{}", dmesg);
         std::thread::sleep(SLEEP_INTERVAL);

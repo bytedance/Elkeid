@@ -7,9 +7,9 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-libsystemd-sys = "0.8.0"
 anyhow = "1"
 plugin_builder = { path = "../support/rust/plugin_builder" }
 plugin = { path = "../support/rust/plugin" }
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
+serde_json = { version = "1.0"}

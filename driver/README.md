@@ -1,24 +1,27 @@
-[![License](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/bytedance/AgentSmith-HIDS/blob/main/driver/LICENSE) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![License](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://github.com/bytedance/Elkeid/blob/main/driver/LICENSE) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
-## About AgentSmith-HIDS Driver
+## About Elkeid(AgentSmith-HIDS) Driver
 
 English | [简体中文](README-zh_CN.md)
 
 
 
-AgentSmith-HIDS Driver is a one-of-a-kind Kernel Space HIDS agent designed for Cyber-Security. 
+Elkeid Driver is a one-of-a-kind Kernel Space HIDS agent designed for Cyber-Security. 
 
-AgentSmith-HIDS Driver hooks kernel functions via Kprobe, providing rich and accurate data collection capabilities,  including kernel-level process execve probing, privilege escalation monitoring, network audition, and much more. The Driver treats Container-based monitoring as a first-class citizen as Host-based data collection by supporting Linux Namespace. Compare to User Space agents on the market, AgentSmith-HIDS provides more comprehensive information with massive performance improvement. 
+Elkeid Driver hooks kernel functions via Kprobe, providing rich and accurate data collection capabilities,  including kernel-level process execve probing, privilege escalation monitoring, network audition, and much more. The Driver treats Container-based monitoring as a first-class citizen as Host-based data collection by supporting Linux Namespace. Compare to User Space agents on the market, Elkeid provides more comprehensive information with massive performance improvement. 
 
-AgentSmith-HIDS has already been deployed massively for HIDS usage in world-class production environments. With its marvelous data collection ability, AgentSmith-HIDS also supports Sandbox, Honeypot, and Audition data requirements. 
+Elkeid has already been deployed massively for HIDS usage in world-class production environments. With its marvelous data collection ability, Elkeid also supports Sandbox, Honeypot, and Audition data requirements. 
+
+## Notice
+***DO NOT* insmod the ko in the production machines if you have not well tested it.**
 
 ## Quick Test
 
 First you need install Linux Headers
 
 ```shell script
-git clone https://github.com/bytedance/AgentSmith-HIDS.git
-cd AgentSmith-HIDS/driver/LKM/
+git clone https://github.com/bytedance/Elkeid.git
+cd Elkeid/driver/LKM/
 make clean && make
 insmod hids_driver.ko
 dmesg
@@ -26,9 +29,42 @@ cat /proc/hids_driver/1
 rmmod hids_driver
 ```
 
+## Pre-build Ko
+
+### Describe
+This kernel module has been running for a long time on our debian machines. The probability of kernel driver going error is rarely low, however, some versions of the kernel and distros are not well tested .eg: kernel < 3.10 , kernel > 5.4 and ubuntu. DO NOT insmod the ko in the production machines if you have not tested it.
+
+[Pre-build Ko lists](./ko_list.md)
+
+
+
+### How To Get
+If all urls failed, please build elkeid kernel module yourself.
+
+```bash
+wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
+# or
+curl -O "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
+# other cdn
+## "http://lf3-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
+## "http://lf6-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
+## "http://lf9-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
+```
+
+
+## Test the Ko
+You can test the kernel module using [LTP](https://linux-test-project.github.io/) or [Kasan](https://www.kernel.org/doc/html/latest/dev-tools/kasan.html).
+
+Here is the [LTP-test-case](./ltp_testcase) file.
+
+
 ## About the compatibility with Linux distribution
 
-* Fully Tested on: Centos, Debian, Ubuntu
+Distro|Version|x64 kernel|Suffix | On our production env
+:- | :- | -: | -| -:
+debian|8,9,10|3.16~5.4.X |-| yes
+ubuntu|14.04,16.04,18.04,20.04|3.12~5.4.X |generic| no 
+centos|7.X,8.X|3.10.0~5.4.X |el7,el8| half 
 
 
 ## About the compatibility with ARM
@@ -38,7 +74,7 @@ rmmod hids_driver
 
 ## About the compatibility with Kernel version
 
-* Linux Kernel Version >= 3.10
+* Linux Kernel Version >= 3.10 and <= 5.4.X
 
 
 
@@ -64,10 +100,11 @@ rmmod hids_driver
 | dns queny          | 601      |                                                | OFF      |
 | init kernel module | 603      |                                                | ON      |
 | update cred        | 604      | only old uid ≠0 && new uid == 0                | ON      |
-| rename             | 82       |                                                | OFF     |
-| link               | 86       |                                                | OFF     |
-| setsid             | 112      |                                                | OFF     |
-| prctl              | 157      | only PS_SET_NAME                               | OFF     |
+| rename             | 82       |                                                | ON     |
+| link               | 86       |                                                | ON     |
+| setsid             | 112      |                                                | ON     |
+| prctl              | 157      | only PS_SET_NAME                               | ON     |
+| memfd_create       | 157      |                                                 | ON     |
 | open               | 2        |                                                | OFF     |
 | mprotect           | 10       | only PROT_EXEC                                 | OFF     |
 | nanosleep          | 35       |                                                | OFF     |
@@ -77,6 +114,7 @@ rmmod hids_driver
 | exit group         | 231      |                                                | OFF     |
 | rmdir              | 606      |                                                | OFF     |
 | unlink             | 605      |                                                | OFF     |
+| call_usermodehelper_exec             | 607      |                                         | OFF     |
 
 
 
@@ -106,11 +144,11 @@ Anti-rootkit List data does **NOT** contain fields in **Common Data**
 ### Common data
 
 ```
-------------------------------------------------------------------
-|1  |2        |3  |4  |5   |6   |7   |8  |9   |10      |11       |
------------------------------------------------------------------
-|uid|data_type|exe|pid|ppid|pgid|tgid|sid|comm|nodename|sessionid|
-------------------------------------------------------------------
+-------------------------------------------------------------------------------
+|1  |2        |3  |4  |5   |6   |7   |8  |9   |10      |11       |12 |13      |
+-------------------------------------------------------------------------------
+|uid|data_type|exe|pid|ppid|pgid|tgid|sid|comm|nodename|sessionid|pns|root_pns|
+-------------------------------------------------------------------------------
 ```
 
 
@@ -119,7 +157,7 @@ Anti-rootkit List data does **NOT** contain fields in **Common Data**
 
 ```
 ------------------------------------------------
-|12          |13       |14 |15   |16 |17   |18 |
+|14          |15       |16 |17   |18 |19   |20 |
 ------------------------------------------------
 |connect_type|sa_family|dip|dport|sip|sport|res|
 ------------------------------------------------
@@ -133,7 +171,7 @@ Note: Connect_type is always -1 in default build settings
 
 ```
 -------------------------
-|12       |13 |14   |15 |
+|14       |15 |16   |17 |
 -------------------------
 |sa_family|sip|sport|res|
 -------------------------
@@ -145,7 +183,7 @@ Note: Connect_type is always -1 in default build settings
 
 ```
 -------------------------------------------------------------------------------------------------------------------------
-|12        |13  |14      |15      |16   |17    |18 |19   |20 |21   |22       |23      |24 |25        |26 |27        |28 |
+|14        |15  |16      |17      |18   |19    |20 |21   |22 |23   |24       |25      |26 |27        |28 |29        |30 |
 -------------------------------------------------------------------------------------------------------------------------
 |socket_exe|argv|run_path|pgid_exe|stdin|stdout|dip|dport|sip|sport|sa_family|pid_tree|tty|socket_pid|ssh|ld_preload|res|
 -------------------------------------------------------------------------------------------------------------------------
@@ -162,11 +200,11 @@ Note:
 ### Create File data
 
 ```
------------
-|12 	  |
------------
-|file_path|
------------
+----------------------------------------------------
+|14 	  |15 |16   |17 |18   |19       |20        |
+----------------------------------------------------
+|file_path|dip|dport|sip|sport|sa_family|socket_pid|
+----------------------------------------------------
 ```
 
 
@@ -175,7 +213,7 @@ Note:
 
 ```
 ----------------------------------------------
-|12            |13        |14  |15  |16      |
+|14            |15        |16  |17  |18      |
 ----------------------------------------------
 |ptrace_request|target_pid|addr|data|pid_tree|
 ----------------------------------------------
@@ -187,7 +225,7 @@ Note:
 
 ```
 -----------------------------------------------------
-|12   |13       |14 |15   |16 |17   |18|19    |20   |
+|14   |15       |16 |17   |18 |19   |20|21    |22   |
 -----------------------------------------------------
 |query|sa_family|dip|dport|sip|sport|qr|opcode|rcode|
 -----------------------------------------------------
@@ -199,7 +237,7 @@ Note:
 
 ```
 ----------------------------
-|12      |13      |14      | 
+|14      |15      |16      | 
 ----------------------------
 |mod_info|pid_tree|run_path|
 ----------------------------
@@ -211,7 +249,7 @@ Note:
 
 ```
 ----------------------
-|12      |13     |14 | 
+|14      |15     |16 | 
 ----------------------
 |pid_tree|old_uid|res|
 ----------------------
@@ -223,7 +261,7 @@ Note:
 
 ```
 ----------------------------
-|12      |13      |14      | 
+|14      |15      |16      | 
 ----------------------------
 |run_path|old_name|new_name|
 ----------------------------
@@ -235,7 +273,7 @@ Note:
 
 ```
 ----------------------------
-|12      |13      |14      | 
+|14      |15      |16      | 
 ----------------------------
 |run_path|old_name|new_name|
 ----------------------------
@@ -253,10 +291,20 @@ Only contains fields in ***Common Data***
 
 ```
 _________________
-|12    |13      | 
+|14    |15      | 
 -----------------
 |option|new_name|
 -----------------
+```
+
+### memfd_create Data
+
+```
+______________
+|14    |15   | 
+--------------
+|fdname|flags|
+--------------
 ```
 
 
@@ -265,7 +313,7 @@ _________________
 
 ````
 ---------------------
-|12   |13  |14      | 
+|14   |15  |16      | 
 ---------------------
 |flags|mode|filename|
 ---------------------
@@ -277,7 +325,7 @@ _________________
 
 ```
 -----------------------------------------------------
-|12           |13       |14        |15     |16      |
+|14           |15       |16        |17     |18      |
 -----------------------------------------------------
 |mprotect_prot|owner_pid|owner_file|vm_file|pid_tree|
 -----------------------------------------------------
@@ -289,7 +337,7 @@ _________________
 
 ```
 ----------
-|12 |13  |
+|14 |15  |
 ----------
 |sec|nsec|
 ----------
@@ -301,7 +349,7 @@ _________________
 
 ```
 ----------------
-|12        |13 |
+|14        |15 |
 ----------------
 |target_pid|sig|
 ----------------
@@ -313,7 +361,7 @@ _________________
 
 ```
 ----------------
-|12        |13 |
+|14        |15 |
 ----------------
 |target_pid|sig|
 ----------------
@@ -337,7 +385,7 @@ Only contains fields in ***Common Data***
 
 ```
 ------
-|12  |
+|14  |
 ------
 |file|
 ------
@@ -349,10 +397,20 @@ Only contains fields in ***Common Data***
 
 ```
 ------
-|12  |
+|14  |
 ------
 |file|
 ------
+```
+
+### call_usermodehelper_exec Data
+
+```
+-----------------------------
+|1  |2        |3  |4   |5   |
+-----------------------------
+|uid|data_type|exe|argv|wait|
+-----------------------------
 ```
 
 
@@ -415,7 +473,7 @@ Note:  ***uid*** is always -1
 
 ## About Driver Filter
 
-AgentSmith-HIDS driver supports allowlist to filter out unwanted data. We provide two types of allowlists, **'exe'** allowlist and **'argv'** allowlist.
+Elkeid driver supports allowlist to filter out unwanted data. We provide two types of allowlists, **'exe'** allowlist and **'argv'** allowlist.
 **'exe'** allowlist acts on ***execve/create file/dns query/connect*** hooks, while **'argv'** allowlist only acts on ***execve*** hook. 
 For performance and stability concerns, both 'exe' and 'argv' allowlist only supports 64-elements-wide capacity.
 
@@ -448,7 +506,7 @@ Filter define is:
 
 
 
-## Performance Stats of AgentSmith-HIDS Driver
+## Performance Stats of Elkeid Driver
 
 ### Testing Environment(VM):
 
@@ -485,7 +543,7 @@ Testing Load:
 
 `udp_recvmsg_handler` will work only if the port is equal 53 or 5353
 
-Original Testing Data:[Benchmark Data](https://github.com/bytedance/AgentSmith-HIDS/tree/main/driver/benchmark_data/handler)
+Original Testing Data:[Benchmark Data](https://github.com/bytedance/Elkeid/tree/main/driver/benchmark_data/handler)
 
 
 ## About Deploy
@@ -495,6 +553,21 @@ You can use DKMS or Pre-packaged ko file
 * install driver: `insmod hids_driver.ko`
 * remove driver: first you need kill userspace agent and `rmmod hids_driver.ko`
 
+
+
+
+## Known Bugs
+* Hook point init failed : do_init_module
+<br>
+Some old version of ubuntu / centos kernels may show the dmesg :
+do_init_module register_kprobe failed, returned -2.
+
+* Kernel > 5.4.X or Kernel < 3.10.X
+<br>
+Make failed : these kernel versions are not yet compatible
+
+
+
 ## License
 
-AgentSmith-HIDS kernel module are distributed under the GNU GPLv2 license.
+Elkeid kernel module are distributed under the GNU GPLv2 license.

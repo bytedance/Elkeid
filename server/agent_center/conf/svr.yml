@@ -1,0 +1,74 @@
+#############################  Manager Settings #############################
+# addrs: addr list of manager center.
+manage:
+  addrs:
+    - 127.0.0.1:6701
+
+############################# Service Discovery Settings #############################
+# addrs: addr list of service discovery.
+# name: the name registered to the service discovery, used to uniquely identify the agent_center.
+# credentials: used as identification when accessing sd, ak/sk must be added to the configuration file of service discovery
+sd:
+  name: hids_svr
+  addrs:
+    - 127.0.0.1:8088
+  auth:
+    ak: 7abyAiYf56JOWGHp
+    sk: L3E56PpoCoKktzUSlZc1zQdq1x2n9ign
+
+############################# Kafka Settings #############################
+kafka:
+  addrs:
+    - 127.0.0.1:9092
+  topic: hids_svr
+  logpath: ./log/sarama.log
+
+
+############################# Agent Center Settings #############################
+# log.path: where to write logging data.
+# log.loglevel: where to write logging data.
+#         DebugLevel = -1
+#         InfoLevel = 0
+#         WarnLevel = 1
+#         ErrorLevel = 2
+#
+# ssl communication certificate configuration. grpc will do two-way ssl verification, so the certificate needs to be consistent with the agent side.
+# ssl.keyfile: private key path
+# ssl.certfile: certification path
+# ssl.cafile: ca certification path
+#
+#
+# grpc.connlimit: grpc service, the maximum number of agent connection.
+#
+#
+# http.auth.enable: Whether to enable identity verification for http service
+# http.auth.aksk: Used to identify the client. work when http.auth.enable = true
+# http.ssl.enable: whether to enable ssl for http service
+# pprof.enable:  whether to enable pprof for debug.
+server:
+  log:
+    applog:
+      path: ./log/svr.log
+      loglevel: 0
+
+  ssl:
+    keyfile: ./conf/server.key
+    certfile: ./conf/server.crt
+    cafile: ./conf/ca.crt
+
+  grpc:
+    port: 6751
+    connlimit: 1500
+
+  http:
+    port: 6752
+    auth:
+      enable: true
+      aksk:
+        0376b2a4c481sef5: 60b29se7164027072799f565eb964d91
+    ssl:
+      enable: true
+
+  pprof:
+    enable: true
+    port: 6753

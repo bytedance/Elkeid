@@ -14,16 +14,17 @@
 #include <linux/mmap_lock.h>
 #endif
 
-#define PID_TREE_MATEDATA_LEN  32
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
 
 static unsigned long (*kallsyms_lookup_name_sym)(const char *name);
-static int dummy_kprobe_handler(struct kprobe *p, struct pt_regs *regs){
+static int dummy_kprobe_handler(struct kprobe *p, struct pt_regs *regs)
+{
         return 0;
 }
 
-unsigned long get_kallsyms_func(void){
+unsigned long get_kallsyms_func(void)
+{
         struct kprobe probe;
         int ret;
         unsigned long addr;
@@ -83,102 +84,6 @@ u64 GET_PPIN(void)
 }
 
 #endif
-
-
-//get task exe file full path && only current can use it
-char *get_exe_file(struct task_struct *task, char *buffer, int size)
-{
-    char *exe_file_str = "-1";
-
-    if (!buffer || !task->mm)
-        return exe_file_str;
-
-/* After version 5.8, the "mmap_sem" has been deprecated. Use api in linux/mmap_lock.h
-   For more, check the comments before #include<linux/mmap_lock.h> above.
-*/
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
-    if (mmap_read_trylock(task->mm)) {
-#else
-    if (down_read_trylock(&task->mm->mmap_sem)) {
-#endif
-        if (task->mm->exe_file) {
-            exe_file_str =
-                    d_path(&task->mm->exe_file->f_path, buffer,
-                           size);
-
-            if (IS_ERR(exe_file_str))
-                exe_file_str = "-1";
-        }
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
-        mmap_read_unlock(task->mm);
-#else
-        up_read(&task->mm->mmap_sem);
-#endif
-    }
-
-    return exe_file_str;
-}
-
-//get pid tree
-char *get_pid_tree(int limit)
-{
-    int real_data_len = PID_TREE_MATEDATA_LEN;
-    int limit_index = 0;
-    char *tmp_data = NULL;
-    char pid[24];
-    struct task_struct *task;
-    struct task_struct *old_task;
-
-    task = current;
-    get_task_struct(task);
-
-    //task->pid is int
-    snprintf(pid, 24, "%d", task->pid);
-    tmp_data = kzalloc(1024, GFP_ATOMIC);
-
-    if (!tmp_data) {
-        put_task_struct(task);
-        return tmp_data;
-    }
-
-    strcat(tmp_data, pid);
-    strcat(tmp_data, ".");
-    strcat(tmp_data, current->comm);
-
-    while (1) {
-        limit_index = limit_index + 1;
-        if (limit_index >= limit) {
-            put_task_struct(task);
-            break;
-        }
-
-        old_task = task;
-        rcu_read_lock();
-        task = rcu_dereference(task->real_parent);
-        put_task_struct(old_task);
-        if (!task || task->pid == 1) {
-            rcu_read_unlock();
-            break;
-        }
-
-        get_task_struct(task);
-        rcu_read_unlock();
-
-        real_data_len = real_data_len + PID_TREE_MATEDATA_LEN;
-        if (real_data_len > 1024) {
-            put_task_struct(task);
-            break;
-        }
-
-        snprintf(pid, sizeof(size_t), "%d", task->pid);
-        strcat(tmp_data, "<");
-        strcat(tmp_data, pid);
-        strcat(tmp_data, ".");
-        strcat(tmp_data, task->comm);
-    }
-
-    return tmp_data;
-}
 
 int prepend(char **buffer, int *buflen, const char *str, int namelen)
 {
