@@ -1847,7 +1847,9 @@ int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
                         fput(vma->vm_mm->exe_file);
                     }
                 }
+#ifdef CONFIG_MEMCG
                 target_pid = vma->vm_mm->owner->pid;
+#endif
             }
 
             if (!IS_ERR_OR_NULL(vma->vm_file)) {
