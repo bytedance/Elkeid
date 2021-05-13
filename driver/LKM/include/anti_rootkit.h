@@ -9,6 +9,7 @@
 #include <linux/version.h>
 #include <linux/kernel.h>
 #include <linux/kallsyms.h>
+#include <asm/syscall.h> /* NR_syscalls */
 
 #define PROC_FILE_HOOK "700"
 #define SYSCALL_HOOK "701"
