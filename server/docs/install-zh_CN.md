@@ -244,7 +244,7 @@ Mongodb未加索引会影响系统性能，所以请确保系统必要的字段�
 ```
 ./manager -c conf/svr.yml
 #如果服务无异常，也可放后台运行  
-nohup ./Manager -c conf/svr.yml>/dev/null 2>&1 &
+nohup ./manager -c conf/svr.yml>/dev/null 2>&1 &
 ```
 > Manager会在6701端口开放HTTP服务，用于对外API访问和内部通信。
 
