@@ -8,16 +8,16 @@
 #include "../include/filter.h"
 #include "../include/util.h"
 
-#define ADD_EXECVE_EXE_SHITELIST 89
-#define DEL_EXECVE_EXE_SHITELIST 70
-#define DEL_ALL_EXECVE_EXE_SHITELIST 119
-#define EXECVE_EXE_CHECK 121
-#define PRINT_ALL_ALLOWLIST 46
-#define ADD_EXECVE_ARGV_SHITELIST 109
-#define DEL_EXECVE_ARGV_SHITELIST 74
-#define DEL_ALL_EXECVE_ARGV_SHITELIST 117
-#define EXECVE_ARGV_CHECK 122
-#define PRINT_PPIN 95
+#define ADD_EXECVE_EXE_SHITELIST 89         /* Y */
+#define DEL_EXECVE_EXE_SHITELIST 70         /* F */
+#define DEL_ALL_EXECVE_EXE_SHITELIST 119    /* w */
+#define EXECVE_EXE_CHECK 121                /* y */
+#define PRINT_ALL_ALLOWLIST 46              /* . */
+#define ADD_EXECVE_ARGV_SHITELIST 109       /* m */
+#define DEL_EXECVE_ARGV_SHITELIST 74        /* J */
+#define DEL_ALL_EXECVE_ARGV_SHITELIST 117   /* u */
+#define EXECVE_ARGV_CHECK 122               /* z */
+#define PRINT_PPIN 95                       /* _ */
 
 #define ALLOWLIST_NODE_MIN 5
 #define ALLOWLIST_NODE_MAX 4090
@@ -298,15 +298,15 @@ int execve_argv_check(char *data)
 static ssize_t device_write(struct file *filp, const __user char *buff,
                             size_t len, loff_t * off)
 {
+    char *data_main;
     int res;
     int del_res;
     char flag;
-    char *data_main;
-
-    if(smith_get_user(flag, buff))
-        return len;
 
     if (len < ALLOWLIST_NODE_MIN || len > ALLOWLIST_NODE_MAX)
+        return len;
+
+    if(smith_get_user(flag, buff))
         return len;
 
     data_main = kzalloc(len, GFP_KERNEL);
@@ -320,39 +320,34 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
 
     switch (flag) {
         case ADD_EXECVE_EXE_SHITELIST:
-            if (execve_exe_allowlist_limit > 96){
-                kfree(data_main);
-                return len;
+            if (execve_exe_allowlist_limit <= 96){
+                execve_exe_allowlist_limit++;
+                /* assgin data_main to rb node */
+                add_execve_exe_allowlist(strim(data_main));
+                data_main = NULL;
             }
-            execve_exe_allowlist_limit++;
-            /* assgin data_main to rb node */
-            add_execve_exe_allowlist(strim(data_main));
             break;
 
         case DEL_EXECVE_EXE_SHITELIST:
             del_res = del_execve_exe_allowlist(strim(data_main));
             if (del_res == 1)
                 execve_exe_allowlist_limit--;
-            kfree(data_main);
             break;
 
         case DEL_ALL_EXECVE_EXE_SHITELIST:
             execve_exe_allowlist_limit = 0;
             del_all_execve_exe_allowlist();
-            kfree(data_main);
             break;
 
         case EXECVE_EXE_CHECK:
             res = execve_exe_check(data_main);
             printk("[ELKEID DEBUG] execve_exe_check:%s %d\n",
                    strim(data_main), res);
-            kfree(data_main);
             break;
 
         case PRINT_ALL_ALLOWLIST:
             print_all_execve_allowlist();
             print_all_argv_allowlist();
-            kfree(data_main);
             break;
 
         case ADD_EXECVE_ARGV_SHITELIST:
@@ -360,34 +355,33 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
                 execve_argv_allowlist_limit++;
                 /* assgin data_main to rb node */
                 add_execve_argv_allowlist(strim(data_main));
+                data_main = NULL;
             }
             break;
 
         case DEL_EXECVE_ARGV_SHITELIST:
             del_res = del_execve_argv_allowlist(strim(data_main));
             execve_argv_allowlist_limit--;
-            kfree(data_main);
             break;
 
         case DEL_ALL_EXECVE_ARGV_SHITELIST:
             execve_argv_allowlist_limit = 0;
             del_all_execve_argv_allowlist();
-            kfree(data_main);
             break;
 
         case EXECVE_ARGV_CHECK:
             res = execve_argv_check(data_main);
             printk("[ELKEID DEBUG] execve_argv_check:%s %d\n",
                    strim(data_main), res);
-            kfree(data_main);
             break;
 
         case PRINT_PPIN:
             atomic_set(&device_read_flag, 1);
-            kfree(data_main);
             break;
     }
 
+    if (data_main)
+        kfree(data_main);
     return len;
 }
 
