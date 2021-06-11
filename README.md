@@ -30,6 +30,9 @@ Currently,  We welcome any suggestions and cooperation.
 * #### [Elkeid Agent](agent)
 * #### [Elkeid Server](server)
 
+## Q&A
+ [Question and Answer](server/docs/qa.md)
+
 ## To be Continued
 * Elkeid is continually being developed. More features are coming soon.
 
