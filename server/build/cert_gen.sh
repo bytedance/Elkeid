@@ -9,6 +9,7 @@ then
   exit
 fi
 
+rm -rf cert
 mkdir cert
 cd cert
 
@@ -48,3 +49,12 @@ openssl x509 -noout -text -in client.crt
 
 rm -rf v3.ext ca.srl client.csr server.csr
 cd ../
+
+echo "generate cert ok!"
+
+cp cert/* ../agent_center/conf/
+echo "update agent_center cert ok!"
+
+cp cert/ca.crt cert/client.crt cert/client.key ../../agent/transport/connection
+echo "update agent cert ok!"
+echo "success!"
