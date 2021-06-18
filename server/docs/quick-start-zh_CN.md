@@ -17,7 +17,6 @@ Elkeid后端包括三个部分，ServiceDiscovery、Manager、AgentCenter三部�
 |ServiceDiscovery|每1000台Agent 4C8G|是|如果Agent>1w，建议集群部署|
 |Manager|每1000台Agent 4C8G|是|如果Agent>1w，建议集群部署|
 |AgentCenter|每1000台Agent 8C8G|是|如果Agent>1w，建议集群部署|
-|
 
 > **安装之前，请确保Server集群机器之间可互通！**  
 > **Server机器与Mongodb/Kafka/Redis集群之间可互通，否则无法正常工作！**
@@ -36,7 +35,8 @@ Agent和Server的代码在 https://github.com/bytedance/Elkeid/ 中，可通过g
 git clone https://github.com/bytedance/Elkeid.git
 ```
 ### 也可以通过前端页面直接下载
-访问 https://github.com/bytedance/Elkeid 直接下载
+访问 https://github.com/bytedance/Elkeid 直接下载  
+
 
 ## Server编译和部署
 ### 1. 更换Agent-AgentCenter通信证书
@@ -329,7 +329,7 @@ nohup ./agent_center -c conf/svr.yml>/dev/null 2>&1 &
 |Agent机器|*|AgentCenter|6751|agent上报数据|
 |所有Manager机器|*|AgentCenter|6752|http服务|
 |Manager/AgentCenter/ServiceDiscovery|*|kafka集群/redis集群/mongodb集群|对应集群端口|
-|
+
 
 ## Agent编译和部署
 Server部署完后，可以得到以下资源：
@@ -431,7 +431,7 @@ https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector_1
 ```
 ### 7. 配置插件
 在配置插件前需要鉴权Manager API：
-> 详细参见[API接口文档](./README-zh_CN.md#api接口文档)
+> 详细参见[API接口文档](../README-zh_CN.md#api接口文档)
 >
 > 如果在部署Manager时修改了`username`和`password`，下面也记得做对应修改
 >
@@ -527,7 +527,8 @@ curl --location --request POST 'http://m_host:m_port/api/v1/agent/controlTask' -
 2021-04-15T16:18:27.939+0800    INFO    report/report.go:119    map[cpu:0.03518 data_type:1000 io:0 kernel_version:4-amd64 memory:17645568 net_type:sd platform:debian platform_version:9.13 plugins:[{"rss":13709312,"io":479232,"cpu":0.015414258189652063,"name":"driver","version":"1.6.0.0","pid":1746809,"qps":428.73333333333335},{"rss":8192,"io":0,"cpu":0,"name":"journal_watcher","version":"1.6.0.0","pid":1746883,"qps":0}] slab:2875588 timestamp:1618474707]
 ```
 ### 10. 验证插件数据
-现在，可以从kafka里面消费数据了，里面包含所有插件和Agent上报的数据。
+现在，可以从kafka里面消费数据了，里面包含所有插件和Agent上报的数据。  
+
 
 ## Manager API使用指南
 这里只介绍部分接口的用法，更多接口的用法请参考[API接口](https://documenter.getpostman.com/view/9865152/TzCTZ5Do#intro)。
@@ -597,6 +598,8 @@ curl --location --request POST 'http://127.0.0.1:6701/api/v1/agent/updateDefault
     "config": []
 }'
 ```
+
+
 ## QA
 ### 1. Mangager API 使用过程中遇到报错 CLUSTERDOWN Hash slot not served
 如果是单节点的redis集群，运行可能会遇到报错 CLUSTERDOWN Hash slot not served，需要执行如下命令修复： redis-cli --cluster fix 127.0.0.1:6379
