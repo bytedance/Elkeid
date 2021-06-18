@@ -6,7 +6,7 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-func NewRedisClient(addr string, addrs []string, passwd string) (redis.Cmdable, error) {
+func NewRedisClient(addr string, addrs []string, passwd string) (redis.UniversalClient, error) {
 	//single
 	if addr != "" {
 		client := redis.NewClient(&redis.Options{

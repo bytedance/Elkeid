@@ -74,10 +74,10 @@ type SimpleJob struct {
 	Do  DoJob
 	Rlt DoRlt
 
-	Rds *redis.ClusterClient
+	Rds redis.UniversalClient
 }
 
-func NewSimpleJob(id string, name string, mode int, meta map[string]interface{}, workers []string, conNum int, timeout int, dis DisJob, do DoJob, rlt DoRlt, rds *redis.ClusterClient) SimpleJob {
+func NewSimpleJob(id string, name string, mode int, meta map[string]interface{}, workers []string, conNum int, timeout int, dis DisJob, do DoJob, rlt DoRlt, rds redis.UniversalClient) SimpleJob {
 	var (
 		setFlag bool
 	)
