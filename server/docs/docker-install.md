@@ -25,14 +25,6 @@ docker-compose up
 ```
 Later, `docker ps` will see 4 docker services elkeid_kafka, elkeid_mongodb, elkeid_redis, elkeid_zookeeper
 
-Fix the redis state (for simplicity, the redis cluster has only one instance, and the cluster state needs to be manually fixed)
-```
-docker exec -it elkeid_redis sh
-
-#run in the docker container
-redis-cli --cluster fix 127.0.0.1:6379
-#When the screen shows :Fix these slots by covering with a random node? (type'yes' to accept), then enter yes
-```
 > If you are prompted to get the docker image failed, please check the network and try again, or attach http/https proxy to docker pull
 
 Step3. Compile and copy the compressed package to the corresponding directory

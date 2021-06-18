@@ -32,6 +32,9 @@ Elkeid Server由AgentCenter、ServiceDiscovery、Manager几部分组成，提供
 * #### [Elkeid Agent](agent)
 * #### [Elkeid Server](server)
 
+## Quick Start
+ [Quick Start](server/docs/quick-start-zh_CN.md)
+ 
 ## Q&A
  [Question and Answer](server/docs/qa-zh_CN.md)
 

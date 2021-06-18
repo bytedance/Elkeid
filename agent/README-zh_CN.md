@@ -169,15 +169,6 @@ curl --location --request POST 'http://m_host:m_port/api/v1/user/login' \
     }
 }
 ```
-注意首次使用时，需要设置agent默认配置，可以设置为空(为空意味着新接入的agent不会自动开启任何插件):
-```
-curl --location --request POST 'http://127.0.0.1:6701/api/v1/agent/updateDefaultConfig' -H "token:BUVUDcxsaf%^&%4643667" \
---data-raw '{
-    "type": "agent_config",
-    "version": 0,
-    "config": []
-}'
-```
 将token加到配置插件的请求头中，并根据需要下发的AgentID、插件名、插件版本、插件sha256、插件下载地址编写请求body：
 ```
 curl --location --request POST 'http://m_host:m_port/api/v1/agent/createTask/config' -H "token:BUVUDcxsaf%^&%4643667" --data-raw '{
