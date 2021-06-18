@@ -241,7 +241,7 @@ type ApiJob struct {
 	SimpleJob
 }
 
-func NewApiJob(id string, name string, conNum int, timeout int, rds *redis.ClusterClient) Job {
+func NewApiJob(id string, name string, conNum int, timeout int, rds redis.UniversalClient) Job {
 	if _, ok := ApiMap[name]; !ok {
 		return nil
 	}

@@ -29,7 +29,7 @@ func GetConfigByID(c *gin.Context) {
 		//Read the default version
 		defaultConfig := getDefaultConfig()
 		if defaultConfig == nil {
-			common.CreateResponse(c, common.DBOperateErrorCode, "load default config error")
+			common.CreateResponse(c, common.SuccessCode, []AgentConfigMsg{})
 			return
 		}
 		common.CreateResponse(c, common.SuccessCode, defaultConfig)

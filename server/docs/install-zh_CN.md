@@ -15,11 +15,6 @@
 ```
 git clone https://github.com/bytedance/Elkeid.git
 cd Elkeid/server/build && ./cert_gen.sh elkeid.com hids-svr elkeid@elkeid.com
-cp cert/* ../agent_center/conf/
-```
-2. 替换Agent证书。
-```
-cp cert/ca.crt cert/client.crt cert/client.key ../../agent/transport/connection
 ```
 
 ## 编译elkeid Server二进制
@@ -186,9 +181,6 @@ bind 0.0.0.0 ::1
 
 # 关闭包含模式，允许非本机访问redis
 protected-mode no
-
-#开启集群模式
-cluster-enabled yes
 ```
 > 如果是单节点的redis集群，运行可能会遇到报错 CLUSTERDOWN Hash slot not served，需要执行如下命令修复：
 redis-cli --cluster fix 127.0.0.1:6379
@@ -226,7 +218,7 @@ tar xvfz manager-xxx.tar.gz
 2. 修改Manager的配置conf/svr.yml。
 主要是改3个地方：
 ```
-redis.addrs 是redis集群的地址列表。
+redis.addrs/reids.addr 是redis地址列表。
 mongo.uri 是mongodb集群的uri地址。
 sd.addrs 是服务发现集群的地址列表。
 ```

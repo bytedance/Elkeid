@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"github.com/bytedance/Elkeid/server/manager/infra/mongodb"
@@ -9,6 +10,7 @@ import (
 	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	"os"
 	"strings"
+	"time"
 )
 
 func init() {
@@ -34,8 +36,15 @@ func initComponents() {
 	var err error
 
 	//connect redis
-	if Grds, err = redis.NewRedisClient(Conf.GetStringSlice("redis.addrs"), Conf.GetString("redis.passwd")); err != nil {
+	if Grds, err = redis.NewRedisClient(Conf.GetString("redis.addr"), Conf.GetStringSlice("redis.addrs"), Conf.GetString("redis.passwd")); err != nil {
 		fmt.Println("NEW_REDIS_ERROR", err.Error())
+		os.Exit(-1)
+	}
+
+	//test if redis is ok!
+	err = Grds.Set(context.Background(), "elkeid_manager_test", "test", time.Second).Err()
+	if err != nil {
+		fmt.Println("REDIS_ERROR", err.Error())
 		os.Exit(-1)
 	}
 

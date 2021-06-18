@@ -15,12 +15,6 @@ If it is deployed in a production environment, it is strongly recommended replac
 ```
 git clone https://github.com/bytedance/Elkeid.git
 cd Elkeid/server/build && ./cert_gen.sh elkeid.com hids-svr elkeid@elkeid.com
-cp cert/* ../agent_center/conf/
-cd ../../
-```
-2. Replace Agent certificate.
-```
-cp cert/ca.crt cert/client.crt cert/client.key ../../agent/transport/connection
 ```
 
 ## Compile the binary
@@ -185,9 +179,6 @@ bind 0.0.0.0 ::1
 
 # Turn off the include mode, allowing non-local access to redis
 protected-mode no
-
-#Turn on cluster mode
-cluster-enabled yes
 ```
 > If it is a single-node redis cluster, you may encounter an error CLUSTERDOWN Hash slot not served during operation, and you need to execute the following commands to fix:
 redis-cli --cluster fix 127.0.0.1:6379
@@ -225,7 +216,7 @@ tar xvfz manager-xxx.tar.gz
 2. Modify Manager configuration conf/svr.yml
 Mainly to change 3 places:
 ```
-redis.addrs: the address list of the redis cluster.
+redis.addrs/redis.addr: the address the redis(cluster).
 mongo.uri: the uri address of the mongodb cluster.
 sd.addrs: the address list of the service discovery cluster.
 ```

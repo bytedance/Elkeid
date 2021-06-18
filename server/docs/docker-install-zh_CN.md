@@ -23,16 +23,7 @@ docker-compose up
 #如果服务无异常，可以放后台运行
 # docker-compose up -d
 ```
-服务起来后，`docker ps`会看到4个docker服务elkeid_kafka、elkeid_mongodb、elkeid_redis、elkeid_zookeeper
-
-修复redis状态（为了简便，redis集群只起了一个实例，需要手动修复集群状态）
-```
-docker exec -it elkeid_redis sh
-
-#进入docker后执行
-redis-cli --cluster fix 127.0.0.1:6379
-#遇到Fix these slots by covering with a random node? (type 'yes' to accept)，输入yes即可
-```
+服务起来后，`docker ps`会看到4个docker服务elkeid_kafka、elkeid_mongodb、elkeid_redis、elkeid_zookeeper  
 > 如果提示获取 docker image 失败，请检查网络并重试，或者给 docker pull 挂上 http/https 代理
 
 Step3. 编译，并将压缩包分别拷贝到对应的部署目录下

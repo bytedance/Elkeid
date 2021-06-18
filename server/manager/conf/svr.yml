@@ -50,11 +50,12 @@ server:
 
 
 ############################# Redis Settings #############################
-# addrs: addr list.
+# addr: addr
+# addrs: addr list (when using redis cluster).
 # passwd: password,which can be empty.
 redis:
-  addrs:
-    - 127.0.0.1:6379
+  addr: "127.0.0.1:6379"
+  addrs: []
   passwd:
 
 

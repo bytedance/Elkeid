@@ -21,7 +21,7 @@ var (
 	Sig      = make(chan os.Signal, 1)
 	Quit     = make(chan bool)
 
-	Grds          *redis.ClusterClient
+	Grds          redis.UniversalClient
 	MongoClient   *mongo.Client
 	MongoDatabase string
 
