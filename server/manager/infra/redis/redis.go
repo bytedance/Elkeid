@@ -10,7 +10,6 @@ func NewRedisClient(addrs []string, passwd string) (redis.UniversalClient, error
 		Addrs:    addrs,
 		Password: passwd,
 	})
-	defer client.Close()
 
 	_, err := client.Ping(context.Background()).Result()
 	if err != nil {
