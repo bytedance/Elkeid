@@ -2,39 +2,19 @@ package redis
 
 import (
 	"context"
-	"errors"
 	"github.com/go-redis/redis/v8"
 )
 
-func NewRedisClient(addr string, addrs []string, passwd string) (redis.UniversalClient, error) {
-	//single
-	if addr != "" {
-		client := redis.NewClient(&redis.Options{
-			Addr:     addr,
-			Password: passwd,
-		})
+func NewRedisClient(addrs []string, passwd string) (redis.UniversalClient, error) {
+	client := redis.NewUniversalClient(&redis.UniversalOptions{
+		Addrs:    addrs,
+		Password: passwd,
+	})
+	defer client.Close()
 
-		_, err := client.Ping(context.Background()).Result()
-		if err != nil {
-			return nil, err
-		}
-		return client, nil
+	_, err := client.Ping(context.Background()).Result()
+	if err != nil {
+		return nil, err
 	}
-
-	//cluster
-	if addrs != nil && len(addrs) != 0 {
-		client := redis.NewClusterClient(&redis.ClusterOptions{
-			Addrs:    addrs,
-			Password: passwd,
-		})
-
-		_, err := client.Ping(context.Background()).Result()
-		if err != nil {
-			return nil, err
-		}
-
-		return client, nil
-	}
-
-	return nil, errors.New("all addresses are empty")
+	return client, nil
 }
