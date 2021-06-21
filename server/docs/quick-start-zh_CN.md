@@ -575,13 +575,7 @@ curl --location -H 'token:xxxxxxxxx' --request POST 'http://127.0.0.1:6701/api/v
 ####  3.1 查询任务状态
 ```  
 #查询task 1617876668390045859aiCMRA的执行状态
-curl --location -H 'token:xxxxxxxxx' --request GET 'http://127.0.0.1:6701/api/v1/agent/getTask/1617876668390045859aiCMRA?result=true&detail=false' \
---data-raw '{
-    "task_id": "task-1617097443663532000-Bzgb",
-    "action": "run",
-    "rolling_percent": 0.5,
-    "concurrence": 1
-}'
+curl --location -H 'token:xxxxxxxxx' --request GET 'http://127.0.0.1:6701/api/v1/agent/getTask/1617876668390045859aiCMRA?result=true&detail=false'
 ```
 ### 4. 设置Agent默认配置
 ####  4.1 设置Agent默认配置
