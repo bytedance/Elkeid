@@ -644,60 +644,64 @@ PRINT_EVENT_DEFINE(accept,
                            __entry->dport, NIPQUAD(__entry->sip), __entry->sport, __entry->retval)
 );
 
-//#if IS_ENABLED(CONFIG_IPV6)
-//PRINT_EVENT_DEFINE(accept6,
-//
-//                   PE_PROTO(int dport, struct in6_addr *dip, char * exe_path,
-//                           struct in6_addr *sip, int sport, int retval),
-//
-//                   PE_ARGS(dport, dip, exe_path,
-//                           sip, sport, retval),
-//
-//                   PE_STRUCT__entry(
-//                           __field(int, uid)
-//                           __field(int, dport)
-//                           __field(struct in6_addr, dip)
-//                           __string(exe_path, exe_path)
-//                           __field(int, pid)
-//                           __field(int, ppid)
-//                           __field(int, pgid)
-//                           __field(int, tgid)
-//                           __field(int, sid)
-//                           __array(char, comm, TASK_COMM_LEN)
-//                           __string(nodename, current->nsproxy->uts_ns->name.nodename)
-//                           __field(struct in6_addr, sip)
-//                           __field(int, sport)
-//                           __field(int, retval)
-//                           __field(unsigned int, sessionid)
-//                   ),
-//
-//                   PE_fast_assign(
-//                           __entry->uid = __get_current_uid();
-//                           __entry->dport = dport;
-//                           memcpy(&__entry->dip, dip, sizeof(*dip));
-//                           __assign_str(exe_path, exe_path);
-//                           __entry->pid = current->pid;
-//                           __entry->ppid = current->real_parent->pid;
-//                           __entry->pgid = __get_pgid();
-//                           __entry->sid = __get_sid();
-//                           __entry->tgid = current->tgid;
-//                           memcpy(__entry->comm, current->comm, TASK_COMM_LEN);
-//                           __assign_str(nodename, current->nsproxy->uts_ns->name.nodename);
-//                           memcpy(&__entry->sip, sip, sizeof(*sip));
-//                           __entry->sport = sport;
-//                           __entry->retval = retval;
-//                           __entry->sessionid = __get_sessionid();
-//                   ),
-//
-//                   PE_printk(
-//                           "%d" RS "43" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "10" RS "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x" RS "%d" RS "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x" RS "%d" RS "%d",
-//                           __entry->uid, __get_str(exe_path), __entry->pid, __entry->ppid, __entry->pgid,
-//                           __entry->tgid, __entry->sid,__entry->comm, __get_str(nodename),__entry->sessionid,
-//                           NIP6(__entry->dip), __entry->dport, NIP6(__entry->sip),
-//                           __entry->sport, __entry->retval)
-//);
-//#endif
+#if IS_ENABLED(CONFIG_IPV6)
+PRINT_EVENT_DEFINE(accept6,
 
+                   PE_PROTO(int dport, struct in6_addr *dip, char * exe_path,
+                           struct in6_addr *sip, int sport, int retval),
+
+                   PE_ARGS(dport, dip, exe_path,
+                           sip, sport, retval),
+
+                   PE_STRUCT__entry(
+                           __field(int, uid)
+                           __field(int, dport)
+                           __field(struct in6_addr, dip)
+                           __string(exe_path, exe_path)
+                           __field(int, pid)
+                           __field(int, ppid)
+                           __field(int, pgid)
+                           __field(int, tgid)
+                           __field(int, sid)
+                           __array(char, comm, TASK_COMM_LEN)
+                           __string(nodename, current->nsproxy->uts_ns->name.nodename)
+                           __field(struct in6_addr, sip)
+                           __field(int, sport)
+                           __field(int, retval)
+                           __field(unsigned int, sessionid)
+                           __field(unsigned int, pid_inum)
+                           __field(unsigned int, root_pid_inum)
+                   ),
+
+                   PE_fast_assign(
+                           __entry->uid = __get_current_uid();
+                           __entry->dport = dport;
+                           memcpy(&__entry->dip, dip, sizeof(*dip));
+                           __assign_str(exe_path, exe_path);
+                           __entry->pid = current->pid;
+                           __entry->ppid = current->real_parent->pid;
+                           __entry->pgid = __get_pgid();
+                           __entry->sid = __get_sid();
+                           __entry->tgid = current->tgid;
+                           memcpy(__entry->comm, current->comm, TASK_COMM_LEN);
+                           __assign_str(nodename, current->nsproxy->uts_ns->name.nodename);
+                           memcpy(&__entry->sip, sip, sizeof(*sip));
+                           __entry->sport = sport;
+                           __entry->retval = retval;
+                           __entry->sessionid = __get_sessionid();
+                           __entry->pid_inum = __get_pid_ns_inum();
+                           __entry->root_pid_inum = ROOT_PID_NS_INUM;
+                   ),
+
+                   PE_printk(
+                           "%d" RS "43" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%u" RS "%u" RS "10" RS "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x" RS "%d" RS "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x" RS "%d" RS "%d",
+                           __entry->uid, __get_str(exe_path), __entry->pid, __entry->ppid, __entry->pgid,
+                           __entry->tgid, __entry->sid,__entry->comm, __get_str(nodename),__entry->sessionid,
+                           __entry->pid_inum, __entry->root_pid_inum,
+                           NIP6(__entry->dip), __entry->dport, NIP6(__entry->sip),
+                           __entry->sport, __entry->retval)
+);
+#endif
 
 PRINT_EVENT_DEFINE(connect4,
 

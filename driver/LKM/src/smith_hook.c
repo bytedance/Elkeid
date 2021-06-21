@@ -384,7 +384,13 @@ struct connect_syscall_data {
 
 struct accept_data {
     int type;
-    struct sockaddr accept_dirp;
+    void __user *accept_dirp;
+    union {
+        struct sockaddr    sa;
+        struct sockaddr_in si4;
+        struct sockaddr_in6 si6;
+        struct __kernel_sockaddr_storage kss; /* to avoid overflow access of kernel_getsockname */
+    };
 };
 
 struct udp_recvmsg_data {
@@ -736,7 +742,6 @@ int accept_entry_handler(struct kretprobe_instance *ri,
                          struct pt_regs *regs)
 {
     struct accept_data *data;
-    struct sockaddr accept_dirp;
     struct sockaddr *dirp;
 
     data = (struct accept_data *)ri->data;
@@ -745,11 +750,7 @@ int accept_entry_handler(struct kretprobe_instance *ri,
     dirp = (void __user *)p_get_arg2(regs);
     if(IS_ERR_OR_NULL(dirp))
         return -EINVAL;
-
-    if(smith_copy_from_user(&accept_dirp, (struct sockaddr __user *) dirp, 16))
-    return -EINVAL;
-
-    data->accept_dirp = accept_dirp;
+    data->accept_dirp = dirp;
     return 0;
 }
 
@@ -757,7 +758,6 @@ int accept4_entry_handler(struct kretprobe_instance *ri,
                           struct pt_regs *regs)
 {
     struct accept_data *data;
-    struct sockaddr accept_dirp;
     struct sockaddr *dirp;
 
     data = (struct accept_data *)ri->data;
@@ -766,114 +766,80 @@ int accept4_entry_handler(struct kretprobe_instance *ri,
     dirp = (void __user *)p_get_arg2(regs);
     if(IS_ERR_OR_NULL(dirp))
         return -EINVAL;
-
-    if(smith_copy_from_user(&accept_dirp, (struct sockaddr __user *) dirp, 16))
-    return -EINVAL;
-
-    data->accept_dirp = accept_dirp;
+    data->accept_dirp = dirp;
     return 0;
+}
+
+static int smith_sock_getname(struct socket *s, struct sockaddr *sa, int *l, int peer)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
+    if (peer)
+        return kernel_getpeername(s, sa);
+    else
+        return kernel_getsockname(s, sa);
+#else
+    if (peer)
+        return kernel_getpeername(s, sa, l);
+    else
+        return kernel_getsockname(s, sa, l);
+#endif
 }
 
 int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
-    int flag = 0;
+    struct accept_data *data;
+    struct socket *sock = NULL;
+
     int sport = 0;
     int dport = 0;
-    int retval, err, sa_family, kernel_getsockname_err;
-
-    __be32 dip4 = 0;
-    __be32 sip4 = 0;
+    int retval, addrlen = 0, err = 0;
 
     char *exe_path = DEFAULT_RET_STR;
     char *buffer = NULL;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 16, 0)
-    int addrlen;
-    void * addrlen_user;
-#endif
-
-    struct sockaddr accept_dirp;
-    struct accept_data *data;
-    struct socket *sock;
-
-//    struct in6_addr *dip6;
-//    struct in6_addr *sip6;
-
-    struct sockaddr_in *sin;
-    struct sockaddr_in source_addr;
-
-//    struct sockaddr_in6 *sin6;
-//    struct sockaddr_in6 source_addr6;
-
-    retval = regs_return_value(regs);
     data = (struct accept_data *)ri->data;
-
-    accept_dirp = data->accept_dirp;
-    if (IS_ERR_OR_NULL(&accept_dirp))
-        return 0;
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 16, 0)
-    addrlen_user = (void __user *)p_get_arg3(regs);
-    if (IS_ERR_OR_NULL(addrlen_user))
-        return 0;
-
-    addrlen = *(int __user *)addrlen_user;
-#endif
+    retval = regs_return_value(regs);
+    sock = sockfd_lookup(retval, &err);
+    if(IS_ERR_OR_NULL(sock))
+        goto out;
 
     buffer = kzalloc(PATH_MAX, GFP_ATOMIC);
     exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
+    if (smith_sock_getname(sock, &data->sa, &addrlen, 0) < 0)
+        goto out;
+
     //only get AF_INET/AF_INET6 accept info
-    if(accept_dirp.sa_family == AF_INET) {
-        flag = 1;
-        sa_family = 4;
-        sock = sockfd_lookup(retval, &err);
+    if (data->si4.sin_family == AF_INET) {
+        __be32 sip4 = 0;
+        __be32 dip4 = data->si4.sin_addr.s_addr;
+        dport = ntohs(data->si4.sin_port);
 
-        if(IS_ERR_OR_NULL(sock))
+        if (smith_sock_getname(sock, &data->sa, &addrlen, 1) < 0)
             goto out;
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
-        kernel_getsockname_err = kernel_getsockname(sock, (struct sockaddr *)&source_addr);
-#else
-        kernel_getsockname_err = kernel_getsockname(sock, (struct sockaddr *)&source_addr, &addrlen);
-#endif
-        if (kernel_getsockname_err < 0)
-            goto out;
-
-        sport = ntohs(source_addr.sin_port);
-        sip4 = source_addr.sin_addr.s_addr;
-        sockfd_put(sock);
-        sin = (struct sockaddr_in *) &accept_dirp;
-        dip4 = sin->sin_addr.s_addr;
-        dport = ntohs(sin->sin_port);
+        sip4 = (data->si4.sin_addr.s_addr);
+        sport = ntohs(data->si4.sin_port);
         accept_print(dport, dip4, exe_path, sip4, sport, retval);
     }
+#if IS_ENABLED(CONFIG_IPV6)
+    else if (data->si4.sin_family == AF_INET6) {
+        struct in6_addr *sip6;
+        struct in6_addr dip6 = data->si6.sin6_addr;
+        dport = ntohs(data->si6.sin6_port);
 
-//#if IS_ENABLED(CONFIG_IPV6)
-//    else if (accept_dirp.sa_family == AF_INET6) {
-//        flag = 1;
-//        sa_family = 6;
-//        sock = sockfd_lookup(retval, &err);
-//        if (sock) {
-//#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
-//            kernel_getsockname(sock, (struct sockaddr *)&source_addr);
-//#else
-//            kernel_getsockname(sock, (struct sockaddr *)&source_addr, &addrlen);
-//#endif
-//            sport = ntohs(source_addr6.sin6_port);
-//            sip6 = &(source_addr6.sin6_addr);
-//            sockfd_put(sock);
-//        }
-//        sin6 = (struct sockaddr_in6 *)&accept_dirp;
-//        dip6 = &(sin6->sin6_addr);
-//        dport = ntohs(sin6->sin6_port);
-//        accept6_print(dport, dip6, exe_path, sip6, sport, retval);
-//    }
-//#endif
+        if (smith_sock_getname(sock, &data->sa, &addrlen, 1) < 0)
+            goto out;
+        sport = ntohs(data->si6.sin6_port);
+        sip6 = &(data->si6.sin6_addr);
+        accept6_print(dport, &dip6, exe_path, sip6, sport, retval);
+    }
+#endif
+
 out:
+    if (sock)
+        sockfd_put(sock);
     if (buffer)
         kfree(buffer);
-
     return 0;
 }
 
