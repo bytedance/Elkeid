@@ -32,7 +32,8 @@ These can be configured as required, but remember those constants need to be con
 
 
 ### [Yara Rules](https://yara.readthedocs.io/en/stable/writingrules.html)
-`RULES_SET` define the yara rule string
+`RULES_SET` define the yara rule string.
+
 Current rules for reference:
 * UPX-elf
 * miner stratum elf/script
