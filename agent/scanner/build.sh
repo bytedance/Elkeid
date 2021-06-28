@@ -1,6 +1,5 @@
 #!/bin/bash
-rm  -f ./output/scanner* ./output/*.log ./output/*.log.gz
-mkdir output &> /dev/null
+
 RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_64-unknown-linux-gnu
 
 if [ $? -ne 0 ]; then
