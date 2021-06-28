@@ -167,7 +167,6 @@ pub struct Detector {
     pub task_receiver: crossbeam_channel::Receiver<DetectTask>,
     s_locker: crossbeam_channel::Sender<()>,
     rule_str: String,
-    rflag: bool,
     scanner: Option<Scanner>,
     _recv_worker: JoinHandle<()>,
     malware_cache: lru::LruCache<String, String>,
@@ -221,7 +220,6 @@ impl Detector {
             task_receiver: task_receiver,
             s_locker: s_locker,
             rule_str: rule_str.into(),
-            rflag: true,
             scanner: Some(Scanner::new(&rule_str)),
             _recv_worker: recv_worker,
             malware_cache: LruCache::new(cache_size),
@@ -241,9 +239,13 @@ impl Detector {
                 },
                 recv(self.task_receiver)->data=>{
                     // recv scan task
-                    if self.scanner == None{
-                        self.scanner = Some(Scanner::new(&self.rule_str));
+                    match self.scanner{
+                        None => {
+                            self.scanner = Some(Scanner::new(&self.rule_str));
+                        },
+                        Some(_) =>{},
                     }
+
                     debug!("recv work {:?}",data);
                     let task:DetectTask = data.unwrap();
                     if let Some(_)= self.malware_cache.get(&task.rpath){
@@ -278,7 +280,6 @@ impl Detector {
                                         continue
                                     }
                                 }; // maybe timeout
-
                                 if result.len() > 0 {
                                     let sha256 = Sha256::digest(&t.buffer);
                                     let sha256sum = format!("{:x}", sha256);
