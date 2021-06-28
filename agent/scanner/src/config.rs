@@ -23,7 +23,6 @@ pub struct ScanConfig<'a> {
 }
 
 // SCAN_DIR : config directory for yara scan
-#[cfg(not(feature = "debug"))]
 pub const SCAN_DIR_CONFIG: &[&ScanConfig] = &[
     &ScanConfig {
         fpath: "/bin", // scan dir

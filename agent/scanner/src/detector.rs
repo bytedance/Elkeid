@@ -284,7 +284,6 @@ impl Detector {
                                     let sha256sum = format!("{:x}", sha256);
                                     let first_result = &result[0];
                                     self.malware_cache.put(task.rpath.to_string(), first_result.identifier.to_string());
-                                    //#[cfg(feature = "debug")]
                                     warn!(
                                         "[Catch file] Type={}, Path={}",
                                         first_result.identifier,
@@ -315,9 +314,6 @@ impl Detector {
                                         }
                                     }
                                 }
-                            }else {
-                                #[cfg(feature = "debug")]
-                                warn!("scanner is nil");
                             }
                         },// dir
                         "6002" =>{
@@ -354,7 +350,6 @@ impl Detector {
                                     let sha256 = Sha256::digest(&t.buffer);
                                     let sha256sum = format!("{:x}", sha256);
                                     let first_result = &result[0];
-                                    //#[cfg(feature = "debug")]
                                     warn!(
                                         "[Catch file] Type={}, Path={}",
                                         first_result.identifier,
@@ -581,7 +576,6 @@ impl Detector {
                                     if first_result.identifier.ends_with("script") {
                                         rawc = std::str::from_utf8(&t.buffer).unwrap_or_default();
                                     }
-                                    //#[cfg(feature = "debug")]
                                     warn!(
                                         "[Catch file] Type={}, Path={}",
                                         first_result.identifier,
