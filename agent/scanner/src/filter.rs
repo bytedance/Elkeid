@@ -19,12 +19,15 @@ impl Filter {
     pub fn catch(&self, k: &Path) -> i32 {
         let mut flag: i32 = 0;
         for each in self.set.iter() {
-            if k.starts_with(each) {
+            let c = k.display().to_string();
+            if c.starts_with(each) {
                 flag = 1;
-                if flag.to_string().len() > each.len() {
+                let c1: Vec<&str> = c.split("/").into_iter().collect();
+                let c2: Vec<&str> = each.split("/").into_iter().collect();
+                if c1.len() > c2.len() {
                     flag = 2
                 }
-                break;
+                return flag;
             }
         }
         return flag;

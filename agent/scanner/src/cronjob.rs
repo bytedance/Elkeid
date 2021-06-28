@@ -48,6 +48,8 @@ impl Cronjob {
                         continue;
                     } else if filter_flag == 2 {
                         w_dir.skip_current_dir();
+                        warn!("skip cur dir{:?}", &entry.path());
+                        continue;
                     }
                     // speed limit
                     std::thread::sleep(WAIT_INTERVAL_DIR_SCAN);
