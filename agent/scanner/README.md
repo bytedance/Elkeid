@@ -14,7 +14,7 @@ In `config.rs`, there are the following constants. In order to avoid occupying t
 
 ### Plugin Config
 ```
-const SOCKET_PATH:&str = ../..//plugin.sock";
+const SOCKET_PATH:&str = ../../plugin.sock";
 const NAME:&str = "scanner";
 const VERSION:&str = "0.0.0.0";
 ```

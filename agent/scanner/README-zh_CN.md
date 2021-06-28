@@ -11,7 +11,7 @@ Yara Scanner 使用 [yara 规则](https://yara.readthedocs.io/)对系统进程�
 
 ### 插件配置
 ```
-const SOCKET_PATH:&str = ../..//plugin.sock";
+const SOCKET_PATH:&str = ../../plugin.sock";
 const NAME:&str = "scanner";
 const VERSION:&str = "0.0.0.0";
 ```
