@@ -6,7 +6,7 @@ pub const CACHE_SIZE: usize = 100;
 
 // Plugin Config
 pub const NAME: &str = "scanner";
-pub const VERSION: &str = "0.0.0.0";
+pub const VERSION: &str = "0.0.0.1";
 pub const SOCKET_PATH: &str = "../../plugin.sock";
 
 // Scanner Config
