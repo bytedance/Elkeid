@@ -74,8 +74,8 @@ impl Cronjob {
                     let task = DetectTask {
                         task_type: "6001".to_string(),
                         pid: -1,
-                        path: format!("{}", fp.display()),
-                        rpath: format!("{}", fp.display()),
+                        path: fp.to_string_lossy().to_string(),
+                        rpath: fp.to_string_lossy().to_string(),
                         size: fsize,
                         btime: btime.0,
                         mtime: btime.1,
@@ -114,8 +114,8 @@ impl Cronjob {
                         continue;
                     }
                 }
-                let pstr: &str = &format!("/proc/{}/exe", pid);
-                let fp = Path::new(pstr);
+                let pstr: String = format!("/proc/{}/exe", pid);
+                let fp = Path::new(&pstr);
                 let exe_real = match fs::read_link(fp) {
                     Ok(pf) => pf.to_string_lossy().to_string(),
                     Err(_) => continue,
@@ -147,7 +147,7 @@ impl Cronjob {
                 let task = DetectTask {
                     task_type: "6002".to_string(),
                     pid: pid,
-                    path: pstr.to_string(),
+                    path: pstr,
                     rpath: exe_real,
                     size: fsize,
                     btime: btime.0,

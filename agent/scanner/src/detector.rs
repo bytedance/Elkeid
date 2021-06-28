@@ -6,7 +6,6 @@ use log::*;
 use lru::LruCache;
 use sha2::{Digest, Sha256};
 use std::{
-    fmt,
     fs::File,
     io::Read,
     path::Path,
@@ -383,7 +382,6 @@ impl Detector {
                                     }
                                 }
                             }
-                            continue
                         }, // proc
 
                         "6003" =>{
@@ -534,10 +532,7 @@ impl Detector {
                                         return
                                     }
                                 }
-                            }else {
-                                warn!("scanner is nil");
                             }
-                            continue
                         }, // one-time-task
                         "6004" =>{
                             debug!("recv work 6004");
@@ -605,10 +600,7 @@ impl Detector {
                                         }
                                     }
                                 }
-                            }else {
-                                warn!("scanner is nil");
                             }
-                            continue
                         }, // fanotify
                          _ =>{
                             debug!("nothing");
@@ -662,37 +654,4 @@ pub fn get_file_bmtime(m: &std::fs::Metadata) -> (u64, u64) {
         }
     };
     return (ct, mt);
-}
-
-struct HexSlice<'a>(&'a [u8]);
-
-impl<'a> HexSlice<'a> {
-    fn new<T>(data: &'a T) -> HexSlice<'a>
-    where
-        T: ?Sized + AsRef<[u8]> + 'a,
-    {
-        HexSlice(data.as_ref())
-    }
-}
-trait HexDisplayExt {
-    fn hex_display(&self) -> HexSlice<'_>;
-}
-
-impl<T> HexDisplayExt for T
-where
-    T: ?Sized + AsRef<[u8]>,
-{
-    fn hex_display(&self) -> HexSlice<'_> {
-        HexSlice::new(self)
-    }
-}
-
-impl fmt::Display for HexSlice<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for byte in self.0 {
-            // Decide if you want to pad the value or have spaces inbetween, etc.
-            write!(f, "{:x}", byte)?;
-        }
-        Ok(())
-    }
 }

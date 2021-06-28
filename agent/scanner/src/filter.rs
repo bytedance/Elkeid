@@ -19,7 +19,7 @@ impl Filter {
     pub fn catch(&self, k: &Path) -> i32 {
         let mut flag: i32 = 0;
         for each in self.set.iter() {
-            let c = k.display().to_string();
+            let c = k.to_string_lossy().to_string();
             if c.starts_with(each) {
                 flag = 1;
                 let c1: Vec<&str> = c.split("/").into_iter().collect();
