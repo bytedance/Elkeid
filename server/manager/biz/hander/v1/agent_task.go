@@ -85,10 +85,6 @@ func agentControlDistribute(k, v interface{}) (interface{}, error) {
 	//Load default policy from db.
 	if name == "Agent_Config" {
 		defaultConfig = getDefaultConfig()
-		if defaultConfig == nil {
-			ylog.Errorf("agentTaskDistribute", "fail to load agent default config")
-			return nil, errors.New("fail to load agent default config")
-		}
 	}
 
 	agentCollection := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.AgentHeartBeatCollection)
