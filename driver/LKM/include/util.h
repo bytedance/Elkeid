@@ -296,11 +296,11 @@ static inline unsigned int __get_pid_ns_inum(void) {
 }
 
 static inline int __get_pgid(void) {
-    return task_pgrp_vnr(current);
+    return task_pgrp_nr_ns(current, &init_pid_ns);
 }
 
 static inline int __get_sid(void) {
-    return task_session_vnr(current);
+    return task_session_nr_ns(current, &init_pid_ns);
 }
 
 #endif /* UTIL_H */
