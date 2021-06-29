@@ -27,12 +27,7 @@ func GetConfigByID(c *gin.Context) {
 
 	if hb.Config == nil || len(hb.Config) == 0 {
 		//Read the default version
-		defaultConfig := getDefaultConfig()
-		if defaultConfig == nil {
-			common.CreateResponse(c, common.SuccessCode, []AgentConfigMsg{})
-			return
-		}
-		common.CreateResponse(c, common.SuccessCode, defaultConfig)
+		common.CreateResponse(c, common.SuccessCode, getDefaultConfig())
 		return
 	}
 
@@ -42,12 +37,7 @@ func GetConfigByID(c *gin.Context) {
 
 //GetDefaultConfig get default agent config
 func GetDefaultConfig(c *gin.Context) {
-	defaultConfig := getDefaultConfig()
-	if defaultConfig == nil {
-		common.CreateResponse(c, common.DBOperateErrorCode, "load default config error")
-		return
-	}
-	common.CreateResponse(c, common.SuccessCode, defaultConfig)
+	common.CreateResponse(c, common.SuccessCode, getDefaultConfig())
 	return
 }
 
@@ -57,8 +47,8 @@ func getDefaultConfig() []AgentConfigMsg {
 	filter := bson.M{"type": DefaultAgentConfig, "version": DefaultConfigVersion}
 	err := collection.FindOne(context.Background(), filter).Decode(&config)
 	if err != nil && err != mongo.ErrNoDocuments {
-		ylog.Errorf("GetDefaultConfig", err.Error())
-		return nil
+		ylog.Infof("GetDefaultConfig", "default config is not set, now use empty config, error is :", err.Error())
+		return []AgentConfigMsg{}
 	}
 	return config.Config
 }
