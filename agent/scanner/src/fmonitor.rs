@@ -115,6 +115,19 @@ impl FileMonitor {
                             || path.ends_with(".swo")
                         {
                             // skip vim tmp file
+                            let rcode = unsafe {
+                            let retc = libc::close(each_metadata.fd);
+                                warn!(
+                                    "close fd :{}; return:{}.",
+                                    each_metadata.fd,
+                                    libc::close(each_metadata.fd)
+                                );
+                                retc
+                            };
+
+                            if rcode != 0 {
+                                error!("close fd :{}; return:{}.", each_metadata.fd, rcode);
+                            };
                             continue;
                         }
                         warn!("fanotify event {:?}\n{}", &each_metadata.mask, path);
