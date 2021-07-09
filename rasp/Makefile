@@ -12,18 +12,24 @@ help:
 	@grep -hE '##' Makefile  | grep -v grep | sed -e 's/\\$$//' | sed -e 's/##/,/'  | sed -e 's/:.*,/ ,/' | column -t -c2 -s,
 
 rasp: ## build elkeid_rasp bin file
+	mkdir -p output
 ifeq ($(STATIC), TRUE)
 	$(MAKE) -C librasp build-musl
+	cp librasp/target/x86_64-unknown-linux-musl/release/elkeid_rasp output/elkeid_rasp
 else
 	$(MAKE) -C librasp build
+	cp librasp/target/release/elkeid_rasp output/elkeid_rasp
 endif
 	
 
 server: ## build rasp_server bin file
+	mkdir -p output
 ifeq ($(STATIC), TRUE)
 	$(MAKE) -C rasp_server build-musl
+	cp rasp_server/target/x86_64-unknown-linux-musl/release/rasp_server output/rasp_server
 else
 	$(MAKE) -C rasp_server build
+	cp rasp_server/target/release/rasp_server output/rasp_server
 endif
 
 
@@ -135,9 +141,8 @@ node: nsenter ## build node probe
 	cp node/*.js output/rasp/node/
 
 build: nsenter process_injector java python go node rasp server ## build all
-	mkdir -p output mkdir -p output/rasp
-	cp librasp/target/release/elkeid_rasp output/elkeid_rasp
-	cp rasp_server/target/release/rasp_server output/rasp/rasp_server
+	mkdir -p output
+	mkdir -p output/rasp
 	cp pangolin/bin/pangolin output/rasp/pangolin
 	cp pangolin/bin/lib*.so output/rasp/
 	cp util-linux/nsenter output/
