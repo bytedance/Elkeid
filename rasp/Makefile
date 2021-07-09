@@ -81,11 +81,19 @@ java: java-attach java-probe ## java probe
 	cp jvm/jattach/build/jattach output/jattach
 
 process_injector: ## build process injector
+ifeq ($(STATIC), TRUE)
+	mkdir -p pangolin/build && cd pangolin/build && \
+	CC=$(CC) CXX=$(CXX) \
+	LD=$(LD) CXXFLAGS=-static-pie cmake .. && make
+	cd pangolin && \
+	CFLAGS=-DDISABLE_LOG=1 CC=$(CC) LD=$(LD) make -C shellcode && mv shellcode/lib* bin
+else
 	mkdir -p pangolin/build && cd pangolin/build && \
 	CC=$(CC) CXX=$(CXX) \
 	LD=$(LD) cmake .. && make
 	cd pangolin && \
 	CFLAGS=-DDISABLE_LOG=1 CC=$(CC) LD=$(LD) make -C shellcode && mv shellcode/lib* bin
+endif
 
 python-client: ## build python client
 	mkdir -p python/python-client/build && cd python/python-client/build && \
