@@ -25,7 +25,6 @@ python -m pip install -I dist/rasp-1.0.0-py2.py3-none-any.whl
 
 * [static hook](#static-attachdetach)
 * [dynamic hook](#dynamic-attachdetach)
-* [with Mongoose-RASP]()
 * [with IAST]()
 
 ### static attach/detach
@@ -54,13 +53,4 @@ $ rasp_dyn_attach --IAST --DEBUG --CLIENT
 import rasp;rasp.set_var(True, True);rasp.setup_client();rasp.hook()
 ```
 
-
-### With Elkeid-rasp
-
-```bash
-# unix socket server
-cd mongoose_rasp
-sudo socat UNIX-LISTEN:/var/run/smith_agent.sock -
-sudo python/pyinject/bin/pyinject --pangolin=~/mongoose_rasp/pangolin/bin/pangolin -s '"import rasp;rasp.setup_var(debug_switch=True);rasp.setup_client();rasp.hook()"' -p <PID>
-```
 
