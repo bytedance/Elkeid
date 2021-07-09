@@ -125,8 +125,29 @@ pub trait RuntimeInspect {
                 version,
             }));
         }
+        let pid = process_info.pid.clone();
+        let exe_path = match process_info.process_self.exe() {
+            Ok(e) => e,
+            Err(e) => {
+                let msg = format!("read exe path failed: {}", e.to_string());
+                return Err(anyhow!(msg));
+            }
+        };
+        // /proc/<pid><exe_path> for process in container
+        let mut path = PathBuf::from(format!("/proc/{}/root/", pid));
+        let exe_path_buf = PathBuf::from(exe_path);
+        if !exe_path_buf.has_root() {
+            path.push(exe_path_buf);
+        } else {
+            for p in exe_path_buf.iter() {
+                if p == std::ffi::OsString::from("/") {
+                    continue;
+                }
+                path.push(p);
+            }
+        }
         #[cfg(feature = "bin_mode")]
-        match golang_bin_inspect(PathBuf::from(process_exe_file)) {
+        match golang_bin_inspect(path) {
             Ok(res) => {
                 if res {
                     return Ok(Some(Runtime {

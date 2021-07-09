@@ -194,17 +194,17 @@ impl RASPManager {
         };
         // /proc/<pid><exe_path> for process in container
         let mut path = PathBuf::from(format!("/proc/{}/root/", pid));
-	let exe_path_buf = PathBuf::from(exe_path);
-	if !exe_path_buf.has_root() {
-	    path.push(exe_path_buf);
-	} else {
-	    for p in exe_path_buf.iter() {
-		if p == std::ffi::OsString::from("/") {
-		    continue;
-		}
-		path.push(p);
-	    }
-	}
+        let exe_path_buf = PathBuf::from(exe_path);
+        if !exe_path_buf.has_root() {
+            path.push(exe_path_buf);
+        } else {
+            for p in exe_path_buf.iter() {
+                if p == std::ffi::OsString::from("/") {
+                    continue;
+                }
+                path.push(p);
+            }
+        }
         debug!("inspect path: {:?}", path);
         // search exe cache first
         let mut async_result = self.async_runtime_inspect_result.lock().unwrap();
@@ -217,8 +217,8 @@ impl RASPManager {
                 if runtime.name == "waiting" {
                     return Ok(None);
                 }
-		let runtime_result = runtime.clone();
-		async_result.remove(&path);
+                let runtime_result = runtime.clone();
+                async_result.remove(&path);
                 return Ok(Some(runtime_result));
             }
             None => {
@@ -266,7 +266,7 @@ impl RASPManager {
                             false
                         }
                     };
-		    debug!("inspect done: {}", inspect_result);
+                    debug!("inspect done: {}", inspect_result);
                     // lock result
                     let mut result = task_result.lock().unwrap();
                     // save inspect result
@@ -307,19 +307,21 @@ impl RASPManager {
                     ProbeState::NotAttach => golang_attach(process_info.pid),
                 },
                 "NodeJS" => {
-		    let process_exe_file = process_info.update_exe()?;
-		    let process_exe_file_str = match process_exe_file.to_str() {
-			Some(s) => s,
-			None => {
-			    error!("nodejs attach failed, convert pathbuf to str failed");
-			    return Err(anyhow!("nodejs attach failed, convert pathbuf to str failed"));
-			}
-		    };
-		    let pid = process_info.pid;
-		    let environ = match process_info.update_environ() {
-			Ok(e) => e,
-			Err(e) => return Err(anyhow!("can not fetch envrion {}", e))
-		    };
+                    let process_exe_file = process_info.update_exe()?;
+                    let process_exe_file_str = match process_exe_file.to_str() {
+                        Some(s) => s,
+                        None => {
+                            error!("nodejs attach failed, convert pathbuf to str failed");
+                            return Err(anyhow!(
+                                "nodejs attach failed, convert pathbuf to str failed"
+                            ));
+                        }
+                    };
+                    let pid = process_info.pid;
+                    let environ = match process_info.update_environ() {
+                        Ok(e) => e,
+                        Err(e) => return Err(anyhow!("can not fetch envrion {}", e)),
+                    };
                     nodejs_attach(pid, &environ, &process_exe_file_str)
                 }
                 _ => {
@@ -328,6 +330,7 @@ impl RASPManager {
                     return Err(anyhow!(msg));
                 }
             };
+            // println!("{:?}", attach_result);
             return match attach_result {
                 Ok(success) => {
                     if !success {
@@ -370,10 +373,7 @@ impl RASPManager {
     }
     pub fn copy_to_dest(&self, dest_root: String) -> Result<()> {
         // check namespace before copy
-        match create_all(
-            format!("{}/etc/elkeid/plugin/RASP/rasp", dest_root),
-            false,
-        ) {
+        match create_all(format!("{}/etc/elkeid/plugin/RASP/rasp", dest_root), false) {
             Ok(_) => {}
             Err(e) => {
                 warn!("create failed: {:?}", e);
