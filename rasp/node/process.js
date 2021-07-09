@@ -47,7 +47,7 @@ function connectProcess(obj, index) {
     if (index === 0 && Array.isArray(obj) && obj.length > 0) {
         address = obj[0];
 
-        if (address.hasOwnProperty('host') && address.hasOwnProperty('port')) {
+        if (Object.prototype.hasOwnProperty.call(address, 'host') && Object.prototype.hasOwnProperty.call(address, 'port')) {
             return `${address.host}:${address.port}`;
         }
     }
