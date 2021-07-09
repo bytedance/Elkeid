@@ -138,7 +138,7 @@ node: nsenter ## build node probe
 	mkdir -p output/rasp/node
 	cp node/*.js output/rasp/node/
 
-build: nsenter process_injector java go node rasp server ## build all
+build: nsenter process_injector java python go node rasp server ## build all
 	mkdir -p output mkdir -p output/rasp
 	cp librasp/target/release/elkeid_rasp output/elkeid_rasp
 	cp rasp_server/target/release/rasp_server output/rasp/rasp_server
