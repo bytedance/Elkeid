@@ -1,0 +1,116 @@
+id: 0
+name: java.lang.ProcessImpl
+methods:
+  - id: 0
+    name: start
+    desc: ([Ljava/lang/String;Ljava/util/Map;Ljava/lang/String;[Ljava/lang/ProcessBuilder$Redirect;Z)Ljava/lang/Process;
+    ret: true
+  - id: 1
+    name: getOutputStream
+    desc: ()Ljava/io/OutputStream;
+  - id: 2
+    name: getInputStream
+    desc: ()Ljava/io/InputStream;
+  - id: 3
+    name: getErrorStream
+    desc: ()Ljava/io/InputStream;
+---
+id: 1
+name: java.io.FileInputStream
+methods:
+  - id: 0
+    name: <init>
+    desc: (Ljava/io/File;)V
+---
+id: 2
+name: java.io.FileOutputStream
+methods:
+  - id: 0
+    name: <init>
+    desc: (Ljava/io/File;Z)V
+---
+id: 3
+name: java.io.File
+methods:
+  - id: 0
+    name: renameTo
+    desc: (Ljava/io/File;)Z
+  - id: 1
+    name: list
+    desc: ()[Ljava/lang/String;
+  - id: 2
+    name: delete
+    desc: ()Z
+  - id: 3
+    name: createNewFile
+    desc: ()Z
+---
+id: 4
+name: java.net.Socket
+methods:
+  - id: 0
+    name: connect
+    desc: (Ljava/net/SocketAddress;I)V
+---
+id: 5
+name: sun.nio.ch.Net
+methods:
+  - id: 0
+    name: connect
+    desc: (Ljava/net/ProtocolFamily;Ljava/io/FileDescriptor;Ljava/net/InetAddress;I)I
+---
+id: 6
+name: java.lang.ClassLoader
+methods:
+  - id: 0
+    name: loadLibrary
+    desc: (Ljava/lang/Class;Ljava/lang/String;Z)V
+---
+id: 7
+name: java.net.URLClassLoader
+methods:
+  - id: 0
+    name: <init>
+    desc: ([Ljava/net/URL;Ljava/lang/ClassLoader;)V
+  - id: 1
+    name: <init>
+    desc: ([Ljava/net/URL;)V
+  - id: 2
+    name: <init>
+    desc: ([Ljava/net/URL;Ljava/lang/ClassLoader;Ljava/net/URLStreamHandlerFactory;)V
+  - id: 3
+    name: <init>
+    desc: (Ljava/lang/String;[Ljava/net/URL;Ljava/lang/ClassLoader;)V
+  - id: 4
+    name: <init>
+    desc: (Ljava/lang/String;[Ljava/net/URL;Ljava/lang/ClassLoader;Ljava/net/URLStreamHandlerFactory;)V
+  - id: 5
+    name: addURL
+    desc: (Ljava/net/URL;)V
+---
+id: 8
+name: java.net.InetAddress
+methods:
+  - id: 0
+    name: getAllByName
+    desc: (Ljava/lang/String;Ljava/net/InetAddress;)[Ljava/net/InetAddress;
+---
+id: 9
+name: java.net.DatagramSocket
+methods:
+  - id: 0
+    name: connectInternal
+    desc: (Ljava/net/InetAddress;I)V
+---
+id: 10
+name: java.lang.UNIXProcess
+methods:
+  - id: 0
+    name: getOutputStream
+    desc: ()Ljava/io/OutputStream;
+  - id: 1
+    name: getInputStream
+    desc: ()Ljava/io/InputStream;
+  - id: 2
+    name: getErrorStream
+    desc: ()Ljava/io/InputStream;

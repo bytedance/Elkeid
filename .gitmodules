@@ -1,3 +1,36 @@
 [submodule "agent/support/rust/flexi_logger"]
 	path = agent/support/rust/flexi_logger
 	url = git@github.com:bytedance/flexi_logger.git
+[submodule "rasp/pangolin"]
+	path = rasp/pangolin
+	url = https://github.com/Hackerl/pangolin
+[submodule "rasp/python/python-inject/caller/crt"]
+	path = rasp/python/python-inject/caller/crt
+	url = https://github.com/Hackerl/crt
+[submodule "rasp/python/python-inject/cmake"]
+	path = rasp/python/python-inject/cmake
+	url = https://github.com/Hackerl/cmake-3rd
+[submodule "rasp/python/python-inject/include/common"]
+	path = rasp/python/python-inject/include/common
+	url = https://github.com/Hackerl/cpp-common
+[submodule "rasp/python/python-client/include/common"]
+	path = rasp/python/python-client/include/common
+	url = https://github.com/Hackerl/cpp-common
+[submodule "rasp/python/python-client/cmake"]
+	path = rasp/python/python-client/cmake
+	url = https://github.com/Hackerl/cmake-3rd
+[submodule "rasp/golang/go/stack/printf"]
+	path = rasp/golang/go/stack/printf
+	url = https://github.com/mpaland/printf
+[submodule "rasp/golang/include/common"]
+	path = rasp/golang/include/common
+	url = https://github.com/Hackerl/cpp-common
+[submodule "rasp/golang/cmake"]
+	path = rasp/golang/cmake
+	url = https://github.com/Hackerl/cmake-3rd
+[submodule "rasp/jvm/jattach"]
+	path = rasp/jvm/jattach
+	url = https://github.com/apangin/jattach.git
+[submodule "rasp/util-linux"]
+	path = rasp/util-linux
+	url = https://github.com/karelzak/util-linux.git
