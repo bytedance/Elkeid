@@ -1,6 +1,9 @@
 # -*- coding: UTF-8 -*-
 import traceback
-from rasp.common.detect.utils.logger import Log
+try:
+    from rasp.common.detect.utils.logger import Log
+except ImportError:
+    pass
 
 try:
     import flask
@@ -11,7 +14,10 @@ except ImportError as e:
             __file__, e, traceback.format_exc()))
     raise Exception("")
 
-from rasp.common.detect.utils.request_context import ReqContext
+try:
+    from rasp.common.detect.utils.request_context import ReqContext
+except ImportError:
+    pass
 
 from rasp.common.common_hook import InstallFcnHook
 from rasp.common import RASP, RASPException, search_object

@@ -4,7 +4,10 @@ try:
 except ImportError as e:
     raise ImportError(e)
 
-from rasp.common.detect.utils.request_context import ReqContext
+try:
+    from rasp.common.detect.utils.request_context import ReqContext
+excpet ImportError:
+    pass
 
 
 class HookRequest(MiddlewareMixin):

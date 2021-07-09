@@ -37,6 +37,9 @@ clean: ## clean your workspace
 	$(MAKE) -C rasp_server clean
 	$(MAKE) -C librasp clean
 	rm -rf pangolin/build
+	rm -rf python/build
+	rm -rf python/dist
+	rm -rf python/rasp.egg-info
 	rm -rf python/python-client/build
 	rm -rf python/python-inject/build
 	rm -rf golang/build
@@ -97,7 +100,7 @@ endif
 
 python-client: ## build python client
 	mkdir -p python/python-client/build && cd python/python-client/build && \
-	CC=$(CC) CXX=$(CXX) LD=$(LD) CFLAGS=-Wl,--no-undefined cmake .. && make
+	CC=cc CXX=g++ LD=ld CXXFLAGS="-Wl,--no-undefined" cmake .. && make
 
 
 python-inject: ## build python injector
@@ -138,7 +141,6 @@ endif
 
 go: go-probe ## build go probe
 	@echo "build Golang probe"
-	mkdir -p output/rasp/go_probe
 	cp golang/bin/go_probe output/rasp/go_probe
 
 

@@ -4,9 +4,12 @@ from rasp.common.common_hook import InstallFcnHook
 from rasp.common import RASP
 
 # IAST
-from rasp.common.detect.utils.config import DetFeature
-from rasp.common.detect.sqli_check import check_sqli
-from rasp.common.detect.ssrf_check import ssrf_socket_check
+try:
+    from rasp.common.detect.utils.config import DetFeature
+    from rasp.common.detect.sqli_check import check_sqli
+    from rasp.common.detect.ssrf_check import ssrf_socket_check
+except ImportError:
+    pass
 
 
 class _CustomGetAttribute:

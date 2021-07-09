@@ -279,7 +279,7 @@ pub fn process_comm(
                 match f.read_line(&mut buf) {
                     Ok(size) => {
                         if size == 0 {
-                            warn!("steam EOF");
+                            warn!("sender steam EOF");
                             break;
                         }
                         let new_map: HashMap<&str, String> =

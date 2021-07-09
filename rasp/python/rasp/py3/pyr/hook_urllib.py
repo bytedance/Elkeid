@@ -8,8 +8,11 @@ import urllib
 from rasp.common.common_hook import InstallFcnHook
 from rasp.common import RASP, RASPException
 from rasp.common.report import message
-from rasp.common.detect.ssrf_check import check_args, check_kwargs
-from rasp.common.detect.utils.config import DetFeature
+try:
+    from rasp.common.detect.ssrf_check import check_args, check_kwargs
+    from rasp.common.detect.utils.config import DetFeature
+except ImportError:
+    pass
 
 
 class UrllibHook(InstallFcnHook):

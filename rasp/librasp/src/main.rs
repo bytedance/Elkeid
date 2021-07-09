@@ -80,14 +80,19 @@ fn main() {
     let ctrl = Control::new();
     let (result_sender, result_receiver, _command_sender, command_receiver) =
         RASPServerManager::new_comm();
-    rasp_manager
+    match rasp_manager
         .start_comm(
             &process_info.clone(),
             (result_sender, command_receiver),
             String::from("DEBUG"),
             ctrl,
-        )
-        .unwrap();
+        ){
+            Ok(_) => {},
+            Err(e) => {
+                error!("start comm failed: {}", e);
+                return
+            }
+        };
     debug!("ready to attach");
     match rasp_manager.attach(&mut process_info) {
         Ok(_) => {
@@ -99,7 +104,14 @@ fn main() {
         }
     };
     loop {
-        println!("{:?}", result_receiver.recv().unwrap());
+        let msg = match result_receiver.recv() {
+            Ok(m) => m,
+            Err(e) => {
+                error!("recv msg failed: {}", e);
+                return
+            }
+        };
+        println!("{:?}", msg);
         sleep(Duration::from_secs(1));
     }
 }
