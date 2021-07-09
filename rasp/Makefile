@@ -89,13 +89,13 @@ process_injector: ## build process injector
 
 python-client: ## build python client
 	mkdir -p python/python-client/build && cd python/python-client/build && \
-	CC=$(CC) CXX=$(CXX) LD=$(LD) CFLAGS=-Wl,--no-undefined cmake -D CMAKE_CXX_FLAGS=-DLOG_LEVEL=1 .. && make
+	CC=$(CC) CXX=$(CXX) LD=$(LD) CFLAGS=-Wl,--no-undefined cmake .. && make
 
 
 python-inject: ## build python injector
 ifeq ($(STATIC), TRUE)
 	mkdir -p python/python-inject/build && cd python/python-inject/build && \
-	CC=$(CC) CXX=$(CXX) CFLAGS=-static-pie cmake .. && make
+	CC=$(CC) CXX=$(CXX) CXXFLAGS=-static-pie cmake .. && make
 	cd python/python-inject && \
 	CFLAGS=-DDISABLE_LOG=1 CC=$(CC) LD=$(LD) make -C caller && mv caller/python_caller bin
 else
@@ -121,7 +121,7 @@ python: python-probe ## build CPython probe
 go-probe: ## build golang probe
 ifeq ($(STATIC), TRUE)
 	mkdir -p golang/build && cd golang/build && \
-	CC=$(CC) CXX=$(CXX) CFLAGS=-static-pie cmake .. && make
+	CC=$(CC) CXX=$(CXX) CXXFLAGS=-static-pie cmake .. && make
 else
 	mkdir -p golang/build && cd golang/build && \
 	CC=$(CC) CXX=$(CXX) cmake .. && make
