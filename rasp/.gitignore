@@ -20,3 +20,6 @@ python/python-client/build
 python/python-client/bin
 python/python-inject/build
 python/python-inject/bin
+python/build
+python/dist
+python/rasp.egg-info

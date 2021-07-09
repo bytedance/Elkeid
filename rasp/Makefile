@@ -1,5 +1,5 @@
 PREFIX ?= /etc/elkeid/plugin/RASP
-STATIC = "FALSE"
+STATIC ?= "FALSE"
 
 .PHONY: help
 help:
@@ -12,7 +12,7 @@ help:
 	@grep -hE '##' Makefile  | grep -v grep | sed -e 's/\\$$//' | sed -e 's/##/,/'  | sed -e 's/:.*,/ ,/' | column -t -c2 -s,
 
 rasp: ## build elkeid_rasp bin file
-ifeq ($(STATIC), "TRUE")
+ifeq ($(STATIC), TRUE)
 	$(MAKE) -C librasp build-musl
 else
 	$(MAKE) -C librasp build
@@ -20,7 +20,7 @@ endif
 	
 
 server: ## build rasp_server bin file
-ifeq ($(STATIC), "TRUE")
+ifeq ($(STATIC), TRUE)
 	$(MAKE) -C rasp_server build-musl
 else
 	$(MAKE) -C rasp_server build
@@ -38,19 +38,20 @@ clean: ## clean your workspace
 
 
 nsenter: ## build nsenter from util-linux
+ifeq ($(STATIC), TRUE)
+	cd util-linux && \
+	./autogen.sh && \
+	CC=$(CC) CFLAGS="-static" ./configure --enable-static-programs=nsenter --disable-all-programs --enable-nsenter && \
+	make
+else
 	cd util-linux && \
 	./autogen.sh && \
 	CC=$(CC) ./configure --enable-static-programs=nsenter --disable-all-programs --enable-nsenter && \
 	make
-
-nsenter-musl: ## build nsenter using musl-gcc
-	cd util-linux && \
-	./autogen.sh && \
-	CC="musl-gcc" CFLAGS="-static" ./configure --enable-static-programs=nsenter --disable-all-programs --enable-nsenter && \
-	make
+endif
 
 java-attach: ## build jattach using musl-gcc
-ifeq ($(STATIC), "TRUE")
+ifeq ($(STATIC), TRUE)
 	cd jvm/jattach && \
 	mkdir -p build && \
 	$(CC) -static -DJATTACH_VERSION=\"1.5\" src/jattach_posix.c -o build/jattach
@@ -81,17 +82,12 @@ process_injector: ## build process injector
 	CFLAGS=-DDISABLE_LOG=1 CC=$(CC) LD=$(LD) make -C shellcode && mv shellcode/lib* bin
 
 python-client: ## build python client
-ifeq ($(STATIC), "TRUE")
 	mkdir -p python/python-client/build && cd python/python-client/build && \
-	CC=$(CC) CXX=$(CXX) CFLAGS=-Wl,-Bstatic -static-libgcc cmake -D CMAKE_CXX_FLAGS=-DLOG_LEVEL=1 .. && make
-else
-	mkdir -p python/python-client/build && cd python/python-client/build && \
-	CC=$(CC) CXX=$(CXX) CFLAGS=-Wl,--no-undefined cmake -D CMAKE_CXX_FLAGS=-DLOG_LEVEL=1 .. && make
-endif
+	CC=$(CC) CXX=$(CXX) LD=$(LD) CFLAGS=-Wl,--no-undefined cmake -D CMAKE_CXX_FLAGS=-DLOG_LEVEL=1 .. && make
 
 
 python-inject: ## build python injector
-ifeq ($(STATIC), "TRUE")
+ifeq ($(STATIC), TRUE)
 	mkdir -p python/python-inject/build && cd python/python-inject/build && \
 	CC=$(CC) CXX=$(CXX) CFLAGS=-static-pie cmake .. && make
 	cd python/python-inject && \
@@ -117,7 +113,7 @@ python: python-probe ## build CPython probe
 
 
 go-probe: ## build golang probe
-ifeq ($(STATIC), "TRUE")
+ifeq ($(STATIC), TRUE)
 	mkdir -p golang/build && cd golang/build && \
 	CC=$(CC) CXX=$(CXX) CFLAGS=-static-pie cmake .. && make
 else

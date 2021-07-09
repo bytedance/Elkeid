@@ -34,6 +34,7 @@ curl -O https://sf1-cdn-tos.douyinstatic.com/obj/eden-cn/laahweh7uhwbps/x86_64-l
 tar xf x86_64-linux-musl.tar.gz
 mv x86_64-linux-musl /opt/
 ```
+* source: https://github.com/Hackerl/musl-cross-make
 
 ### - Rust
 
@@ -110,14 +111,21 @@ pip install wheel
 make build
 ```
 
+* for full static build
+
+```
+CC=/opt/x86_64-linux-musl/bin/x86_64-linux-musl-gcc LD=/opt/x86_64-linux-musl/bin/x86_64-linux-musl-ld CXX=/opt/x86_64-linux-musl/bin/x86_64-linux-musl-g++ STATIC=TRUE make build
+```
+
 ----
 
 ## INSTALL
 
 ```
-make install
+sudo make install
 ```
 
+----
 
 > note for all available target
 ```
