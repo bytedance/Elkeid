@@ -1,0 +1,12 @@
+byte[]: com/security/smith/process/ByteArrayProcess
+int[]: com/security/smith/process/IntegerArrayProcess
+java.net.ProtocolFamily: com/security/smith/process/ProtocolFamilyProcess
+java.io.FileDescriptor: com/security/smith/process/FileDescriptorProcess
+java.net.URL[]: com/security/smith/process/ObjectArrayProcess
+java.net.DatagramPacket: com/security/smith/process/DatagramPacketProcess
+java.net.DatagramSocket: com/security/smith/process/DatagramSocketProcess
+java.lang.String[]: com/security/smith/process/ObjectArrayProcess
+java.lang.Process: com/security/smith/process/ProcessProcess
+java.lang.UNIXProcess: com/security/smith/process/ProcessProcess
+java.lang.ProcessImpl: com/security/smith/process/ProcessProcess
+java.net.InetAddress[]: com/security/smith/process/ObjectArrayProcess

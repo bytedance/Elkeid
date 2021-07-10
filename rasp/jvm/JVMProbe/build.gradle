@@ -1,0 +1,116 @@
+import proguard.gradle.ProGuardTask
+
+buildscript {
+    repositories {
+        google()
+    }
+
+    dependencies {
+        classpath 'com.guardsquare:proguard-gradle:7.0.0'
+    }
+}
+
+plugins {
+    id 'com.github.johnrengelman.shadow' version '6.0.0'
+    id 'java'
+}
+
+group 'org.example'
+version '1.0-SNAPSHOT'
+
+repositories {
+    maven { url 'https://maven.aliyun.com/repository/jcenter' }
+    maven { url 'https://maven.aliyun.com/repository/google' }
+    maven { url 'https://maven.aliyun.com/repository/central' }
+    maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    compile group: 'org.ow2.asm', name: 'asm-tree', version: '8.0.1'
+    compile group: 'org.yaml', name: 'snakeyaml', version: '1.26'
+    compile group: 'io.netty', name: 'netty-all', version: '4.1.51.Final'
+    compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.11.2'
+    compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.11'
+}
+
+compileJava {
+    options.compilerArgs.addAll(['--release', '8'])
+}
+
+jar {
+    manifest {
+        attributes 'Agent-Class': 'com.security.smith.SmithAgent'
+        attributes 'Premain-Class': 'com.security.smith.SmithAgent'
+        attributes 'Can-Retransform-Classes': 'true'
+        attributes 'Boot-Class-Path': 'SmithAgent.jar'
+        attributes 'Specification-Title': 'Smith Agent'
+        attributes 'Specification-Version': '1.0'
+        attributes 'Implementation-Title': 'Smith Agent'
+        attributes 'Implementation-Version': "$System.env.BUILD_VERSION"
+    }
+}
+
+task genDict {
+    outputs.file('build/dict/dict.txt')
+
+    doLast {
+        def r = new Random()
+
+        def start = r.nextInt(1000) + 0x0100
+        def end = start + 0x4000
+
+        def chars = (start..end)
+                .findAll { Character.isValidCodePoint(it) && Character.isJavaIdentifierPart(it) }
+                .collect { String.valueOf(Character.toChars(it)) }
+
+        int max = chars.size()
+
+        def startChars = []
+        def dict = []
+
+        for (int i = 0; i < max; i++) {
+            char c = chars.get(i).charAt(0)
+            if (Character.isJavaIdentifierStart(c)) {
+                startChars << String.valueOf(c)
+            }
+        }
+
+        def startSize = startChars.size()
+
+        Collections.shuffle(chars, r)
+        Collections.shuffle(startChars, r)
+
+        for (int i = 0; i < max; i++) {
+            def m = r.nextInt(startSize - 3)
+            def n = m + 3
+            (m..n).each { j ->
+                dict << (startChars.get(j) + chars.get(i))
+            }
+        }
+
+        def f = outputs.files.getSingleFile()
+
+        f.getParentFile().mkdirs()
+        f.withWriter("UTF-8") {
+            it.write(startChars.join(System.lineSeparator()))
+            it.write(dict.join(System.lineSeparator()))
+        }
+    }
+}
+
+shadowJar {
+    relocate 'io.netty', 'rasp.io.netty'
+    relocate 'com.fasterxml.jackson', 'rasp.com.fasterxml.jackson'
+    relocate 'META-INF/native/libnetty', 'META-INF/native/librasp_netty'
+}
+
+task proguard(type: ProGuardTask) {
+    dependsOn 'genDict'
+    configuration 'proguard-rules.pro'
+
+    injars shadowJar
+    outjars 'build/libs/JVMProbe-1.0-SNAPSHOT-pro.jar'
+
+    libraryjars files(configurations.runtimeClasspath.collect())
+}

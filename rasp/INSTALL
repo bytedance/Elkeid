@@ -1,0 +1,151 @@
+/* vim: set ft=md */
+
+# INSTALL MAUNAL
+
+----
+
+## [Compile Environment](#Compile Environment)
+### [- Cmake](#- Cmake)
+### [- Musl](#- Musl)
+### [- Rust](#- Rust)
+### [- JDK](#- JDK)
+### [- Python](#- Python)
+## [Build](# Build)
+## [Install](# Install)
+
+----
+
+## Compile Environment
+
+### - Cmake
+
+* CMake 3.17 and above needed.
+* Can download from [cmake.org/download](https://cmake.org/download/)
+
+### GCC
+* GCC 8 and above needed.
+
+### - Musl
+
+* download pre-built binray from CDN:
+
+```bash
+curl -O https://sf1-cdn-tos.douyinstatic.com/obj/eden-cn/laahweh7uhwbps/x86_64-linux-musl.tar.gz
+tar xf x86_64-linux-musl.tar.gz
+mv x86_64-linux-musl /opt/
+```
+* source: https://github.com/Hackerl/musl-cross-make
+
+### - Rust
+
+* install Rust compiler via rustup
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
+/opt/rust/bin/rustup target add x86_64-unknown-linux-musl
+```
+
+> (OPTIONAL) using rustup mirror for boostup rust tools-chain download speed.
+>
+> export env before download rustup
+```bash
+export RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static
+export RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup
+```
+
+### - JDK
+
+* install OpenJDK 14 on x64 linux
+
+```bash
+curl -O https://download.java.net/java/GA/jdk14/076bab302c7b4508975440c56f6cc26a/36/GPL/openjdk-14_linux-x64_bin.tar.gz
+tar xvf openjdk-14_linux-x64_bin.tar.gz
+sudo mv jdk-14 /opt/
+
+export JAVA_HOME=/opt/jdk-14
+export PATH=$PATH:$JAVA_HOME/bin
+```
+
+* (OPTIONAL) using maven mirror repo
+```bash
+mkdir -p ~/.gradle
+cat <<EOT > ~/.gradle/init.gradle
+allprojects {
+    buildscript {
+        repositories {
+            mavenLocal()
+            maven { url 'https://maven.aliyun.com/repository/central' }
+            maven { url 'https://maven.aliyun.com/repository/jcenter' }
+            maven { url 'https://maven.aliyun.com/repository/google' }
+            maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+            maven { url 'https://maven.aliyun.com/repository/apache-snapshots' }
+        }
+    }
+    repositories {
+        mavenLocal()
+        maven { url 'https://maven.aliyun.com/repository/central' }
+        maven { url 'https://maven.aliyun.com/repository/jcenter' }
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+        maven { url 'https://maven.aliyun.com/repository/apache-snapshots' }
+    }
+}
+EOT
+```
+
+### - Python
+
+* python3 with newest pip
+
+```bash
+pip install setuptools
+pip install wheel
+```
+
+----
+
+## Build
+
+* build all via makefile
+
+```bash
+make build
+```
+
+* for full static build
+
+```
+CC=/opt/x86_64-linux-musl/bin/x86_64-linux-musl-gcc LD=/opt/x86_64-linux-musl/bin/x86_64-linux-musl-ld CXX=/opt/x86_64-linux-musl/bin/x86_64-linux-musl-g++ STATIC=TRUE make build
+```
+
+----
+
+## INSTALL
+
+```
+sudo make install
+```
+
+----
+
+> note for all available target
+```
+make
+```
+
+> note for build nsenter
+
+```
+cd util-linux
+CC=musl-gcc ./configure --enable-static-programs=nsenter --disable-all-programs --enable-nsenter
+make
+```
+
+> note for build jattach
+
+```
+cd jattach
+musl-gcc -DJATTACH_VERSION=\"1.5\" src/jattach_posix.c -o jatach
+```
+
+----
+
