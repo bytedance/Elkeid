@@ -62,7 +62,7 @@ func getService(host string) (string, error) {
 		for _, i := range svr.Data {
 			if i.Weight <= minWeight {
 				minWeight = i.Weight
-				address = svr.Data[0].IP + ":" + strconv.Itoa(svr.Data[0].Port)
+				address = i.IP + ":" + strconv.Itoa(i.Port)
 			}
 		}
 		return address, nil
