@@ -10,7 +10,7 @@ setuptools.setup(
                  "panxiting@bytedance.com",
     maintainer="DuHu,PanXiting",
     maintainer_email="duhu@bytedance.com,panxiting@bytedance.com",
-    url="https://code.byted.org/security/iast-python",
+    url="https://github.com/bytedance/Elkeid",
     license="APACHE",
     packages=setuptools.find_packages(),
     package_data={"": ["resource/*"]},
