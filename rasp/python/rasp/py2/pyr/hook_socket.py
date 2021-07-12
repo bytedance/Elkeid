@@ -29,15 +29,10 @@ class HookedSocket():
     __metaclass__ = SocketMeta
 
     def _hooked_sendall(self, *args, **kwargs):
-        for modify_param in args:
-            socket_size = len(modify_param)
-            # python2的requests&urllib2不会分段传输，但是鉴于_check_ssrf速度较快，因此SOCKET_SIZE设得较大
-            if socket_size < DetFeature.MAX_CHECK_SSRF_SOCKET_SIZE:
-                ssrf_socket_check(modify_param)
-            # SQL语句的检查速度较慢，因此SOCKET_SIZE设得较小
-            if socket_size < DetFeature.MAX_CHECK_SQL_SOCKET_SIZE:
-                check_sqli(modify_param)
-        object.__getattribute__(self, 'sendall')(*args, **kwargs)
+        if not self.IAST:
+            return object.__getattribute__(self, 'sendall')(*args, **kwargs)
+        # custom code
+        return object.__getattribute__(self, 'sendall')(*args, **kwargs)
 
 
 action = RASP["ACTION"]
