@@ -4,8 +4,11 @@
 
 Elkeid是一个云原生的基于主机的入侵检测解决方案。
 
-Elkeid 包含两大部分：
-* **Elkeid Agent**与**Elkeid Driver**作为数据采集层，它在Linux系统的内核和用户空间上均可使用，从而提供了具有更好性能的且更丰富的数据。
+Elkeid 项目包含：
+* 数据采集层
+  * **Elkeid Agent** 用户态 Agent，管理各个端上组件，与 **Elkied-Server** 通信。支持外挂插件，可以对 Linux 不同维度进行监控。
+  * **Elkeid Driver** 在Linux系统的内核和用户空间上均可使用，从而提供了具有更好性能的且更丰富的数据。
+  * **Elkeid RASP** 支持 CPython、Golang、JVM、NodeJS 的运行时数据采集探针，支持动态注入到运行时。
 * **Elkeid Server**可以提供百万级Agent的接入能力，采集Agent数据，支持控制与策略下发。包含实时、离线计算模块，对采集上来的数据进行分析和检测。又有自带的服务发现和管理系统，方便对整个后台管理和操作。
 
 ## 系统架构
@@ -29,12 +32,13 @@ Elkeid Server由AgentCenter、ServiceDiscovery、Manager几部分组成，提供
 欢迎任何建议与合作
 
 * #### [Elkeid Driver](driver)
+* #### [Elkeid RASP](rasp)
 * #### [Elkeid Agent](agent)
 * #### [Elkeid Server](server)
 
 ## Quick Start
  [Quick Start](server/docs/quick-start-zh_CN.md)
- 
+
 ## Q&A
  [Question and Answer](server/docs/qa-zh_CN.md)
 
@@ -49,6 +53,7 @@ Lark Group
 
 ## License
 * Elkeid Driver: GPLv2
+* Elkeid RASP: Apache-2.0
 * Elkeid Agent: Apache-2.0
 * Elkeid Server: Apache-2.0
 
