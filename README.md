@@ -1,4 +1,5 @@
-# Elkeid(AgentSmith-HIDS)
+# Elkeid
+*(Originated from AgentSmith-HIDS, but now it’s not just HIDS)*
 
 English | [简体中文](README-zh_CN.md)
 
@@ -6,6 +7,7 @@ Elkeid is a Cloud-Native Host-Based Intrusion Detection solution project to prov
 
 Elkeid comprises three major components：
 * **Elkeid Agent, co-worked with Elkeid Driver**, is the game-changer for the Data Collection market. It works at both Kernel and User Space of Linux System, providing rich data flow with much better performance.
+* **Elkeid RASP**, Support CPython、Golang、JVM、NodeJS.
 * **Elkeid Server** is able to handle reporting data from millions of information gathering agents with features such as the control command and policy deployment.  The server consists of online and offline computing modules aiming to analyze and detect threats within the reporting data.  For convienice of operations and management,  an administrative portal and the service discovery feature are provided.
 
 ## System Architecture

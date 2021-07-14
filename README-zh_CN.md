@@ -1,4 +1,6 @@
-# Elkeid(AgentSmith-HIDS)
+# Elkeid
+
+*(Originated from AgentSmith-HIDS, but now it’s not just HIDS)*
 
 [English](README.md) | 简体中文
 
