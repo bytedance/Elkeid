@@ -34,7 +34,7 @@ Currently,  We welcome any suggestions and cooperation.
 * #### [Elkeid Server](server)
 
 ## Quick Start
- [Quick Start](server/docs/quick-start.md)
+ [Quick Start](server/docs/quick-start-zh_CN.md)
 
 ## Q&A
  [Question and Answer](server/docs/qa.md)
