@@ -17,9 +17,7 @@ Elkeid 项目包含：
 
 <img src="server/docs/server.png"/>
 
-端上Elkeid Agent与Elkeid Driver这两个组件已经在生产环境中部署和测试了数月。由于当前开源模块缺少规则引擎和检测功能，Elkeid Agent && Driver 无法单独提供所有的HIDS能力。
-
-但是目前开源的部分作为"Host-Information-Collect-Agent"，可以轻松地与其他的HIDS/NIDS/XDR解决方案进行集成。 Elkeid Agent和Elkeid Driver 有以下几个优点：
+目前开源的部分作为"Host-Information-Collect-Agent"，可以轻松地与其他的HIDS/NIDS/XDR解决方案进行集成。 Elkeid Agent和Elkeid Driver 有以下几个优点：
 
 * **性能更优**，主要通过内核态驱动来获取信息，无需诸如遍历`/proc`这样的行为进行数据补全。
 * **难以绕过**，由于我们的信息获取是来自于内核态驱动，因此面对很多刻意隐藏自己的行为如rootkit难以绕过我们的监控。并且对于rootkit本身，驱动提供了一部分检测能力。
@@ -30,8 +28,6 @@ Elkeid Server由AgentCenter、ServiceDiscovery、Manager几部分组成，提供
 * **百万级Agent的高性能后台架构解决方案**
 * **分布式，去中心化，集群高可用**
 * **部署简单，依赖少，便于维护**
-
-欢迎任何建议与合作
 
 * #### [Elkeid Driver](driver)
 * #### [Elkeid RASP](rasp)
