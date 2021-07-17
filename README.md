@@ -39,9 +39,6 @@ Currently,  We welcome any suggestions and cooperation.
 ## Q&A
  [Question and Answer](server/docs/qa.md)
 
-## To be Continued
-* Elkeid is continually being developed. More features are coming soon.
-
 ## Contact us && Cooperation
 
 <img src="./Lark.png"/>
@@ -52,7 +49,7 @@ Lark Group
 * Elkeid Driver: GPLv2
 * Elkeid Agent: Apache-2.0
 * Elkeid Server: Apache-2.0
-
+* Elkeid RASP: Apache-2.0
 
 ## 404StarLink 2.0 - Galaxy
 ![](https://github.com/knownsec/404StarLink-Project/raw/master/logo.png)

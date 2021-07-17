@@ -51,3 +51,6 @@ sudo env RUST_LOG=<loglevel> /etc/elkeid/plugin/RASP/elkeid_rasp -p <pid>
 |- pangolin         Linux process injection tool.
 ```
 
+## License
+Elkeid RASP are distributed under the Apache-2.0 license.
+

@@ -44,8 +44,6 @@ Elkeid Server由AgentCenter、ServiceDiscovery、Manager几部分组成，提供
 ## Q&A
  [Question and Answer](server/docs/qa-zh_CN.md)
 
-## To be Continued
-* Elkeid项目还在持续迭代中，更多功能即将推出。
 
 ## Contact us && Cooperation
 
