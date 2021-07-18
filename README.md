@@ -11,7 +11,7 @@ Elkeid is a support cloud-native and base linux host intrusion detection solutio
 <img src="server/docs/server.png"/>
 
 ##  Elkeid Host Ability
-<img src="./Ability_1.png" width="70%"/>
+<img src="./Ability_1.png"/>
 
 * **[Elkeid Agent](https://github.com/bytedance/Elkeid/tree/main/agent)** Linux userspace agent，responsible for managing various plugin,communication with **Elkeid Server**.
 * **[Elkeid Driver](https://github.com/bytedance/Elkeid/tree/main/driver)** Driver can collect data on Linux Kernel, support container environment, communication with Elkeid Driver Plugin.
