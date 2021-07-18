@@ -6,41 +6,41 @@
 
 Elkeid是一个云原生的基于主机的入侵检测解决方案。
 
-Elkeid 项目包含：
-* 数据采集层
-  * **Elkeid Agent** 用户态 Agent，管理各个端上组件，与 **Elkied-Server** 通信。支持外挂插件，可以对 Linux 不同维度进行监控。
-  * **Elkeid Driver** 在Linux系统的内核和用户空间上均可使用，从而提供了具有更好性能的且更丰富的数据。
-  * **Elkeid RASP** 支持 CPython、Golang、JVM、NodeJS 的运行时数据采集探针，支持动态注入到运行时。
-* **Elkeid Server**可以提供百万级Agent的接入能力，采集Agent数据，支持控制与策略下发。包含实时、离线计算模块，对采集上来的数据进行分析和检测。又有自带的服务发现和管理系统，方便对整个后台管理和操作。
-
-## 系统架构
+## Elkeid Architecture
 
 <img src="server/docs/server.png"/>
 
-目前开源的部分作为"Host-Information-Collect-Agent"，可以轻松地与其他的HIDS/NIDS/XDR解决方案进行集成。 Elkeid Agent和Elkeid Driver 有以下几个优点：
+##  Elkeid Host Ability
+<img src="server/docs/server.png"/>
 
-* **性能更优**，主要通过内核态驱动来获取信息，无需诸如遍历`/proc`这样的行为进行数据补全。
-* **难以绕过**，由于我们的信息获取是来自于内核态驱动，因此面对很多刻意隐藏自己的行为如rootkit难以绕过我们的监控。并且对于rootkit本身，驱动提供了一部分检测能力。
-* **为联动而生**，我们不仅可以作为安全工具实现侵检测/溯源等功能，也可以实现如梳理内部资产等能力，我们通过内核模块对进程/用户/文件/网络连接进行梳理，如果有CMDB的信息，那么联动后你将会得到一张从网络到主机/容器/业务信息的调用/依赖关系图，还可以和NIDS/威胁情报联动等等。
-* **用户态+内核态**，Elkeid同时拥有内核态和用户态的模块，可以形成互补。
+* **[Elkeid Agent](https://github.com/bytedance/Elkeid/tree/main/agent)** 用户态 Agent，负责管理各个端上能力组件，与 **Elkeid Server** 通讯
+* **[Elkeid Driver](https://github.com/bytedance/Elkeid/tree/main/driver)** 在 Linux Kernel 层采集数据的组件，兼容容器环境，并能够提供Rootkit检测能力。与Elkeid Agent管理的Driver插件通讯
+* **[Elkeid RASP](https://github.com/bytedance/Elkeid/tree/main/rasp)** 支持 CPython、Golang、JVM、NodeJS 的运行时数据采集探针，支持动态注入到运行时。
+* **Elkeid Agent Plugin List**
+  * [Driver Plugin](https://github.com/bytedance/Elkeid/tree/main/agent/driver): 负责与**Elkeid Driver**通信，处理其传递的数据等
+  * [Collector Plugin](https://github.com/bytedance/Elkeid/tree/main/agent/collector): 负责端上的资产/关键信息采集工作，如用户，定时任务，包信息等等
+  * [Journal Watcher](https://github.com/bytedance/Elkeid/tree/main/agent/journal_watcher): 负责监测systemd日志的插件，目前支持ssh相关日志采集与上报
+  * [Scanner Plugin](https://github.com/bytedance/Elkeid/tree/main/agent/scanner): 负责在端上进行静态检测恶意文件的插件，目前支持yara
+  * RASP Plugin: 负责管理RASP组件以及处理RASP采集的数据，还未开源
+  
+## [Elkeid Backend Abilty](https://github.com/bytedance/Elkeid/tree/main/server)
+* **[Elkeid AgentCenter](https://github.com/bytedance/Elkeid/tree/main/server/agent_center)** 负责与Agent进行通信，采集Agent数据并简单处理后汇总到消息队列集群，同时也负责对Agent进行管理包括Agent的升级，配置修改，任务下发等
+* **[Elkeid ServiceDiscovery](https://github.com/bytedance/Elkeid/tree/main/server/service_discovery)** 后台中的各个服务模块都需要向该组件定时注册、同步服务信息，从而保证各个服务模块中的实例相互可见，便于直接通信
+* **[Elkeid Manager](https://github.com/bytedance/Elkeid/tree/main/server/manager)** 负责对整个后台进行管理，并提供相关的查询、管理接口
 
-Elkeid Server由AgentCenter、ServiceDiscovery、Manager几部分组成，提供了基础的后台框架，Elkeid Server具有如下特点：
-* **百万级Agent的高性能后台架构解决方案**
-* **分布式，去中心化，集群高可用**
-* **部署简单，依赖少，便于维护**
 
-## This is Code
-* #### [Elkeid Driver](driver)
-* #### [Elkeid RASP](rasp)
-* #### [Elkeid Agent](agent)
-* #### [Elkeid Server](server)
+## Elkeid Advantage
+当前开源模块缺少规则引擎和检测功能，还不能提供入侵检测的能力。 但是目前开源的部分可以轻松地与其他的HIDS/NIDS/XDR解决方案进行集成，或者自己对采集的数据进行数处理实现自己的需求，Elkeid 有以下主要优势：
+
+* **性能极佳**：端上能力借助Elkeid Driver与很多定制开发，性能极佳
+* **为入侵检测而生**：数据采集以高强度对抗为前提，对如Kernel Rootkit，提权，无文件攻击等众多高级对抗场景均有针对性数据采集
+* **支持云原生**：从端上能力到后台部署都支持云原生环境
+* **百万级生产环境验证**：整体经过内部百万级验证，从端到Server，稳定性与性能经过考验，Elkeid不仅仅是一个PoC，是生产级的；开源版本即内部Release Version
+* **二次开发友好**：Elkeid 方便二次开发与定制化需求增加
 
 ## Quick Start
- [Quick Start](server/docs/quick-start-zh_CN.md)
-
-## Q&A
- [Question and Answer](server/docs/qa-zh_CN.md)
-
+* **[Quick Start](server/docs/quick-start-zh_CN.md)**
+* **[Deploy Question and Answer](server/docs/qa-zh_CN.md)**
 
 ## Contact us && Cooperation
 
@@ -55,7 +55,7 @@ Lark Group
 * Elkeid Server: Apache-2.0
 
 
-# 404StarLink 2.0 - Galaxy
+## 404StarLink 2.0 - Galaxy
 ![](https://github.com/knownsec/404StarLink-Project/raw/master/logo.png)
 
 同时，Elkeid 也是 404Team [星链计划2.0](https://github.com/knownsec/404StarLink2.0-Galaxy)中的一环，如果对星链计划感兴趣的小伙伴可以点击下方链接了解。

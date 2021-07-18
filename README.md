@@ -10,9 +10,9 @@ Elkeid comprises three major components：
 * **Elkeid RASP**, Support CPython、Golang、JVM、NodeJS.
 * **Elkeid Server** is able to handle reporting data from millions of information gathering agents with features such as the control command and policy deployment.  The server consists of online and offline computing modules aiming to analyze and detect threats within the reporting data.  For convienice of operations and management,  an administrative portal and the service discovery feature are provided.
 
-## System Architecture
+## Elkeid Architecture
 
-<img src="server/docs/server.png"/>
+<img src="./Ability_1.png"/>
 
 Now we are more than happy to announce the open-source of Elkeid Agent and Elkeid Driver. Both components have been deployed and tested in production environments for months. We decided to strengthen the Defense Community with our game-changing technology. Due to the lack of rule engine and detection functions, Elkeid Agent and Driver doesn't provide all HIDS capability on its own. However, it is a tremendous Host-Information-Collect-Agent that could be easily integrated with current HIDS/NIDS/XDR solutions on the market. Elkeid Agent and Elkeid Driver together advance solutions on the market in four major areas.
 
