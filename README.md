@@ -12,7 +12,7 @@ Elkeid comprises three major components：
 
 ## Elkeid Architecture
 
-<img src="./Ability_1.png"/>
+<img src="server/docs/server.png"/>
 
 Now we are more than happy to announce the open-source of Elkeid Agent and Elkeid Driver. Both components have been deployed and tested in production environments for months. We decided to strengthen the Defense Community with our game-changing technology. Due to the lack of rule engine and detection functions, Elkeid Agent and Driver doesn't provide all HIDS capability on its own. However, it is a tremendous Host-Information-Collect-Agent that could be easily integrated with current HIDS/NIDS/XDR solutions on the market. Elkeid Agent and Elkeid Driver together advance solutions on the market in four major areas.
 

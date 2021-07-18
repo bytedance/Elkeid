@@ -11,7 +11,7 @@ Elkeid是一个云原生的基于主机的入侵检测解决方案。
 <img src="server/docs/server.png"/>
 
 ##  Elkeid Host Ability
-<img src="server/docs/server.png"/>
+<img src="./Ability_1.png"/>
 
 * **[Elkeid Agent](https://github.com/bytedance/Elkeid/tree/main/agent)** 用户态 Agent，负责管理各个端上能力组件，与 **Elkeid Server** 通讯
 * **[Elkeid Driver](https://github.com/bytedance/Elkeid/tree/main/driver)** 在 Linux Kernel 层采集数据的组件，兼容容器环境，并能够提供Rootkit检测能力。与Elkeid Agent管理的Driver插件通讯
