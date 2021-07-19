@@ -4,7 +4,7 @@
 constexpr auto WAIT_TIMEOUT = timespec {30, 0};
 
 void CSmithProbe::start() {
-    gSmithClient->setNotify(this);
+    mClient.start();
     mThread.start(this, &CSmithProbe::traceThread);
 }
 
@@ -12,6 +12,7 @@ void CSmithProbe::stop() {
     mExit = true;
     mCondition.notify();
     mThread.stop();
+    mClient.stop();
 }
 
 void CSmithProbe::trace(const CSmithTrace &smithTrace) {
@@ -39,7 +40,7 @@ void CSmithProbe::traceThread() {
         if (!mTraces.dequeue(smithTrace))
             continue;
 
-        gSmithClient->write({emTrace, smithTrace});
+        mClient.write({emTrace, smithTrace});
     }
 }
 
@@ -51,7 +52,7 @@ void CSmithProbe::onMessage(const CSmithMessage &message) {
 
         case emDetect:
             LOG_INFO("detect");
-            gSmithClient->write({emDetect, {{"golang", gBuildInfo->mModuleInfo}}});
+            mClient.write({emDetect, {{"golang", gBuildInfo->mModuleInfo}}});
             break;
 
         default:

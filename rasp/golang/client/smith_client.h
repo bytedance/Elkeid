@@ -14,17 +14,13 @@ public:
 };
 
 class CSmithClient {
-#define gSmithClient SINGLETON_(CSmithClient)
 public:
-    CSmithClient();
+    explicit CSmithClient(ISmithNotify *notify);
     ~CSmithClient();
 
 public:
     bool start();
     bool stop();
-
-public:
-    void setNotify(ISmithNotify *notify);
 
 private:
     void setTimer();

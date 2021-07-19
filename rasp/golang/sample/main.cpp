@@ -37,10 +37,9 @@ int main() {
 
     if (!gWorkspace->init()) {
         LOG_ERROR("workspace init failed");
-        return 0;
+        return -1;
     }
 
-    gSmithClient->start();
     gSmithProbe->start();
 
     auto firstModule = pfnGetFirstModuleData();
@@ -48,7 +47,7 @@ int main() {
 
     if (!gLineTable->load(lineTable)) {
         LOG_ERROR("line table load failed");
-        return 0;
+        return -1;
     }
 
     for (unsigned long i = 0; i < gLineTable->mFuncNum; i++) {

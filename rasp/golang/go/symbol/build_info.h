@@ -33,6 +33,7 @@ class CBuildInfo {
 public:
     bool load();
     bool load(const std::string& file);
+    bool load(const std::string& file, unsigned long base);
 
 private:
     bool readModuleInfo(const go::string *info);
@@ -40,6 +41,9 @@ private:
 public:
     go::endian mEndian;
     unsigned long mPtrSize;
+
+public:
+    bool mRegisterBased{false};
 
 public:
     std::string mVersion;
