@@ -27,6 +27,10 @@ Elkeid是一个云原生的基于主机的入侵检测解决方案。
 * **[Elkeid ServiceDiscovery](https://github.com/bytedance/Elkeid/tree/main/server/service_discovery)** 后台中的各个服务模块都需要向该组件定时注册、同步服务信息，从而保证各个服务模块中的实例相互可见，便于直接通信
 * **[Elkeid Manager](https://github.com/bytedance/Elkeid/tree/main/server/manager)** 负责对整个后台进行管理，并提供相关的查询、管理接口
 
+以上组件可以提供以下数据：
+
+<img src="./data.png"/>
+
 
 ## Elkeid Advantage
 当前开源模块缺少规则引擎和检测功能，还不能提供入侵检测的能力。 但是目前开源的部分可以轻松地与其他的HIDS/NIDS/XDR解决方案进行集成，或者自己对采集的数据进行数处理实现自己的需求，Elkeid 有以下主要优势：

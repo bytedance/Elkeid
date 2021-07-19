@@ -28,6 +28,11 @@ Elkeid is a support cloud-native and base linux host intrusion detection solutio
 * **[Elkeid Manager](https://github.com/bytedance/Elkeid/tree/main/server/manager)** Responsible for the management of the entire backend, and provide related query and management API.
 
 
+The above components can provide these data:
+
+<img src="./data.png"/>
+
+
 ## Elkeid Advantage
 The current open source module lacks a rule engine and detection rule, and cannot provide intrusion detection capabilities. However, the current open source part can be easily integrated with other HIDS/NIDS/XDR solutions, or you can perform data processing on the collected data to meet your own needs. Elkeid has the following main advantages:
 
