@@ -1,5 +1,4 @@
 <!-- PROJECT LOGO -->
-<br />
 <p align="center">
   <h3 align="center">go-probe</h3>
 
@@ -148,3 +147,4 @@ Project Link: [https://github.com/bytedance/Elkeid](https://github.com/bytedance
 * [libevent](https://github.com/libevent/libevent)
 * [ELFIO](https://github.com/serge1/ELFIO)
 * [json](https://github.com/nlohmann/json)
+* [printf](https://github.com/mpaland/printf)
