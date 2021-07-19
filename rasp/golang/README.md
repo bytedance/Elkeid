@@ -146,3 +146,5 @@ Project Link: [https://github.com/bytedance/Elkeid](https://github.com/bytedance
 ## Acknowledgements
 * [zydis](https://github.com/zyantific/zydis)
 * [libevent](https://github.com/libevent/libevent)
+* [ELFIO](https://github.com/serge1/ELFIO)
+* [json](https://github.com/nlohmann/json)
