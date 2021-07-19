@@ -11,8 +11,10 @@ constexpr auto EVENT_BUFFER_MAX_SIZE = 1024 * 1024;
 
 constexpr auto SOCKET_PATH = "/var/run/smith_agent.sock";
 
-CSmithClient::CSmithClient() {
+CSmithClient::CSmithClient(ISmithNotify *notify) {
     evthread_use_pthreads();
+
+    mNotify = notify;
     mEventBase = event_base_new();
 }
 
@@ -204,8 +206,4 @@ void CSmithClient::loopThread() {
 
 bool CSmithClient::write(const CSmithMessage &message) {
     return writeBuffer(nlohmann::json(message).dump());
-}
-
-void CSmithClient::setNotify(ISmithNotify *notify) {
-    mNotify = notify;
 }

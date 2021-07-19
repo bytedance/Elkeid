@@ -1,8 +1,10 @@
 #ifndef GO_PROBE_BASIC_H
 #define GO_PROBE_BASIC_H
 
+#include "preprocess.h"
 #include <string>
-#include <cstddef>
+
+#pragma pack(push, 1)
 
 namespace go {
     typedef signed char Int8;
@@ -31,6 +33,8 @@ namespace go {
         void *v;
     };
 
+    METADATA(interface, void *, void *)
+
     struct string {
         const char *data;
         ptrdiff_t length;
@@ -44,7 +48,9 @@ namespace go {
         }
     };
 
-    template<class T>
+    METADATA(string, const char *, ptrdiff_t)
+
+    template<typename T>
     struct slice {
         T *values;
         Int count;
@@ -58,6 +64,11 @@ namespace go {
             return values[i];
         }
     };
+
+    template<typename T>
+    TEMPLATE_METADATA(slice<T>, T *, Int, Int)
 }
+
+#pragma pack(pop)
 
 #endif //GO_PROBE_BASIC_H

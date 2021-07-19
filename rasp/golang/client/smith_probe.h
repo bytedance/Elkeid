@@ -29,6 +29,9 @@ private:
     CCondition mCondition;
 
 private:
+    CSmithClient mClient{this};
+
+private:
     CThread_<CSmithProbe> mThread;
     CCircularBuffer<CSmithTrace, TRACE_MAX_SIZE> mTraces;
 };

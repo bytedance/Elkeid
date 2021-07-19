@@ -1,16 +1,25 @@
-#include "go/symbol/build_info.h"
-#include "go/symbol/line_table.h"
-#include "go/registry/api_registry.h"
-#include "syscall/do_syscall.h"
-#include "client/smith_probe.h"
-#include "go/api/workspace.h"
+#include "elf/loader.h"
 #include <common/log.h>
 #include <csignal>
-#include <syscall.h>
+#include <go/api/workspace.h>
+#include <go/symbol/build_info.h>
+#include <go/symbol/line_table.h>
+#include <client/smith_probe.h>
+#include <go/registry/api_registry.h>
 #include <asm/api_hook.h>
 
-int main() {
-    INIT_FILE_LOG(INFO, "go-probe");
+int main(int argc, char **argv, char **env) {
+    INIT_FILE_LOG(INFO, "go-loader");
+
+    if (argc < 2) {
+        LOG_ERROR("require input file");
+        return -1;
+    }
+
+    ELFLoader loader;
+
+    if (!loader.load(argv[1]))
+        return -1;
 
     sigset_t mask = {};
     sigset_t origin_mask = {};
@@ -22,11 +31,11 @@ int main() {
         return -1;
     }
 
-    if (gBuildInfo->load()) {
+    if (gBuildInfo->load(argv[1], loader.mProgramBase)) {
         LOG_INFO("go version: %s", gBuildInfo->mVersion.c_str());
     }
 
-    if (!gLineTable->load()) {
+    if (!gLineTable->load(argv[1], loader.mProgramBase)) {
         LOG_ERROR("line table load failed");
         return -1;
     }
@@ -61,7 +70,7 @@ int main() {
     }
 
     pthread_sigmask(SIG_SETMASK, &origin_mask, nullptr);
-    do_syscall(SYS_exit, 0);
+    loader.jump(argc - 1, argv + 1, env);
 
     return 0;
 }

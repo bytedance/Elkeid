@@ -16,6 +16,7 @@ class CLineTable {
 public:
     bool load();
     bool load(const std::string& file);
+    bool load(const std::string& file, unsigned long base);
     bool load(const char* lineTable);
 
 private:

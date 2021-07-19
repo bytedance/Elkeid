@@ -1,8 +1,8 @@
 #include "line_table.h"
 #include <common/log.h>
-#include <common/utils/path.h>
 #include <common/utils/process.h>
 #include <elfio/elfio.hpp>
+#include <sys/user.h>
 
 constexpr auto GO_LINE_TABLE = "gopclntab";
 
@@ -70,6 +70,15 @@ bool CLineTable::load() {
 }
 
 bool CLineTable::load(const std::string &file) {
+    CProcessMap processMap;
+
+    if (!CProcess::getFileMemoryBase(getpid(), file, processMap))
+        return false;
+
+    return load(file, processMap.start);
+}
+
+bool CLineTable::load(const std::string &file, unsigned long base) {
     ELFIO::elfio reader;
 
     if (!reader.load(file))
@@ -90,22 +99,24 @@ bool CLineTable::load(const std::string &file) {
     if (reader.get_type() == ET_EXEC)
         return load((char *)(*it)->get_address());
 
-    CProcessMap processMap;
+    std::vector<ELFIO::segment *> loads;
 
-    if (!CProcess::getFileMemoryBase(getpid(), file, processMap))
-        return false;
-
-    auto sit = std::find_if(
+    std::copy_if(
             reader.segments.begin(),
             reader.segments.end(),
-            [](const auto& s) {
-                return s->get_type() == PT_LOAD;
+            std::back_inserter(loads),
+            [](const auto &i){
+                return i->get_type() == PT_LOAD;
             });
 
-    if (sit == reader.segments.end())
-        return false;
+    auto minElement = std::min_element(
+            loads.begin(),
+            loads.end(),
+            [](const auto &i, const auto &j) {
+                return i->get_virtual_address() < j->get_virtual_address();
+            });
 
-    return load((char *)processMap.start - (*sit)->get_virtual_address() + (*it)->get_address());
+    return load((char *)base + (*it)->get_address() - ((*minElement)->get_virtual_address() & ~(PAGE_SIZE - 1)));
 }
 
 const go::func_item *CLineTable::getFuncItem(unsigned long index) const {
@@ -126,8 +137,8 @@ bool CLineTable::findFunc(void *pc, CFunction &func) {
     if (address < begin->entry || address >= back->entry)
         return false;
 
-    auto it = std::upper_bound(begin, end, address, [](auto addr, const auto& i) {
-       return addr < i.entry;
+    auto it = std::upper_bound(begin, end, address, [](auto value, const auto& i) {
+       return value < i.entry;
     });
 
     if (it == end)
