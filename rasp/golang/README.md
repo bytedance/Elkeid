@@ -1,18 +1,3 @@
-<!-- PROJECT SHIELDS -->
-<!--
-*** I'm using markdown "reference style" links for readability.
-*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
-*** See the bottom of this document for the declaration of the reference variables
-*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
-*** https://www.markdownguide.org/basic-syntax/#reference-style-links
--->
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-
-
-
 <!-- PROJECT LOGO -->
 <br />
 <p align="center">
@@ -24,9 +9,9 @@
     <br />
     <a href="sample">View Demo</a>
     ·
-    <a href="https://github.com/Hackerl/go-probe/issues">Report Bug</a>
+    <a href="https://github.com/bytedance/Elkeid/issues">Report Bug</a>
     ·
-    <a href="https://github.com/Hackerl/go-probe/issues">Request Feature</a>
+    <a href="https://github.com/bytedance/Elkeid/issues">Request Feature</a>
   </p>
 </p>
 
@@ -87,13 +72,13 @@ Resolve golang symbol table from ```gopclntab``` section, then inline hook api, 
 
 1. Clone the repo
    ```sh
-   git clone https://github.com/Hackerl/go-probe.git
+   git clone https://github.com/bytedance/Elkeid.git
    ```
 2. Update submodule
    ```sh
    git submodule update --init --recursive
    ```
-3. Build injector
+3. Build
    ```sh
    mkdir -p build && cd build && cmake .. && make
    ```
@@ -124,7 +109,7 @@ Attach mode by using [pangolin](https://github.com/Hackerl/pangolin):
 <!-- ROADMAP -->
 ## Roadmap
 
-See the [open issues](https://github.com/Hackerl/go-probe/issues) for a list of proposed features (and known issues).
+See the [open issues](https://github.com/bytedance/Elkeid/issues) for a list of proposed features (and known issues).
 
 
 
@@ -151,26 +136,13 @@ Distributed under the Apache-2.0 License.
 <!-- CONTACT -->
 ## Contact
 
-Hackerl - [@Hackerl](https://github.com/Hackerl)
+Bytedance - [@bytedance](https://github.com/bytedance)
 
-Project Link: [https://github.com/Hackerl/go-probe](https://github.com/Hackerl/go-probe)
+Project Link: [https://github.com/bytedance/Elkeid](https://github.com/bytedance/Elkeid)
 
 
 
 <!-- ACKNOWLEDGEMENTS -->
 ## Acknowledgements
-* [mandibule](https://github.com/ixty/mandibule)
-
-
-
-
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/Hackerl/go-probe.svg?style=for-the-badge
-[contributors-url]: https://github.com/Hackerl/go-probe/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/Hackerl/go-probe.svg?style=for-the-badge
-[forks-url]: https://github.com/Hackerl/go-probe/network/members
-[stars-shield]: https://img.shields.io/github/stars/Hackerl/go-probe.svg?style=for-the-badge
-[stars-url]: https://github.com/Hackerl/go-probe/stargazers
-[issues-shield]: https://img.shields.io/github/issues/Hackerl/go-probe.svg?style=for-the-badge
-[issues-url]: https://github.com/Hackerl/go-probe/issues
+* [zydis](https://github.com/zyantific/zydis)
+* [libevent](https://github.com/libevent/libevent)
