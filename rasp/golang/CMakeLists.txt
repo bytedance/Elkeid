@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD 14)
 include_directories(include)
 include_directories(${CMAKE_SOURCE_DIR})
 
+option(STATIC_BUILD "enable static build" OFF)
+
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
@@ -44,6 +46,6 @@ add_executable(go_probe main.cpp asm/inline_hook.cpp asm/api_hook.cpp futex/mute
         go/symbol/line_table.cpp go/symbol/func.cpp go/registry/api_registry.cpp
         go/api/workspace.cpp go/api/api.cpp go/stack/printf/printf.c)
 
-target_link_libraries(go_probe elfio Zydis nlohmann_json event_core_static event_pthreads_static)
-target_link_libraries(go_loader elfio Zydis nlohmann_json event_core_static event_pthreads_static)
 target_link_libraries(go_sample elfio Zydis nlohmann_json event_core_static event_pthreads_static ${CMAKE_DL_LIBS})
+target_link_libraries(go_loader elfio Zydis nlohmann_json event_core_static event_pthreads_static $<$<BOOL:${STATIC_BUILD}>:-static-pie>)
+target_link_libraries(go_probe elfio Zydis nlohmann_json event_core_static event_pthreads_static $<$<BOOL:${STATIC_BUILD}>:-static-pie>)

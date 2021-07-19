@@ -130,13 +130,8 @@ python: python-probe ## build CPython probe
 
 
 go-probe: ## build golang probe
-ifeq ($(STATIC), TRUE)
 	mkdir -p golang/build && cd golang/build && \
-	CC=$(CC) CXX=$(CXX) CFLAGS="-static-pie" CXXFLAGS=-static-pie cmake .. && make
-else
-	mkdir -p golang/build && cd golang/build && \
-	CC=$(CC) CXX=$(CXX) cmake .. && make
-endif
+	CC=$(CC) CXX=$(CXX) cmake -DSTATIC_BUILD=$(STATIC) .. && make
 
 
 go: go-probe ## build go probe
