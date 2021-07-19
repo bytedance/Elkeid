@@ -42,8 +42,9 @@ pub fn golang_attach(pid: i32) -> Result<bool> {
     let pangolin = "/etc/elkeid/plugin/RASP/rasp/pangolin";
     let dash_c = "-c";
     let dash_p = "-p";
+    let daemon = "--daemon";
     let pid_string = pid.clone().to_string();
-    let args = &[dash_c, golang_probe, dash_p, pid_string.as_str()];
+    let args = &[dash_c, golang_probe, dash_p, pid_string.as_str(), daemon];
     return match Command::new(pangolin).args(args).status() {
         Ok(st) => Ok(st.success()),
         Err(e) => Err(anyhow!(e.to_string())),
