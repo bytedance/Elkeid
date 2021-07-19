@@ -8,7 +8,7 @@ public:
     CInlineHook();
 
 private:
-    unsigned long getCodeTail(void *address, unsigned long size);
+    unsigned long getCodeTail(void *address);
 
 public:
     virtual bool hook(void *address, void *replace, void **backup);

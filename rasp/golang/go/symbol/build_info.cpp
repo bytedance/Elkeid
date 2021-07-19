@@ -2,12 +2,26 @@
 #include <common/log.h>
 #include <common/utils/path.h>
 #include <common/utils/process.h>
+#include <regex>
+#include <sys/user.h>
 
 constexpr auto GO_BUILD_INFO = "buildinfo";
 constexpr auto GO_BUILD_INFO_MAGIC = "\xff Go buildinf:";
 constexpr auto GO_BUILD_VERSION_OFFSET = 16;
 
+constexpr auto GO_REGISTER_BASED_MAJOR = 1;
+constexpr auto GO_REGISTER_BASED_MINOR = 17;
+
 bool CBuildInfo::load(const std::string &file) {
+    CProcessMap processMap;
+
+    if (!CProcess::getFileMemoryBase(getpid(), file, processMap))
+        return false;
+
+    return load(file, processMap.start);
+}
+
+bool CBuildInfo::load(const std::string &file, unsigned long base) {
     ELFIO::elfio reader;
 
     if (!reader.load(file)) {
@@ -31,22 +45,24 @@ bool CBuildInfo::load(const std::string &file) {
     auto magicSize = strlen(GO_BUILD_INFO_MAGIC);
 
     if (reader.get_type() != ET_EXEC) {
-        CProcessMap processMap;
+        std::vector<ELFIO::segment *> loads;
 
-        if (!CProcess::getFileMemoryBase(getpid(), file, processMap))
-            return false;
-
-        auto sit = std::find_if(
+        std::copy_if(
                 reader.segments.begin(),
                 reader.segments.end(),
-                [](const auto& s) {
-                    return s->get_type() == PT_LOAD;
+                std::back_inserter(loads),
+                [](const auto &i){
+                    return i->get_type() == PT_LOAD;
                 });
 
-        if (sit == reader.segments.end())
-            return false;
+        auto minElement = std::min_element(
+                loads.begin(),
+                loads.end(),
+                [](const auto &i, const auto &j) {
+                    return i->get_virtual_address() < j->get_virtual_address();
+                });
 
-        data += processMap.start - (*sit)->get_virtual_address();
+        data += base - ((*minElement)->get_virtual_address() & ~(PAGE_SIZE - 1));
     }
 
     if (memcmp(data, GO_BUILD_INFO_MAGIC, magicSize) != 0) {
@@ -61,6 +77,19 @@ bool CBuildInfo::load(const std::string &file) {
     auto modInfo = *(go::string **)&data[GO_BUILD_VERSION_OFFSET + mPtrSize];
 
     mVersion = buildVersion->toSTDString();
+
+    std::smatch match;
+    std::regex_match(mVersion, match, std::regex(R"(^go(\d+)\.(\d+).*)"));
+
+    if (match.size() >= 3) {
+        unsigned long major = 0;
+        unsigned long minor = 0;
+
+        if (CStringHelper::toNumber(match[1], major) && CStringHelper::toNumber(match[2], minor)) {
+            mRegisterBased = major > GO_REGISTER_BASED_MAJOR ||
+                    (major == GO_REGISTER_BASED_MAJOR && minor >= GO_REGISTER_BASED_MINOR);
+        }
+    }
 
     if (modInfo->empty()) {
         LOG_INFO("module info empty");

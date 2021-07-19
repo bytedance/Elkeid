@@ -3,27 +3,41 @@
 
 #include "basic.h"
 
-struct net_address {
-    go::string network;
-    go::string address;
-};
+#pragma pack(push, 1)
 
-struct tcp_addr {
-    go::slice<go::Uint8> ip;
-    go::Int port;
-    go::string zone;
-};
+namespace go {
+    struct net_address {
+        go::string network;
+        go::string address;
+    };
 
-typedef tcp_addr udp_addr;
+    METADATA(net_address, go::string, go::string)
 
-struct ip_addr {
-    go::slice<go::Uint8> ip;
-    go::string zone;
-};
+    struct tcp_address {
+        go::slice<go::Uint8> ip;
+        go::Int port;
+        go::string zone;
+    };
 
-struct unix_addr {
-    go::string name;
-    go::string net;
-};
+    METADATA(tcp_address, go::slice<go::Uint8>, go::Int, go::string)
+
+    typedef tcp_address udp_address;
+
+    struct ip_address {
+        go::slice<go::Uint8> ip;
+        go::string zone;
+    };
+
+    METADATA(ip_address, go::slice<go::Uint8>, go::string)
+
+    struct unix_address {
+        go::string name;
+        go::string net;
+    };
+
+    METADATA(unix_address, go::string, go::string)
+}
+
+#pragma pack(pop)
 
 #endif //GO_PROBE_NET_H

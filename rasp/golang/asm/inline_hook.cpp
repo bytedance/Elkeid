@@ -1,10 +1,8 @@
 #include "inline_hook.h"
 #include <common/log.h>
-#include <unistd.h>
 #include <sys/mman.h>
-#include <memory>
 
-constexpr unsigned char TRAP_TEMPLATE[] = { 0x48, 0xB8, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0xFF, 0xE0 };
+constexpr unsigned char TRAP_TEMPLATE[] = { 0x49, 0xBC, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x41, 0xFF, 0xE4 };
 constexpr unsigned char ESCAPE_TEMPLATE[] = { 0x49, 0xBC, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x41, 0xFF, 0xE4 };
 
 constexpr auto GUIDE = 2;
@@ -16,9 +14,9 @@ CInlineHook::CInlineHook() {
     ZydisDecoderInit(&mDecoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64);
 }
 
-unsigned long CInlineHook::getCodeTail(void *address, unsigned long size) {
+unsigned long CInlineHook::getCodeTail(void *address) {
     ZydisDecodedInstruction instruction = {};
-    ZyanUSize length = ZYDIS_MAX_INSTRUCTION_LENGTH + size;
+    ZyanUSize length = ZYDIS_MAX_INSTRUCTION_LENGTH + TRAP_SIZE;
 
     unsigned long tail = 0;
 
@@ -35,13 +33,13 @@ unsigned long CInlineHook::getCodeTail(void *address, unsigned long size) {
 
         tail += instruction.length;
 
-    } while (tail < size);
+    } while (tail < TRAP_SIZE);
 
     return tail;
 }
 
 bool CInlineHook::hook(void *address, void *replace, void **backup) {
-    unsigned long tail = getCodeTail(address, TRAP_SIZE);
+    unsigned long tail = getCodeTail(address);
 
     if (tail == 0) {
         LOG_ERROR("get code tail failed");

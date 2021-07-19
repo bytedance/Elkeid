@@ -13,6 +13,14 @@ void CSmithTrace::push(const go::Uint32 &arg) {
     snprintf(args[count++], ARG_LENGTH, "%u", arg);
 }
 
+void CSmithTrace::push(const go::Uintptr &arg) {
+    snprintf(args[count++], ARG_LENGTH, "0x%p", arg);
+}
+
+void CSmithTrace::push(const go::interface &arg) {
+    snprintf(args[count++], ARG_LENGTH, "0x%p:0x%p", arg.t, arg.v);
+}
+
 void CSmithTrace::push(const go::string &arg) {
     char *buffer = args[count++];
 
@@ -47,7 +55,7 @@ void CSmithTrace::push(const go::slice<go::string> &arg) {
     }
 }
 
-void CSmithTrace::push(const tcp_addr *arg) {
+void CSmithTrace::push(const go::tcp_address *arg) {
     char *buffer = args[count++];
 
     if (!arg)
@@ -84,7 +92,7 @@ void CSmithTrace::push(const tcp_addr *arg) {
     snprintf(buffer, ARG_LENGTH, "%s:%lld:%.*s", address, arg->port, arg->zone.length, arg->zone.data);
 }
 
-void CSmithTrace::push(const ip_addr *arg) {
+void CSmithTrace::push(const go::ip_address *arg) {
     char *buffer = args[count++];
 
     if (!arg)
@@ -121,7 +129,7 @@ void CSmithTrace::push(const ip_addr *arg) {
     snprintf(buffer, ARG_LENGTH, "%s:%.*s", address, arg->zone.length, arg->zone.data);
 }
 
-void CSmithTrace::push(const unix_addr *arg) {
+void CSmithTrace::push(const go::unix_address *arg) {
     char *buffer = args[count++];
 
     if (!arg || arg->name.empty())
@@ -135,7 +143,7 @@ void CSmithTrace::push(const unix_addr *arg) {
     snprintf(buffer, ARG_LENGTH, "%.*s:%.*s", arg->name.length, arg->name.data, arg->net.length, arg->net.data);
 }
 
-void CSmithTrace::push(const exec_cmd *arg) {
+void CSmithTrace::push(const go::exec_cmd *arg) {
     if (!arg)
         return;
 
