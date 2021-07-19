@@ -4,7 +4,7 @@
 
 [English](README.md) | 简体中文
 
-Elkeid是一个云原生的基于主机的入侵检测解决方案。
+Elkeid是一个云原生的基于主机的安全(入侵检测与风险识别)解决方案。
 
 ## Elkeid Architecture
 

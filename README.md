@@ -4,7 +4,7 @@
 
 English | [简体中文](README-zh_CN.md)
 
-Elkeid is a support cloud-native and base linux host intrusion detection solution.
+Elkeid is a support cloud-native and base linux host security(Intrusion detection and risk identification) solution.
 
 ## Elkeid Architecture
 
