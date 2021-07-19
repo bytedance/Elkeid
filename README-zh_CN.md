@@ -22,14 +22,18 @@ Elkeid是一个云原生的基于主机的入侵检测解决方案。
   * [Journal Watcher](https://github.com/bytedance/Elkeid/blob/main/agent/journal_watcher/README-zh_CN.md): 负责监测systemd日志的插件，目前支持ssh相关日志采集与上报
   * [Scanner Plugin](https://github.com/bytedance/Elkeid/blob/main/agent/scanner/README-zh_CN.md): 负责在端上进行静态检测恶意文件的插件，目前支持yara
   * RASP Plugin: 负责管理RASP组件以及处理RASP采集的数据，还未开源
-## [Elkeid Backend Abilty](https://github.com/bytedance/Elkeid/blob/main/server/README-zh_CN.md)
-* **[Elkeid AgentCenter](https://github.com/bytedance/Elkeid/tree/main/server/agent_center)** 负责与Agent进行通信，采集Agent数据并简单处理后汇总到消息队列集群，同时也负责对Agent进行管理包括Agent的升级，配置修改，任务下发等
-* **[Elkeid ServiceDiscovery](https://github.com/bytedance/Elkeid/tree/main/server/service_discovery)** 后台中的各个服务模块都需要向该组件定时注册、同步服务信息，从而保证各个服务模块中的实例相互可见，便于直接通信
-* **[Elkeid Manager](https://github.com/bytedance/Elkeid/tree/main/server/manager)** 负责对整个后台进行管理，并提供相关的查询、管理接口
+  
 
 以上组件可以提供以下数据：
 
 <img src="./data.png"/>
+
+
+
+## [Elkeid Backend Abilty](https://github.com/bytedance/Elkeid/blob/main/server/README-zh_CN.md)
+* **[Elkeid AgentCenter](https://github.com/bytedance/Elkeid/tree/main/server/agent_center)** 负责与Agent进行通信，采集Agent数据并简单处理后汇总到消息队列集群，同时也负责对Agent进行管理包括Agent的升级，配置修改，任务下发等
+* **[Elkeid ServiceDiscovery](https://github.com/bytedance/Elkeid/tree/main/server/service_discovery)** 后台中的各个服务模块都需要向该组件定时注册、同步服务信息，从而保证各个服务模块中的实例相互可见，便于直接通信
+* **[Elkeid Manager](https://github.com/bytedance/Elkeid/tree/main/server/manager)** 负责对整个后台进行管理，并提供相关的查询、管理接口
 
 
 ## Elkeid Advantage
