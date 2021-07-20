@@ -1,23 +1,25 @@
-#include <crt_asm.h>
-#include <crt_log.h>
-#include <crt_utils.h>
+#include <z_log.h>
+#include <z_syscall.h>
+#include <z_std.h>
+#include <z_memory.h>
+#include <fcntl.h>
 
 typedef int (*PFN_RUN)(const char *command);
 typedef int (*PFN_ENSURE)();
 typedef void (*PFN_RELEASE)(int);
 
-int main(int argc, char ** argv, char ** env) {
+int main(int argc, char **argv, char **env) {
     if (argc < 6) {
         LOG("usage: ./program source [0|1](source is file) address address address");
         return -1;
     }
 
     char *source = argv[1];
-    int is_file = !strcmp(argv[2], "1");
+    int is_file = !z_strcmp(argv[2], "1");
 
-    PFN_ENSURE pfn_ensure = (PFN_ENSURE)strtoul(argv[3], NULL, 16);
-    PFN_RUN pfn_run = (PFN_RUN)strtoul(argv[4], NULL, 16);
-    PFN_RELEASE pfn_release = (PFN_RELEASE)strtoul(argv[5], NULL, 16);
+    PFN_ENSURE pfn_ensure = (PFN_ENSURE)z_strtoul(argv[3], NULL, 16);
+    PFN_RUN pfn_run = (PFN_RUN)z_strtoul(argv[4], NULL, 16);
+    PFN_RELEASE pfn_release = (PFN_RELEASE)z_strtoul(argv[5], NULL, 16);
 
     if (!pfn_ensure || !pfn_run || !pfn_release) {
         LOG("func address error");
@@ -29,26 +31,42 @@ int main(int argc, char ** argv, char ** env) {
     char *code = source;
 
     if (is_file) {
-        char *buffer = NULL;
-        long length = read_file(source, &buffer);
+        int fd = z_open(source, O_RDONLY, 0);
 
-        if (length <= 0) {
-            LOG("read file failed: %s", source);
+        if (fd < 0) {
+            LOG("open failed: %s %d", source, z_errno);
             return -1;
         }
 
-        code = malloc(length + 1);
+        long size = z_lseek(fd, 0, SEEK_END);
+
+        if (size < 0) {
+            z_close(fd);
+            return -1;
+        }
+
+        if (z_lseek(fd, 0, SEEK_SET) < 0) {
+            z_close(fd);
+            return -1;
+        }
+
+        code = z_malloc(size + 1);
 
         if (!code) {
-            LOG("malloc code memory failed");
-            free(buffer);
+            z_close(fd);
             return -1;
         }
 
-        memset(code, 0, length + 1);
-        memcpy(code, buffer, length);
+        z_memset(code, 0, size + 1);
 
-        free(buffer);
+        if (z_read(fd, code, size) != size) {
+            z_free(code);
+            z_close(fd);
+
+            return -1;
+        }
+
+        z_close(fd);
     }
 
     int state = pfn_ensure();
@@ -56,20 +74,21 @@ int main(int argc, char ** argv, char ** env) {
     pfn_release(state);
 
     if (is_file) {
-        free(code);
+        z_free(code);
     }
 
     return err;
 }
 
-void _main(unsigned long * sp) {
-    int argc = *sp;
+void _main(unsigned long *sp) {
+    int argc = *(int *)sp;
     char **argv = (char **)(sp + 1);
     char **env = argv + argc + 1;
 
-    __exit(main(argc, argv, env));
+    int status = main(argc, argv, env);
+    z_exit(status);
 }
 
 void _start() {
-    CALL_SP(_main);
+    asm volatile("mov %%rsp, %%rdi; call *%%rax;" :: "a"(_main));
 }

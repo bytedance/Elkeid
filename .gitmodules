@@ -4,9 +4,6 @@
 [submodule "rasp/pangolin"]
 	path = rasp/pangolin
 	url = https://github.com/Hackerl/pangolin
-[submodule "rasp/python/python-inject/caller/crt"]
-	path = rasp/python/python-inject/caller/crt
-	url = https://github.com/Hackerl/crt
 [submodule "rasp/python/python-inject/cmake"]
 	path = rasp/python/python-inject/cmake
 	url = https://github.com/Hackerl/cmake-3rd
@@ -34,3 +31,6 @@
 [submodule "rasp/util-linux"]
 	path = rasp/util-linux
 	url = https://github.com/karelzak/util-linux.git
+[submodule "rasp/python/python-inject/caller/c-runtime"]
+	path = rasp/python/python-inject/caller/c-runtime
+	url = https://github.com/Hackerl/c-runtime
