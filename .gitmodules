@@ -1,6 +1,6 @@
 [submodule "agent/support/rust/flexi_logger"]
 	path = agent/support/rust/flexi_logger
-	url = git@github.com:bytedance/flexi_logger.git
+	url = https://github.com/bytedance/flexi_logger
 [submodule "rasp/pangolin"]
 	path = rasp/pangolin
 	url = https://github.com/Hackerl/pangolin
