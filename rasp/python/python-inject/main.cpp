@@ -2,6 +2,7 @@
 #include <common/cmdline.h>
 #include <common/utils/process.h>
 #include <elfio/elfio.hpp>
+#include <sys/user.h>
 
 typedef int (*PFN_RUN)(const char *command);
 typedef int (*PFN_ENSURE)();
@@ -13,6 +14,8 @@ constexpr auto UWSGI = "uwsgi";
 constexpr auto PYTHON_CALLER = "python_caller";
 
 int main(int argc, char ** argv) {
+    INIT_CONSOLE_LOG(INFO);
+
     cmdline::parser parse;
 
     parse.add<int>("pid", 'p', "pid", true, 0);
@@ -61,19 +64,24 @@ int main(int argc, char ** argv) {
     unsigned long baseAddress = 0;
 
     if (reader.get_type() != ET_EXEC) {
-        auto sit = std::find_if(
+        std::vector<ELFIO::segment *> loads;
+
+        std::copy_if(
                 reader.segments.begin(),
                 reader.segments.end(),
-                [](const auto& s) {
-                    return s->get_type() == PT_LOAD;
+                std::back_inserter(loads),
+                [](const auto &i){
+                    return i->get_type() == PT_LOAD;
                 });
 
-        if (sit == reader.segments.end()) {
-            LOG_ERROR("can't find load segment");
-            return -1;
-        }
+        auto minElement = std::min_element(
+                loads.begin(),
+                loads.end(),
+                [](const auto &i, const auto &j) {
+                    return i->get_virtual_address() < j->get_virtual_address();
+                });
 
-        baseAddress = processMap.start - (*sit)->get_virtual_address();
+        baseAddress = processMap.start - ((*minElement)->get_virtual_address() & ~(PAGE_SIZE - 1));
     }
 
     PFN_ENSURE pfnEnsure = nullptr;
@@ -115,10 +123,10 @@ int main(int argc, char ** argv) {
     std::string pangolin = parse.get<std::string>("pangolin");
     std::string caller = CPath::join(CPath::getAPPDir(), PYTHON_CALLER);
 
-    char callerCommand[1024] = {};
+    char commandline[1024] = {};
 
     snprintf(
-            callerCommand, sizeof(callerCommand),
+            commandline, sizeof(commandline),
             "%s %s %d %p %p %p",
             caller.c_str(), source.c_str(), parse.exist("file"),
             pfnEnsure, pfnRun, pfnRelease
@@ -126,7 +134,7 @@ int main(int argc, char ** argv) {
 
     int err = execl(
             pangolin.c_str(), pangolin.c_str(),
-            "-c", callerCommand,
+            "-c", commandline,
             "-p", std::to_string(pid).c_str(),
             nullptr
             );

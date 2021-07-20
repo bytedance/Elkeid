@@ -96,17 +96,10 @@ python-client: ## build python client
 
 
 python-inject: ## build python injector
-ifeq ($(STATIC), TRUE)
 	mkdir -p python/python-inject/build && cd python/python-inject/build && \
-	CC=$(CC) CXX=$(CXX) CXXFLAGS=-static-pie cmake .. && make
+	CC=$(CC) CXX=$(CXX) CXXFLAGS=-static-pie cmake -DSTATIC_BUILD=$(STATIC) .. && make
 	cd python/python-inject && \
 	CFLAGS=-DDISABLE_LOG=1 CC=$(CC) LD=$(LD) make -C caller && mv caller/python_caller bin
-else
-	mkdir -p python/python-inject/build && cd python/python-inject/build && \
-	CC=$(CC) CXX=$(CXX) cmake .. && make
-	cd python/python-inject && \
-	CFLAGS=-DDISABLE_LOG=1 CC=$(CC) LD=$(LD) make -C caller && mv caller/python_caller bin
-endif
 
 python-probe: python-client python-inject ## install python client so
 	cp python/python-client/bin/libpython_client.so python/rasp/resource/libsmith_client.so

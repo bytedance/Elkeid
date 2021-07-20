@@ -1,13 +1,11 @@
 <!-- PROJECT LOGO -->
 <p align="center">
-  <h3 align="center">go-probe</h3>
+  <h3 align="center">python-inject</h3>
 
   <p align="center">
-    Golang runtime application self-protection.
+    Inject code into remote python process.
     <br />
     <br />
-    <a href="sample">View Demo</a>
-    ·
     <a href="https://github.com/bytedance/Elkeid/issues">Report Bug</a>
     ·
     <a href="https://github.com/bytedance/Elkeid/issues">Request Feature</a>
@@ -47,7 +45,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-Resolve golang symbol table from ```gopclntab``` section, then inline hook api, transfer api call arguments/stacktrace by unix socket, support golang 1.2 and above.
+Resolve ELF symbol table, find ```PyGILState_Ensure```, ```PyRun_SimpleString``` and ```PyGILState_Release``` function address, then call them in remote process by using [pangolin](https://github.com/Hackerl/pangolin).
 
 ### Built With
 
@@ -77,9 +75,13 @@ Resolve golang symbol table from ```gopclntab``` section, then inline hook api, 
    ```sh
    git submodule update --init --recursive
    ```
-3. Build
+3. Build injector
    ```sh
    mkdir -p build && cd build && cmake .. && make
+   ```
+4. Build shellcode
+   ```sh
+   make -C caller && mv caller/python_caller bin
    ```
 
 
@@ -87,20 +89,9 @@ Resolve golang symbol table from ```gopclntab``` section, then inline hook api, 
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-Start server:
-```shell
-# each message is be composed of a 4-byte length header, and a json string.
-socat UNIX-LISTEN:"/var/run/smith_agent.sock" -
+Inject by using [pangolin](https://github.com/Hackerl/pangolin):
 ```
-
-Loader mode:
-```sh
-./go_loader go-program
-```
-
-Attach mode by using [pangolin](https://github.com/Hackerl/pangolin):
-```
-./pangolin -c $(pwd)/go_probe -p $(pidof go-program)
+./python_inject --pangolin=$(pwd)/pangolin -s '"print(1)"' -p $(pidof python)
 ```
 
 
@@ -143,8 +134,4 @@ Project Link: [https://github.com/bytedance/Elkeid](https://github.com/bytedance
 
 <!-- ACKNOWLEDGEMENTS -->
 ## Acknowledgements
-* [zydis](https://github.com/zyantific/zydis)
-* [libevent](https://github.com/libevent/libevent)
 * [ELFIO](https://github.com/serge1/ELFIO)
-* [json](https://github.com/nlohmann/json)
-* [printf](https://github.com/mpaland/printf)
