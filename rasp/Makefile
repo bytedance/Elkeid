@@ -72,7 +72,7 @@ endif
 
 
 java-probe: ## build JVM probe
-	cd jvm/JVMProbe && sh build.sh
+	cd jvm/JVMProbe && mkdir -p output && ./gradlew proguard && cp build/libs/JVMProbe-1.0-SNAPSHOT-pro.jar output/SmithAgent.jar
 
 java-probe-example: ## build JVM probe example for test
 	cd jvm/JVMProbe && ./gradlew build:example
