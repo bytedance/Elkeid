@@ -97,7 +97,7 @@ python-client: ## build python client
 
 python-inject: ## build python injector
 	mkdir -p python/python-inject/build && cd python/python-inject/build && \
-	CC=$(CC) CXX=$(CXX) CXXFLAGS=-static-pie cmake -DSTATIC_BUILD=$(STATIC) .. && make
+	CC=$(CC) CXX=$(CXX) cmake -DSTATIC_BUILD=$(STATIC) .. && make
 	cd python/python-inject && \
 	CFLAGS=-DDISABLE_LOG=1 CC=$(CC) LD=$(LD) make -C caller && mv caller/python_caller bin
 
