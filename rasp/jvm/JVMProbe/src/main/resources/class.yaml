@@ -106,11 +106,74 @@ id: 10
 name: java.lang.UNIXProcess
 methods:
   - id: 0
+    name: <init>
+    desc: ([B[BI[BI[B[IZ)V
+  - id: 1
     name: getOutputStream
     desc: ()Ljava/io/OutputStream;
-  - id: 1
+  - id: 2
     name: getInputStream
     desc: ()Ljava/io/InputStream;
-  - id: 2
+  - id: 3
     name: getErrorStream
     desc: ()Ljava/io/InputStream;
+---
+id: 11
+name: sun.nio.fs.UnixNativeDispatcher
+methods:
+  - id: 0
+    name: open
+    desc: (Lsun/nio/fs/UnixPath;II)I
+  - id: 1
+    name: openat
+    desc: (I[BII)I
+  - id: 2
+    name: link
+    desc: (Lsun/nio/fs/UnixPath;Lsun/nio/fs/UnixPath;)V
+  - id: 3
+    name: unlink
+    desc: (Lsun/nio/fs/UnixPath;)V
+  - id: 4
+    name: unlinkat
+    desc: (I[BI)V
+  - id: 5
+    name: mknod
+    desc: (Lsun/nio/fs/UnixPath;IJ)V
+  - id: 6
+    name: rename
+    desc: (Lsun/nio/fs/UnixPath;Lsun/nio/fs/UnixPath;)V
+  - id: 7
+    name: renameat
+    desc: (I[BI[B)V
+  - id: 8
+    name: mkdir
+    desc: (Lsun/nio/fs/UnixPath;I)V
+  - id: 9
+    name: rmdir
+    desc: (Lsun/nio/fs/UnixPath;)V
+  - id: 10
+    name: readlink
+    desc: (Lsun/nio/fs/UnixPath;)[B
+  - id: 11
+    name: symlink
+    desc: ([BLsun/nio/fs/UnixPath;)V
+  - id: 12
+    name: opendir
+    desc: (Lsun/nio/fs/UnixPath;)J
+---
+id: 12
+name: java.io.RandomAccessFile
+methods:
+  - id: 0
+    name: <init>
+    desc: (Ljava/io/File;Ljava/lang/String;)V
+---
+id: 13
+name: java.nio.file.Files
+methods:
+  - id: 0
+    name: copy
+    desc: (Ljava/nio/file/Path;Ljava/nio/file/Path;[Ljava/nio/file/CopyOption;)Ljava/nio/file/Path;
+  - id: 1
+    name: move
+    desc: (Ljava/nio/file/Path;Ljava/nio/file/Path;[Ljava/nio/file/CopyOption;)Ljava/nio/file/Path;
