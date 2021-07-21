@@ -50,6 +50,10 @@ const VERSION:&str = "0.0.0.0";
 快速安装 [rust](https://www.rust-lang.org/tools/install) 环境：
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# add build target x86_64-unknown-linux-gnu
+rustup target add x86_64-unknown-linux-gnu
+
 ```
 
 ## 编译

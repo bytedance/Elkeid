@@ -54,6 +54,8 @@ More Yara rules [Ref](https://github.com/InQuest/awesome-yara)
 Please install [rust](https://www.rust-lang.org/tools/install) environment:
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+# add build target x86_64-unknown-linux-gnu
+rustup target add x86_64-unknown-linux-gnu
 ```
 
 ## Building
