@@ -33,7 +33,7 @@ cd Elkeid/server/build && ./build.sh
 # 将生成3个压缩包
 #service_discovery-*.tar.gz
 #manager-*.tar.gz
-#gent_center-*.tar.gz
+#agent_center-*.tar.gz
 ```
 Step4. 启动ServiceDiscovery
 ```
