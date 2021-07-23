@@ -3,11 +3,13 @@ package libmongoose
 import (
 	"net"
 	"os"
+	"sync"
 
 	"github.com/tinylib/msgp/msgp"
 )
 
 type Client struct {
+	mu     *sync.Mutex
 	name   string
 	conn   net.Conn
 	writer *msgp.Writer
@@ -21,6 +23,8 @@ func (c *Client) Receive() (*Task, error) {
 }
 
 func (c *Client) Send(d Data) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	err := d.EncodeMsg(c.writer)
 	if err != nil {
 		return err
@@ -33,6 +37,7 @@ func (c *Client) Close() {
 }
 
 func Connect(addr, name, version string) (*Client, error) {
+	mu := &sync.Mutex{}
 	conn, err := net.Dial("unix", addr)
 	if err != nil {
 		return nil, err
@@ -47,5 +52,5 @@ func Connect(addr, name, version string) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Client{name, conn, w, msgp.NewReader(conn)}, nil
+	return &Client{mu, name, conn, w, msgp.NewReader(conn)}, nil
 }
