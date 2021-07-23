@@ -11,7 +11,7 @@ require (
 	github.com/onsi/gomega v1.11.0 // indirect
 	github.com/rs/xid v1.2.1
 	github.com/spf13/viper v1.7.1
-	go.mongodb.org/mongo-driver v1.5.0
+	go.mongodb.org/mongo-driver v1.5.1
 	go.uber.org/zap v1.10.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
