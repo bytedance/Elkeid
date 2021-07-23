@@ -4,7 +4,7 @@ go 1.15
 
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/gin-gonic/gin v1.6.3
+	github.com/gin-gonic/gin v1.7.0
 	github.com/go-redis/redis/v8 v8.8.0
 	github.com/levigross/grequests v0.0.0-20190908174114-253788527a1a
 	github.com/onsi/ginkgo v1.15.1 // indirect
