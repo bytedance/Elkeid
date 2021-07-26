@@ -100,7 +100,7 @@ Loader mode:
 
 Attach mode by using [pangolin](https://github.com/Hackerl/pangolin):
 ```
-./pangolin -c $(pwd)/go_probe -p $(pidof go-program)
+./pangolin -c $(pwd)/go_probe -p $(pidof go-program) --daemon
 ```
 
 
