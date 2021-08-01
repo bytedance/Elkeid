@@ -309,12 +309,12 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
                         case AF_INET:
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
                             *dip4 = inet->inet_daddr;
-						    *sip4 = inet->inet_saddr;
-						    *sport = ntohs(inet->inet_sport);
-						    *dport = ntohs(inet->inet_dport);
+		            *sip4 = inet->inet_saddr;
+			    *sport = ntohs(inet->inet_sport);
+		            *dport = ntohs(inet->inet_dport);
 #else
                             *dip4 = inet->daddr;
-                            *dip4 = inet->saddr;
+                            *sip4 = inet->saddr;
                             *sport = ntohs(inet->sport);
                             *dport = ntohs(inet->dport);
 #endif
