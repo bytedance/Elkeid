@@ -79,6 +79,8 @@ You will find the scanner binary file under `target/x86_64-unknown-linux-gnu/rel
 
 ## Pre-compiled binary
 
+sha256 = feae8dfe029571d0e7c6c2e873dd03c8134573a33240aabe1a34be13956b7a45
+
 ```bash
 "https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg",
 "https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg",
