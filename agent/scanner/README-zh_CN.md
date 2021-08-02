@@ -45,6 +45,15 @@ const VERSION:&str = "0.0.0.0";
 
 
 ## 需要的编译环境
+
+* Build-essential
+```bash
+# debian & ubuntu
+apt-get install build-essential clang llvm
+# centos & rhel
+yum groupinstall "Development Tools" && yum install clang llvm
+```
+
 * Rust 1.48.0
 
 快速安装 [rust](https://www.rust-lang.org/tools/install) 环境：
@@ -66,6 +75,17 @@ chmod +x build.sh && ./build.sh
 RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_64-unknown-linux-gnu
 ```
 你将会在`target/x86_64-unknown-linux-gnu/release/`下面找到`scanner`二进制文件。静态链接的二进制文件(更易于分发)。
+
+
+## 预编译产物
+
+```bash
+"https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg",
+"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg",
+"https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg",
+"https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg"
+```
+
 
 ## 已知问题
 * Creation time / birth_time is not available for some filesystems
