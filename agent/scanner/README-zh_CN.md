@@ -79,6 +79,9 @@ RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_64-
 
 ## 预编译产物
 
+sha256 = feae8dfe029571d0e7c6c2e873dd03c8134573a33240aabe1a34be13956b7a45
+
+
 ```bash
 "https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg",
 "https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg",
