@@ -50,6 +50,12 @@ More Yara rules [Ref](https://github.com/InQuest/awesome-yara)
 
 ## Compilation Environment Requirements
 
+* Requirements
+```bash
+libclang >= 3.9 (requried by rust-bindgen)
+gcc >= 6.3 (suggested gcc 6.3.0 which is the default version in debian 9)
+```
+
 * Build-essential
 ```bash
 # debian & ubuntu
@@ -57,6 +63,7 @@ apt-get install build-essential clang llvm
 # centos & rhel
 yum groupinstall "Development Tools" && yum install clang llvm
 ```
+
 * Rust 1.48.0
 
 Please install [rust](https://www.rust-lang.org/tools/install) environment:
@@ -93,6 +100,7 @@ sha256 = feae8dfe029571d0e7c6c2e873dd03c8134573a33240aabe1a34be13956b7a45
 ```bash
 error: "creation time is not available for the filesystem
 ```
+* Centos7 default compile tool-chains didn't work,  high version of tool-chains needed.
 
 ## License
 Yara Scanner Plugin is distributed under the Apache-2.0 license.
