@@ -49,6 +49,14 @@ More Yara rules [Ref](https://github.com/InQuest/awesome-yara)
 
 
 ## Compilation Environment Requirements
+
+* Build-essential
+```bash
+# debian & ubuntu
+apt-get install build-essential clang llvm
+# centos & rhel
+yum groupinstall "Development Tools" && yum install clang llvm
+```
 * Rust 1.48.0
 
 Please install [rust](https://www.rust-lang.org/tools/install) environment:
@@ -68,6 +76,17 @@ or
 RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_64-unknown-linux-gnu
 ```
 You will find the scanner binary file under `target/x86_64-unknown-linux-gnu/release/`.
+
+## Pre-compiled binary
+
+sha256 = feae8dfe029571d0e7c6c2e873dd03c8134573a33240aabe1a34be13956b7a45
+
+```bash
+"https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg",
+"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg",
+"https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg",
+"https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg"
+```
 
 ## Known Errors & Bugs
 * Creation time / birth_time is not available for some filesystems
