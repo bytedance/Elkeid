@@ -139,12 +139,12 @@ https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journa
 https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg
 https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg
 ```
-* collector插件(sha256:`f6e0b34de998844cbfc95ae0e47d39225c2449833657a6a6289d9722d8e2fdc8`)
+* collector插件(sha256:`d2738190defe51c66afb00383cd06bf9ce20c3a73e7cdce3bb941de3d7b123d8`)
 ```
-https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector_1.6.0.0_amd64.plg
-https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector_1.6.0.0_amd64.plg
-https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector_1.6.0.0_amd64.plg
-https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector_1.6.0.0_amd64.plg
+https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector-linux-amd64-1.6.0.1.pkg
+https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector-linux-amd64-1.6.0.1.pkg
+https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector-linux-amd64-1.6.0.1.pkg
+https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector-linux-amd64-1.6.0.1.pkg
 ```
 ### 配置插件
 在配置插件前需要鉴权Manager API：
@@ -198,10 +198,10 @@ curl --location --request POST 'http://m_host:m_port/api/v1/agent/createTask/con
 	    {
                 "name": "collector",
                 "download_url": [
-                    "https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector_1.6.0.0_amd64.plg","https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector_1.6.0.0_amd64.plg","https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector_1.6.0.0_amd64.plg","https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector_1.6.0.0_amd64.plg"
+                    "https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector-linux-amd64-1.6.0.1.pkg","https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector-linux-amd64-1.6.0.1.pkg","https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector-linux-amd64-1.6.0.1.pkg","https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector-linux-amd64-1.6.0.1.pkg"
                 ],
-                "version": "1.6.0.0",
-                "sha256": "f6e0b34de998844cbfc95ae0e47d39225c2449833657a6a6289d9722d8e2fdc8",
+                "version": "1.6.0.1",
+                "sha256": "d2738190defe51c66afb00383cd06bf9ce20c3a73e7cdce3bb941de3d7b123d8",
                 "detail": ""
             }
         ]
