@@ -626,14 +626,14 @@ pub fn get_file_bmtime(m: &std::fs::Metadata) -> (u64, u64) {
             let cti = match m.duration_since(UNIX_EPOCH) {
                 Ok(mi) => mi.as_secs(),
                 Err(e) => {
-                    error!("{:?}", e);
+                    //error!("{:?}", e);
                     0
                 }
             };
             cti
         }
         Err(e) => {
-            error!("{:?}", e);
+            //error!("{:?}", e);
             0
         }
     };
@@ -642,14 +642,14 @@ pub fn get_file_bmtime(m: &std::fs::Metadata) -> (u64, u64) {
             let cti = match m.duration_since(UNIX_EPOCH) {
                 Ok(mi) => mi.as_secs(),
                 Err(e) => {
-                    error!("{:?}", e);
+                    //error!("{:?}", e);
                     0
                 }
             };
             cti
         }
         Err(e) => {
-            error!("{:?}", e);
+            //error!("{:?}", e);
             0
         }
     };
