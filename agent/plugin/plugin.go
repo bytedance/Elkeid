@@ -128,7 +128,7 @@ func (p *Plugin) Connect(req RegistRequest, conn net.Conn) error {
 	if err != nil {
 		return errors.New("Cann't get req process which pid is " + strconv.FormatUint(uint64(req.Pid), 10))
 	}
-	cmdPgid, err := syscall.Getpgid(p.cmd.Process.Pid)
+	cmdPgid, err := syscall.Getpgid(int(req.Pid))
 	if err != nil {
 		return errors.New("Cann't get cmd process which pid is " + strconv.FormatUint(uint64(p.cmd.Process.Pid), 10))
 	}
