@@ -31,7 +31,7 @@ The above components can provide these data:
 
 
 
-## [Elkeid Backend Abilty](https://github.com/bytedance/Elkeid/tree/main/server)
+## [Elkeid Backend Ability](https://github.com/bytedance/Elkeid/tree/main/server)
 * **[Elkeid AgentCenter](https://github.com/bytedance/Elkeid/tree/main/server/agent_center)** Responsible for communicating with the Agent, collecting Agent data and simply processing it and then summing it into the MQ, is also responsible for the management of the Agent, including Agent upgrade, configuration modification, task distribution, etc.
 * **[Elkeid ServiceDiscovery](https://github.com/bytedance/Elkeid/tree/main/server/service_discovery)** Each component in the background needs to register and synchronize service information with the component regularly, so as to ensure that the instances in each service module are visible to each other and facilitate direct communication.
 * **[Elkeid Manager](https://github.com/bytedance/Elkeid/tree/main/server/manager)** Responsible for the management of the entire backend, and provide related query and management API.
