@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"errors"
 	"io"
 	"net"
 	"os"
@@ -112,7 +113,10 @@ func Run() {
 	for {
 		conn, err := s.l.Accept()
 		if err != nil {
-			zap.S().Errorf("Accept connect error: %v", err)
+			// Break when socket is closed
+			if errors.Is(err, net.ErrClosed) {
+				break
+			}
 		}
 		go func() {
 			r := msgp.NewReader(conn)
