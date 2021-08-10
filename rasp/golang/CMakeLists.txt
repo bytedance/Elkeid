@@ -31,20 +31,18 @@ add_subdirectory(sample/go)
 add_executable(go_sample sample/main.cpp asm/inline_hook.cpp asm/api_hook.cpp futex/mutex.cpp
         futex/futex.cpp futex/condition.cpp client/smith_client.cpp client/smith_probe.cpp
         client/smith_message.cpp go/stack/smith_trace.cpp go/symbol/build_info.cpp
-        go/symbol/line_table.cpp go/symbol/func.cpp go/registry/api_registry.cpp
-        go/api/workspace.cpp go/api/api.cpp go/stack/printf/printf.c)
+        go/symbol/line_table.cpp go/symbol/func.cpp go/api/workspace.cpp go/stack/printf/printf.c)
 
 add_executable(go_loader loader/main.cpp asm/inline_hook.cpp asm/api_hook.cpp futex/mutex.cpp
         futex/futex.cpp futex/condition.cpp client/smith_client.cpp client/smith_probe.cpp
         client/smith_message.cpp go/stack/smith_trace.cpp go/symbol/build_info.cpp
-        go/symbol/line_table.cpp go/symbol/func.cpp go/registry/api_registry.cpp
-        go/api/workspace.cpp go/api/api.cpp go/stack/printf/printf.c loader/elf/loader.cpp)
+        go/symbol/line_table.cpp go/symbol/func.cpp go/api/workspace.cpp go/stack/printf/printf.c
+        loader/elf/loader.cpp)
 
 add_executable(go_probe main.cpp asm/inline_hook.cpp asm/api_hook.cpp futex/mutex.cpp
         futex/futex.cpp futex/condition.cpp client/smith_client.cpp client/smith_probe.cpp
         client/smith_message.cpp go/stack/smith_trace.cpp go/symbol/build_info.cpp
-        go/symbol/line_table.cpp go/symbol/func.cpp go/registry/api_registry.cpp
-        go/api/workspace.cpp go/api/api.cpp go/stack/printf/printf.c)
+        go/symbol/line_table.cpp go/symbol/func.cpp go/api/workspace.cpp go/stack/printf/printf.c)
 
 target_link_libraries(go_sample elfio Zydis nlohmann_json event_core_static event_pthreads_static ${CMAKE_DL_LIBS})
 target_link_libraries(go_loader elfio Zydis nlohmann_json event_core_static event_pthreads_static $<$<BOOL:${STATIC_BUILD}>:-static-pie>)

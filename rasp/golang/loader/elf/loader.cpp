@@ -211,5 +211,15 @@ void ELFLoader::jump(int argc, char **argv, char **env) {
 
     memcpy(p, av.data(), av.size());
 
+#ifdef __i386__
+    asm volatile("mov %0, %%esp; xor %%edx, %%edx; jmp *%1;" :: "r"(stack), "a"(entry));
+#elif __x86_64__
     asm volatile("mov %0, %%rsp; xor %%rdx, %%rdx; jmp *%1;" :: "r"(stack), "a"(entry));
+#elif __arm__
+    asm volatile("mov %%sp, %0; mov %%r0, #0; bx %[func];" :: "r"(stack), [func] "r"(entry));
+#elif __aarch64__
+    asm volatile("mov sp, %[stack]; mov w0, #0; br %[func];" :: [stack] "r"(stack), [func] "r"(entry));
+#else
+#error "unknown arch"
+#endif
 }
