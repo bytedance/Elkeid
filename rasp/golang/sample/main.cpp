@@ -3,10 +3,8 @@
 #include <go/symbol/build_info.h>
 #include <common/log.h>
 #include <go/symbol/line_table.h>
-#include <client/smith_probe.h>
 #include <asm/api_hook.h>
-#include <go/registry/api_registry.h>
-#include <go/api/workspace.h>
+#include <go/api/api.h>
 
 typedef void(*PFN_GOStart)();
 typedef void*(*PFN_GetFirstModuleData)();
@@ -56,17 +54,28 @@ int main() {
         if (!gLineTable->getFunc(i, func))
             break;
 
-        auto name = func.getName();
-        auto entry = func.getEntry();
+        const char *name = func.getName();
+        void *entry = func.getEntry();
 
-        CAPIRegister apiRegister = {};
+        for (const auto &r : APIRegistry) {
+            if (!r.ignoreCase && strcmp(r.name, name) != 0)
+                continue;
 
-        if (!gAPIRegistry->find(name, apiRegister))
-            continue;
+            if (r.ignoreCase && CStringHelper::tolower(r.name) != CStringHelper::tolower(name))
+                continue;
 
-        LOG_INFO("hook %s: %p", name, entry);
+            if (*r.metadata.origin != nullptr) {
+                LOG_INFO("ignore %s: %p", name, entry);
+                continue;
+            }
 
-        gAPIHook->hook((void *)entry, apiRegister.entry, apiRegister.origin);
+            LOG_INFO("hook %s: %p", name, entry);
+
+            if (!gAPIHook->hook(entry, (void *)r.metadata.entry, r.metadata.origin)) {
+                LOG_WARNING("hook %s failed", name);
+                continue;
+            }
+        }
     }
 
     pfnGOStart();
