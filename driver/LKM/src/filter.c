@@ -323,7 +323,7 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
             if (execve_exe_allowlist_limit <= 96){
                 execve_exe_allowlist_limit++;
                 /* assgin data_main to rb node */
-                add_execve_exe_allowlist(strim(data_main));
+                add_execve_exe_allowlist(smith_strim(data_main));
                 data_main = NULL;
             }
             break;
@@ -354,7 +354,7 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
             if (execve_argv_allowlist_limit <= 96){
                 execve_argv_allowlist_limit++;
                 /* assgin data_main to rb node */
-                add_execve_argv_allowlist(strim(data_main));
+                add_execve_argv_allowlist(smith_strim(data_main));
                 data_main = NULL;
             }
             break;
