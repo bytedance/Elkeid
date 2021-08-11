@@ -92,6 +92,28 @@ static __always_inline char *smith_get_pid_tree(int limit)
     return tmp_data;
 }
 
+static inline char *smith_strim(char *s)
+{
+	size_t size = strlen(s);
+	char *end, *first = s;
+
+	if (!size)
+		return s;
+
+	end = s + size - 1;
+	while (end >= s && isspace(*end))
+		end--;
+	*(end + 1) = '\0';
+
+    while (isspace(*first))
+        first++;
+
+    if (first > s)
+        memmove(s, first, end + 1 - first);
+
+    return s;
+}
+
 /*
  * Kernel >= 4.2 (4.2.0 included):
  *     current->pagefault_disabled introduced, __do_page_fault will cease
