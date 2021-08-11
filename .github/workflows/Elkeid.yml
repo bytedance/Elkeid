@@ -31,3 +31,9 @@ jobs:
 
     - name: Build RASP
       run: make -C rasp build
+
+    - name: Build Agent
+      run: cd agent && go build -o elkeid-agent
+
+    - name: Build Server
+      run: cd server/build && ./build.sh
