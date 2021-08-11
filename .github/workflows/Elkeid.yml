@@ -33,7 +33,7 @@ jobs:
       run: make -C rasp build
 
     - name: Build Agent
-      run: go build -o elkeid-agent agent/main.go
+      run: cd agent && go build -o elkeid-agent
 
     - name: Build Server
       run: cd server/build && ./build.sh
