@@ -25,10 +25,10 @@
 #define RING_BUFFER_ALL_CPUS -1
 #endif
 
-/* workaround for ringbuffer backporting: CentOS8 4.18.0-305.10.2.el8_4.x86_64 */
-#ifndef ring_buffer
-#define ring_buffer trace_buffer
-#endif
+///* workaround for ringbuffer backporting: CentOS8 4.18.0-305.10.2.el8_4.x86_64 */
+//#ifndef ring_buffer
+//#define ring_buffer trace_buffer
+//#endif
 
 #ifdef SMITH_TRACE_EVENTS
 static inline int __trace_seq_used(struct trace_seq *s)
