@@ -14,6 +14,7 @@
 #include <linux/uaccess.h>
 #include <linux/nsproxy.h>
 #include <linux/pid_namespace.h>
+#include <linux/ctype.h>
 
 #ifdef CONFIG_X86
 #if LINUX_VERSION_CODE > KERNEL_VERSION(4, 7, 0)
