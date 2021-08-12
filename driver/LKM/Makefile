@@ -11,6 +11,7 @@ ccflags-y		+= -I$(MODULE_DIR)/include
 ccflags-y		+= -I$(MODULE_DIR)
 
 UBUNTU_CHECK := $(shell bash $(MODULE_DIR)/unbuntu_check.sh)
+RINGBUFFER_STRUCT_CHECK := $(shell bash $(MODULE_DIR)/ringbuffer_struct_check.sh)
 
 TRACE_EVENTS_HEADER		:=  /lib/modules/$(KERNEL_HEAD)/build/include/linux/trace_events.h
 TRACE_EVENTS_HEADER_V   := $(TRACE_EVENTS_HEADER)
@@ -23,6 +24,10 @@ endif
 $(warning  $(TRACE_EVENTS_HEADER_CHECK))
 ifeq ($(TRACE_EVENTS_HEADER_CHECK),$(TRACE_EVENTS_HEADER))
 ccflags-y += -D SMITH_TRACE_EVENTS
+endif
+
+ifeq ($(RINGBUFFER_STRUCT_CHECK),struct ring_buffer;)
+ccflags-y += -D SMITH_RINGBUFFER_STRUCT
 endif
 else
 MODULE_DIR		:= $(shell pwd)
