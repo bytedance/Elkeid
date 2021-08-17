@@ -294,7 +294,7 @@ func ControlAgentTask(c *gin.Context) {
 
 		//Create the jod and distribute.
 		jobParm := AgentJobParam{ConfigTask: &dbTask, TODOList: todoList}
-		jID, err := job.NewJob(dbTask.TaskType, request.Concurrence, AgentJobTimeOut)
+		jID, err := job.NewJob(dbTask.TaskType, request.Concurrence, AgentJobTimeOut, true)
 		if err != nil {
 			common.CreateResponse(c, common.UnknownErrorCode, err.Error())
 			return

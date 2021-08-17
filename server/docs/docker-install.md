@@ -1,7 +1,8 @@
 English | [简体中文](docker-install-zh_CN.md)
+
 ##  Description
 The Docker version is only for quick testing, please do not use it in a production environment!
-This version only includes Server, Agent please run on the corresponding machine.
+This version only includes the dependent components and Elkeid Server, Please refer to [Agent Installation Steps](../../agent/README.md) for agent deployment.
 
 ##  Requirements
 docker-ce >= 18  
@@ -40,8 +41,6 @@ Step4. Start ServiceDiscovery
 ```
 tar xvf service_discovery-*.tar.gz
 cd service_discovery && ./sd
-#If the service is normal, it can be run in the background  
-nohup ./sd>/dev/null 2>&1 &
 ```
 Step5. Start Manager
 ```
@@ -55,15 +54,11 @@ cd manager
 ./init -c conf/svr.yml -t addIndex -f conf/index.json
 
 ./manager
-#If the service is normal, it can be run in the background
-nohup ./manager>/dev/null 2>&1 &
 ```
 Step6. Start AgentCenter
 ```
 tar xvf agent_center-*.tar.gz
 cd agent_center  && ./agent_center
-#If the service is normal, it can be run in the background
-nohup ./agent_center>/dev/null 2>&1 &
 ```
 ## Start using
 You can run a test script to simply verify connectivity

@@ -24,7 +24,7 @@ We recommend running the Elkeid Agent with **root privileges** in a **physical m
 * Golang 1.16(Required)
 
 ## Work with Elkeid Server
-Before compiling, please confirm that the security credentials and certificates that the Agent relies on are consistent with those of the Server. If they are inconsistent, please replace them manually. For details, please see [Replace Agent-AgentCenter communication certificate](../server/docs/install.md#replace-agent-agentcenter-communication-certificate)
+Before compiling, please confirm that the security credentials and certificates that the Agent relies on are consistent with those of the Server. If they are inconsistent, please replace them manually. For details, please see [Replace Agent-AgentCenter communication certificate](../server/docs/quick-start.md#Server compilation and deployment)
 
 The Agent supports one or more of the following methods to connect to the Server:
 * ServiceDiscovery

@@ -31,6 +31,7 @@ func runServer(port int, enableSSL, enableAuth bool, certFile, keyFile string) {
 	}
 
 	var err error
+	ylog.Infof("RunServer", "####HTTP_LISTEN_ON:%d", port)
 	if enableSSL {
 		err = router.RunTLS(fmt.Sprintf(":%d", port), certFile, keyFile)
 	} else {

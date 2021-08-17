@@ -46,7 +46,8 @@ Elkeid是一个云原生的基于主机的安全(入侵检测与风险识别)解
 * **二次开发友好**：Elkeid 方便二次开发与定制化需求增加
 
 ## Quick Start
-* **[Quick Start](server/docs/quick-start-zh_CN.md)**
+* **[快速部署文档](server/docs/quick-start-zh_CN.md)**
+* **[docker体验文档](server/docs/docker-install-zh_CN.md)**
 * **[Deploy Question and Answer](server/docs/qa-zh_CN.md)**
 
 ## Contact us && Cooperation

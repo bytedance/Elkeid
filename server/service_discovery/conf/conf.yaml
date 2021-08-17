@@ -2,7 +2,7 @@
 # Ip: bind ip address
 # port: the address the http server listens on.
 Server:
-  Ip: "127.0.0.1"
+  Ip: "0.0.0.0"
   Port: 8088
 
 ############################# Cluster Settings #############################
@@ -20,7 +20,7 @@ Cluster:
 #         WarnLevel = 1
 #         ErrorLevel = 2
 log:
-  path: ./service_discovery.log
+  path: ./log/service_discovery.log
   loglevel: 0
 
 ############################# Auth Settings #############################

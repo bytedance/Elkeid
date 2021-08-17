@@ -88,7 +88,7 @@ func (cm *cronJobManager) manage() {
 					if !ok {
 						break
 					}
-					jobId, err := NewJob(cj.name, cj.conNum, cj.timeout)
+					jobId, err := NewJob(cj.name, cj.conNum, cj.timeout, false)
 					if err != nil {
 						ylog.Debugf("cronJobManager", "[cronJobManager] new job error: %s", err.Error())
 						break
@@ -125,6 +125,7 @@ type NewSyncInfo struct {
 	Name    string `json:"name"`
 	ConNum  int    `json:"con_num"`
 	Timeout int    `json:"timeout"`
+	NeedRes bool   `json:"need_res"`
 }
 
 type StopSyncInfo struct {
@@ -147,72 +148,49 @@ type runner struct {
 }
 
 type jobManager struct {
-	mu sync.Mutex
-
-	runningMap     map[string]*runner
-	runningChannel chan *runner
-
-	over chan bool
+	mu         sync.Mutex
+	runningMap map[string]*runner
+	over       chan bool
 }
 
 func newJobManager() *jobManager {
 	jm := &jobManager{
-		runningMap:     make(map[string]*runner),
-		runningChannel: make(chan *runner, defaultNewJobChannelLen),
-		over:           make(chan bool),
+		runningMap: make(map[string]*runner),
+		over:       make(chan bool),
 	}
-	go jm.manage()
 
 	return jm
 }
 
-func (jm *jobManager) manage() {
-	dt := time.NewTicker(defaultCheckInterval * time.Second)
-	defer dt.Stop()
-
-	for {
+func (jm *jobManager) inform(r *runner) {
+	job := r.job
+	over := r.over
+	go job.Run(over)
+	jm.mu.Lock()
+	jm.runningMap[job.GetId()] = r
+	jm.mu.Unlock()
+	ylog.Infof("jobManager", "informed new a job: %s", job.GetId())
+	//监控结束
+	go func(r *runner) {
 		select {
-		case r := <-jm.runningChannel:
-			ylog.Debugf("jobManager", "[manager] new job: %s", r.name)
-			job := r.job
-			over := r.over
-			go job.Run(over)
-			jm.runningMap[job.GetId()] = r
-			//监控结束
-			go func(r *runner) {
-				select {
-				case <-r.over:
-					ylog.Debugf("jobManager", "[manager] job %s informed finish", r.job.GetId())
-					jm.mu.Lock()
-					delete(jm.runningMap, r.job.GetId())
-					jm.mu.Unlock()
-					return
-				}
-			}(r)
-		case <-dt.C:
+		case <-r.over:
+			ylog.Debugf("jobManager", "job %s informed finish", r.job.GetId())
 			jm.mu.Lock()
-			ylog.Debugf("jobManager", "[manager] running job: %v", jm.runningMap)
+			delete(jm.runningMap, r.job.GetId())
 			jm.mu.Unlock()
-		case <-jm.over:
-			ylog.Debugf("jobManager", "[manager] run over")
 			return
 		}
-	}
+	}(r)
 }
 
-func (jm *jobManager) newJob(name string, conNum int, timeout int) (Job, error) {
-	job := NewApiJob("", name, conNum, timeout, infra.Grds)
+func (jm *jobManager) newJob(name string, conNum int, timeout int, needRes bool) (Job, error) {
+	job := NewApiJob("", name, conNum, timeout, needRes, infra.Grds)
 	if job == nil {
 		return nil, errors.New("new job failed")
 	}
-	over := make(chan bool)
-	select {
-	case jm.runningChannel <- &runner{name: name, job: job, over: over}:
-		//fmt.Printf("[manager] new a job\n")
-	default:
-		ylog.Errorf("jobManager", "[manager] new a job, running channel is block")
-		return nil, errors.New("running channel is block")
-	}
+
+	jm.inform(&runner{name: name, job: job, over: make(chan bool)})
+
 	//sync
 	newInfo := NewSyncInfo{
 		Id:      job.GetId(),
@@ -255,17 +233,12 @@ func (jm *jobManager) syncRecv(transInfo TransInfo) {
 			ylog.Errorf("jobManager", "json unmarshal error: %s", err.Error())
 			return
 		}
-		job := NewApiJob(newInfo.Id, newInfo.Name, newInfo.ConNum, newInfo.Timeout, infra.Grds)
+		job := NewApiJob(newInfo.Id, newInfo.Name, newInfo.ConNum, newInfo.Timeout, newInfo.NeedRes, infra.Grds)
 		if job == nil {
 			return
 		}
-		over := make(chan bool)
-		select {
-		case jm.runningChannel <- &runner{name: newInfo.Name, job: job, over: over}:
-			ylog.Debugf("jobManager", "[manager] new a job: %s", newInfo.Id)
-		default:
-			ylog.Errorf("jobManager", "[manager] new a job, running channel is block")
-		}
+
+		jm.inform(&runner{name: newInfo.Name, job: job, over: make(chan bool)})
 	case stopAction:
 		stopInfo := StopSyncInfo{}
 		if err := json.Unmarshal([]byte(transInfo.Data), &stopInfo); err != nil {
@@ -273,10 +246,11 @@ func (jm *jobManager) syncRecv(transInfo TransInfo) {
 			return
 		}
 		jm.mu.Lock()
-		if runner, ok := jm.runningMap[stopInfo.Id]; ok {
+		runner, ok := jm.runningMap[stopInfo.Id]
+		jm.mu.Unlock()
+		if ok {
 			runner.job.Stop()
 		}
-		jm.mu.Unlock()
 	default:
 		ylog.Infof("jobManager", "[manager] action not support")
 	}
@@ -284,10 +258,12 @@ func (jm *jobManager) syncRecv(transInfo TransInfo) {
 
 func (jm *jobManager) stopJob(jobId string) {
 	jm.mu.Lock()
-	if runner, ok := jm.runningMap[jobId]; ok {
+	runner, ok := jm.runningMap[jobId]
+	jm.mu.Unlock()
+	if ok {
 		runner.job.Stop()
 	}
-	jm.mu.Unlock()
+
 	stopInfo := StopSyncInfo{Id: jobId}
 	data, _ := json.Marshal(stopInfo)
 	transInfo := TransInfo{
@@ -302,33 +278,34 @@ func (jm *jobManager) stopJob(jobId string) {
 func (jm *jobManager) distribute(jobId string, k, v interface{}) {
 	jm.mu.Lock()
 	runner, ok := jm.runningMap[jobId]
+	jm.mu.Unlock()
 	if ok {
 		_ = runner.job.Distribute(k, v)
 	}
-	jm.mu.Unlock()
 }
 
 func (jm *jobManager) retry(jobId string) {
 	jm.mu.Lock()
 	runner, ok := jm.runningMap[jobId]
+	jm.mu.Unlock()
 	if ok {
 		runner.job.Retry()
 	}
-	jm.mu.Unlock()
 }
 
 func (jm *jobManager) finish(jobId string) {
 	jm.mu.Lock()
-	if runner, ok := jm.runningMap[jobId]; ok {
+	runner, ok := jm.runningMap[jobId]
+	jm.mu.Unlock()
+	if ok {
 		runner.job.Finish()
 	}
-	jm.mu.Unlock()
 }
 
 //
 
-func NewJob(name string, conNum int, timeout int) (string, error) {
-	job, err := JM.newJob(name, conNum, timeout)
+func NewJob(name string, conNum int, timeout int, needRes bool) (string, error) {
+	job, err := JM.newJob(name, conNum, timeout, needRes)
 	if err != nil {
 		return "", err
 	}

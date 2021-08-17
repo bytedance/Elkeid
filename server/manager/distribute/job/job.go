@@ -67,6 +67,7 @@ type SimpleJob struct {
 	Workers []string
 	ConNum  int
 	Timeout int
+	NeedRes bool //whether save the result to redis
 	//stop job channel
 	Done chan bool
 	//
@@ -77,7 +78,7 @@ type SimpleJob struct {
 	Rds redis.UniversalClient
 }
 
-func NewSimpleJob(id string, name string, mode int, meta map[string]interface{}, workers []string, conNum int, timeout int, dis DisJob, do DoJob, rlt DoRlt, rds redis.UniversalClient) SimpleJob {
+func NewSimpleJob(id string, name string, mode int, meta map[string]interface{}, workers []string, conNum int, timeout int, needRes bool, dis DisJob, do DoJob, rlt DoRlt, rds redis.UniversalClient) SimpleJob {
 	var (
 		setFlag bool
 	)
@@ -94,6 +95,7 @@ func NewSimpleJob(id string, name string, mode int, meta map[string]interface{},
 		Workers: workers,
 		ConNum:  conNum,
 		Timeout: timeout,
+		NeedRes: needRes,
 		Done:    make(chan bool),
 		//callback func
 		Dis: dis,
@@ -135,41 +137,53 @@ func (sj *SimpleJob) Distribute(k, v interface{}) error {
 		sj.Rds.HSet(ctx, statKey, fmt.Sprintf("%s_distribute", LocalHost), "failed")
 		return err
 	}
-	sj.Rds.HSet(ctx, statKey, fmt.Sprintf("%s_distribute", LocalHost), "ok")
+
 	//把任务分发到所有github.com/bytedance/Elkeid/server/manager机器
 	hosts := discovery.GetHosts()
 	ylog.Debugf("SimpleJob", "[job] distribute hosts: %v", hosts)
 	items := jobs.([]JobArgs)
 	infoKey := fmt.Sprintf(JobInfo, sj.Id)
+	const retriesMax = 10
+	distributeOkCount := 0
+	distributeFailedCount := 0
+	unDistribute := len(items)
 	for i, item := range items {
-		retries := 10
+		unDistribute--
+		retries := 0
 		jobChannel := fmt.Sprintf(jobChannel, hosts[i%len(hosts)], sj.Id)
 		jobBytes, err := json.Marshal(item)
 		if err != nil {
 			ylog.Errorf("SimpleJob", "[job] marshal error: %s", err.Error())
-			sj.Rds.HIncrBy(ctx, infoKey, "distribute_failed_count", 1)
+			distributeFailedCount++
 			continue
 		}
 
 		//publish
 		var intCmd *redis.IntCmd
-		for retries >= 0 {
-			ylog.Errorf("SimpleJob", ">>>>[job] retry %d publish job %v to channel %s", retries, string(jobBytes), jobChannel)
+		for retries < retriesMax {
 			intCmd = sj.Rds.Publish(ctx, jobChannel, string(jobBytes))
 			if intCmd.Val() == 1 {
 				break
 			}
 			time.Sleep(500 * time.Millisecond)
-			retries--
+			retries++
+			ylog.Debugf("SimpleJob", ">>>>[job] retry %d publish job %v to channel %s", retries, string(jobBytes), jobChannel)
 		}
 
-		if intCmd != nil && intCmd.Err() != nil {
-			ylog.Errorf("SimpleJob", "[job] publish job error: %v", intCmd.Err().Error())
-			sj.Rds.HIncrBy(ctx, infoKey, "distribute_failed_count", 1)
+		if intCmd != nil && intCmd.Val() != 1 {
+			ylog.Errorf("SimpleJob", ">>>>[job] publish job %v to channel %s failed after all retries!", sj.Id, jobChannel)
+			distributeFailedCount++
 			continue
 		}
-		sj.Rds.HIncrBy(ctx, infoKey, "distribute_ok_count", 1)
+
+		distributeOkCount++
 	}
+
+	sj.Rds.HSet(ctx, infoKey, "distribute_failed_count", distributeFailedCount)
+	sj.Rds.HSet(ctx, infoKey, "distribute_ok_count", distributeOkCount)
+	sj.Rds.HSet(ctx, infoKey, "un_distribute_count", unDistribute)
+
+	sj.Rds.HSet(ctx, statKey, fmt.Sprintf("%s_distribute", LocalHost), "ok")
 	return nil
 }
 
@@ -244,11 +258,33 @@ func (sj *SimpleJob) Run(over chan bool) {
 		go func(wg *sync.WaitGroup, i int) {
 			defer wg.Done()
 			ylog.Debugf("SimpleJob", "[job] %s %d goroutine start", sj.Id, i)
+
 			t := time.NewTimer(time.Duration(sj.Timeout) * time.Second)
 			defer t.Stop()
+
+			doOKCount := int64(0)
+			doFailCount := int64(0)
+			resultList := make([]interface{}, 0, 0)
+			retryList := make([]interface{}, 0, 0)
+			defer func() {
+				sj.Rds.HIncrBy(ctx, infoKey, "do_ok_count", doOKCount)
+				sj.Rds.HIncrBy(ctx, infoKey, "do_failed_count", doFailCount)
+
+				if sj.NeedRes {
+					sj.push2Redis(ctx, respKey, resultList)
+				}
+
+				sj.push2Redis(ctx, retryKey, retryList)
+			}()
+
 			for {
 				select {
-				case jobMsg := <-ch:
+				case jobMsg, ok := <-ch:
+					if !ok {
+						ylog.Errorf("SimpleJob", "[job] %s goroutine %d chan closed", sj.Id, i)
+						return
+					}
+
 					ylog.Debugf("SimpleJob", "[job] channel %s recv: %s", jobChannel, jobMsg.String())
 					if jobMsg.Payload == FinishFlag {
 						ylog.Debugf("SimpleJob", "[job] %s %d goroutine finish", sj.Id, i)
@@ -258,16 +294,18 @@ func (sj *SimpleJob) Run(over chan bool) {
 					rlt, err := sj.Do(jobMsg.Payload)
 					if err != nil {
 						ylog.Errorf("SimpleJob", "[job] do job error: %s", err.Error())
-						sj.Rds.HIncrBy(ctx, infoKey, "do_failed_count", 1)
-						sj.Rds.LPush(ctx, retryKey, jobMsg.Payload)
-						break
-					}
-					sj.Rlt(sj.Id, rlt)
-					sj.Rds.HIncrBy(ctx, infoKey, "do_ok_count", 1)
-					if rwa, ok := rlt.(JobResWithArgs); ok {
-						sj.Rds.LPush(ctx, respKey, rwa.Result)
+						doFailCount++
+						retryList = append(retryList, jobMsg.Payload)
 					}
 
+					sj.Rlt(sj.Id, rlt)
+
+					doOKCount++
+					if sj.NeedRes {
+						if rwa, ok := rlt.(JobResWithArgs); ok {
+							resultList = append(resultList, rwa.Result)
+						}
+					}
 				case <-t.C:
 					ylog.Errorf("SimpleJob", "[job] %s goroutine %d run timeout", sj.Id, i)
 					return
@@ -289,4 +327,28 @@ func (sj *SimpleJob) Stop() {
 
 func (sj *SimpleJob) RltCallback(k, v interface{}) (interface{}, error) {
 	return sj.Rlt(k, v)
+}
+
+func (sj *SimpleJob) push2Redis(ctx context.Context, key string, list []interface{}) {
+	//push result
+	var gradient = 50
+	for i := 0; ; {
+		if i+gradient < len(list) {
+			err := sj.Rds.LPush(ctx, key, list[i:i+gradient]...).Err()
+			if err != nil {
+				ylog.Errorf("SimpleJob", "[job] %s error %s, len of key list %d", sj.Id, err.Error(), key, len(list[i:i+gradient]))
+			}
+		} else {
+			if len(list[i:]) == 0 {
+				break
+			}
+
+			err := sj.Rds.LPush(ctx, key, list[i:]...).Err()
+			if err != nil {
+				ylog.Errorf("SimpleJob", "[job] %s error %s, key %s len of list %d", sj.Id, err.Error(), key, len(list[i:]))
+			}
+			break
+		}
+		i = i + gradient
+	}
 }

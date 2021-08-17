@@ -21,8 +21,8 @@ Elkeid 后台大体包含4个模块：
 - 部署简单，依赖少，便于维护
 
 ## 部署文档
+- [快速部署文档](docs/quick-start-zh_CN.md)
 - [docker体验文档](docs/docker-install-zh_CN.md)
-- [部署文档](docs/install-zh_CN.md)
 
 ## API接口文档
 Manger API通过token做鉴权，所有接口调用前都需要先用 /api/v1/user/login 接口，获取到token。
@@ -47,5 +47,9 @@ curl --location --request POST 'http://127.0.0.1:6701/api/v1/user/login' \
 curl --location --request GET 'http://127.0.0.1:6701/api/v1/agent/getStatus'  -H "token:xxxxxxxxxxx"
 ```
 详情请参考[API接口文档](https://documenter.getpostman.com/view/9865152/TzCTZ5Do#intro)
+
+## QA
+- [Q&A](docs/qa.md)
+
 ## License
 Elkeid Server are distributed under the Apache-2.0 license.

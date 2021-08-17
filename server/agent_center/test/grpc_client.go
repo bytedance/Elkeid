@@ -20,7 +20,7 @@ var (
 	defaultClientCrtFile1 = "../conf/client.crt"
 
 	tlsServerName1 = "elkeid.com"
-	ServerPort     = "127.0.0.1:6751"
+	ServerPort     = "10.227.2.103:6751"
 	AgentCount     = 1
 )
 
@@ -131,7 +131,7 @@ func Transfer(conn *grpc.ClientConn, agentID, ip, hostname string) {
 			}
 
 			fmt.Println("send data!")
-			time.Sleep(time.Second * 1)
+			time.Sleep(time.Millisecond * 500)
 		}
 		wg.Done()
 	}()

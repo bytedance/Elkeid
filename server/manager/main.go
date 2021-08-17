@@ -33,7 +33,7 @@ func ServerStart() {
 
 	biz.RegisterRouter(router)
 	go func() {
-		fmt.Printf("[START_SERVER] Listening and serving on :%d\n", infra.HttpPort)
+		ylog.Infof("[START_SERVER]", "Listening and serving on :%d", infra.HttpPort)
 		err := router.Run(fmt.Sprintf(":%d", infra.HttpPort))
 		ylog.Errorf("SRV_ERROR", err.Error())
 	}()
