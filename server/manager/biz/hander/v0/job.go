@@ -18,7 +18,7 @@ func NewJob(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"msg": "post data error"})
 		return
 	}
-	jobId, err := job.NewJob(ni.Name, ni.ConNum, ni.Timeout)
+	jobId, err := job.NewJob(ni.Name, ni.ConNum, ni.Timeout, true)
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"msg": err.Error()})
 		return

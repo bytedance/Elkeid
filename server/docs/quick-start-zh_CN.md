@@ -1,3 +1,5 @@
+[English](quick-start.md) | 简体中文
+
 ## 依赖环境准备
 
 ### 1. 依赖组件准备
@@ -9,6 +11,7 @@ Elkeid后端依赖如下组件，进行所有操作之前请先准备好，可�
 |Kafka|每1000台Agent 25Partation|是|如果Agent>1w，建议集群部署|
 |Redis|每1000台Agent 1GB内存|是|如果Agent>1w，建议集群部署|
 
+安装教程可参考 [依赖环境安装指引](install-compose-zh_CN.md)
 ### 2. Elkeid Server集群部署机器准备
 Elkeid后端包括三个部分，ServiceDiscovery、Manager、AgentCenter三部分，可单机部署也可集群部署。推荐配置如下：
 
@@ -136,50 +139,42 @@ Manager-xxx.tar.gz
 ```
 tar xvfz service_discovery-xxx.tar.gz
 ```
-4.2 修改sd的配置conf/conf.yaml，将下面的127.0.0.1修改为部署机器的本机IP：
+4.2 修改sd的配置conf/conf.yaml，将下面的0.0.0.0和127.0.0.1修改为部署机器的本机IP：
 ```
 Server:
-  Ip: "127.0.0.1"
+  Ip: "0.0.0.0"
   Port: 8088
 
 Cluster:
   Mode: "config"
   Members: ["127.0.0.1:8088"]
 ```
-4.3 启动服务
+4.3 安装服务并启动服务
 ```
-./sd
-```
-如果看到如下输出，并且无任何error报错，则服务已经启动成功：
-```
-[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
+//安装服务
+sudo make install
 
-[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
- - using env:	export GIN_MODE=release
- - using code:	gin.SetMode(gin.ReleaseMode)
+//启动服务
+sudo systemctl daemon-reload
+sudo systemctl enable elkeid_sd
+sudo systemctl start elkeid_sd
+```
+查看 `/opt/Elkeid_SD/log/service_discovery.log` 文件如果看到如下输出，并且无任何error报错，则服务已经启动成功：
+```
+{"level":"info","ts":1629172213.686969,"msg":"[START_SERVER]","info":"Listening and serving on :0.0.0.0:8088\n"}
+```
+4.4 故障排除
+- 遇到异常情况可以查看日志来排除故障，日志默认路径为：`/opt/Elkeid_SD/log/service_discovery.log`。以及 systemd 日志：`journalctl -u elkeid_sd`。
+- 修改配置或有其他变更需要可能需要才可以生效，重启命令：`sudo systemctl restart elkeid_sd`
 
-[GIN-debug] POST   /registry/register        --> github.com/bytedance/Elkeid/server/service_discovery/server/handler.Register (4 handlers)
-[GIN-debug] POST   /registry/evict           --> github.com/bytedance/Elkeid/server/service_discovery/server/handler.Evict (4 handlers)
-[GIN-debug] POST   /registry/sync            --> github.com/bytedance/Elkeid/server/service_discovery/server/handler.Sync (4 handlers)
-[GIN-debug] GET    /endpoint/ping            --> github.com/bytedance/Elkeid/server/service_discovery/server/handler.Ping (3 handlers)
-[GIN-debug] GET    /endpoint/stat            --> github.com/bytedance/Elkeid/server/service_discovery/server/handler.EndpointStat (3 handlers)
-[GIN-debug] GET    /registry/summary         --> github.com/bytedance/Elkeid/server/service_discovery/server/handler.RegistrySummary (3 handlers)
-[GIN-debug] GET    /registry/detail          --> github.com/bytedance/Elkeid/server/service_discovery/server/handler.RegistryDetail (3 handlers)
-[GIN-debug] GET    /registry/list            --> github.com/bytedance/Elkeid/server/service_discovery/server/handler.RegistryList (3 handlers)
-[GIN-debug] Listening and serving HTTP on xx.xx.xx.xx:8088
-```
-4.4 步骤3中服务若正常运行，则可放到后台运行：
-```
-nohup ./sd>/dev/null 2>&1 &
-```
 > 默认情况下ServiceDiscovery会在8088端口开放HTTP服务，用于对外API访问和内部通信。请保持此端口与所有Agent机器通信畅通。  
 >  同时也需要保持此端口与所有Manager/AgentCenter机器之间通信畅通。  
 ### 5. 部署 Manager
-1. 将第三步生成的 Manager-xxx.tar.gz 拷贝到Manager集群各服务器上，并解压。
+5.1 将第三步生成的 Manager-xxx.tar.gz 拷贝到Manager集群各服务器上，并解压。
 ```
 tar xvfz manager-xxx.tar.gz
 ```
-2. 修改Manager的配置conf/svr.yml： 
+5.2 修改Manager的配置conf/svr.yml： 
   - 修改redis配置：redis.passwd为redis密码（为空可不设置）。redis.addrs为redis地址。
   - 将sd.addrs修改为服务发现集群的地址列表。（即步骤4中部署的ServiceDiscovery的ip:port）
   - 将 mongo.uri 修改为mongodb集群的uri地址，格式为 mongodb://{{user_name}}:{{passwd}}@{{ip}}:{{port}}/{{dbname}}?authSource={{dbname}} 。并且将mongo.dbname修改为对应的db名
@@ -195,7 +190,7 @@ mongo:
   uri: mongodb://hids:I7ILUz7WhOJUWygy@127.0.0.1:27000/hids_server?authSource=hids_server
   dbname: hids_server
 ```
-3. 服务初始化。 
+5.3 服务初始化。 
   - 新增用户，请保存好新增的用户名和密码，在后续Manager API接口/api/v1/user/login中需要用到。
 ```
 ./init -c conf/svr.yml -t addUser -u hids_test -p hids_test
@@ -209,22 +204,31 @@ InsertedID: ObjectID("60cc447e809e3afbd63ee256") {hids_test 689e877c0fcf65fd361f
 #index新增Mongodb索引
 ./init -c conf/svr.yml -t addIndex -f conf/index.json
 ```
-4. 启动服务
-./manager -c conf/svr.yml
+5.4 安装服务并启动服务
+```
+//安装服务
+sudo make install
 
-如果看到如下输出，并且无任何error报错，则服务已经启动成功。
+//启动服务
+sudo systemctl daemon-reload
+sudo systemctl enable elkeid_manager
+sudo systemctl start elkeid_manager
 ```
-[job] api job init
-{"level":"info","ts":1623999644.6970289,"msg":"JOB_MANAGE","info":"job manage init"}
-{"level":"debug","ts":1623999644.6972933,"msg":"cronJobManager","info":"cron jobs: [{Server_AgentStat 90 512 120} {Server_AgentList 30 512 20}]"}
->>>>new registry: discovery.ServerRegistry{Name:"hids_manage", Ip:"10.227.2.103", Port:6701, Weight:0, SDHost:"127.0.0.1:8088", stopChan:(chan struct {})(0xc0001ac5a0)}
->>>>register response: {"msg":"ok"}
-[START_SERVER] Listening and serving on :6701
+查看 `/opt/Elkeid_Manager/log/svr.log` 文件如果看到如下输出，并且无任何error报错，则服务已经启动成功：
 ```
-5. 服务校验
+{"level":"info","ts":1629185924.3975492,"msg":"JOB_MANAGE","info":"job manage init"}
+{"level":"info","ts":1629185924.398058,"msg":"NewRegistry","info":"new registry: discovery.ServerRegistry{Name:\"hids_manage\", Ip:\"10.227.2.103\", Port:6701, Weight:0, SDHost:\"127.0.0.1:8088\", stopChan:(chan struct {})(0xc00030e960)}"}
+{"level":"info","ts":1629185924.3991835,"msg":"NewRegistry","info":"register response: {\"msg\":\"ok\"}"}
+{"level":"info","ts":1629185924.3993368,"msg":"[START_SERVER]","info":"Listening and serving on :6701"}
+```
+5.5 故障排除
+- 遇到异常情况可以查看日志来排除故障，日志默认路径为：`/opt/Elkeid_Manager/log/svr.log`。以及 systemd 日志：`journalctl -u elkeid_manager`。
+- 修改配置或有其他变更需要可能需要才可以生效，重启命令：`sudo systemctl restart elkeid_manager`
+
+5.6 服务校验
   - 校验服务发现是否注册成功：
    执行 `curl http://{{sd_ip:sd_port}}/registry/detail?name=hids_manage`
-   如果为异常返回，请检查步骤2中配置文件conf/svr.yml里面的sd.addrs是否配置正确。如果还未能解决，请参考 **QA 2服务发现异常排查** 来解决。
+   如果为异常返回，请检查步骤2中配置文件conf/svr.yml里面的sd.addrs是否配置正确。如果还未能解决，请参考 **[QA](qa-zh_CN.md) 2服务发现异常排查** 来解决。
 ```
 //正常返回，返回了manager注册的地址
 {"data":[{"name":"hids_manage","ip":"xxxx","port":6701,"status":0,"create_at":1623400287,"update_at":1623402507,"weight":0,"extra":{}}],"msg":"ok"}
@@ -232,19 +236,16 @@ InsertedID: ObjectID("60cc447e809e3afbd63ee256") {hids_test 689e877c0fcf65fd361f
 //异常返回
 {"data":[],"msg":"ok"}
 ```
-6. 如果步骤4和步骤5中都无异常，则可放到后台运行：
-```
-nohup ./manager -c conf/svr.yml>/dev/null 2>&1 &
-```
+
 > 默认情况下Manager会在6701端口开放HTTP服务，用于对外API访问和内部通信。  
 > 另外请确保Redis集群和Mongodb集群与Manager集群机器之间的通信畅通。  
 
 ### 6. 部署 AgentCenter
-1. 将第三步生成的 agent_center-xxx.tar.gz 拷贝到AgentCenter集群各服务器上，并解压。
+6.1 将第三步生成的 agent_center-xxx.tar.gz 拷贝到AgentCenter集群各服务器上，并解压。
 ```
 tar xvfz agent_center-xxx.tar.gz
 ```
-2. 修改agent_center的配置conf/svr.yml 主要是改3个地方：
+6.2 修改agent_center的配置conf/svr.yml 主要是改3个地方：
   - 将 sd.addrs修改为服务发现集群的地址列表。（即步骤4中部署的ServiceDiscovery的ip:port）
   - 将manage.addrs修改为Manager集群的地址列表。（即步骤5中部署的Manager的ip:port）
   - 将kafka.addrs修改为kafka集群的地址列表。并且将kafka.topic修改为kafka集群的写入topic
@@ -262,45 +263,35 @@ kafka:
     - 127.0.0.1:9092
   topic: hids_svr
 ```
-3. 启动服务
+6.3 安装服务并启动服务
 ```
-./agent_center -c conf/svr.yml
-```
-如果看到如下输出，并且无任何error报错，则服务已经启动成功：
-```
-{"level":"info","ts":1623999988.1748643,"msg":"InitComponents","info":"KAFKA Producer: [127.0.0.1:9092] - hids_svr"}
-{"level":"info","ts":1623999988.174998,"msg":"Sarama","info":["Initializing new client"]}
-{"level":"info","ts":1623999988.1751726,"msg":"Sarama","info":"client/metadata fetching metadata for all topics from broker 127.0.0.1:9092\n"}
-{"level":"info","ts":1623999988.1760483,"msg":"Sarama","info":"Connected to broker at 127.0.0.1:9092 (unregistered)\n"}
-{"level":"info","ts":1623999988.1820292,"msg":"Sarama","info":"client/brokers registered new broker #1 at 127.0.0.1:9092"}
-{"level":"info","ts":1623999988.182112,"msg":"Sarama","info":["Successfully initialized new client"]}
-[MAIN] START_SERVER
-[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
+//安装服务
+sudo make install
 
-[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
- - using env:	export GIN_MODE=release
- - using code:	gin.SetMode(gin.ReleaseMode)
-
-{"level":"info","ts":1623999988.1901152,"msg":"NewRegistry","info":">>>>new registry: {hids_svr_grpc 10.227.2.103 %!s(int=6751) %!s(int=0) map[] [127.0.0.1:8088] %!s(chan struct {}=0xc0004b0000)}"}
-[GIN-debug] GET    /conn/stat                --> github.com/bytedance/Elkeid/server/agent_center/httptrans/http_handler.ConnStat (3 handlers)
-[GIN-debug] GET    /conn/list                --> github.com/bytedance/Elkeid/server/agent_center/httptrans/http_handler.ConnList (3 handlers)
-[GIN-debug] GET    /conn/count               --> github.com/bytedance/Elkeid/server/agent_center/httptrans/http_handler.ConnCount (3 handlers)
-[GIN-debug] POST   /conn/reset               --> github.com/bytedance/Elkeid/server/agent_center/httptrans/http_handler.ConnReset (3 handlers)
-[GIN-debug] POST   /command/                 --> github.com/bytedance/Elkeid/server/agent_center/httptrans/http_handler.PostCommand (3 handlers)
-[GIN-debug] Listening and serving HTTPS on :6752
-{"level":"info","ts":1623999988.1933253,"msg":"RunServer","info":"####TCP_LISTEN_OK: [::]:6751"}
-####TCP_LISTEN_OK: [::]:6751
-[NewRegistry] >>>>new registry {"name":"hids_svr_grpc","ip":"10.227.2.103","port":6751,"weight":0,"extra":null} resp: {"msg":"ok"}
-{"level":"info","ts":1623999988.1938977,"msg":"NewRegistry","info":">>>>new registry {\"name\":\"hids_svr_grpc\",\"ip\":\"10.227.2.103\",\"port\":6751,\"weight\":0,\"extra\":null} resp: {\"msg\":\"ok\"}"}
-{"level":"info","ts":1623999988.1940048,"msg":"NewRegistry","info":">>>>new registry: {hids_svr_http 10.227.2.103 %!s(int=6752) %!s(int=0) map[] [127.0.0.1:8088] %!s(chan struct {}=0xc00003a0c0)}"}
-[NewRegistry] >>>>new registry {"name":"hids_svr_http","ip":"10.227.2.103","port":6752,"weight":0,"extra":null} resp: {"msg":"ok"}
-{"level":"info","ts":1623999988.1950216,"msg":"NewRegistry","info":">>>>new registry {\"name\":\"hids_svr_http\",\"ip\":\"10.227.2.103\",\"port\":6752,\"weight\":0,\"extra\":null} resp: {\"msg\":\"ok\"}"}
+//启动服务
+sudo systemctl daemon-reload
+sudo systemctl enable elkeid_ac
+sudo systemctl start elkeid_ac
 ```
-HTTPS服务监听了6752端口，TCP服务监听了6751端口，并且注册到服务发现已经成功。  
-4. 服务校验
+查看 `/opt/Elkeid_AC/log/svr.log` 文件如果看到如下输出，并且无任何error报错，则服务已经启动成功：
+```
+{"level":"info","ts":1629186151.7101195,"msg":"InitComponents","info":"KAFKA Producer: [127.0.0.1:9092] - hids_svr"}
+{"level":"info","ts":1629186151.731163,"msg":"[MAIN]","info":"START_SERVER"}
+{"level":"info","ts":1629186151.731474,"msg":"RunServer","info":"####HTTP_LISTEN_ON:6752"}
+{"level":"info","ts":1629186151.734691,"msg":"RunServer","info":"####TCP_LISTEN_OK: [::]:6751"}
+{"level":"info","ts":1629186151.7313871,"msg":"NewRegistry","info":">>>>new registry: {hids_svr_grpc 10.227.2.103 %!s(int=6751) %!s(int=0) map[] [127.0.0.1:8088] %!s(chan struct {}=0xc00021c120)}"}
+{"level":"info","ts":1629186151.7366326,"msg":"NewRegistry","info":">>>>new registry {\"name\":\"hids_svr_grpc\",\"ip\":\"10.227.2.103\",\"port\":6751,\"weight\":0,\"extra\":null} resp: {\"msg\":\"ok\"}"}
+{"level":"info","ts":1629186151.7366986,"msg":"NewRegistry","info":">>>>new registry: {hids_svr_http 10.227.2.103 %!s(int=6752) %!s(int=0) map[] [127.0.0.1:8088] %!s(chan struct {}=0xc00013a0c0)}"}
+{"level":"info","ts":1629186151.7382596,"msg":"NewRegistry","info":">>>>new registry {\"name\":\"hids_svr_http\",\"ip\":\"10.227.2.103\",\"port\":6752,\"weight\":0,\"extra\":null} resp: {\"msg\":\"ok\"}"}
+```
+HTTP服务监听了6752端口，TCP服务监听了6751端口，并且注册到服务发现已经成功。  
+6.4 故障排除
+- 遇到异常情况可以查看日志来排除故障，日志默认路径为：`/opt/Elkeid_AC/log/svr.log`。以及 systemd 日志：`journalctl -u elkeid_ac`。
+- 修改配置或有其他变更需要可能需要才可以生效，重启命令：`sudo systemctl restart elkeid_ac`
+6.5 服务校验
   - 校验服务发现是否注册成功：
    执行 `curl http://{{sd_ip:sd_port}}/registry/detail?name=hids_svr_grpc`
-   如果为异常返回，请检查步骤2中配置文件conf/svr.yml里面的sd.addrs是否配置正确。如果还未能解决，请参考 **QA 2服务发现异常排查** 来解决。
+   如果为异常返回，请检查步骤2中配置文件conf/svr.yml里面的sd.addrs是否配置正确。如果还未能解决，请参考 **[QA](qa-zh_CN.md) 2服务发现异常排查** 来解决。
 ```
 //正常返回，返回了manager注册的地址
 {"data":[{"name":"hids_svr_grpc","ip":"xxxx","port":6751,"status":0,"create_at":1623403853,"update_at":1623403853,"weight":0,"extra":null}],"msg":"ok"}
@@ -308,10 +299,7 @@ HTTPS服务监听了6752端口，TCP服务监听了6751端口，并且注册到�
 //异常返回
 {"data":[],"msg":"ok"}
 ```
-5. 步骤3中服务若正常运行，则可放到后台运行：
-```
-nohup ./agent_center -c conf/svr.yml>/dev/null 2>&1 &
-```
+
 > AgentCenter会在6751端口开放RPC服务，请保持此端口与所有Agent机器通信畅通。   
 > AgentCenter会在6752端口开放HTTP服务，请保持此端口与所有Manager机器通信畅通。 AgentCenter会在6753端口开放pprof服务，用于debug。
 >
@@ -588,24 +576,3 @@ curl --location --request POST 'http://127.0.0.1:6701/api/v1/agent/updateDefault
     "config": []
 }'
 ```
-
-
-## QA
-### 1. Mangager API 使用过程中遇到报错 CLUSTERDOWN Hash slot not served
-如果是单节点的redis集群，运行可能会遇到报错 CLUSTERDOWN Hash slot not served，需要执行如下命令修复： redis-cli --cluster fix 127.0.0.1:6379
-### 2. 服务发现异常排查 
-1. 首先请确认manager/agentcenter配置文件中服务发现的地址写的是正确的地址。
-2. 如果地址配置没错，则是aksk配置的问题：
-类似返回 `{"code":-1,"data":"User not exist","msg":"auth failed"}` 类似的错误，一般情况下是因为没将manager/agentcenter的aksk写到服务发现配置文件中导致的。  
-请按照如下方法排查：
-    - 查看manager/conf/svr.yml的配置文件:  
-确保`manager/conf/svr.yml`文件里面的sd.credentials.ak和sd.credentials.sk已经配置到service_discovery的配置文件Auth.Keys里面。  
-    - 查看agent_center/conf/svr.yml的配置文件  
-确保上面`agent_center/conf/svr.yml`文件里面的sd.auth.ak和sd.auth.sk已经配置到service_discovery的配置文件Auth.Keys里面。
-
-### 3. 首次使用manager接口时，发现有异常
-首次使用manager api时，如果发现有controlTask接口下发任务失败、无响应；getStatus接口查询不到agent数据等情况。请按照如下步骤排查：
-1. 如果是单节点的redis集群，请先执行如下命令修复集群状态：redis-cli --cluster fix 127.0.0.1:6379
-2. manager接口的数据是定时采集，所以接口数据会有30秒-90秒的时间延迟，如果上述操作都执行完成后，manager接口仍然有异常，可稍稍2分钟再尝试。
-### 4. Manager API接口响应慢，db耗性能等
-请参照 上面 Server编译和部署-->部署Manager -->3 服务初始化--> 新增索引 步骤来给mongodb增加必要的索引。

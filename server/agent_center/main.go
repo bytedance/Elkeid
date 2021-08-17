@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/bytedance/Elkeid/server/agent_center/common"
+	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	"github.com/bytedance/Elkeid/server/agent_center/grpctrans"
 	"github.com/bytedance/Elkeid/server/agent_center/httptrans"
 	"github.com/bytedance/Elkeid/server/agent_center/svr_registry"
@@ -17,7 +18,7 @@ func init() {
 }
 
 func main() {
-	fmt.Println("[MAIN] START_SERVER")
+	ylog.Infof("[MAIN]", "START_SERVER")
 
 	//start http server and grpc server
 	go httptrans.Run()
@@ -45,7 +46,7 @@ func debug() {
 	if common.PProfEnable {
 		err := http.ListenAndServe(fmt.Sprintf(":%d", common.PProfPort), nil)
 		if err != nil {
-			fmt.Printf("[MAIN] pprof ListenAndServe Error %s", err.Error())
+			ylog.Errorf("[MAIN]", "pprof ListenAndServe Error %s", err.Error())
 		}
 	}
 }

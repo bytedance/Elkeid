@@ -241,11 +241,11 @@ type ApiJob struct {
 	SimpleJob
 }
 
-func NewApiJob(id string, name string, conNum int, timeout int, rds redis.UniversalClient) Job {
+func NewApiJob(id string, name string, conNum int, timeout int, needRes bool, rds redis.UniversalClient) Job {
 	if _, ok := ApiMap[name]; !ok {
 		return nil
 	}
-	sj := NewSimpleJob(id, name, 0, ApiMap[name], nil, conNum, timeout, AJF.disMap[name], AJF.doMap[name], AJF.rltMap[name], rds)
+	sj := NewSimpleJob(id, name, 0, ApiMap[name], nil, conNum, timeout, needRes, AJF.disMap[name], AJF.doMap[name], AJF.rltMap[name], rds)
 
 	aj := &ApiJob{
 		SimpleJob: sj,

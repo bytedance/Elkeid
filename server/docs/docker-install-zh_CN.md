@@ -1,7 +1,8 @@
 [English](docker-install.md) | 简体中文
+
 ##  说明
 Docker版只为快速体验使用，请不要在生产环境下使用!
-该版本中只包括了Server, Agent请在相应的机器中运行。
+该版本中只包括了依赖组件和Elkeid Server的部署, Agent的部署请参考[Agent安装步骤](../../agent/README-zh_CN.md)。
 
 ##  依赖
 docker-ce >= 18  
@@ -39,8 +40,6 @@ Step4. 启动ServiceDiscovery
 ```
 tar xvf service_discovery-*.tar.gz
 cd service_discovery && ./sd
-#如果服务无异常，也可放后台运行  
-nohup ./sd>/dev/null 2>&1 &
 ```
 Step5. 启动Manager
 ```
@@ -54,15 +53,11 @@ cd manager
 ./init -c conf/svr.yml -t addIndex -f conf/index.json
 
 ./manager
-#如果服务无异常，也可放后台运行  
-nohup ./manager>/dev/null 2>&1 &
 ```
 Step6. 启动AgentCenter
 ```
 tar xvf agent_center-*.tar.gz
 cd agent_center  && ./agent_center
-#如果服务无异常，也可放后台运行  
-nohup ./agent_center>/dev/null 2>&1 &
 ```
 ## 开始使用
 安装完成后，可跑测试脚本简单验证连通性

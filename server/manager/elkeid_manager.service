@@ -1,0 +1,17 @@
+[Unit]
+Description=Elkeid Manager
+Requires=network-online.target
+
+[Service]
+ExecStart=/opt/Elkeid_Manager/manager
+WorkingDirectory=/opt/Elkeid_Manager/
+LimitNOFILE=655350
+Restart=always
+RestartSec=2s
+KillMode=control-group
+KillSignal=INT
+TimeoutStopSec=900
+UMask=0000
+
+[Install]
+WantedBy=multi-user.target

@@ -47,8 +47,9 @@ The current open source module lacks a rule engine and detection rule, and canno
 * **Secondary Development Friendly**: Elkeid facilitates secondary development and increased demand for customization.
 
 ## Quick Start
-* **[Quick Start](server/docs/quick-start-zh_CN.md)**
-* **[Deploy Question and Answer](server/docs/qa-zh_CN.md)**
+* **[Quick Start](server/docs/quick-start.md)**
+* **[Docker Test Deployment Document](server/docs/docker-install.md)**
+* **[Deploy Question and Answer](server/docs/qa.md)**
 
 ## Contact us && Cooperation
 

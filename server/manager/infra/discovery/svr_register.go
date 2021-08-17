@@ -40,7 +40,7 @@ func NewRegistry(svrName, ip, sdUrl string, port int) *ServerRegistry {
 		stopChan: make(chan struct{}),
 	}
 
-	fmt.Printf(">>>>new registry: %#v\n", *svr)
+	ylog.Infof("NewRegistry", "new registry: %#v", *svr)
 	option := midware.SdAuthRequestOption()
 	option.JSON = map[string]interface{}{
 		"name":   svr.Name,
@@ -56,7 +56,7 @@ func NewRegistry(svrName, ip, sdUrl string, port int) *ServerRegistry {
 		fmt.Printf("register error: %s\n", err.Error())
 		return svr
 	}
-	fmt.Printf(">>>>register response: %s\n", r.String())
+	ylog.Infof("NewRegistry", "register response: %s", r.String())
 	//fmt.Printf("register response: %s\n", r.String())
 	go svr.renewRegistry()
 	return svr
