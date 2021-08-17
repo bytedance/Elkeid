@@ -1,4 +1,4 @@
-English | [简体中文](quick-start.md)
+English | [简体中文](quick-start-zh_CN.md)
 
 ## Dependent environment preparation
 
