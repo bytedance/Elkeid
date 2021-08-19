@@ -53,7 +53,7 @@ func AddTags(c *gin.Context) {
 		}
 	}
 
-	for _, ip := range tagRequest.IPv4 {
+	for _, ip := range tagRequest.IPv6 {
 		_, err = collection.UpdateMany(
 			context.Background(),
 			bson.M{
