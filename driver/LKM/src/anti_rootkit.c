@@ -31,6 +31,7 @@ static struct mutex *mod_lock = NULL;
 struct module *(*mod_find_module)(const char *name);
 static void work_func(struct work_struct *dummy);
 
+static int work_stopped;
 static DECLARE_DELAYED_WORK(work, work_func);
 
 #define BETWEEN_PTR(x, y, z) ( \
@@ -242,7 +243,11 @@ static void anti_rootkit_check(void)
 static void work_func(struct work_struct *dummy)
 {
     anti_rootkit_check();
-	schedule_delayed_work(&work, round_jiffies_relative(DEFERRED_CHECK_TIMEOUT));
+    /* check whether work is cancelled to avoid possible races */
+    if (READ_ONCE(work_stopped)) {
+        return;
+    }
+    schedule_delayed_work(&work, round_jiffies_relative(DEFERRED_CHECK_TIMEOUT));
 }
 
 static void init_del_workqueue(void)
@@ -252,7 +257,12 @@ static void init_del_workqueue(void)
 
 static void exit_del_workqueue(void)
 {
-    cancel_delayed_work_sync(&work);
+    WRITE_ONCE(work_stopped, 1);
+    do {
+        cancel_delayed_work_sync(&work);
+        /* waiting for completion of work_func to avoid possible races */
+        msleep(35);
+    } while (test_bit(WORK_STRUCT_PENDING_BIT, work_data_bits(&work.work)));
 }
 
 static int __init anti_rootkit_init(void)
