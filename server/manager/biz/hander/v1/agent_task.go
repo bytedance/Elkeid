@@ -431,7 +431,7 @@ func createTask(request *AgentConfigTask, tType string) (string, float64, error)
 	request.FinishedList = []string{}
 	request.JobList = []string{}
 	request.CreateTime = time.Now().Unix()
-	request.CreateTime = time.Now().Unix()
+	request.UpdateTime = time.Now().Unix()
 	request.IDCount = float64(len(todoList))
 	request.TaskID = fmt.Sprintf(`%d%s`, time.Now().UnixNano(), infra.RandStringBytes(6))
 
