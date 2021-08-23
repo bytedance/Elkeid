@@ -15,6 +15,7 @@
 #include <linux/nsproxy.h>
 #include <linux/pid_namespace.h>
 #include <linux/ctype.h>
+#include <linux/delay.h>
 
 #ifdef CONFIG_X86
 #if LINUX_VERSION_CODE > KERNEL_VERSION(4, 7, 0)
