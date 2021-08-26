@@ -129,7 +129,12 @@ int del_rb_by_data_exe_list(char *str)
         return 0;
 
     write_lock(&exe_allowlist_lock);
-    rb_erase(&data->node, &execve_exe_allowlist);
+    /* make sure node is still in rb tree */
+    data = search_rb(&execve_exe_allowlist, str);
+    if (data) {
+        rb_erase(&data->node, &execve_exe_allowlist);
+        execve_exe_allowlist_limit--;
+    }
     write_unlock(&exe_allowlist_lock);
 
     kfree(data->data);
@@ -145,7 +150,12 @@ int del_rb_by_data_argv_list(char *str)
         return 0;
 
     write_lock(&argv_allowlist_lock);
-    rb_erase(&data->node, &execve_argv_allowlist);
+    /* make sure node is still in rb tree */
+    data = search_rb(&execve_argv_allowlist, str);
+    if (data) {
+        rb_erase(&data->node, &execve_argv_allowlist);
+        execve_argv_allowlist_limit--;
+    }
     write_unlock(&argv_allowlist_lock);
 
     kfree(data->data);
@@ -168,23 +178,28 @@ static void rbtree_clear(struct rb_node *this_node)
     kfree(node);
 }
 
-static void add_execve_exe_allowlist(char *data)
+static int add_execve_exe_allowlist(char *data)
 {
     struct allowlist_node *node;
+    int rc = 0;
+
     if (!data)
-        return;
+        return -EINVAL;
 
     node = kzalloc(sizeof(struct allowlist_node), GFP_ATOMIC);
     if (!node)
-        return;
-
+        return -ENOMEM;
     node->data = data;
 
     write_lock(&exe_allowlist_lock);
-    if(!insert_rb(&execve_exe_allowlist, node))
+    rc = insert_rb(&execve_exe_allowlist, node);
+    if (rc)
+        execve_exe_allowlist_limit++;
+    else
         printk(KERN_INFO "[ELKEID] add_execve_exe_allowlist error\n");
     write_unlock(&exe_allowlist_lock);
 
+    return rc;
 }
 
 static int del_execve_exe_allowlist(char *data)
@@ -194,12 +209,11 @@ static int del_execve_exe_allowlist(char *data)
 
 static int del_all_execve_exe_allowlist(void)
 {
-    if (execve_exe_allowlist.rb_node != NULL) {
-        write_lock(&exe_allowlist_lock);
-        rbtree_clear(execve_exe_allowlist.rb_node);
-        execve_exe_allowlist = RB_ROOT;
-        write_unlock(&exe_allowlist_lock);
-    }
+    write_lock(&exe_allowlist_lock);
+    rbtree_clear(execve_exe_allowlist.rb_node);
+    execve_exe_allowlist = RB_ROOT;
+    execve_exe_allowlist_limit = 0;
+    write_unlock(&exe_allowlist_lock);
 
     return 0;
 }
@@ -232,22 +246,28 @@ int execve_exe_check(char *data)
     return res;
 }
 
-static void add_execve_argv_allowlist(char *data)
+static int add_execve_argv_allowlist(char *data)
 {
     struct allowlist_node *node;
+    int rc = 0;
+
     if (!data)
-        return;
+        return -EINVAL;
 
     node = kzalloc(sizeof(struct allowlist_node), GFP_ATOMIC);
     if (!node)
-        return;
-
+        return -ENOMEM;
     node->data = data;
 
     write_lock(&argv_allowlist_lock);
-    if(!insert_rb(&execve_argv_allowlist, node))
+    rc = insert_rb(&execve_argv_allowlist, node);
+    if (rc)
+        execve_argv_allowlist_limit++;
+    else
         printk(KERN_INFO "[ELKEID] add_execve_argv_allowlist error\n");
     write_unlock(&argv_allowlist_lock);
+
+    return rc;
 }
 
 static int del_execve_argv_allowlist(char *data)
@@ -263,6 +283,7 @@ static void del_all_execve_argv_allowlist(void)
     write_lock(&argv_allowlist_lock);
     rbtree_clear(execve_argv_allowlist.rb_node);
     execve_argv_allowlist = RB_ROOT;
+    execve_argv_allowlist_limit = 0;
     write_unlock(&argv_allowlist_lock);
 
 }
@@ -300,7 +321,6 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
 {
     char *data_main;
     int res;
-    int del_res;
     char flag;
 
     if (len < ALLOWLIST_NODE_MIN || len > ALLOWLIST_NODE_MAX)
@@ -321,7 +341,6 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
     switch (flag) {
         case ADD_EXECVE_EXE_SHITELIST:
             if (execve_exe_allowlist_limit <= 96){
-                execve_exe_allowlist_limit++;
                 /* assgin data_main to rb node */
                 add_execve_exe_allowlist(smith_strim(data_main));
                 data_main = NULL;
@@ -329,13 +348,10 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
             break;
 
         case DEL_EXECVE_EXE_SHITELIST:
-            del_res = del_execve_exe_allowlist(strim(data_main));
-            if (del_res == 1)
-                execve_exe_allowlist_limit--;
+            del_execve_exe_allowlist(strim(data_main));
             break;
 
         case DEL_ALL_EXECVE_EXE_SHITELIST:
-            execve_exe_allowlist_limit = 0;
             del_all_execve_exe_allowlist();
             break;
 
@@ -352,7 +368,6 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
 
         case ADD_EXECVE_ARGV_SHITELIST:
             if (execve_argv_allowlist_limit <= 96){
-                execve_argv_allowlist_limit++;
                 /* assgin data_main to rb node */
                 add_execve_argv_allowlist(smith_strim(data_main));
                 data_main = NULL;
@@ -360,12 +375,10 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
             break;
 
         case DEL_EXECVE_ARGV_SHITELIST:
-            del_res = del_execve_argv_allowlist(strim(data_main));
-            execve_argv_allowlist_limit--;
+            del_execve_argv_allowlist(strim(data_main));
             break;
 
         case DEL_ALL_EXECVE_ARGV_SHITELIST:
-            execve_argv_allowlist_limit = 0;
             del_all_execve_argv_allowlist();
             break;
 

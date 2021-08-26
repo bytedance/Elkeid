@@ -12,8 +12,6 @@
 
 #define EXIT_PROTECT 0
 #define SANDBOX 0
-
-#define MAXACTIVE (24 * NR_CPUS)
 #define SMITH_MAX_ARG_STRINGS (16)
 
 // Hook on-off
@@ -2537,7 +2535,6 @@ struct kretprobe execveat_kretprobe = {
 	    .entry_handler = execveat_entry_handler,
 	    .data_size = sizeof(struct execve_data),
 	    .handler = execve_handler,
-	    .maxactive = MAXACTIVE,
 };
 #endif
 
@@ -2546,7 +2543,6 @@ struct kretprobe execve_kretprobe = {
         .entry_handler = execve_entry_handler,
         .data_size = sizeof(struct execve_data),
         .handler = execve_handler,
-        .maxactive = MAXACTIVE,
 };
 
 #ifdef CONFIG_COMPAT
@@ -2555,7 +2551,6 @@ struct kretprobe compat_execve_kretprobe = {
 	    .entry_handler = compat_execve_entry_handler,
 	    .data_size = sizeof(struct execve_data),
 	    .handler = execve_handler,
-	    .maxactive = MAXACTIVE,
 };
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0)
@@ -2564,7 +2559,6 @@ struct kretprobe compat_execveat_kretprobe = {
 	    .entry_handler = compat_execveat_entry_handler,
 	    .data_size = sizeof(struct execve_data),
 	    .handler = execve_handler,
-	    .maxactive = MAXACTIVE,
 };
 #endif
 #endif
@@ -2611,7 +2605,6 @@ struct kretprobe udp_recvmsg_kretprobe = {
         .data_size = sizeof(struct udp_recvmsg_data),
         .handler = udp_recvmsg_handler,
         .entry_handler = udp_recvmsg_entry_handler,
-        .maxactive = MAXACTIVE,
 };
 
 #if IS_ENABLED(CONFIG_IPV6)
@@ -2620,7 +2613,6 @@ struct kretprobe udpv6_recvmsg_kretprobe = {
 	    .data_size = sizeof(struct udp_recvmsg_data),
 	    .handler = udp_recvmsg_handler,
 	    .entry_handler = udpv6_recvmsg_entry_handler,
-	    .maxactive = MAXACTIVE,
 };
 
 struct kretprobe ip6_datagram_connect_kretprobe = {
@@ -2628,7 +2620,6 @@ struct kretprobe ip6_datagram_connect_kretprobe = {
 	    .data_size = sizeof(struct connect_data),
 	    .handler = connect_handler,
 	    .entry_handler = ip6_datagram_connect_entry_handler,
-	    .maxactive = MAXACTIVE,
 };
 
 struct kretprobe tcp_v6_connect_kretprobe = {
@@ -2636,7 +2627,6 @@ struct kretprobe tcp_v6_connect_kretprobe = {
 	    .data_size = sizeof(struct connect_data),
 	    .handler = connect_handler,
 	    .entry_handler = tcp_v6_connect_entry_handler,
-	    .maxactive = MAXACTIVE,
 };
 #endif
 
@@ -2645,7 +2635,6 @@ struct kretprobe ip4_datagram_connect_kretprobe = {
         .data_size = sizeof(struct connect_data),
         .handler = connect_handler,
         .entry_handler = ip4_datagram_connect_entry_handler,
-        .maxactive = MAXACTIVE,
 };
 
 struct kretprobe tcp_v4_connect_kretprobe = {
@@ -2653,7 +2642,6 @@ struct kretprobe tcp_v4_connect_kretprobe = {
         .data_size = sizeof(struct connect_data),
         .handler = connect_handler,
         .entry_handler = tcp_v4_connect_entry_handler,
-        .maxactive = MAXACTIVE,
 };
 
 struct kretprobe connect_syscall_kretprobe = {
@@ -2661,7 +2649,6 @@ struct kretprobe connect_syscall_kretprobe = {
         .data_size = sizeof(struct connect_syscall_data),
         .handler = connect_syscall_handler,
         .entry_handler = connect_syscall_entry_handler,
-        .maxactive = MAXACTIVE,
 };
 
 struct kretprobe accept_kretprobe = {
@@ -2669,7 +2656,6 @@ struct kretprobe accept_kretprobe = {
         .data_size = sizeof(struct accept_data),
         .handler = accept_handler,
         .entry_handler = accept_entry_handler,
-        .maxactive = MAXACTIVE,
 };
 
 struct kretprobe accept4_kretprobe = {
@@ -2677,7 +2663,6 @@ struct kretprobe accept4_kretprobe = {
         .data_size = sizeof(struct accept_data),
         .handler = accept_handler,
         .entry_handler = accept4_entry_handler,
-        .maxactive = MAXACTIVE,
 };
 
 struct kprobe do_init_module_kprobe = {
@@ -2690,7 +2675,6 @@ struct kretprobe update_cred_kretprobe = {
         .data_size = sizeof(struct update_cred_data),
         .handler = update_cred_handler,
         .entry_handler = update_cred_entry_handler,
-        .maxactive = MAXACTIVE,
 };
 
 struct kprobe security_inode_create_kprobe = {
@@ -2703,7 +2687,6 @@ struct kretprobe bind_kretprobe = {
         .data_size = sizeof(struct bind_data),
         .handler = bind_handler,
         .entry_handler = bind_entry_handler,
-        .maxactive = MAXACTIVE,
 };
 
 struct kprobe mprotect_kprobe = {
