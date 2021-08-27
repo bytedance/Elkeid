@@ -13,6 +13,43 @@ type container struct {
 	podName string
 }
 
+// caculate huge file md5
+func HashFileMd5(filePath string) (string, error) {
+	//Initialize variable returnMD5String now in case an error has to be returned
+	var returnMD5String string
+	//Open the passed argument and check for any error
+	file, err := os.Open(filePath)
+	defer file.Close()
+	if err != nil {
+		return returnMD5String, err
+	}
+	//Tell the program to call the following function when the current function returns
+	//Open a new hash interface to write to
+	hash := md5.New()
+	//Copy the file in the hash interface and check for any error
+	//if _, err := io.Copy(hash, file); err != nil {
+	//	return returnMD5String, err
+	//}
+	// calculate the file size
+	info, _ := file.Stat()
+	filesize := info.Size()
+	const filechunk = 8192 // we settle for 8KB
+	blocks := uint64(math.Ceil(float64(filesize) / float64(filechunk)))
+	for i := uint64(0); i < blocks; i++ {
+		time.Sleep(100 * time.Millisecond)
+		blocksize := int(math.Min(filechunk, float64(filesize-int64(i*filechunk))))
+		buf := make([]byte, blocksize)
+		file.Read(buf)
+		io.WriteString(hash, string(buf)) // append into the hash
+	}
+	time.Sleep(200 * time.Millisecond)
+	//Get the 16 bytes hash
+	hashInBytes := hash.Sum(nil)[:16]
+	//Convert the bytes to a string
+	returnMD5String = hex.EncodeToString(hashInBytes)
+	return returnMD5String, nil
+}
+
 func main() {
 	nsMapping := make(map[string]*container)
 	self, err := procfs.Self()
