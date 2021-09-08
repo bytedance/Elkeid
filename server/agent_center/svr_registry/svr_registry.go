@@ -31,8 +31,12 @@ func NewGRPCServerRegistry() *ServerRegistry {
 	return NewRegistry(fmt.Sprintf(`%s_grpc`, common.SvrName), common.LocalIP, common.SdAddrs, common.GRPCPort)
 }
 
-func NewHttpServerRegistry() *ServerRegistry {
+func NewAPIHttpServerRegistry() *ServerRegistry {
 	return NewRegistry(fmt.Sprintf(`%s_http`, common.SvrName), common.LocalIP, common.SdAddrs, common.HttpPort)
+}
+
+func NewRawDataHttpServerRegistry() *ServerRegistry {
+	return NewRegistry(fmt.Sprintf(`%s_http_rawdata`, common.SvrName), common.LocalIP, common.SdAddrs, common.RawDataPort)
 }
 
 func NewRegistry(svrName, ip string, addrList []string, port int) *ServerRegistry {

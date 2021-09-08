@@ -35,4 +35,6 @@ var (
 
 	PProfEnable bool
 	PProfPort   int //pprof
+
+	RawDataPort int //rawdata port
 )

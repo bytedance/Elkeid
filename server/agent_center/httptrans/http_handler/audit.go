@@ -1,7 +1,8 @@
 package http_handler
 
 import (
-	"github.com/bytedance/Elkeid/server/agent_center/common"
+	"encoding/json"
+	"fmt"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	"github.com/gin-gonic/gin"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,7 +33,13 @@ func (w *AuditLogWriter) Run() {
 	for {
 		select {
 		case tmp := <-w.queue:
-			common.KafkaProducer.SendWithKey(string(tmp.AuditID), tmp)
+			//common.KafkaProducer.SendWithKey(string(tmp.AuditID), tmp)
+			data, err := json.Marshal(*tmp)
+			if err == nil {
+				fmt.Printf("%s\n", string(data))
+			} else {
+				fmt.Println(err.Error())
+			}
 		}
 	}
 }

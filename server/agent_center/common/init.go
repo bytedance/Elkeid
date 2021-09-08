@@ -61,6 +61,8 @@ func initDefault() {
 
 	PProfEnable = UserConfig.GetBool("server.pprof.enable")
 	PProfPort = UserConfig.GetInt("server.pprof.port")
+
+	RawDataPort = UserConfig.GetInt("server.rawdata.port")
 }
 
 func initLog() {

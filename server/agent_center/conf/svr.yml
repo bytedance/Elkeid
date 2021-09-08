@@ -45,6 +45,9 @@ kafka:
 # http.auth.aksk: Used to identify the client. work when http.auth.enable = true
 # http.ssl.enable: whether to enable ssl for http service
 # pprof.enable:  whether to enable pprof for debug.
+#
+#
+# rawdata.port: http rawdata service.
 server:
   log:
     applog:
@@ -72,3 +75,6 @@ server:
   pprof:
     enable: true
     port: 6753
+
+  rawdata:
+    port: 6754

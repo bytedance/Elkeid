@@ -33,9 +33,14 @@ func main() {
 		regGrpc.Stop()
 	}()
 
-	regHttp := svr_registry.NewHttpServerRegistry()
+	regHttp := svr_registry.NewAPIHttpServerRegistry()
 	defer func() {
 		regHttp.Stop()
+	}()
+
+	regRawData := svr_registry.NewRawDataHttpServerRegistry()
+	defer func() {
+		regRawData.Stop()
 	}()
 
 	<-common.Sig
