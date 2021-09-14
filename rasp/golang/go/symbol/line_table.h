@@ -12,19 +12,19 @@ enum emGOVersion {
 };
 
 class CLineTable {
-#define gLineTable SINGLETON_(CLineTable)
+#define gLineTable SINGLETON(CLineTable)
 public:
     bool load();
     bool load(const std::string& file);
     bool load(const std::string& file, unsigned long base);
-    bool load(const char* lineTable);
+    bool load(const char *table);
 
 private:
     unsigned long peek(const char *address) const;
 
 public:
-    bool findFunc(void *pc, CFunction& func);
-    bool getFunc(unsigned long index, CFunction& func);
+    bool findFunc(void *pc, CFunction &func);
+    bool getFunc(unsigned long index, CFunction &func);
 
 private:
     const go::func_item *getFuncItem(unsigned long index) const;

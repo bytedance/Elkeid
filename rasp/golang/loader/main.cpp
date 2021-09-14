@@ -3,6 +3,7 @@
 #include <csignal>
 #include <go/symbol/build_info.h>
 #include <go/symbol/line_table.h>
+#include <go/symbol/interface_table.h>
 #include <go/api/api.h>
 #include <asm/api_hook.h>
 
@@ -29,13 +30,22 @@ int main(int argc, char **argv, char **env) {
         return -1;
     }
 
-    if (gBuildInfo->load(argv[1], loader.mProgramBase)) {
-        LOG_INFO("go version: %s", gBuildInfo->mVersion.c_str());
-    }
-
     if (!gLineTable->load(argv[1], loader.mProgramBase)) {
         LOG_ERROR("line table load failed");
         return -1;
+    }
+
+    if (gBuildInfo->load(argv[1], loader.mProgramBase)) {
+        LOG_INFO("go version: %s", gBuildInfo->mVersion.c_str());
+
+        CInterfaceTable table = {};
+
+        if (!table.load(argv[1], loader.mProgramBase)) {
+            LOG_ERROR("interface table load failed");
+            return -1;
+        }
+
+        table.findByFuncName("errors.(*errorString).Error", (go::interface_item **)CAPIBase::errorInterface());
     }
 
     if (!gWorkspace->init()) {
@@ -45,32 +55,25 @@ int main(int argc, char **argv, char **env) {
 
     gSmithProbe->start();
 
-    for (unsigned long i = 0; i < gLineTable->mFuncNum; i++) {
-        CFunction func = {};
+    for (const auto &api : GOLANG_API) {
+        for (unsigned long i = 0; i < gLineTable->mFuncNum; i++) {
+            CFunction func = {};
 
-        if (!gLineTable->getFunc(i, func))
-            break;
+            if (!gLineTable->getFunc(i, func))
+                break;
 
-        const char *name = func.getName();
-        void *entry = func.getEntry();
+            const char *name = func.getName();
+            void *entry = func.getEntry();
 
-        for (const auto &r : APIRegistry) {
-            if (!r.ignoreCase && strcmp(r.name, name) != 0)
-                continue;
+            if ((api.ignoreCase ? strcasecmp(api.name, name) : strcmp(api.name, name)) == 0) {
+                LOG_INFO("hook %s: %p", name, entry);
 
-            if (r.ignoreCase && CStringHelper::tolower(r.name) != CStringHelper::tolower(name))
-                continue;
+                if (!gAPIHook->hook(entry, (void *)api.metadata.entry, api.metadata.origin)) {
+                    LOG_WARNING("hook %s failed", name);
+                    break;
+                }
 
-            if (*r.metadata.origin != nullptr) {
-                LOG_INFO("ignore %s: %p", name, entry);
-                continue;
-            }
-
-            LOG_INFO("hook %s: %p", name, entry);
-
-            if (!gAPIHook->hook(entry, (void *)r.metadata.entry, r.metadata.origin)) {
-                LOG_WARNING("hook %s failed", name);
-                continue;
+                break;
             }
         }
     }

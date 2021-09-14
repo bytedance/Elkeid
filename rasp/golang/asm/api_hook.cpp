@@ -36,7 +36,7 @@ void *CAPIHook::getExactAddress(void *address) {
             return nullptr;
         }
 
-        if (instruction.mnemonic == ZYDIS_MNEMONIC_SUB)
+        if ((instruction.mnemonic == ZYDIS_MNEMONIC_SUB || instruction.mnemonic == ZYDIS_MNEMONIC_ADD) && instruction.operands[0].reg.value == ZYDIS_REGISTER_RSP)
             break;
 
         offset += instruction.length;

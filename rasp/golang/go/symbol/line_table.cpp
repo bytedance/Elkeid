@@ -9,26 +9,26 @@ constexpr auto GO_LINE_TABLE = "gopclntab";
 constexpr auto LINE_TABLE_MAGIC_12 = 0xFFFFFFFB;
 constexpr auto LINE_TABLE_MAGIC_116 = 0xFFFFFFFA;
 
-bool CLineTable::load(const char *lineTable) {
-    mQuantum = (unsigned char)lineTable[6];
-    mPtrSize = (unsigned char)lineTable[7];
+bool CLineTable::load(const char *table) {
+    mQuantum = (unsigned char)table[6];
+    mPtrSize = (unsigned char)table[7];
 
-    auto magic = *(unsigned int *)lineTable;
+    auto magic = *(unsigned int *)table;
 
     switch (magic) {
         case LINE_TABLE_MAGIC_12: {
             mVersion = emVersion12;
 
-            mFuncNum = peek(&lineTable[8]);
-            mFuncData = lineTable;
-            mFuncNameTable = lineTable;
-            mFuncTable = &lineTable[8 + mPtrSize];
-            mPCTable = lineTable;
+            mFuncNum = peek(&table[8]);
+            mFuncData = table;
+            mFuncNameTable = table;
+            mFuncTable = &table[8 + mPtrSize];
+            mPCTable = table;
 
             unsigned long funcTableSize = mFuncNum * 2 * mPtrSize + mPtrSize;
             unsigned long fileOffset = *(unsigned int *)&mFuncTable[funcTableSize];
 
-            mFileTable = &lineTable[fileOffset];
+            mFileTable = &table[fileOffset];
             mFileNum = *(unsigned int *)mFileTable;
 
             break;
@@ -37,15 +37,15 @@ bool CLineTable::load(const char *lineTable) {
         case LINE_TABLE_MAGIC_116: {
             mVersion = emVersion116;
 
-            mFuncNum = peek(&lineTable[8]);
-            mFileNum = peek(&lineTable[8 + mPtrSize]);
+            mFuncNum = peek(&table[8]);
+            mFileNum = peek(&table[8 + mPtrSize]);
 
-            mFuncNameTable = &lineTable[peek(&lineTable[8 + 2 * mPtrSize])];
-            mCuTable = &lineTable[peek(&lineTable[8 + 3 * mPtrSize])];
-            mFileTable = &lineTable[peek(&lineTable[8 + 4 * mPtrSize])];
-            mPCTable = &lineTable[peek(&lineTable[8 + 5 * mPtrSize])];
-            mFuncData = &lineTable[peek(&lineTable[8 + 6 * mPtrSize])];
-            mFuncTable = &lineTable[peek(&lineTable[8 + 6 * mPtrSize])];
+            mFuncNameTable = &table[peek(&table[8 + 2 * mPtrSize])];
+            mCuTable = &table[peek(&table[8 + 3 * mPtrSize])];
+            mFileTable = &table[peek(&table[8 + 4 * mPtrSize])];
+            mPCTable = &table[peek(&table[8 + 5 * mPtrSize])];
+            mFuncData = &table[peek(&table[8 + 6 * mPtrSize])];
+            mFuncTable = &table[peek(&table[8 + 6 * mPtrSize])];
 
             break;
         }

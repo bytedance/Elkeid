@@ -19,7 +19,18 @@ struct CStackTrace {
     CFunction func;
 };
 
-class CSmithTrace {
+struct CSmithTrace {
+    int classID;
+    int methodID;
+    int count;
+    char args[ARG_COUNT][ARG_LENGTH];
+    CStackTrace stackTrace[TRACE_COUNT];
+};
+
+class CSmithTracer {
+public:
+    explicit CSmithTracer(int classID, int methodID, void *sp, void *I, void *FP);
+
 private:
     void push(const go::Int &arg);
     void push(const go::Uint32 &arg);
@@ -38,13 +49,13 @@ private:
 
 public:
     template<typename Current, typename Next, typename... Rest>
-    void read(void *&sp, void *&I, int &NI, void *&FP, int &NFP) {
-        read<Current>(sp, I, NI, FP, NFP);
-        read<Next, Rest...>(sp, I, NI, FP, NFP);
+    void read() {
+        read<Current>();
+        read<Next, Rest...>();
     }
 
     template<typename T>
-    void read(void *&stack, void *&I, int &NI, void *&FP, int &NFP) {
+    void read() {
         T t = {};
         void *p = &t;
 
@@ -56,22 +67,34 @@ public:
         auto floatRegister = go::Metadata<T>::getFloatRegister();
         auto hasNonTrivialArray = go::Metadata<T>::hasNonTrivialArray();
 
-        if (!gBuildInfo->mRegisterBased || hasNonTrivialArray || integerRegister > NI || floatRegister > NFP) {
-            auto piece = (unsigned long)stack % align;
-            stack = (char *)stack + (piece ? align - piece : 0);
+        if (!gBuildInfo->mRegisterBased || hasNonTrivialArray || integerRegister > mNI || floatRegister > mNFP) {
+            auto piece = (unsigned long)mStack % align;
+            mStack = (char *)mStack + (piece ? align - piece : 0);
 
             for (const auto &f : fields) {
-                memcpy(p, (char *)stack + f.offset, f.size);
+                memcpy(p, (char *)mStack + f.offset, f.size);
                 p = (char *)p + f.size;
             }
 
-            stack = (char *)stack + size;
+            mStack = (char *)mStack + size;
         } else {
             for (const auto &f : fields) {
                 if (f.floating) {
-                    memcpy(p, (double _Complex *)FP + (FLOAT_REGISTER - NFP--), f.size);
+                    auto reg = (double _Complex *)mFP + (FLOAT_REGISTER - mNFP--);
+
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+                    memcpy(p, reg, f.size);
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+                    memcpy(p, (const char *)reg + sizeof(double _Complex) - f.size, f.size);
+#endif
                 } else {
-                    memcpy(p, (unsigned long *)I + (INTEGER_REGISTER - NI--), f.size);
+                    auto reg = (unsigned long *)mI + (INTEGER_REGISTER - mNI--);
+
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+                    memcpy(p, reg, f.size);
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+                    memcpy(p, (const char *)reg + sizeof(unsigned long) - f.size, f.size);
+#endif
                 }
 
                 p = (char *)p + f.size;
@@ -82,18 +105,20 @@ public:
     }
 
 public:
-    void traceback(void *sp);
+    void traceback();
 
 public:
-    int classID;
-    int methodID;
+    CSmithTrace mTrace{};
 
-public:
-    int count;
-    char args[ARG_COUNT][ARG_LENGTH];
+private:
+    void *mI;
+    void *mFP;
+    void *mPC;
+    void *mStack;
 
-public:
-    CStackTrace stackTrace[TRACE_COUNT];
+private:
+    int mNI{INTEGER_REGISTER};
+    int mNFP{FLOAT_REGISTER};
 };
 
 #endif //GO_PROBE_SMITH_TRACE_H

@@ -180,7 +180,6 @@ namespace go {
         static constexpr std::array<FieldMetadata, getFieldNum<Current, Next, Rest...>()>               \
                 getFields(unsigned long offset) {                                                       \
             auto current = getFields<Current>(offset);                                                  \
-            auto field = current.back();                                                                \
             auto rest = getFields<Next, Rest...>(offset + Metadata<Current>::getSize());                \
                                                                                                         \
             return array_cat(current, rest);                                                            \

@@ -2,13 +2,13 @@
 #define GO_PROBE_SMITH_PROBE_H
 
 #include "smith_client.h"
-#include <futex/condition.h>
+#include <z_sync.h>
 #include <common/utils/circular_buffer.h>
 
-constexpr auto TRACE_MAX_SIZE = 100;
+constexpr auto TRACE_BUFFER_SIZE = 100;
 
 class CSmithProbe: public ISmithNotify {
-#define gSmithProbe SINGLETON_(CSmithProbe)
+#define gSmithProbe SINGLETON(CSmithProbe)
 public:
     void start();
     void stop();
@@ -23,17 +23,22 @@ public:
     void onMessage(const CSmithMessage &message) override;
 
 private:
+    bool filter(const CSmithTrace& smithTrace);
+
+private:
     bool mExit{false};
 
 private:
-    CCondition mCondition;
+    std::mutex mMutex;
+    std::map<std::tuple<int, int>, CFilter> mFilters;
 
 private:
+    z_cond_t mCond{};
     CSmithClient mClient{this};
 
 private:
-    CThread_<CSmithProbe> mThread;
-    CCircularBuffer<CSmithTrace, TRACE_MAX_SIZE> mTraces;
+    CThread<CSmithProbe> mThread;
+    CCircularBuffer<CSmithTrace, TRACE_BUFFER_SIZE> mTraces;
 };
 
 

@@ -44,7 +44,7 @@ namespace go {
         }
 
         std::string toSTDString() const {
-            return std::string(data, length);
+            return {data, (std::size_t)length};
         }
     };
 

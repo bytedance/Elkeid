@@ -14,7 +14,7 @@ void free_workspace(void *ptr);
 }
 
 class CWorkspace {
-#define gWorkspace SINGLETON_(CWorkspace)
+#define gWorkspace SINGLETON(CWorkspace)
 public:
     bool init();
     bool destroy();
