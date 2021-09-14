@@ -18,7 +18,7 @@
   1. RUST toolchain 1.40+
   2. JDK 11+(for Java probe)
   3. Python + pip + wheel (for python probe)
-  4. MUSL toolcahin(download via CDN: [link](https://sf1-cdn-tos.douyinstatic.com/obj/eden-cn/laahweh7uhwbps/x86_64-linux-musl.tar.gz))
+  4. MUSL toolcahin(download via CDN: [link](https://sf1-cdn-tos.douyinstatic.com/obj/eden-cn/laahweh7uhwbps/x86_64-linux-musl-1.2.2.tar.gz))
   5. make and install
 
 ```bash
