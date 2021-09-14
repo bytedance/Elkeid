@@ -29,7 +29,7 @@ bool CSmithClient::start() {
     LOG_INFO("client start");
 
     if (!mEventBase) {
-        LOG_ERROR("event base null");
+        LOG_ERROR("event base has been destroyed");
         return false;
     }
 
@@ -42,11 +42,11 @@ bool CSmithClient::start() {
 }
 
 bool CSmithClient::stop() {
-    cancelTimer();
-    disconnect();
-
     event_base_loopbreak(mEventBase);
     mThread.stop();
+
+    cancelTimer();
+    disconnect();
 
     return true;
 }
@@ -54,29 +54,33 @@ bool CSmithClient::stop() {
 void CSmithClient::onBufferRead(bufferevent *bev) {
     evbuffer *input = bufferevent_get_input(bev);
 
-    int length = 0;
-    evbuffer_copyout(input, &length, PROTOCOL_HEADER_SIZE);
+    while (true) {
+        unsigned int length = 0;
 
-    length = ntohl(length);
+        if (evbuffer_copyout(input, &length, PROTOCOL_HEADER_SIZE) != PROTOCOL_HEADER_SIZE)
+            break;
 
-    if (length > PROTOCOL_MAX_SIZE) {
-        LOG_ERROR("message max size limit: %d", length);
-        disconnect();
-        return;
+        length = ntohl(length);
+
+        if (length > PROTOCOL_MAX_SIZE) {
+            LOG_ERROR("message max size limit: %u", length);
+            disconnect();
+            break;
+        }
+
+        if (evbuffer_get_length(input) < length + PROTOCOL_HEADER_SIZE)
+            break;
+
+        std::unique_ptr<char> buffer(new char[length + 1]());
+
+        if (evbuffer_drain(input, PROTOCOL_HEADER_SIZE) != 0 || evbuffer_remove(input, buffer.get(), length) != length) {
+            LOG_ERROR("read buffer failed: %s", evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
+            disconnect();
+            break;
+        }
+
+        mNotify->onMessage(nlohmann::json::parse(buffer.get()).get<CSmithMessage>());
     }
-
-    if (evbuffer_get_length(input) < length + PROTOCOL_HEADER_SIZE)
-        return;
-
-    char *buffer = new char[length + 1]();
-
-    evbuffer_drain(input, PROTOCOL_HEADER_SIZE);
-    evbuffer_remove(input, buffer, length);
-
-    if (mNotify)
-        mNotify->onMessage(nlohmann::json::parse(buffer).get<CSmithMessage>());
-
-    delete []buffer;
 }
 
 void CSmithClient::onBufferWrite(bufferevent *bev) {
@@ -84,14 +88,17 @@ void CSmithClient::onBufferWrite(bufferevent *bev) {
 }
 
 void CSmithClient::onBufferEvent(bufferevent *bev, short what) {
-    if (what & BEV_EVENT_EOF || what & BEV_EVENT_ERROR) {
-        LOG_INFO("buffer event: %hd", what);
+    if (what & BEV_EVENT_EOF) {
+        LOG_INFO("buffer event EOF");
+        disconnect();
+    } else if (what & BEV_EVENT_ERROR) {
+        LOG_ERROR("buffer event error: %s", evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
         disconnect();
     }
 }
 
 bool CSmithClient::writeBuffer(const std::string &message) {
-    AutoMutex _0_(mBevMutex);
+    std::lock_guard<std::mutex> _0_(mMutex);
 
     if (!mBev)
         return false;
@@ -103,26 +110,30 @@ bool CSmithClient::writeBuffer(const std::string &message) {
         return false;
     }
 
-    int length = htonl(message.length());
+    unsigned int length = htonl(message.length());
 
-    bufferevent_write(mBev, &length, sizeof(length));
-    bufferevent_write(mBev, message.data(), message.size());
+    evbuffer_add(output, &length, sizeof(length));
+    evbuffer_add(output, message.data(), message.size());
 
     return true;
 }
 
 bool CSmithClient::connect() {
-    AutoMutex _0_(mBevMutex);
+    std::lock_guard<std::mutex> _0_(mMutex);
 
     sockaddr_un un = {};
 
     un.sun_family = AF_UNIX;
     strcpy(un.sun_path, SOCKET_PATH);
 
-    mBev = bufferevent_socket_new(mEventBase, -1, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_THREADSAFE);
+    mBev = bufferevent_socket_new(
+            mEventBase,
+            -1,
+            BEV_OPT_CLOSE_ON_FREE | BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS
+            );
 
     if (!mBev) {
-        LOG_ERROR("buffer event null");
+        LOG_ERROR("new buffer event failed");
         return false;
     }
 
@@ -157,7 +168,7 @@ bool CSmithClient::connect() {
 }
 
 void CSmithClient::disconnect() {
-    AutoMutex _0_(mBevMutex);
+    std::lock_guard<std::mutex> _0_(mMutex);
 
     LOG_INFO("disconnect");
 
@@ -169,7 +180,7 @@ void CSmithClient::disconnect() {
 
 void CSmithClient::setTimer() {
     struct stub {
-        static void onEvent(evutil_socket_t fd ,short Event, void* arg) {
+        static void onEvent(evutil_socket_t fd, short what, void *arg) {
             static_cast<CSmithClient *>(arg)->onTimer();
         }
     };
@@ -192,7 +203,7 @@ void CSmithClient::cancelTimer() {
 void CSmithClient::onTimer() {
     if (mBev) {
         LOG_INFO("heartbeat");
-        write({emHeartBeat, nlohmann::json::object()});
+        write({HEARTBEAT, nlohmann::json::object()});
     } else {
         LOG_INFO("reconnect");
         connect();
@@ -200,7 +211,6 @@ void CSmithClient::onTimer() {
 }
 
 void CSmithClient::loopThread() {
-    LOG_INFO("client loop thread start");
     event_base_dispatch(mEventBase);
 }
 

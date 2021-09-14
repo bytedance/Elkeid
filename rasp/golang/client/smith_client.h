@@ -2,10 +2,9 @@
 #define GO_PROBE_SMITH_CLIENT_H
 
 #include "smith_message.h"
+#include <mutex>
 #include <event.h>
 #include <common/interface.h>
-#include <common/mutex.h>
-#include <common/singleton.h>
 #include <common/thread.h>
 
 class ISmithNotify: public Interface {
@@ -46,14 +45,14 @@ public:
     bool writeBuffer(const std::string& message);
 
 private:
-    Mutex mBevMutex;
+    std::mutex mMutex;
     ISmithNotify *mNotify{};
 
 private:
     event *mTimer{};
     bufferevent *mBev{};
     event_base *mEventBase;
-    CThread_<CSmithClient> mThread;
+    CThread<CSmithClient> mThread;
 };
 
 

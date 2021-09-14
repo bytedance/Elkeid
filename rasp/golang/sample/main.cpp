@@ -6,25 +6,25 @@
 #include <asm/api_hook.h>
 #include <go/api/api.h>
 
-typedef void(*PFN_GOStart)();
-typedef void*(*PFN_GetFirstModuleData)();
+using GOStartPtr = void (*)();
+using GetFirstModuleDataPtr = void *(*)();
 
 int main() {
     INIT_CONSOLE_LOG(INFO);
 
     std::string path = CPath::join(CPath::getAPPDir(), "go_sample.so");
 
-    void* DLHandle = dlopen(path.c_str(), RTLD_LAZY);
+    void* handle = dlopen(path.c_str(), RTLD_LAZY);
 
-    if (!DLHandle)
+    if (!handle)
         return -1;
 
-    auto pfnGOStart = (PFN_GOStart)dlsym(DLHandle, "GOStart");
+    auto pfnGOStart = (GOStartPtr)dlsym(handle, "GOStart");
 
     if (!pfnGOStart)
         return -1;
 
-    auto pfnGetFirstModuleData = (PFN_GetFirstModuleData)dlsym(DLHandle, "GetFirstModuleData");
+    auto pfnGetFirstModuleData = (GetFirstModuleDataPtr)dlsym(handle, "GetFirstModuleData");
 
     if (!pfnGetFirstModuleData)
         return -1;
@@ -48,32 +48,25 @@ int main() {
         return -1;
     }
 
-    for (unsigned long i = 0; i < gLineTable->mFuncNum; i++) {
-        CFunction func = {};
+    for (const auto &api : GOLANG_API) {
+        for (unsigned long i = 0; i < gLineTable->mFuncNum; i++) {
+            CFunction func = {};
 
-        if (!gLineTable->getFunc(i, func))
-            break;
+            if (!gLineTable->getFunc(i, func))
+                break;
 
-        const char *name = func.getName();
-        void *entry = func.getEntry();
+            const char *name = func.getName();
+            void *entry = func.getEntry();
 
-        for (const auto &r : APIRegistry) {
-            if (!r.ignoreCase && strcmp(r.name, name) != 0)
-                continue;
+            if ((api.ignoreCase ? strcasecmp(api.name, name) : strcmp(api.name, name)) == 0) {
+                LOG_INFO("hook %s: %p", name, entry);
 
-            if (r.ignoreCase && CStringHelper::tolower(r.name) != CStringHelper::tolower(name))
-                continue;
+                if (!gAPIHook->hook(entry, (void *)api.metadata.entry, api.metadata.origin)) {
+                    LOG_WARNING("hook %s failed", name);
+                    break;
+                }
 
-            if (*r.metadata.origin != nullptr) {
-                LOG_INFO("ignore %s: %p", name, entry);
-                continue;
-            }
-
-            LOG_INFO("hook %s: %p", name, entry);
-
-            if (!gAPIHook->hook(entry, (void *)r.metadata.entry, r.metadata.origin)) {
-                LOG_WARNING("hook %s failed", name);
-                continue;
+                break;
             }
         }
     }

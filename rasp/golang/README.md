@@ -88,7 +88,7 @@ Resolve golang symbol table from ```gopclntab``` section, then inline hook api, 
 ## Usage
 
 Start server:
-```shell
+```sh
 # each message is be composed of a 4-byte length header, and a json string.
 socat UNIX-LISTEN:"/var/run/smith_agent.sock" -
 ```
@@ -99,7 +99,7 @@ Loader mode:
 ```
 
 Attach mode by using [pangolin](https://github.com/Hackerl/pangolin):
-```
+```sh
 ./pangolin -c $(pwd)/go_probe -p $(pidof go-program) --daemon
 ```
 

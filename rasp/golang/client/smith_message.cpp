@@ -1,7 +1,6 @@
 #include "smith_message.h"
 #include <unistd.h>
 #include <common/utils/time_helper.h>
-#include <go/symbol/build_info.h>
 
 constexpr auto RUNTIME = "golang";
 constexpr auto PROBE_VERSION = "1.0.0";
@@ -69,4 +68,22 @@ void to_json(nlohmann::json &j, const CModuleInfo &i) {
         {"main", i.main},
         {"deps", i.deps}
     };
+}
+
+void from_json(const nlohmann::json &j, CMatchRule &r) {
+    j.at("index").get_to(r.index);
+    j.at("regex").get_to(r.regex);
+}
+
+void from_json(const nlohmann::json &j, CFilter &f) {
+    j.at("class_id").get_to(f.classId);
+    j.at("method_id").get_to(f.methodID);
+    j.at("include").get_to(f.include);
+    j.at("exclude").get_to(f.exclude);
+}
+
+void from_json(const nlohmann::json &j, CBlock &b) {
+    j.at("class_id").get_to(b.classId);
+    j.at("method_id").get_to(b.methodID);
+    j.at("rules").get_to(b.rules);
 }

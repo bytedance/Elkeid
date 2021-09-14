@@ -29,7 +29,7 @@ struct CModuleInfo {
 };
 
 class CBuildInfo {
-#define gBuildInfo SINGLETON_(CBuildInfo)
+#define gBuildInfo SINGLETON(CBuildInfo)
 public:
     bool load();
     bool load(const std::string& file);
