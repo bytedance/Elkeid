@@ -30,9 +30,9 @@
 * download pre-built binray from CDN:
 
 ```bash
-curl -O https://sf1-cdn-tos.douyinstatic.com/obj/eden-cn/laahweh7uhwbps/x86_64-linux-musl.tar.gz
-tar xf x86_64-linux-musl.tar.gz
-mv x86_64-linux-musl /opt/
+curl -O https://sf1-cdn-tos.douyinstatic.com/obj/eden-cn/laahweh7uhwbps/x86_64-linux-musl-1.2.2.tar.gz
+tar xf x86_64-linux-musl-1.2.2.tar.gz
+mv x86_64-linux-musl-1.2.2 /opt/x86_64-linux-musl
 ```
 * source: https://github.com/Hackerl/musl-cross-make
 
