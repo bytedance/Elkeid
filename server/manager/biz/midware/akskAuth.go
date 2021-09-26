@@ -144,6 +144,11 @@ func innerBeforeRequestFunc(req *http.Request) error {
 	return nil
 }
 
+func ksBeforeRequestFunc(req *http.Request) error {
+	beforeRequestFuncWithKey(req, infra.K8sAK, infra.K8sSK)
+	return nil
+}
+
 func sdBeforeRequestFunc(req *http.Request) error {
 	beforeRequestFuncWithKey(req, infra.SdAK, infra.SdSK)
 	return nil
@@ -174,6 +179,14 @@ func InnerAuthRequestOption() *grequests.RequestOptions {
 	option := &grequests.RequestOptions{
 		InsecureSkipVerify: true,
 		BeforeRequest:      innerBeforeRequestFunc,
+	}
+	return option
+}
+
+func KsAuthRequestOption() *grequests.RequestOptions {
+	option := &grequests.RequestOptions{
+		InsecureSkipVerify: true,
+		BeforeRequest:      ksBeforeRequestFunc,
 	}
 	return option
 }

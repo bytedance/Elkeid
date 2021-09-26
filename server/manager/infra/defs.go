@@ -39,4 +39,8 @@ var (
 	LocalIP      string
 	SdAK         string
 	SdSK         string
+
+	K8sSecAddr string
+	K8sAK      string
+	K8sSK      string
 )

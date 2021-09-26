@@ -61,3 +61,10 @@ redis:
 mongo:
   uri: mongodb://hids:I7ILUz7WhOJUWygy@127.0.0.1:27000/hids_server?authSource=hids_server
   dbname: hids_server
+
+############################# K8s Sec Settings #############################
+k8ssec:
+  addr: "elkeid-ks:7705"
+  credentials:
+    ak: 2d3938b1398543c9
+    sk: 365f003d18eb47b682e605c3612543b5

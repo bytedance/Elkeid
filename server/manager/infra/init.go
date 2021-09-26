@@ -77,6 +77,10 @@ func initDefault() {
 	RegisterName = Conf.GetString("sd.name")
 	SdAK = strings.ToLower(Conf.GetString("sd.credentials.ak"))
 	SdSK = Conf.GetString("sd.credentials.sk")
+
+	K8sSecAddr = Conf.GetString("k8ssec.addr")
+	K8sAK = Conf.GetString("k8ssec.credentials.ak")
+	K8sSK = Conf.GetString("k8ssec.credentials.sk")
 }
 
 func InitConfig() {

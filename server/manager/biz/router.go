@@ -94,5 +94,24 @@ func RegisterRouter(r *gin.Engine) {
 			apiv1Group.GET("/getTags", v1.GetTags)
 			apiv1Group.POST("/getTags", v1.GetTagsByID)
 		}
+
+		kubeSecRouter := apiv1Group.Group("/kubesec")
+		{
+			kubeSecRouter.GET("/clusters/authorized", v1.ProxyK8sRequest)
+			kubeSecRouter.POST("/clusters/kubeconfig/:clusterName", v1.ProxyK8sRequest)
+
+			kubeSecRouter.GET("/clusters/workerload/policies/:clusterName", v1.ProxyK8sRequest)
+			kubeSecRouter.POST("/clusters/workerload/policies/:clusterName", v1.ProxyK8sRequest)
+
+			kubeSecRouter.GET("/clusters/workerload/report/:clusterName", v1.ProxyK8sRequest)
+			kubeSecRouter.POST("/clusters/workerload/report/:clusterName/:nameSpaceName", v1.ProxyK8sRequest)
+
+			kubeSecRouter.GET("/clusters/workerload/checkinterval/:clusterName", v1.ProxyK8sRequest)
+			kubeSecRouter.POST("/clusters/workerload/checkinterval/:clusterName", v1.ProxyK8sRequest)
+
+			kubeSecRouter.GET("/clusters/workerload/filters/:clusterName", v1.ProxyK8sRequest)
+			kubeSecRouter.POST("/clusters/workerload/filters/:clusterName", v1.ProxyK8sRequest)
+
+		}
 	}
 }

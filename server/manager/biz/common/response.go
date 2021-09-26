@@ -14,13 +14,8 @@ const (
 	ParamInvalidErrorCode
 	DBNoRowAffectedErrorCode
 	TemporarilyUnavailable
-	ErrorIDLen
-	ErrorID
 	UnknownErrorCode
-	TimeOutErrorCode
-	RemoteAllFailedErrorCode
-	ProjectIDRespect
-	SomeFieldIsNull
+	RemoteServerError
 )
 
 var ErrorDescriptions = map[int]string{
@@ -32,13 +27,8 @@ var ErrorDescriptions = map[int]string{
 	ParamInvalidErrorCode:    "param invalid",
 	DBNoRowAffectedErrorCode: "db no row affected",
 	TemporarilyUnavailable:   "resource temporarily unavailable",
-	ErrorIDLen:               "ID MAX LEN IS 1-15",
-	ErrorID:                  "ID ONLY SYUUPRT 'A-Z/a-z/0-9/-/_'",
 	UnknownErrorCode:         "unknown error",
-	ProjectIDRespect:         "PROJECT ID REPECT",
-	SomeFieldIsNull:          "SOME FIELD IS NUL",
-	TimeOutErrorCode:         "get result timeout",
-	RemoteAllFailedErrorCode: "all remote instance failed",
+	RemoteServerError:        "remote server error",
 }
 
 type Response struct {
