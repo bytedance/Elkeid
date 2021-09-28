@@ -104,7 +104,7 @@ func RegisterRouter(r *gin.Engine) {
 			kubeSecRouter.POST("/workerload/policies/:clusterName", v1.ProxyK8sRequest)
 
 			kubeSecRouter.GET("/workerload/report/:clusterName", v1.ProxyK8sRequest)
-			kubeSecRouter.POST("/workerload/report/:clusterName/:nameSpaceName", v1.ProxyK8sRequest)
+			kubeSecRouter.GET("/workerload/report/:clusterName/:nameSpaceName", v1.ProxyK8sRequest)
 
 			kubeSecRouter.GET("/workerload/checkinterval/:clusterName", v1.ProxyK8sRequest)
 			kubeSecRouter.POST("/workerload/checkinterval/:clusterName", v1.ProxyK8sRequest)
