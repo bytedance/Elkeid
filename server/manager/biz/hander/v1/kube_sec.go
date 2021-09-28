@@ -6,6 +6,7 @@ import (
 	"github.com/bytedance/Elkeid/server/manager/biz/midware"
 	"github.com/bytedance/Elkeid/server/manager/distribute/job"
 	"github.com/bytedance/Elkeid/server/manager/infra"
+	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	"github.com/gin-gonic/gin"
 	"github.com/levigross/grequests"
 	"strings"
@@ -20,6 +21,7 @@ func ProxyK8sRequest(c *gin.Context) {
 
 	option := midware.KsAuthRequestOption()
 	option.RequestBody = c.Request.Body
+	option.Headers = map[string]string{"Content-Type": "application/json"}
 	option.RequestTimeout = KubeSecTimeOut * time.Second
 	rawUrl := fmt.Sprintf("https://%s/kubesec/api/v1/%s", infra.K8sSecAddr, strings.TrimPrefix(c.Request.URL.Path, "/api/v1/kubesec/"))
 
@@ -36,5 +38,6 @@ func ProxyK8sRequest(c *gin.Context) {
 		common.CreateResponse(c, common.RemoteServerError, err.Error())
 		return
 	}
+	ylog.Debugf("ProxyK8sRequest", "url:%s code:%d response:%s", rawUrl, r.StatusCode, r.String())
 	c.Data(r.RawResponse.StatusCode, "application/json", r.Bytes())
 }

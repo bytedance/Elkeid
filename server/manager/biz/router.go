@@ -100,17 +100,17 @@ func RegisterRouter(r *gin.Engine) {
 			kubeSecRouter.GET("/clusters/authorized", v1.ProxyK8sRequest)
 			kubeSecRouter.POST("/clusters/kubeconfig/:clusterName", v1.ProxyK8sRequest)
 
-			kubeSecRouter.GET("/clusters/workerload/policies/:clusterName", v1.ProxyK8sRequest)
-			kubeSecRouter.POST("/clusters/workerload/policies/:clusterName", v1.ProxyK8sRequest)
+			kubeSecRouter.GET("/workerload/policies/:clusterName", v1.ProxyK8sRequest)
+			kubeSecRouter.POST("/workerload/policies/:clusterName", v1.ProxyK8sRequest)
 
-			kubeSecRouter.GET("/clusters/workerload/report/:clusterName", v1.ProxyK8sRequest)
-			kubeSecRouter.POST("/clusters/workerload/report/:clusterName/:nameSpaceName", v1.ProxyK8sRequest)
+			kubeSecRouter.GET("/workerload/report/:clusterName", v1.ProxyK8sRequest)
+			kubeSecRouter.POST("/workerload/report/:clusterName/:nameSpaceName", v1.ProxyK8sRequest)
 
-			kubeSecRouter.GET("/clusters/workerload/checkinterval/:clusterName", v1.ProxyK8sRequest)
-			kubeSecRouter.POST("/clusters/workerload/checkinterval/:clusterName", v1.ProxyK8sRequest)
+			kubeSecRouter.GET("/workerload/checkinterval/:clusterName", v1.ProxyK8sRequest)
+			kubeSecRouter.POST("/workerload/checkinterval/:clusterName", v1.ProxyK8sRequest)
 
-			kubeSecRouter.GET("/clusters/workerload/filters/:clusterName", v1.ProxyK8sRequest)
-			kubeSecRouter.POST("/clusters/workerload/filters/:clusterName", v1.ProxyK8sRequest)
+			kubeSecRouter.GET("/workerload/filters/:clusterName", v1.ProxyK8sRequest)
+			kubeSecRouter.POST("/workerload/filters/:clusterName", v1.ProxyK8sRequest)
 
 		}
 	}
