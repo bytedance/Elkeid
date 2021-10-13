@@ -47,6 +47,7 @@
 -keep class com.security.smith.SmithAgent {*;}
 
 -keep class com.security.smith.SmithProbe {
-    public void trace(int, int, java.lang.Object[], java.lang.Object, boolean);
+    public void detect(int, int, java.lang.Object[]);
+    public void trace(int, int, java.lang.Object[], java.lang.Object);
     public static com.security.smith.SmithProbe getInstance();
 }
