@@ -6,7 +6,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.guardsquare:proguard-gradle:7.0.0'
+        classpath 'com.guardsquare:proguard-gradle:7.1.1'
     }
 }
 
@@ -23,16 +23,17 @@ repositories {
 }
 
 dependencies {
-    testCompile group: 'junit', name: 'junit', version: '4.12'
-    compile group: 'org.ow2.asm', name: 'asm-tree', version: '8.0.1'
-    compile group: 'org.yaml', name: 'snakeyaml', version: '1.26'
-    compile group: 'io.netty', name: 'netty-all', version: '4.1.51.Final'
-    compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.11.2'
-    compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.11'
+    testImplementation group: 'junit', name: 'junit', version: '4.12'
+    implementation group: 'org.ow2.asm', name: 'asm-tree', version: '8.0.1'
+    implementation group: 'org.ow2.asm', name: 'asm-commons', version: '8.0.1'
+    implementation group: 'org.yaml', name: 'snakeyaml', version: '1.26'
+    implementation group: 'io.netty', name: 'netty-all', version: '4.1.51.Final'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.11.2'
+    implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.11'
 }
 
 compileJava {
-    options.compilerArgs.addAll(['--release', '8'])
+    options.release = 8
 }
 
 jar {

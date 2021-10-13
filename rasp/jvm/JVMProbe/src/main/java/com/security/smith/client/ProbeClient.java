@@ -1,8 +1,11 @@
 package com.security.smith.client;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.security.smith.log.SmithLogger;
+import com.security.smith.type.SmithBlock;
+import com.security.smith.type.SmithFilter;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.epoll.EpollDomainSocketChannel;
@@ -127,6 +130,46 @@ public class ProbeClient implements ProbeClientHandlerNotify {
                 SmithLogger.logger.info("detect");
                 probeNotify.onDetect();
                 break;
+
+            case filterOperate: {
+                SmithLogger.logger.info("filter");
+
+                ObjectMapper objectMapper = new ObjectMapper()
+                        .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+
+                try {
+                    probeNotify.onFilter(
+                            objectMapper.treeToValue(
+                                    protocolBuffer.getData().get("filters"),
+                                    SmithFilter[].class
+                            )
+                    );
+                } catch (JsonProcessingException e) {
+                    e.printStackTrace();
+                }
+
+                break;
+            }
+
+            case blockOperate: {
+                SmithLogger.logger.info("block");
+
+                ObjectMapper objectMapper = new ObjectMapper()
+                        .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+
+                try {
+                    probeNotify.onBlock(
+                            objectMapper.treeToValue(
+                                    protocolBuffer.getData().get("blocks"),
+                                    SmithBlock[].class
+                            )
+                    );
+                } catch (JsonProcessingException e) {
+                    e.printStackTrace();
+                }
+
+                break;
+            }
         }
     }
 

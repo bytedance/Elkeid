@@ -25,16 +25,16 @@ public class SmithMethod {
         this.desc = desc;
     }
 
-    public boolean isRet() {
-        return ret;
+    public boolean isBlock() {
+        return block;
     }
 
-    public void setRet(boolean ret) {
-        this.ret = ret;
+    public void setBlock(boolean block) {
+        this.block = block;
     }
 
     private int id;
     private String name;
     private String desc;
-    private boolean ret;
+    private boolean block;
 }
