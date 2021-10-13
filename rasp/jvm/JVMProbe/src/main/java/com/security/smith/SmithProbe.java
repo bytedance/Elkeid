@@ -1,18 +1,16 @@
 package com.security.smith;
 
-import com.security.smith.asm.SmithClassNode;
+import com.security.smith.asm.SmithClassVisitor;
 import com.security.smith.asm.SmithClassWriter;
 import com.security.smith.client.Operate;
 import com.security.smith.client.ProbeClient;
 import com.security.smith.client.ProbeNotify;
 import com.security.smith.log.SmithLogger;
-import com.security.smith.type.SmithClass;
-import com.security.smith.type.SmithJar;
+import com.security.smith.type.*;
 
-import com.security.smith.type.SmithTrace;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Opcodes;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
+import org.objectweb.asm.*;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 
@@ -24,6 +22,9 @@ import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class SmithProbe implements ClassFileTransformer, ProbeNotify {
@@ -39,6 +40,8 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
         clientConnected = false;
 
         smithClasses = new HashMap<>();
+        smithFilters = new ConcurrentHashMap<>();
+        smithBlocks = new ConcurrentHashMap<>();
         probeClient = new ProbeClient(this);
         traceQueue = new ArrayBlockingQueue<>(DEFAULT_QUEUE_SIZE);
     }
@@ -99,7 +102,7 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
         }
     }
 
-    public void trace(int classID, int methodID, Object[] args, Object ret) {
+    public void trace(int classID, int methodID, Object[] args, Object ret, boolean canBlock) {
         if (!clientConnected)
             return;
 
@@ -112,6 +115,23 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
         smithTrace.setStackTrace(Thread.currentThread().getStackTrace());
 
         traceQueue.offer(smithTrace);
+
+        if (!canBlock)
+            return;
+
+        SmithBlock block = smithBlocks.get(new ImmutablePair<>(smithTrace.getClassID(), smithTrace.getMethodID()));
+
+        if (block == null)
+            return;
+
+        if (Arrays.stream(block.getRules()).anyMatch(rule -> {
+            if (rule.getIndex() >= args.length)
+                return false;
+
+            return Pattern.compile(rule.getRegex()).matcher(args[rule.getIndex()].toString()).find();
+        })) {
+            throw new SecurityException("API blocked by RASP");
+        }
     }
 
     private void probeTraceThread() {
@@ -120,7 +140,33 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
         while (true) {
             try {
                 SmithTrace smithTrace = traceQueue.take();
+                SmithFilter filter = smithFilters.get(new ImmutablePair<>(smithTrace.getClassID(), smithTrace.getMethodID()));
+
+                if (filter == null) {
+                    probeClient.write(Operate.traceOperate, smithTrace);
+                    continue;
+                }
+
+                Predicate<SmithMatchRule> pred = rule -> {
+                    Object[] args = smithTrace.getArgs();
+
+                    if (rule.getIndex() >= args.length)
+                        return false;
+
+                    return Pattern.compile(rule.getRegex()).matcher(args[rule.getIndex()].toString()).find();
+                };
+
+                SmithMatchRule[] include = filter.getInclude();
+                SmithMatchRule[] exclude = filter.getExclude();
+
+                if (include.length > 0 && Arrays.stream(include).noneMatch(pred))
+                    continue;
+
+                if (exclude.length > 0 && Arrays.stream(exclude).anyMatch(pred))
+                    continue;
+
                 probeClient.write(Operate.traceOperate, smithTrace);
+
             } catch (InterruptedException e) {
                 SmithLogger.exception(e);
             }
@@ -132,28 +178,27 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
         if (disable)
             return null;
 
-        SmithClass smithClass = smithClasses.get(className.replace("/", "."));
+        Type classType = Type.getType(classBeingRedefined);
+        SmithClass smithClass = smithClasses.get(classType.getClassName());
 
         if (smithClass == null)
             return null;
 
         SmithLogger.logger.info("transform: " + className);
 
-        ClassReader classReader = new ClassReader(classfileBuffer);
-        SmithClassNode classNode = new SmithClassNode(Opcodes.ASM8);
-
-        classNode.setProbeName(this.getClass().getName());
-        classNode.setClassID(smithClass.getId());
-        classNode.setMethodMap(smithClass.getMethods().stream()
-                .collect(Collectors.toMap(method -> method.getName() + method.getDesc(), method -> method)));
-
-        classReader.accept(classNode, ClassReader.SKIP_FRAMES);
-
         try {
-            ClassWriter classWriter = new SmithClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
-            classNode.accept(classWriter);
+            ClassReader classReader = new ClassReader(classfileBuffer);
+            ClassWriter classWriter = new SmithClassWriter(ClassWriter.COMPUTE_MAXS);
 
-            SmithLogger.logger.info("transform finish");
+            ClassVisitor classVisitor = new SmithClassVisitor(
+                    Opcodes.ASM8,
+                    classWriter,
+                    smithClass.getId(),
+                    classType,
+                    smithClass.getMethods().stream().collect(Collectors.toMap(method -> method.getName() + method.getDesc(), method -> method))
+            );
+
+            classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
 
             return classWriter.toByteArray();
         } catch (Exception e) {
@@ -232,6 +277,30 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
         probeClient.write(Operate.detectOperate, Collections.singletonMap("jars", smithJars));
     }
 
+    @Override
+    public void onFilter(SmithFilter[] filters) {
+        smithFilters.clear();
+
+        for (SmithFilter filter : filters) {
+            smithFilters.put(
+                    new ImmutablePair<>(filter.getClassID(), filter.getMethodID()),
+                    filter
+            );
+        }
+    }
+
+    @Override
+    public void onBlock(SmithBlock[] blocks) {
+        smithBlocks.clear();
+
+        for (SmithBlock block : blocks) {
+            smithBlocks.put(
+                    new ImmutablePair<>(block.getClassID(), block.getMethodID()),
+                    block
+            );
+        }
+    }
+
     enum emControlAction {
         stopAction,
         startAction,
@@ -243,4 +312,6 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
     private final ProbeClient probeClient;
     private final ArrayBlockingQueue<SmithTrace> traceQueue;
     private final Map<String, SmithClass> smithClasses;
+    private final Map<Pair<Integer, Integer>, SmithFilter> smithFilters;
+    private final Map<Pair<Integer, Integer>, SmithBlock> smithBlocks;
 }

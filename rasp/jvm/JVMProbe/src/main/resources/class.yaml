@@ -4,7 +4,7 @@ methods:
   - id: 0
     name: start
     desc: ([Ljava/lang/String;Ljava/util/Map;Ljava/lang/String;[Ljava/lang/ProcessBuilder$Redirect;Z)Ljava/lang/Process;
-    ret: true
+    block: true
   - id: 1
     name: getOutputStream
     desc: ()Ljava/io/OutputStream;

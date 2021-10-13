@@ -6,5 +6,7 @@ public enum Operate {
     traceOperate,
     configOperate,
     controlOperate,
-    detectOperate
+    detectOperate,
+    filterOperate,
+    blockOperate
 }
