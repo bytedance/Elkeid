@@ -5,10 +5,10 @@ import (
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	"github.com/gin-gonic/gin"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apiserver/pkg/apis/audit"
+	"k8s.io/apiserver/pkg/apis/audit/v1"
 )
 
-const AuditEventDataType = "1050"
+const AuditEventDataType = "9003"
 
 // AuditEvent
 type AuditEvent struct {
@@ -16,7 +16,7 @@ type AuditEvent struct {
 	DataType string `json:"data_type"`
 	metav1.TypeMeta
 	metav1.ListMeta
-	audit.Event
+	v1.Event
 }
 
 type AuditLogWriter struct {
@@ -55,7 +55,7 @@ func init() {
 func RDAudit(c *gin.Context) {
 	cluster := c.Param("cluster")
 
-	eventList := &audit.EventList{}
+	eventList := &v1.EventList{}
 	err := c.BindJSON(eventList)
 	if err != nil {
 		CreateResponse(c, ParamInvalidErrorCode, err.Error())
