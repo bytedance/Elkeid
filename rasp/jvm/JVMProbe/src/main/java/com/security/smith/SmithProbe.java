@@ -102,24 +102,8 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
         }
     }
 
-    public void trace(int classID, int methodID, Object[] args, Object ret, boolean canBlock) {
-        if (!clientConnected)
-            return;
-
-        SmithTrace smithTrace = new SmithTrace();
-
-        smithTrace.setClassID(classID);
-        smithTrace.setMethodID(methodID);
-        smithTrace.setRet(ret);
-        smithTrace.setArgs(args);
-        smithTrace.setStackTrace(Thread.currentThread().getStackTrace());
-
-        traceQueue.offer(smithTrace);
-
-        if (!canBlock)
-            return;
-
-        SmithBlock block = smithBlocks.get(new ImmutablePair<>(smithTrace.getClassID(), smithTrace.getMethodID()));
+    public void detect(int classID, int methodID, Object[] args) {
+        SmithBlock block = smithBlocks.get(new ImmutablePair<>(classID, methodID));
 
         if (block == null)
             return;
@@ -132,6 +116,21 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
         })) {
             throw new SecurityException("API blocked by RASP");
         }
+    }
+
+    public void trace(int classID, int methodID, Object[] args, Object ret) {
+        if (!clientConnected)
+            return;
+
+        SmithTrace smithTrace = new SmithTrace();
+
+        smithTrace.setClassID(classID);
+        smithTrace.setMethodID(methodID);
+        smithTrace.setRet(ret);
+        smithTrace.setArgs(args);
+        smithTrace.setStackTrace(Thread.currentThread().getStackTrace());
+
+        traceQueue.offer(smithTrace);
     }
 
     private void probeTraceThread() {
@@ -166,7 +165,6 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
                     continue;
 
                 probeClient.write(Operate.traceOperate, smithTrace);
-
             } catch (InterruptedException e) {
                 SmithLogger.exception(e);
             }

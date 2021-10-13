@@ -149,13 +149,12 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
             visitIntInsn(Opcodes.SIPUSH, methodID);
             mv.visitVarInsn(Opcodes.ALOAD, argumentsVariable);
             mv.visitVarInsn(Opcodes.ALOAD, returnVariable);
-            visitInsn(canBlock ? Opcodes.ICONST_1 : Opcodes.ICONST_0);
 
             visitMethodInsn(
                     Opcodes.INVOKEVIRTUAL,
                     Type.getInternalName(SmithProbe.class),
                     "trace",
-                    Type.getMethodDescriptor(Type.VOID_TYPE, Type.INT_TYPE, Type.INT_TYPE, Type.getType(Object[].class), Type.getType(Object.class), Type.BOOLEAN_TYPE),
+                    Type.getMethodDescriptor(Type.VOID_TYPE, Type.INT_TYPE, Type.INT_TYPE, Type.getType(Object[].class), Type.getType(Object.class)),
                     false
             );
         }
@@ -268,6 +267,29 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
 
         mv.visitVarInsn(Opcodes.ASTORE, argumentsVariable);
         visitLabel(start);
+
+        if (!canBlock)
+            return;
+
+        visitMethodInsn(
+                Opcodes.INVOKESTATIC,
+                Type.getInternalName(SmithProbe.class),
+                "getInstance",
+                Type.getMethodDescriptor(Type.getType(SmithProbe.class)),
+                false
+        );
+
+        visitIntInsn(Opcodes.SIPUSH, classID);
+        visitIntInsn(Opcodes.SIPUSH, methodID);
+        mv.visitVarInsn(Opcodes.ALOAD, argumentsVariable);
+
+        visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                Type.getInternalName(SmithProbe.class),
+                "detect",
+                Type.getMethodDescriptor(Type.VOID_TYPE, Type.INT_TYPE, Type.INT_TYPE, Type.getType(Object[].class)),
+                false
+        );
     }
 
     @Override
@@ -300,13 +322,12 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
         visitIntInsn(Opcodes.SIPUSH, methodID);
         mv.visitVarInsn(Opcodes.ALOAD, argumentsVariable);
         visitInsn(Opcodes.ACONST_NULL);
-        visitInsn(canBlock ? Opcodes.ICONST_1 : Opcodes.ICONST_0);
 
         visitMethodInsn(
                 Opcodes.INVOKEVIRTUAL,
                 Type.getInternalName(SmithProbe.class),
                 "trace",
-                Type.getMethodDescriptor(Type.VOID_TYPE, Type.INT_TYPE, Type.INT_TYPE, Type.getType(Object[].class), Type.getType(Object.class), Type.BOOLEAN_TYPE),
+                Type.getMethodDescriptor(Type.VOID_TYPE, Type.INT_TYPE, Type.INT_TYPE, Type.getType(Object[].class), Type.getType(Object.class)),
                 false
         );
 
