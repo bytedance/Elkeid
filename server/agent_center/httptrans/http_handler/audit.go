@@ -4,7 +4,6 @@ import (
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	"github.com/gin-gonic/gin"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/apis/audit/v1"
 )
 
@@ -14,8 +13,6 @@ const AuditEventDataType = "9003"
 type AuditEvent struct {
 	Cluster  string `json:"cluster"`
 	DataType string `json:"data_type"`
-	metav1.TypeMeta
-	metav1.ListMeta
 	v1.Event
 }
 
@@ -66,8 +63,6 @@ func RDAudit(c *gin.Context) {
 		item := &AuditEvent{}
 		item.DataType = AuditEventDataType
 		item.Cluster = cluster
-		item.TypeMeta = eventList.TypeMeta
-		item.ListMeta = eventList.ListMeta
 		item.Event = event
 
 		auditLogWriter.Add(item)
