@@ -7,7 +7,7 @@
 
 #if(LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 32))
 #error ******************************************************************************
-#error * Elkeid works on kernel 2.6.32 or newer. Please update your kernel *
+#error * Elkeid works on kernel 2.6.32 or newer. Please update your kernel          *
 #error ******************************************************************************
 #endif
 
@@ -15,7 +15,10 @@
 #include "util.h"
 #include "filter.h"
 #include "struct_wrap.h"
+#include "ring.h"
+
 #include <asm/syscall.h>
+#include <linux/usb.h>
 #include <linux/uio.h>
 #include <linux/kprobes.h>
 #include <linux/binfmts.h>
@@ -43,6 +46,7 @@
 #include <linux/fdtable.h>
 #include <linux/prctl.h>
 #include <linux/kmod.h>
+#include <linux/dcache.h>
 
 #ifndef get_file_rcu
 #define get_file_rcu(x) atomic_long_inc_not_zero(&(x)->f_count)
@@ -97,5 +101,7 @@
 #define P_TO_STRING(x) # x
 #define P_GET_SYSCALL_NAME(x) P_SYSCALL_PREFIX(x)
 #define P_GET_COMPAT_SYSCALL_NAME(x) P_COMPAT_SYSCALL_PREFIX(x)
+
+static void (*put_files_struct_sym) (struct files_struct * files);
 
 #endif /* SMITH_HOOK_H */

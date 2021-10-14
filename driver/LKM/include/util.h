@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-3.0 */
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef UTIL_H
 #define UTIL_H
 
@@ -23,17 +23,46 @@
 #endif
 #endif
 
+/*
+ * constants & globals
+ */
+
 #define DEFAULT_RET_STR "-2"
 #define NAME_TOO_LONG "-4"
 #define PID_TREE_MATEDATA_LEN  32
 
 static unsigned int ROOT_PID_NS_INUM;
 
+/*
+ * wrapper of kernel memory allocation routines
+ */
+
+#define smith_kmalloc(size, flags)  kmalloc(size, (flags) | __GFP_NOWARN)
+#define smith_kzalloc(size, flags)  kmalloc(size, (flags) | __GFP_NOWARN | __GFP_ZERO)
+#define smith_kfree(ptr)            do { void * _ptr = (ptr); if (_ptr) kfree(_ptr);} while(0)
+
+/*
+ * common routines
+ */
 extern unsigned long smith_kallsyms_lookup_name(const char *);
 
 extern char *__dentry_path(struct dentry *dentry, char *buf, int buflen);
 
 extern u64 GET_PPIN(void);
+
+extern u8 *smith_query_sb_uuid(struct super_block *sb);
+
+#define smith_get_task_struct(tsk) get_task_struct(tsk)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
+extern void (*__smith_put_task_struct)(struct task_struct *t);
+static inline void smith_put_task_struct(struct task_struct *t)
+{
+	if (atomic_dec_and_test(&t->usage))
+		__smith_put_task_struct(t);
+}
+#else
+#define smith_put_task_struct(tsk)  put_task_struct(tsk)
+#endif
 
 static __always_inline char *smith_get_pid_tree(int limit)
 {
@@ -45,13 +74,13 @@ static __always_inline char *smith_get_pid_tree(int limit)
     struct task_struct *old_task;
 
     task = current;
-    get_task_struct(task);
+    smith_get_task_struct(task);
 
     snprintf(pid, 24, "%d", task->tgid);
-    tmp_data = kzalloc(1024, GFP_ATOMIC);
+    tmp_data = smith_kzalloc(1024, GFP_ATOMIC);
 
     if (!tmp_data) {
-        put_task_struct(task);
+        smith_put_task_struct(task);
         return tmp_data;
     }
 
@@ -62,25 +91,25 @@ static __always_inline char *smith_get_pid_tree(int limit)
     while (1) {
         limit_index = limit_index + 1;
         if (limit_index >= limit) {
-            put_task_struct(task);
+            smith_put_task_struct(task);
             break;
         }
 
         old_task = task;
         rcu_read_lock();
         task = rcu_dereference(task->real_parent);
-        put_task_struct(old_task);
+        smith_put_task_struct(old_task);
         if (!task || task->pid == 0) {
             rcu_read_unlock();
             break;
         }
 
-        get_task_struct(task);
+        smith_get_task_struct(task);
         rcu_read_unlock();
 
         real_data_len = real_data_len + PID_TREE_MATEDATA_LEN;
         if (real_data_len > 1024) {
-            put_task_struct(task);
+            smith_put_task_struct(task);
             break;
         }
 
@@ -201,11 +230,11 @@ static __always_inline char *smith_d_path(const struct path *path, char *buf, in
 #elif !defined(_LINUX_MMAP_LOCK_H)
 static inline bool mmap_read_trylock(struct mm_struct *mm)
 {
-    return down_read_trylock(&mm->mmap_sem) != 0;
+	return down_read_trylock(&mm->mmap_sem) != 0;
 }
 static inline void mmap_read_unlock(struct mm_struct *mm)
 {
-    up_read(&mm->mmap_sem);
+	up_read(&mm->mmap_sem);
 }
 #endif
 
@@ -221,7 +250,7 @@ static __always_inline char *smith_get_exe_file(char *buffer, int size)
         if (current->mm->exe_file) {
             exe_file_str =
                     smith_d_path(&current->mm->exe_file->f_path, buffer,
-                                 size);
+                           size);
         }
         mmap_read_unlock(current->mm);
     }
@@ -288,6 +317,39 @@ static inline unsigned int __get_sessionid(void) {
     return sessionid;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
+/* only for current and systemd: no mmap_sem acquired */
+static inline unsigned int get_task_exe_inum(struct task_struct *task)
+{
+    struct mm_struct *mm = NULL;
+    struct file *exe = NULL;
+    unsigned int inum = 2; /* default root inode for ext2 */
+
+    /* avoid preemption & re-schedule attempt by mmput */
+    smith_pagefault_disable();
+
+    mm = get_task_mm(task);
+    if (!mm)
+        goto errorout;
+
+    exe = mm->exe_file;
+    if (exe)
+        get_file(exe);
+
+    if (exe && exe->f_path.dentry && exe->f_path.dentry->d_inode)
+        inum = exe->f_path.dentry->d_inode->i_ino;
+
+errorout:
+    if (mm)
+        mmput(mm); /* calls might_sleep() */
+    if (exe)
+        fput(exe);
+
+    smith_pagefault_enable();
+    return inum;
+}
+#endif
+
 static inline void __init_root_pid_ns_inum(void) {
     struct pid *pid_struct;
     struct task_struct *task;
@@ -295,26 +357,30 @@ static inline void __init_root_pid_ns_inum(void) {
     pid_struct = find_get_pid(1);
     task = pid_task(pid_struct,PIDTYPE_PID);
 
-    get_task_struct(task);
+    smith_get_task_struct(task);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
     ROOT_PID_NS_INUM = task->nsproxy->pid_ns_for_children->ns.inum;
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
     ROOT_PID_NS_INUM = task->nsproxy->pid_ns_for_children->proc_inum;
-#else
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
     ROOT_PID_NS_INUM = task->nsproxy->pid_ns->proc_inum;
+#else
+    ROOT_PID_NS_INUM = get_task_exe_inum(task);
 #endif
-    put_task_struct(task);
+    smith_put_task_struct(task);
     put_pid(pid_struct);
 }
 
 static inline unsigned int __get_pid_ns_inum(void) {
-    unsigned int inum = 0;
+    unsigned int inum;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
     inum = current->nsproxy->pid_ns_for_children->ns.inum;
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
     inum = current->nsproxy->pid_ns_for_children->proc_inum;
-#else
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
     inum = current->nsproxy->pid_ns->proc_inum;
+#else
+    inum = get_task_exe_inum(current);
 #endif
     return inum;
 }
@@ -326,5 +392,12 @@ static inline int __get_pgid(void) {
 static inline int __get_sid(void) {
     return task_session_nr_ns(current, &init_pid_ns);
 }
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
+static inline bool fd_is_open(int fd, struct fdtable *fdt)
+{
+	return test_bit(fd, (const unsigned long *) fdt->open_fds);
+}
+#endif
 
 #endif /* UTIL_H */

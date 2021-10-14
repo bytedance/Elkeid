@@ -1,4 +1,4 @@
-//  SPDX-License-Identifier: GPL-3.0
+//  SPDX-License-Identifier: GPL-2.0
 /*
  *  anti_rootkit.c
  *  
@@ -17,7 +17,7 @@
 
 #define ANTI_ROOTKIT_CHECK 1
 
-#define DEFERRED_CHECK_TIMEOUT (15 * 60 * HZ)
+#define DEFERRED_CHECK_TIMEOUT (15 * 60)
 
 static int (*ckt) (unsigned long addr) = NULL;
 
@@ -29,17 +29,12 @@ static unsigned long *sct = NULL;
 static struct kset *mod_kset = NULL;
 static struct mutex *mod_lock = NULL;
 struct module *(*mod_find_module)(const char *name);
-static void work_func(struct work_struct *dummy);
-
-static int work_stopped;
-static DECLARE_DELAYED_WORK(work, work_func);
+static struct module *(*get_module_from_addr)(unsigned long addr);
 
 #define BETWEEN_PTR(x, y, z) ( \
     ((uintptr_t)x >= (uintptr_t)y) && \
     ((uintptr_t)x < ((uintptr_t)y+(uintptr_t)z)) \
 )
-
-static struct module *(*get_module_from_addr)(unsigned long addr);
 
 static const char *find_hidden_module(unsigned long addr)
 {
@@ -240,54 +235,74 @@ static void anti_rootkit_check(void)
 	analyze_interrupts();
 }
 
-static void work_func(struct work_struct *dummy)
+static struct task_struct *g_worker_thread;
+static int anti_rootkit_worker(void *argv)
 {
-    anti_rootkit_check();
-    /* check whether work is cancelled to avoid possible races */
-    if (READ_ONCE(work_stopped)) {
-        return;
-    }
-    schedule_delayed_work(&work, round_jiffies_relative(DEFERRED_CHECK_TIMEOUT));
-}
-
-static void init_del_workqueue(void)
-{
-    schedule_delayed_work(&work, 0);
-}
-
-static void exit_del_workqueue(void)
-{
-    WRITE_ONCE(work_stopped, 1);
     do {
-        cancel_delayed_work_sync(&work);
-        /* waiting for completion of work_func to avoid possible races */
-        msleep(35);
-    } while (test_bit(WORK_STRUCT_PENDING_BIT, work_data_bits(&work.work)));
+        int i = 0;
+
+        do {
+            ssleep(1); /* 1 second */
+        } while(++i < DEFERRED_CHECK_TIMEOUT && !kthread_should_stop());
+
+        /* perform rootkit detection */
+        if (!kthread_should_stop())
+            anti_rootkit_check();
+    } while (!kthread_should_stop());
+
+    do_exit(0);
+    return 0;
 }
+
+static int __init anti_rootkit_start(void)
+{
+    int rc = 0;
+
+    g_worker_thread = kthread_create(anti_rootkit_worker, 0, "elkeid - antirootkit");
+    if (IS_ERR_OR_NULL(g_worker_thread)) {
+        rc = g_worker_thread ? PTR_ERR(g_worker_thread) : -ENOMEM;
+        printk("anti_rootkit_start: failed creating anti-rootkit worker: %d\n", rc);
+        return rc;
+    }
+
+    /* wake up anti-rootkit worker thread */
+    if (!wake_up_process(g_worker_thread)) {
+        kthread_stop(g_worker_thread);
+        g_worker_thread = NULL;
+    }
+    return rc;
+}
+
 
 static int __init anti_rootkit_init(void)
 {
     struct kset **kset;
+
 #ifdef CONFIG_X86
     idt = (void *)smith_kallsyms_lookup_name("idt_table");
 #endif
-
     sct = (void *)smith_kallsyms_lookup_name("sys_call_table");
     ckt = (void *)smith_kallsyms_lookup_name("core_kernel_text");
-    kset = (void *)smith_kallsyms_lookup_name("module_kset");
 	mod_lock = (void *)smith_kallsyms_lookup_name("module_lock");
 	mod_find_module = (void *)smith_kallsyms_lookup_name("find_module");
     get_module_from_addr = (void *)smith_kallsyms_lookup_name("__module_address");
+    kset = (void *)smith_kallsyms_lookup_name("module_kset");
     if (kset)
         mod_kset = *kset;
-    init_del_workqueue();
+
+    /* start rootkit-detection worker thread */
+    anti_rootkit_start();
+
     printk("[ELKEID] ANTI_ROOTKIT_CHECK: %d\n", ANTI_ROOTKIT_CHECK);
     return 0;
 }
 
 static void anti_rootkit_exit(void)
 {
-    exit_del_workqueue();
+    /* kthread_stop will wait until worker thread exits */
+    if (!IS_ERR_OR_NULL(g_worker_thread)) {
+        kthread_stop(g_worker_thread);
+    }
 }
 
 #if ANTI_ROOTKIT_CHECK

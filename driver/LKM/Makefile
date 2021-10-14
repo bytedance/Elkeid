@@ -3,46 +3,49 @@ KERNEL_HEAD		:= $(if $(KVERSION),$(KVERSION),$(shell uname -r))
 ifneq ($(KERNELRELEASE),)
 
 obj-m += $(MODULE_NAME).o
-$(MODULE_NAME)-objs := src/init.o src/kprobe.o src/trace.o src/smith_hook.o src/anti_rootkit.o src/filter.o src/util.o
+$(MODULE_NAME)-objs := src/init.o src/kprobe.o src/smith_hook.o src/anti_rootkit.o src/filter.o src/util.o src/core.o src/slot.o
 
 MODULE_DIR		:= $(KBUILD_EXTMOD)
 ldflags-y		+= -r -T $(MODULE_DIR)/kprobe.lds
 ccflags-y		+= -I$(MODULE_DIR)/include
 ccflags-y		+= -I$(MODULE_DIR)
 
-UBUNTU_CHECK := $(shell bash $(MODULE_DIR)/unbuntu_check.sh)
-RINGBUFFER_STRUCT_CHECK := $(shell bash $(MODULE_DIR)/ringbuffer_struct_check.sh)
-
-TRACE_EVENTS_HEADER		:=  /lib/modules/$(KERNEL_HEAD)/build/include/linux/trace_events.h
-TRACE_EVENTS_HEADER_V   := $(TRACE_EVENTS_HEADER)
-TRACE_EVENTS_HEADER_CHECK := $(shell test -e $(TRACE_EVENTS_HEADER_V))
+LOAD_MODLUE_SYMBOL_NAME_STR := $(shell bash $(MODULE_DIR)/get_load_module_sysbol_name.sh)
+UBUNTU_CHECK := $(shell bash $(MODULE_DIR)/ubuntu_check.sh)
+CENTOS_CHECK := $(shell bash $(MODULE_DIR)/centos_check.sh)
+ccflags-y += -D LOAD_MODLUE_SYMBOL_NAME=\"$(LOAD_MODLUE_SYMBOL_NAME_STR)\"
 
 ifeq ($(UBUNTU_CHECK),DISTRIB_ID=Ubuntu)
 ccflags-y += -D UBUNTU_CHECK
 endif
 
-$(warning  $(TRACE_EVENTS_HEADER_CHECK))
-ifeq ($(TRACE_EVENTS_HEADER_CHECK),$(TRACE_EVENTS_HEADER))
-ccflags-y += -D SMITH_TRACE_EVENTS
+ifeq ($(CENTOS_CHECK),NAME="CentOS Linux")
+ccflags-y += -D CENTOS_CHECK
 endif
 
-ifeq ($(RINGBUFFER_STRUCT_CHECK),struct ring_buffer;)
-ccflags-y += -D SMITH_RINGBUFFER_STRUCT
-endif
 else
+
 MODULE_DIR		:= $(shell pwd)
-KERNEL_DIR		:= $(if $(KVERSION),/usr/src/kernels/$(KVERSION),/lib/modules/$(KERNEL_HEAD)/build)
+KERNEL_DIR		:= $(if $(wildcard /usr/src/kernels/$(KVERSION)),/usr/src/kernels/$(KVERSION),/lib/modules/$(KERNEL_HEAD)/build)
 
 all:
+	@echo "|-----------------------------------|"
+	@echo "| building HIDS kernel module       |"
+	@echo "|-----------------------------------|"
 	$(MAKE) -C $(KERNEL_DIR) M=$(MODULE_DIR) modules
+	$(MAKE) -C test
 
 clean:
 	$(MAKE) -C $(KERNEL_DIR) M=$(MODULE_DIR) clean
+	$(MAKE) -C test clean
 
 insmod:
 	sudo insmod $(MODULE_NAME).ko
 
 rmmod:
 	sudo rmmod $(MODULE_NAME)
+
+test:
+	$(MAKE) -C test
 
 endif
