@@ -53,24 +53,22 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
     @Override
     public void visitInsn(int opcode) {
         if (opcode == Opcodes.RETURN || opcode == Opcodes.IRETURN || opcode == Opcodes.FRETURN || opcode == Opcodes.ARETURN || opcode == Opcodes.LRETURN || opcode == Opcodes.DRETURN) {
-            if (opcode != Opcodes.RETURN)
-                visitInsn(Opcodes.DUP);
-
-            String name = returnType.getClassName();
-
-            switch (name) {
-                case "int":
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Integer.class),
-                            "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Integer.class), Type.INT_TYPE),
-                            false
-                    );
-
+            switch (returnType.getSize()) {
+                case 1:
+                    visitInsn(Opcodes.DUP);
                     break;
 
-                case "boolean":
+                case 2:
+                    visitInsn(Opcodes.DUP2);
+                    break;
+            }
+
+            switch (returnType.getSort()) {
+                case Type.VOID:
+                    visitInsn(Opcodes.ACONST_NULL);
+                    break;
+
+                case Type.BOOLEAN:
                     visitMethodInsn(
                             Opcodes.INVOKESTATIC,
                             Type.getInternalName(Boolean.class),
@@ -81,18 +79,51 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
 
                     break;
 
-                case "long":
+                case Type.CHAR:
                     visitMethodInsn(
                             Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Long.class),
+                            Type.getInternalName(Character.class),
                             "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Long.class), Type.LONG_TYPE),
+                            Type.getMethodDescriptor(Type.getType(Character.class), Type.CHAR_TYPE),
                             false
                     );
 
                     break;
 
-                case "float":
+                case Type.BYTE:
+                    visitMethodInsn(
+                            Opcodes.INVOKESTATIC,
+                            Type.getInternalName(Byte.class),
+                            "valueOf",
+                            Type.getMethodDescriptor(Type.getType(Byte.class), Type.BYTE_TYPE),
+                            false
+                    );
+
+                    break;
+
+                case Type.SHORT:
+                    visitMethodInsn(
+                            Opcodes.INVOKESTATIC,
+                            Type.getInternalName(Short.class),
+                            "valueOf",
+                            Type.getMethodDescriptor(Type.getType(Short.class), Type.SHORT_TYPE),
+                            false
+                    );
+
+                    break;
+
+                case Type.INT:
+                    visitMethodInsn(
+                            Opcodes.INVOKESTATIC,
+                            Type.getInternalName(Integer.class),
+                            "valueOf",
+                            Type.getMethodDescriptor(Type.getType(Integer.class), Type.INT_TYPE),
+                            false
+                    );
+
+                    break;
+
+                case Type.FLOAT:
                     visitMethodInsn(
                             Opcodes.INVOKESTATIC,
                             Type.getInternalName(Float.class),
@@ -103,7 +134,18 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
 
                     break;
 
-                case "double":
+                case Type.LONG:
+                    visitMethodInsn(
+                            Opcodes.INVOKESTATIC,
+                            Type.getInternalName(Long.class),
+                            "valueOf",
+                            Type.getMethodDescriptor(Type.getType(Long.class), Type.LONG_TYPE),
+                            false
+                    );
+
+                    break;
+
+                case Type.DOUBLE:
                     visitMethodInsn(
                             Opcodes.INVOKESTATIC,
                             Type.getInternalName(Double.class),
@@ -114,12 +156,9 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
 
                     break;
 
-                case "void":
-                    visitInsn(Opcodes.ACONST_NULL);
-                    break;
-
-                default:
-                    String process = smithProcesses.get(name);
+                case Type.ARRAY:
+                case Type.OBJECT:
+                    String process = smithProcesses.get(returnType.getClassName());
 
                     if (process == null)
                         break;
@@ -133,6 +172,9 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
                     );
 
                     break;
+
+                default:
+                    throw new AssertionError();
             }
 
             mv.visitVarInsn(Opcodes.ASTORE, returnVariable);
@@ -175,26 +217,13 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
         visitTypeInsn(Opcodes.ANEWARRAY, Type.getInternalName(Object.class));
 
         for (Type argumentType : argumentTypes.subList(skip, argumentTypes.size())) {
-            String name = argumentType.getClassName();
             int size = argumentType.getSize();
 
-            visitInsn(Opcodes.DUP);
+            visitInsn(size == 2 ? Opcodes.DUP2 : Opcodes.DUP);
             visitIntInsn(Opcodes.BIPUSH, index++);
 
-            switch (name) {
-                case "int":
-                    visitVarInsn(Opcodes.ILOAD, variable);
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Integer.class),
-                            "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Integer.class), Type.INT_TYPE),
-                            false
-                    );
-
-                    break;
-
-                case "boolean":
+            switch (argumentType.getSort()) {
+                case Type.BOOLEAN:
                     visitVarInsn(Opcodes.ILOAD, variable);
                     visitMethodInsn(
                             Opcodes.INVOKESTATIC,
@@ -206,19 +235,55 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
 
                     break;
 
-                case "long":
-                    visitVarInsn(Opcodes.LLOAD, variable);
+                case Type.CHAR:
+                    visitVarInsn(Opcodes.ILOAD, variable);
                     visitMethodInsn(
                             Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Long.class),
+                            Type.getInternalName(Character.class),
                             "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Long.class), Type.LONG_TYPE),
+                            Type.getMethodDescriptor(Type.getType(Character.class), Type.CHAR_TYPE),
                             false
                     );
 
                     break;
 
-                case "float":
+                case Type.BYTE:
+                    visitVarInsn(Opcodes.ILOAD, variable);
+                    visitMethodInsn(
+                            Opcodes.INVOKESTATIC,
+                            Type.getInternalName(Byte.class),
+                            "valueOf",
+                            Type.getMethodDescriptor(Type.getType(Byte.class), Type.BYTE_TYPE),
+                            false
+                    );
+
+                    break;
+
+                case Type.SHORT:
+                    visitVarInsn(Opcodes.ILOAD, variable);
+                    visitMethodInsn(
+                            Opcodes.INVOKESTATIC,
+                            Type.getInternalName(Short.class),
+                            "valueOf",
+                            Type.getMethodDescriptor(Type.getType(Short.class), Type.SHORT_TYPE),
+                            false
+                    );
+
+                    break;
+
+                case Type.INT:
+                    visitVarInsn(Opcodes.ILOAD, variable);
+                    visitMethodInsn(
+                            Opcodes.INVOKESTATIC,
+                            Type.getInternalName(Integer.class),
+                            "valueOf",
+                            Type.getMethodDescriptor(Type.getType(Integer.class), Type.INT_TYPE),
+                            false
+                    );
+
+                    break;
+
+                case Type.FLOAT:
                     visitVarInsn(Opcodes.FLOAD, variable);
                     visitMethodInsn(
                             Opcodes.INVOKESTATIC,
@@ -230,7 +295,19 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
 
                     break;
 
-                case "double":
+                case Type.LONG:
+                    visitVarInsn(Opcodes.LLOAD, variable);
+                    visitMethodInsn(
+                            Opcodes.INVOKESTATIC,
+                            Type.getInternalName(Long.class),
+                            "valueOf",
+                            Type.getMethodDescriptor(Type.getType(Long.class), Type.LONG_TYPE),
+                            false
+                    );
+
+                    break;
+
+                case Type.DOUBLE:
                     visitVarInsn(Opcodes.DLOAD, variable);
                     visitMethodInsn(
                             Opcodes.INVOKESTATIC,
@@ -242,10 +319,11 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
 
                     break;
 
-                default:
+                case Type.ARRAY:
+                case Type.OBJECT:
                     visitVarInsn(Opcodes.ALOAD, variable);
 
-                    String process = smithProcesses.get(name);
+                    String process = smithProcesses.get(argumentType.getClassName());
 
                     if (process == null)
                         break;
@@ -259,6 +337,9 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
                     );
 
                     break;
+
+                default:
+                    throw new AssertionError();
             }
 
             visitInsn(Opcodes.AASTORE);
