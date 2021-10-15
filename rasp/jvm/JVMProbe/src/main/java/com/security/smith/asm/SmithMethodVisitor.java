@@ -53,15 +53,8 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
     @Override
     public void visitInsn(int opcode) {
         if (opcode == Opcodes.RETURN || opcode == Opcodes.IRETURN || opcode == Opcodes.FRETURN || opcode == Opcodes.ARETURN || opcode == Opcodes.LRETURN || opcode == Opcodes.DRETURN) {
-            switch (returnType.getSize()) {
-                case 1:
-                    visitInsn(Opcodes.DUP);
-                    break;
-
-                case 2:
-                    visitInsn(Opcodes.DUP2);
-                    break;
-            }
+            if (opcode != Opcodes.RETURN)
+                visitInsn(returnType.getSize() == 2 ? Opcodes.DUP2 : Opcodes.DUP);
 
             switch (returnType.getSort()) {
                 case Type.VOID:
@@ -221,10 +214,10 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
 
             visitInsn(size == 2 ? Opcodes.DUP2 : Opcodes.DUP);
             visitIntInsn(Opcodes.BIPUSH, index++);
+            visitVarInsn(argumentType.getOpcode(Opcodes.ILOAD), variable);
 
             switch (argumentType.getSort()) {
                 case Type.BOOLEAN:
-                    visitVarInsn(Opcodes.ILOAD, variable);
                     visitMethodInsn(
                             Opcodes.INVOKESTATIC,
                             Type.getInternalName(Boolean.class),
@@ -236,7 +229,6 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
                     break;
 
                 case Type.CHAR:
-                    visitVarInsn(Opcodes.ILOAD, variable);
                     visitMethodInsn(
                             Opcodes.INVOKESTATIC,
                             Type.getInternalName(Character.class),
@@ -248,7 +240,6 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
                     break;
 
                 case Type.BYTE:
-                    visitVarInsn(Opcodes.ILOAD, variable);
                     visitMethodInsn(
                             Opcodes.INVOKESTATIC,
                             Type.getInternalName(Byte.class),
@@ -260,7 +251,6 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
                     break;
 
                 case Type.SHORT:
-                    visitVarInsn(Opcodes.ILOAD, variable);
                     visitMethodInsn(
                             Opcodes.INVOKESTATIC,
                             Type.getInternalName(Short.class),
@@ -272,7 +262,6 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
                     break;
 
                 case Type.INT:
-                    visitVarInsn(Opcodes.ILOAD, variable);
                     visitMethodInsn(
                             Opcodes.INVOKESTATIC,
                             Type.getInternalName(Integer.class),
@@ -284,7 +273,6 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
                     break;
 
                 case Type.FLOAT:
-                    visitVarInsn(Opcodes.FLOAD, variable);
                     visitMethodInsn(
                             Opcodes.INVOKESTATIC,
                             Type.getInternalName(Float.class),
@@ -296,7 +284,6 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
                     break;
 
                 case Type.LONG:
-                    visitVarInsn(Opcodes.LLOAD, variable);
                     visitMethodInsn(
                             Opcodes.INVOKESTATIC,
                             Type.getInternalName(Long.class),
@@ -308,7 +295,6 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
                     break;
 
                 case Type.DOUBLE:
-                    visitVarInsn(Opcodes.DLOAD, variable);
                     visitMethodInsn(
                             Opcodes.INVOKESTATIC,
                             Type.getInternalName(Double.class),
@@ -321,8 +307,6 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
 
                 case Type.ARRAY:
                 case Type.OBJECT:
-                    visitVarInsn(Opcodes.ALOAD, variable);
-
                     String process = smithProcesses.get(argumentType.getClassName());
 
                     if (process == null)
@@ -378,16 +362,12 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
         super.visitEnd();
 
         visitLabel(end);
-        visitInsn(Opcodes.NOP);
         visitLabel(handler);
 
-        visitFrame(
-                Opcodes.F_NEW,
-                argumentTypes.size(),
-                argumentTypes.stream().map(Type::getInternalName).toArray(String[]::new),
-                1,
-                new Object[]{Type.getInternalName(Exception.class)}
-        );
+        /*
+        If you want to generate a class to be loaded from file, need to add stack map frame here cause by JVM verify class when loading.
+        In addition, the try block in constructor should start after superclass constructor called, because the first local variable before that was uninitializedThis instead of this.
+         */
 
         mv.visitVarInsn(Opcodes.ASTORE, returnVariable + 1);
 
