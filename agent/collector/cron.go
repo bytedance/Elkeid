@@ -85,7 +85,7 @@ func GetCron(rootfs string) (crons []Cron, err error) {
 		}
 		return nil
 	}})
-	godirwalk.Walk(rootfs+"/etc/corn.d", &godirwalk.Options{Callback: func(path string, de *godirwalk.Dirent) error {
+	godirwalk.Walk(rootfs+"/etc/cron.d", &godirwalk.Options{Callback: func(path string, de *godirwalk.Dirent) error {
 		if de.IsRegular() {
 			f, err := os.Open(path)
 			if err != nil {
