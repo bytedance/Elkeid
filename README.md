@@ -26,10 +26,15 @@ Elkeid is a support cloud-native and base linux host security(Intrusion detectio
 
 The above components can provide these data:
 
-<img src="./data_index.png"/>
-<img src="./data.png"/>
+<img src="./DataIndex.png"/>
 
+Driver Plugin Data:
 
+<img src="./DriverData.png"/>
+
+Other Data:
+
+<img src="./OtherData.png"/>
 
 ## [Elkeid Backend Ability](https://github.com/bytedance/Elkeid/tree/main/server)
 * **[Elkeid AgentCenter](https://github.com/bytedance/Elkeid/tree/main/server/agent_center)** Responsible for communicating with the Agent, collecting Agent data and simply processing it and then summing it into the MQ, is also responsible for the management of the Agent, including Agent upgrade, configuration modification, task distribution, etc.
