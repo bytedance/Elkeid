@@ -58,10 +58,10 @@ The current open source module lacks a rule engine and detection rule, and canno
 *Lark Group*
 
 ## License
-* Elkeid Driver: GPLv2
-* Elkeid RASP: Apache-2.0
-* Elkeid Agent: Apache-2.0
-* Elkeid Server: Apache-2.0
+* Elkeid Driver: [GPLv2](https://github.com/bytedance/Elkeid/blob/main/driver/LICENSE)
+* Elkeid RASP: [Apache-2.0](https://github.com/bytedance/Elkeid/blob/main/rasp/LICENSE)
+* Elkeid Agent: [Apache-2.0](https://github.com/bytedance/Elkeid/blob/main/agent/LICENSE)
+* Elkeid Server: [Apache-2.0](https://github.com/bytedance/Elkeid/blob/main/server/LICENSE)
 
 ## 404StarLink 2.0 - Galaxy
 <img src="https://github.com/knownsec/404StarLink-Project/raw/master/logo.png" width="30%" style="float:left;"/>
