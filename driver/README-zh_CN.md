@@ -96,6 +96,7 @@ centos|6.X,7.X,8.X|2.6.32.0~5.4.X |el6,el7,el8| yes
 
 | Hook               | DataType | Note                                    | Default |
 | ------------------ | -------- | --------------------------------------- | ------- |
+| write              | 1        |                                         | OFF     |
 | open               | 2        |                                         | OFF     |
 | mprotect           | 10       | only PROT_EXEC                          | OFF     |
 | nanosleep          | 35       |                                         | OFF     |
@@ -120,10 +121,10 @@ centos|6.X,7.X,8.X|2.6.32.0~5.4.X |el6,el7,el8| yes
 | update_cred        | 604      | only old uid ≠0 && new uid == 0         | ON      |
 | unlink             | 605      |                                         | OFF     |
 | rmdir              | 606      |                                         | OFF     |
-| call_usermodehelper_exec     | 607      |                               | OFF     |
+| call_usermodehelper_exec     | 607      |                               | ON     |
 | file_write         | 608      |                                          | OFF     |
-| usb_device_event   | 609      |                                          | OFF     |
 | file_read          | 610      |                                          | OFF     |
+| usb_device_event   | 610      |                                          | ON     |
 
 
 ## Anti Rootkit List
@@ -158,7 +159,15 @@ centos|6.X,7.X,8.X|2.6.32.0~5.4.X |el6,el7,el8| yes
 -------------------------------------------------------------------------------
 ```
 
+### Write Data (1)
 
+````
+-----------
+|14   |15 | 
+-----------
+|file||buf|
+-----------
+````
 
 ### Open Data (2)
 
