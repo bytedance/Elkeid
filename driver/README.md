@@ -20,12 +20,20 @@ Elkeid has already been deployed massively for HIDS usage in world-class product
 First you need install Linux Headers
 
 ```shell script
+# clone and build
 git clone https://github.com/bytedance/Elkeid.git
 cd Elkeid/driver/LKM/
 make clean && make
+< CentOS only: run build script instead >
+sh ./centos_build_ko.sh
+
+# load and test (should run as root)
 insmod hids_driver.ko
-dmesg
-cat /proc/hids_driver/1
+dmesg | tail -n 20
+test/rst -q
+< "CTRL + C" to quit >
+
+# unload
 rmmod hids_driver
 ```
 
@@ -40,23 +48,21 @@ rmmod hids_driver
 If all urls failed, please build elkeid kernel module yourself.
 
 ```bash
-wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
+wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
 # or
-curl -O "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
+curl -O "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
 # other cdn
-## "http://lf3-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
-## "http://lf6-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
-## "http://lf9-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
+## "http://lf3-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
+## "http://lf6-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
+## "http://lf9-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
 ```
 
 
-## Test the Ko
-You can test the kernel module using [LTP](https://linux-test-project.github.io/) or [Kasan](https://www.kernel.org/doc/html/latest/dev-tools/kasan.html).
-
-Here is the [LTP-test-case](./ltp_testcase) file.
+## How to Test
+You can test the kernel module with [LTP](https://linux-test-project.github.io/) (better with [KASAN](https://www.kernel.org/doc/html/latest/dev-tools/kasan.html) truned on). Here's the [LTP-test-case](./ltp_testcase) configuration file for your reference:  [LTP-test-case](./ltp_testcase).
 
 
-## About the compatibility with Linux distribution
+## About the compatibility with Linux distributions
 
 Distro|Version|x64 kernel|Suffix | On our production env
 :- | :- | -: | -| -:
@@ -64,17 +70,13 @@ debian|8,9,10|3.16~5.4.X |-| yes
 ubuntu|14.04,16.04,18.04,20.04|3.12~5.4.X |generic| yes 
 centos|6.x,7.X,8.X|2.6.32~5.4.X |el6,el7,el8| yes 
 
+## About ARM64 (AArch64) Support
 
-## About the compatibility with ARM
+* Yes
 
-* Support
-
-
-## About the compatibility with Kernel version
+## About the compatibility with Kernel versions
 
 * Linux Kernel Version >= 2.6.32 && <= 5.14.X
-
-
 
 ## About the compatibility with Containers
 
@@ -83,8 +85,6 @@ centos|6.x,7.X,8.X|2.6.32~5.4.X |el6,el7,el8| yes
 | Host   | hostname       |
 | Docker | container name |
 | k8s    | pod name       |
-
-
 
 ## Hook List
 
@@ -136,13 +136,9 @@ centos|6.x,7.X,8.X|2.6.32~5.4.X |el6,el7,el8| yes
 
 ### Data Protocol
 
-'**\x1e**' is used as **field** deliminator
+Every hit of the above hook-points will generate a record.  Each record contains several data itmes and the data items are being seperated by **data deliminator**: '**\x17**'.
 
-'**\x17**' is used as **data** deliminator
-
-Hook List data type generats data consists of **Common Data** with each ***privatizated data*** (lists below with same type name)
-
-Anti-rootkit List data does **NOT** contain fields in **Common Data**
+A record contains **Common Data** and ***Private Data***, with the exception of Anti-rootkit, which does **NOT** have  **Common Data**.
 
 ### Common Data
 

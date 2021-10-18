@@ -18,12 +18,20 @@ Elkeid Driver 主要通过 Kprobe Hook Kernel Funcion 来提供丰富而准确�
 首先需要安装Linux Headers，Linux Headers 的版本必须等于 uname -r
 
 ```shell script
+# clone and build
 git clone https://github.com/bytedance/Elkeid.git
 cd Elkeid/driver/LKM/
 make clean && make
+< CentOS only: run build script instead >
+sh ./centos_build_ko.sh
+
+# load and test (should run as root)
 insmod hids_driver.ko
-dmesg
-cat /proc/hids_driver/1
+dmesg | tail -n 20
+test/rst -q
+< "CTRL + C" to quit >
+
+# unload
 rmmod hids_driver
 ```
 
@@ -43,13 +51,13 @@ rmmod hids_driver
 如果所有链接都获取失败，则说明 [预编译的 Ko](./ko_list.md) 中，不包含当前系统的内核版本所需的 Ko，需要自行编译
 
 ```bash
-wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
+wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
 # or
-curl -O "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
+curl -O "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
 # 其他地址
-## "http://lf3-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
-## "http://lf6-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
-## "http://lf9-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
+## "http://lf3-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
+## "http://lf6-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
+## "http://lf9-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
 ```
 
 ### 内核模块的测试方法
@@ -69,7 +77,7 @@ centos|6.X,7.X,8.X|2.6.32.0~5.4.X |el6,el7,el8| yes
 
 
 
-## 关于ARM兼容性
+## 关于ARM64 (AArch64)支持
 
 * 支持
 
@@ -141,13 +149,7 @@ centos|6.X,7.X,8.X|2.6.32.0~5.4.X |el6,el7,el8| yes
 
 ### 驱动数据协议
 
-字段间使用'**\x1e**'作为间隔符
-
-数据间使用'**\x17**'作为间隔符
-
-
-
-数据通常是**公共数据**和**私有数据**组合而成，值得注意的是Anti-rootkit数据不具有**公共数据**。
+上述Hook点每命中一次均会生成一条日志记录，每条日志包含多个数据项，数据项之间使用'**\x17**'作为间隔符。数据部分通常由**公共数据**和**私有数据**组合而成，值得注意的是Anti-rootkit没有**公共数据**。
 
 ### 公共数据
 ```
