@@ -183,7 +183,7 @@ curl --location --request POST 'http://m_host:m_port/api/v1/agent/createTask/con
                     "https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg","https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg","https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg","https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg"
                 ],
                 "version": "1.6.0.0",
-                "sha256": "a9ab7a2eda69b83d830a6061a393f886a7b125ea63e7ae1df4a276105764b37d",
+                "sha256": "d817195d0ce10974427ed15ef9fa86345bd666db83f5168963af4bb46bbc08d6",
                 "detail": ""
             },
             {
