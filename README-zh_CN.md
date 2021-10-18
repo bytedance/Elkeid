@@ -32,7 +32,7 @@ Driver Plugin Data:
 
 <img src="./DriverData.png"/>
 
-Other Data:
+Other Plugins Data:
 
 <img src="./OtherData.png"/>
 
