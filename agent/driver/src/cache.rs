@@ -25,7 +25,10 @@ impl ArgvCache {
             Some(v) => v.to_owned(),
             None => {
                 if let Ok(v) = read_to_string(format!("/proc/{}/cmdline", key)) {
-                    let normalized = v.replace('\0', " ");
+                    let mut normalized = v.replace('\0', " ");
+                    if normalized.len()>256{
+                        normalized.truncate(256);
+                    }
                     self.i.put(*key, normalized.clone());
                     normalized
                 } else {
