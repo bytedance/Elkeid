@@ -31,9 +31,7 @@ rmmod hids_driver
 
 ## Pre-build Ko
 
-### Describe
-This kernel module has been running for a long time on our debian machines. The probability of kernel driver going error is rarely low, however, some versions of the kernel and distros are not well tested .eg: kernel < 3.10 , kernel > 5.4 and ubuntu. DO NOT insmod the ko in the production machines if you have not tested it.
-
+### Pre-build Ko List
 [Pre-build Ko lists](./ko_list.md)
 
 
@@ -63,18 +61,18 @@ Here is the [LTP-test-case](./ltp_testcase) file.
 Distro|Version|x64 kernel|Suffix | On our production env
 :- | :- | -: | -| -:
 debian|8,9,10|3.16~5.4.X |-| yes
-ubuntu|14.04,16.04,18.04,20.04|3.12~5.4.X |generic| no 
-centos|7.X,8.X|3.10.0~5.4.X |el7,el8| half 
+ubuntu|14.04,16.04,18.04,20.04|3.12~5.4.X |generic| yes 
+centos|6.x,7.X,8.X|2.6.32~5.4.X |el6,el7,el8| yes 
 
 
 ## About the compatibility with ARM
 
-* Partially support
+* Support
 
 
 ## About the compatibility with Kernel version
 
-* Linux Kernel Version >= 3.10 and <= 5.4.X
+* Linux Kernel Version >= 2.6.32 && <= 5.14.X
 
 
 
@@ -90,31 +88,36 @@ centos|7.X,8.X|3.10.0~5.4.X |el7,el8| half
 
 ## Hook List
 
-| Hook               | DataType | Note                                           | Default |
-| ------------------ | -------- | ---------------------------------------------- | ------- |
-| connect            | 42       |                                                | ON      |
-| bind               | 49       |                                                | ON      |
-| execve             | 59       |                                                | ON      |
-| create file        | 602      |                                                | ON      |
-| ptrace             | 101      | only PTRACE_POKETEXT or PTRACE_POKEDATA        | ON      |
-| dns queny          | 601      |                                                | OFF      |
-| init kernel module | 603      |                                                | ON      |
-| update cred        | 604      | only old uid ≠0 && new uid == 0                | ON      |
-| rename             | 82       |                                                | ON     |
-| link               | 86       |                                                | ON     |
-| setsid             | 112      |                                                | ON     |
-| prctl              | 157      | only PR_SET_NAME                               | ON     |
-| memfd_create       | 356      |                                                 | ON     |
-| open               | 2        |                                                | OFF     |
-| mprotect           | 10       | only PROT_EXEC                                 | OFF     |
-| nanosleep          | 35       |                                                | OFF     |
-| kill               | 62       |                                                | OFF     |
-| tkill              | 200      |                                                | OFF     |
-| process exit       | 60       |                                                | OFF     |
-| exit group         | 231      |                                                | OFF     |
-| rmdir              | 606      |                                                | OFF     |
-| unlink             | 605      |                                                | OFF     |
-| call_usermodehelper_exec             | 607      |                                         | OFF     |
+| Hook               | DataType | Note                                    | Default |
+| ------------------ | -------- | --------------------------------------- | ------- |
+| open               | 2        |                                         | OFF     |
+| mprotect           | 10       | only PROT_EXEC                          | OFF     |
+| nanosleep          | 35       |                                         | OFF     |
+| connect            | 42       |                                         | ON      |
+| accept             | 43       |                                         | OFF     |
+| bind               | 49       |                                         | ON      |
+| execve             | 59       |                                         | ON      |
+| process exit       | 60       |                                         | OFF     |
+| kill               | 62       |                                         | OFF     |
+| rename             | 82       |                                         | ON     |
+| link               | 86       |                                         | ON     |
+| ptrace             | 101      | only PTRACE_POKETEXT or PTRACE_POKEDATA | ON      |
+| setsid             | 112      |                                         | ON     |
+| prctl              | 157      | only PR_SET_NAME                        | ON     |
+| mount              | 165      |                                         | ON     |
+| tkill              | 200      |                                         | OFF     |
+| exit_group         | 231      |                                         | OFF     |
+| memfd_create       | 356      |                                         | ON     |
+| dns queny          | 601      |                                         | ON     |
+| create_file        | 602      |                                         | ON      |
+| load_module        | 603      |                                         | ON      |
+| update_cred        | 604      | only old uid ≠0 && new uid == 0         | ON      |
+| unlink             | 605      |                                         | OFF     |
+| rmdir              | 606      |                                         | OFF     |
+| call_usermodehelper_exec     | 607      |                               | OFF     |
+| file_write         | 608      |                                          | OFF     |
+| usb_device_event   | 609      |                                          | OFF     |
+| file_read          | 610      |                                          | OFF     |
 
 
 
@@ -141,33 +144,75 @@ Hook List data type generats data consists of **Common Data** with each ***priva
 
 Anti-rootkit List data does **NOT** contain fields in **Common Data**
 
-### Common data
+### Common Data
 
 ```
 -------------------------------------------------------------------------------
-|1  |2        |3  |4  |5   |6   |7   |8  |9   |10      |11       |12 |13      |
+|1        |2  |3  |4  |5   |6   |7   |8  |9   |10      |11       |12 |13      |
 -------------------------------------------------------------------------------
-|uid|data_type|exe|pid|ppid|pgid|tgid|sid|comm|nodename|sessionid|pns|root_pns|
+|data_type|uid|exe|pid|ppid|pgid|tgid|sid|comm|nodename|sessionid|pns|root_pns|
 -------------------------------------------------------------------------------
 ```
 
 
 
-### Connect Data 
+### Open Data (2)
+
+````
+---------------------
+|14   |15  |16      | 
+---------------------
+|flags|mode|filename|
+---------------------
+````
+
+
+
+### Mprotect Data (10)
 
 ```
-------------------------------------------------
-|14          |15       |16 |17   |18 |19   |20 |
-------------------------------------------------
-|connect_type|sa_family|dip|dport|sip|sport|res|
-------------------------------------------------
+-----------------------------------------------------
+|14           |15       |16        |17     |18      |
+-----------------------------------------------------
+|mprotect_prot|owner_pid|owner_file|vm_file|pid_tree|
+-----------------------------------------------------
 ```
 
-Note: Connect_type is always -1 in default build settings
+
+
+### Nanosleep Data (35)
+
+```
+----------
+|14 |15  |
+----------
+|sec|nsec|
+----------
+```
 
 
 
-### Bind Data
+### Connect Data (42)
+
+```
+-----------------------------------
+|14       |15 |16   |17 |18   |19 |
+-----------------------------------
+|sa_family|dip|dport|sip|sport|res|
+-----------------------------------
+```
+
+### Accept Data (43)
+
+```
+-----------------------------------
+|14       |15 |16   |17 |18   |19 |
+-----------------------------------
+|sa_family|dip|dport|sip|sport|res|
+-----------------------------------
+```
+
+### Bind Data (49)
 
 ```
 -------------------------
@@ -179,7 +224,7 @@ Note: Connect_type is always -1 in default build settings
 
 
 
-### Execve Data
+### Execve Data (59)
 
 ```
 -------------------------------------------------------------------------------------------------------------------------
@@ -196,20 +241,46 @@ Note:
 * **ssh/ld_preload** is collected from the process's env
 
 
+### Process Exit Data (60)
 
-### Create File data
+Only contains fields in ***Common Data***
+
+
+### Kill Data (62)
 
 ```
-----------------------------------------------------
-|14 	  |15 |16   |17 |18   |19       |20        |
-----------------------------------------------------
-|file_path|dip|dport|sip|sport|sa_family|socket_pid|
-----------------------------------------------------
+----------------
+|14        |15 |
+----------------
+|target_pid|sig|
+----------------
 ```
 
 
 
-### Ptrace
+### Rename Data (82)
+
+```
+----------------------------
+|14      |15      |16      | 
+----------------------------
+|run_path|old_name|new_name|
+----------------------------
+```
+
+
+### Link Data (86)
+
+```
+----------------------------
+|14      |15      |16      | 
+----------------------------
+|run_path|old_name|new_name|
+----------------------------
+```
+
+
+### Ptrace Data (101)
 
 ```
 ----------------------------------------------
@@ -221,73 +292,13 @@ Note:
 
 
 
-### Dns Query Data
-
-```
------------------------------------------------------
-|14   |15       |16 |17   |18 |19   |20|21    |22   |
------------------------------------------------------
-|query|sa_family|dip|dport|sip|sport|qr|opcode|rcode|
------------------------------------------------------
-```
-
-
-
-### Init Kernel Module Data
-
-```
-----------------------------
-|14      |15      |16      | 
-----------------------------
-|mod_info|pid_tree|run_path|
-----------------------------
-```
-
-
-
-### Update Cred Data
-
-```
-----------------------
-|14      |15     |16 | 
-----------------------
-|pid_tree|old_uid|res|
-----------------------
-```
-
-
-
-### Rename Data
-
-```
-----------------------------
-|14      |15      |16      | 
-----------------------------
-|run_path|old_name|new_name|
-----------------------------
-```
-
-
-
-### Link Data
-
-```
-----------------------------
-|14      |15      |16      | 
-----------------------------
-|run_path|old_name|new_name|
-----------------------------
-```
-
-
-
-### Setsid Data
+### Setsid Data (112)
 
 Only contains fields in ***Common Data***
 
 
 
-### Prctl Data
+### Prctl Data (157)
 
 ```
 _________________
@@ -297,7 +308,34 @@ _________________
 -----------------
 ```
 
-### memfd_create Data
+
+### Mount Data (165)
+
+```
+_____________________________________
+|14      |15 |16       |17    |18   | 
+-------------------------------------
+|pid_tree|dev|file_path|fstype|flags|
+-------------------------------------
+```
+
+
+### Tkill data (200)
+
+```
+----------------
+|14        |15 |
+----------------
+|target_pid|sig|
+----------------
+```
+
+### Exit Group Data (231)
+
+Only contains fields in ***Common Data***
+
+
+### memfd_create Data (356)
 
 ```
 ______________
@@ -309,79 +347,52 @@ ______________
 
 
 
-### Open Data
-
-````
----------------------
-|14   |15  |16      | 
----------------------
-|flags|mode|filename|
----------------------
-````
-
-
-
-### Mprotect data
+### Dns Query Data (601)
 
 ```
------------------------------------------------------
-|14           |15       |16        |17     |18      |
------------------------------------------------------
-|mprotect_prot|owner_pid|owner_file|vm_file|pid_tree|
------------------------------------------------------
+--------------------------------------------------
+|14   |15       |16 |17   |18 |19   |20    |21   |
+--------------------------------------------------
+|query|sa_family|dip|dport|sip|sport|opcode|rcode|
+--------------------------------------------------
 ```
 
 
-
-### Nanosleep Data
+### Create File data (602)
 
 ```
-----------
-|14 |15  |
-----------
-|sec|nsec|
-----------
+----------------------------------------------------
+|14 	  |15 |16   |17 |18   |19       |20        |
+----------------------------------------------------
+|file_path|dip|dport|sip|sport|sa_family|socket_pid|
+----------------------------------------------------
+```
+
+
+### Load Module Data (603)
+
+```
+----------------------------
+|14      |15      |16      | 
+----------------------------
+|ko_file|pid_tree|run_path|
+----------------------------
 ```
 
 
 
-### Kill Data
+### Update Cred Data (604)
 
 ```
-----------------
-|14        |15 |
-----------------
-|target_pid|sig|
-----------------
-```
-
-
-
-### Tkill data
-
-```
-----------------
-|14        |15 |
-----------------
-|target_pid|sig|
-----------------
+----------------------
+|14      |15     |16 | 
+----------------------
+|pid_tree|old_uid|res|
+----------------------
 ```
 
 
-
-### Process Exit Data
-
-Only contains fields in ***Common Data***
-
-
-
-### Exit Group Data
-
-Only contains fields in ***Common Data***
-
-
-
-### Rmdir Data
+### Unlink Data (605)
 
 ```
 ------
@@ -392,8 +403,7 @@ Only contains fields in ***Common Data***
 ```
 
 
-
-### Unlink Data
+### Rmdir Data (606)
 
 ```
 ------
@@ -403,71 +413,90 @@ Only contains fields in ***Common Data***
 ------
 ```
 
-### call_usermodehelper_exec Data
+
+### call_usermodehelper_exec Data (607)
 
 ```
------------------------------
-|1  |2        |3  |4   |5   |
------------------------------
-|uid|data_type|exe|argv|wait|
------------------------------
+-------------------------
+|1        |2  |3   |4   |
+-------------------------
+|data_type|exe|argv|wait|
+-------------------------
 ```
 
-
-
-### Interrupt Table Hook Data
+### File Write Data (608)
 
 ```
----------------------------------------------------
-|1  |2        |3          |4     |5               |
----------------------------------------------------
-|uid|data_type|module_name|hidden|interrupt_number|
----------------------------------------------------
+------------
+|14  |15   |
+------------
+|file|sb_id|
+------------
+Need to join the to-watch list through Diver Filter, see "About Driver Filter" section for details
 ```
 
-Note:  ***uid*** is always -1
-
-
-
- ### Syscall Table Hook Data
+### File Read Data (609)
 
 ```
--------------------------------------------------
-|1  |2        |3          |4     |5             |
--------------------------------------------------
-|uid|data_type|module_name|hidden|syscall_number|
--------------------------------------------------
+------------
+|14  |15   |
+------------
+|file|sb_id|
+------------
+Need to join the to-watch list through Diver Filter, see "About Driver Filter" section for details
 ```
 
-Note: ***uid*** is always -1
-
-
-
-### Proc File Hook
+### USB Device Event Data (610)
 
 ```
-----------------------------------
-|1  |2        |3          |4     |
-----------------------------------
-|uid|data_type|module_name|hidden|
-----------------------------------
+-----------------------------------------
+|14          |15          |16    |17    |
+-----------------------------------------
+|product_info|manufacturer|serial|action|
+-----------------------------------------
+action = 1 is USB_DEVICE_ADD
+action = 2 is USB_DEVICE_REMOVE
 ```
 
-Note:  ***uid*** is always -1
+### Proc File Hook (700)
 
+```
+-----------------------
+|1        |2          |
+-----------------------
+|data_type|module_name|
+-----------------------
+```
 
+### Syscall Table Hook Data (701)
 
-### Hidden Kernel Module Data
+```
+--------------------------------------
+|1        |2          |3             |
+--------------------------------------
+|data_type|module_name|syscall_number|
+--------------------------------------
+```
+
+### Hidden Kernel Module Data (702)
 
 ````
-----------------------------------
-|1  |2        |3          |4     |
-----------------------------------
-|uid|data_type|module_name|hidden|
-----------------------------------
+-----------------------
+|1        |2          |
+-----------------------
+|data_type|module_name|
+-----------------------
 ````
 
-Note:  ***uid*** is always -1
+### Interrupt Table Hook Data (703)
+
+```
+----------------------------
+|1        |2               |
+----------------------------
+|data_type|interrupt_number|
+----------------------------
+```
 
 
 
@@ -490,18 +519,29 @@ allowlist driver is in: `/dev/hids_driver_allowlist`
 | DEL_ALL_EXECVE_ARGV_SHITELIST | u(117) | `echo u/del_all > /dev/someone_allowlist`            |
 | EXECVE_ARGV_CHECK             | z(122) | `echo z/bin/ls -l > /dev/someone_allowlist && dmesg` |
 | PRINT_ALL_ALLOWLIST           | .(46)  | `echo ./print_all > /dev/someone_allowlist && dmesg` |
+| ADD_WRITE_NOTIFI           | W(87)  | `echo W/etc/passwd > /dev/someone_allowlist` or `echo W/etc/ssh/ > /dev/someone_allowlist` support dir  |
+| DEL_WRITE_NOTIFI           | v(120)  | `echo v/etc/passwd > /dev/someone_allowlist` |
+| ADD_READ_NOTIFI           | R(82)  | `echo W/etc/passwd > /dev/someone_allowlist` or `echo W/etc/ssh/ > /dev/someone_allowlist` support dir  |
+| DEL_READ_NOTIFI           | s(115)  | `echo v/etc/passwd > /dev/someone_allowlist` |
+| DEL_ALL_NOTIFI           | A(65)  | `echo A/del_all_file_notift > /dev/someone_allowlist` |
 
 Filter define is:
 ```c
-#define ADD_EXECVE_EXE_SHITELIST 89
-#define DEL_EXECVE_EXE_SHITELIST 70
-#define DEL_ALL_EXECVE_EXE_SHITELIST 119
-#define EXECVE_EXE_CHECK 121
-#define PRINT_ALL_ALLOWLIST 46
-#define ADD_EXECVE_ARGV_SHITELIST 109
-#define DEL_EXECVE_ARGV_SHITELIST 74
-#define DEL_ALL_EXECVE_ARGV_SHITELIST 117
-#define EXECVE_ARGV_CHECK 122
+#define ADD_EXECVE_EXE_SHITELIST 89         /* Y */
+#define DEL_EXECVE_EXE_SHITELIST 70         /* F */
+#define DEL_ALL_EXECVE_EXE_SHITELIST 119    /* w */
+#define EXECVE_EXE_CHECK 121                /* y */
+#define PRINT_ALL_ALLOWLIST 46              /* . */
+#define ADD_EXECVE_ARGV_SHITELIST 109       /* m */
+#define DEL_EXECVE_ARGV_SHITELIST 74        /* J */
+#define DEL_ALL_EXECVE_ARGV_SHITELIST 117   /* u */
+#define EXECVE_ARGV_CHECK 122               /* z */
+
+#define ADD_WRITE_NOTIFI 87                 /* W */
+#define DEL_WRITE_NOTIFI 120                /* v */
+#define ADD_READ_NOTIFI 82                  /* R */
+#define DEL_READ_NOTIFI 115                 /* s */
+#define DEL_ALL_NOTIFI 65                   /* A */
 ```
 
 
@@ -561,10 +601,6 @@ You can use DKMS or Pre-packaged ko file
 <br>
 Some old version of ubuntu / centos kernels may show the dmesg :
 do_init_module register_kprobe failed, returned -2.
-
-* Kernel > 5.4.X or Kernel < 3.10.X
-<br>
-Make failed : these kernel versions are not yet compatible
 
 
 
