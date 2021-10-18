@@ -25,8 +25,16 @@ Elkeid是一个云原生的基于主机的安全(入侵检测与风险识别)解
   
 
 以上组件可以提供以下数据：
-<img src="./data_index.png"/>
-<img src="./data.png"/>
+
+<img src="./DataIndex.png"/>
+
+Driver Plugin Data:
+
+<img src="./DriverData.png"/>
+
+Other Plugins Data:
+
+<img src="./OtherData.png"/>
 
 
 
