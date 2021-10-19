@@ -57,7 +57,6 @@ func RegisterRouter(r *gin.Engine) {
 			agentRouter.GET("/getStatus", v1.GetStatus)
 			agentRouter.GET("/getStatus/:id", v1.GetStatusByID)
 			agentRouter.POST("/getStatus/filter", v1.GetStatusByFilter)
-
 			agentRouter.GET("/getCount", v1.GetCount)
 			agentRouter.GET("/getVersion", v1.GetVersion)
 

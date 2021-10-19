@@ -17,6 +17,7 @@ import (
 	"github.com/rs/xid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
 
@@ -45,6 +46,13 @@ type AgentConfigTask struct {
 	IDCount      float64  `json:"id_count" bson:"id_count"`
 	JobList      []string `json:"job_list" bson:"job_list"`
 
+	CountUnDistribute int `json:"count_undistribute" bson:"count_undistribute"`
+	CountDistributed  int `json:"count_distributed" bson:"count_distributed"`
+
+	SubTaskCreated int `json:"sub_task_created" bson:"sub_task_created"`
+	SubTaskFailed  int `json:"sub_task_failed" bson:"sub_task_failed"`
+	SubTaskSucceed int `json:"sub_task_succeed" bson:"sub_task_succeed"`
+
 	CreateTime int64 `json:"create_time" bson:"create_time" bson:"create_time"`
 	UpdateTime int64 `json:"update_time" bson:"update_time" bson:"update_time"`
 }
@@ -61,12 +69,25 @@ type AgentJobParam struct {
 	TODOList   []string
 }
 
+type SubTaskCount struct {
+	ID    string `json:"_id" bson:"_id"`
+	Count int    `json:"count" bson:"count"`
+}
+
 var AgentTaskTypeList = []string{"config", "task", "ctrl"}
 
 const AgentJobTimeOut = 30 * 60 * 60 //30 minutes
 const (
+	TaskStatusCreated = "created"
+
+	//only for subtask
+	TaskStatusFail    = "failed"
+	TaskStatusSuccess = "succeed"
+
+	//only for task
+	TaskStatusRunning  = "running"
 	TaskStatusFinished = "finished"
-	TaskStatusStopped  = "cancel"
+	TaskStatusStopped  = "cancelled"
 )
 
 func init() {
@@ -94,6 +115,8 @@ func agentControlDistribute(k, v interface{}) (interface{}, error) {
 		ylog.Errorf("agentTaskDistribute", err.Error())
 		return nil, err
 	}
+
+	agentIDMap := make(map[string]bool, 2000)
 	defer cursor.Close(context.Background())
 	for cursor.Next(context.Background()) {
 		var hb AgentHBInfo
@@ -102,7 +125,16 @@ func agentControlDistribute(k, v interface{}) (interface{}, error) {
 			ylog.Errorf("agentTaskDistribute", err.Error())
 			continue
 		}
+
+		//Data update and query at the same time will cause duplicate data to be returned. Ensure that the data is not duplicated
+		if _, ok := agentIDMap[hb.AgentId]; ok {
+			continue
+		} else {
+			agentIDMap[hb.AgentId] = true
+		}
+
 		var argv map[string]interface{}
+		token := generateTaskToken()
 		switch name {
 		case "Agent_Config":
 			//If the policy does not exist, use the default policy.
@@ -115,27 +147,22 @@ func agentControlDistribute(k, v interface{}) (interface{}, error) {
 			argv = map[string]interface{}{"command": map[string]interface{}{"config": hb.Config}}
 
 			//Write back to db asynchronously.
-			hb.ConfigUpdateTime = time.Now().Unix()
-			task.HBAsyncWrite(&hb)
+			task.HBAsyncWrite(&ConnStat{
+				AgentInfo: map[string]interface{}{
+					"agent_id":           hb.AgentId,
+					"config_update_time": time.Now().Unix(),
+					"config":             hb.Config,
+				},
+				PluginsInfo: nil,
+			})
 		case "Agent_Task":
 			item := AgentTaskMsg{
-				Name:  jobParam.ConfigTask.Data.Task.Name,
-				Data:  jobParam.ConfigTask.Data.Task.Data,
-				Token: generateTaskToken(),
+				Name:     jobParam.ConfigTask.Data.Task.Name,
+				Data:     jobParam.ConfigTask.Data.Task.Data,
+				DataType: jobParam.ConfigTask.Data.Task.DataType,
+				Token:    token,
 			}
 			argv = map[string]interface{}{"command": map[string]interface{}{"task": item}}
-
-			//Write the subTask back to db for reconciliation
-			tmp := &AgentSubTask{
-				AgentID:    hb.AgentId,
-				Name:       item.Name,
-				Data:       item.Data,
-				Token:      item.Token,
-				Status:     "started",
-				UpdateTime: time.Now().Unix(),
-				TaskID:     jobParam.ConfigTask.TaskID,
-			}
-			task.SubTaskAsyncWrite(tmp)
 		case "Agent_Ctrl":
 			argv = map[string]interface{}{"command": map[string]interface{}{"agent_ctrl": jobParam.ConfigTask.Data.AgentCtrl}}
 		default:
@@ -143,16 +170,31 @@ func agentControlDistribute(k, v interface{}) (interface{}, error) {
 			continue
 		}
 
+		//Write the subTask back to db for reconciliation
+		tmp := &AgentSubTask{
+			TaskType:   name,
+			AgentID:    hb.AgentId,
+			TaskID:     jobParam.ConfigTask.TaskID,
+			TaskData:   argv,
+			TaskUrl:    "",
+			Token:      token,
+			Status:     TaskStatusCreated,
+			UpdateTime: time.Now().Unix(),
+			TaskResult: "",
+		}
+		task.SubTaskAsyncWrite(tmp)
+
 		port, err := infra.Grds.Get(context.Background(), hb.AgentId).Result()
 		if err != nil {
 			ylog.Errorf("agentTaskDistribute", "get server addr of %s from redis error %s", hb.AgentId, err.Error())
 			port = fmt.Sprintf("%s:%d", hb.SourceIp, hb.SourcePort)
 		}
 		argv["agent_id"] = hb.AgentId
+		innerArgv := map[string]interface{}{"token": token, "argv": argv}
 		ja := job.JobArgs{
 			Name:    name,
 			Host:    port,
-			Args:    argv,
+			Args:    innerArgv,
 			Scheme:  job.ApiMap[name]["scheme"].(string),
 			Method:  job.ApiMap[name]["method"].(string),
 			Timeout: job.ApiMap[name]["timeout"].(int),
@@ -167,10 +209,9 @@ func agentControlDistribute(k, v interface{}) (interface{}, error) {
 //
 func agentControlDo(args interface{}) (interface{}, error) {
 	var (
-		r       *grequests.Response
-		err     error
-		result  string
-		retries = 3
+		r      *grequests.Response
+		err    error
+		result string
 	)
 	ja := job.JobArgs{
 		Args: make(map[string]interface{}),
@@ -181,38 +222,72 @@ func agentControlDo(args interface{}) (interface{}, error) {
 		return nil, err
 	}
 
+	innerArgv, ok := ja.Args.(map[string]interface{})
+	if !ok {
+		ylog.Errorf("agentControlDo", "[api_job] AgentJobInnerParam parse error")
+		return nil, err
+	}
+
 	url := fmt.Sprintf("%s://%s%s", ja.Scheme, ja.Host, ja.Path)
 	ylog.Infof("agentControlDo", "[api_jobs] do: %s %s", url, args.(string))
 
 	option := midware.SvrAuthRequestOption()
-	option.JSON = ja.Args
+	option.JSON = innerArgv["argv"]
 	option.RequestTimeout = time.Duration(ja.Timeout) * time.Second
-	//Retry 3 times.
-	for retries > 0 {
-		switch ja.Method {
-		case job.HttpMethodGet:
-			r, err = grequests.Get(url, option)
-		case job.HttpMethodPost:
-			r, err = grequests.Post(url, option)
-		default:
-			return nil, errors.New("request method not support")
-		}
-		if err != nil || r.StatusCode != 200 {
-			ylog.Errorf("agentControlDo", "retry: %d; url: %s; args: %s; err: %#v res: %#v", retries, url, args.(string), err, r)
-			retries -= 1
-		} else {
-			break
-		}
+
+	switch ja.Method {
+	case job.HttpMethodGet:
+		r, err = grequests.Get(url, option)
+	case job.HttpMethodPost:
+		r, err = grequests.Post(url, option)
+	default:
+		return nil, errors.New("request method not support")
+	}
+	if err != nil || r.StatusCode != 200 {
+		ylog.Errorf("agentControlDo", "url: %s; args: %s; err: %#v res: %#v", url, args.(string), err, r)
 	}
 
+	subTask := make(map[string]interface{}, 4)
+	subTask["token"] = innerArgv["token"].(string)
+	subTask["task_url"] = url
+	subTask["status"] = TaskStatusSuccess
+	//http connection error
 	if err != nil {
-		result = fmt.Sprintf("agentID:%s; url:%s; Result:%s", ja.Args.(map[string]interface{})["agent_id"], url, err.Error())
+		subTask["status"] = TaskStatusFail
+		subTask["task_resp"] = err.Error()
+		task.SubTaskUpdateAsyncWrite(subTask)
+		return job.JobResWithArgs{Args: &ja, Response: r, Result: result}, err
 	}
-	if r.Ok {
-		result = fmt.Sprintf("agentID:%s; url:%s; Result:%s", ja.Args.(map[string]interface{})["agent_id"], url, r.String())
-	} else {
-		result = fmt.Sprintf("agentID:%s; url:%s; Result:StatusCode is %d", ja.Args.(map[string]interface{})["agent_id"], url, r.StatusCode)
+
+	//http error
+	if !r.Ok {
+		subTask["status"] = TaskStatusFail
+		subTask["task_resp"] = fmt.Sprintf("StatusCode is %d", r.StatusCode)
+		task.SubTaskUpdateAsyncWrite(subTask)
+		return job.JobResWithArgs{Args: &ja, Response: r, Result: result}, err
 	}
+
+	svrRsp := &SvrResponse{}
+	err = json.Unmarshal(r.Bytes(), svrRsp)
+	//repose parse error
+	if err != nil {
+		subTask["status"] = TaskStatusFail
+		subTask["task_resp"] = fmt.Sprintf("%s Unmarshal error %s", r.String(), err.Error())
+		task.SubTaskUpdateAsyncWrite(subTask)
+		return job.JobResWithArgs{Args: &ja, Response: r, Result: result}, err
+	}
+
+	//repose code error
+	if svrRsp.Code != 0 {
+		subTask["status"] = TaskStatusFail
+		subTask["task_resp"] = fmt.Sprintf("svr response error %s", r.String())
+		task.SubTaskUpdateAsyncWrite(subTask)
+		return job.JobResWithArgs{Args: &ja, Response: r, Result: result}, err
+	}
+
+	//success
+	subTask["task_resp"] = r.String()
+	task.SubTaskUpdateAsyncWrite(subTask)
 	return job.JobResWithArgs{Args: &ja, Response: r, Result: result}, err
 }
 
@@ -263,18 +338,26 @@ func ControlAgentTask(c *gin.Context) {
 			common.CreateResponse(c, common.UnknownErrorCode, "Jobs cannot be executed concurrently, please try later")
 			return
 		}
-		defer infra.DistributedUnLock(request.TaskID)
 
 		//Calculate the count of machines processed by this job
 		err = taskCollection.FindOne(context.Background(), bson.M{"task_id": request.TaskID}).Decode(&dbTask)
 		if err != nil {
 			common.CreateResponse(c, common.DBOperateErrorCode, err.Error())
+			infra.DistributedUnLock(request.TaskID)
 			return
 		}
 
-		if dbTask.Status == TaskStatusStopped || dbTask.Status == TaskStatusFinished || len(dbTask.ToDoList) == 0 {
+		if dbTask.Status == TaskStatusStopped || dbTask.Status == TaskStatusFinished {
 			ylog.Errorf("ControlAgentTask", "%#v", dbTask)
 			common.CreateResponse(c, common.UnknownErrorCode, "task is finished/stopped or the todo_list is empty")
+			infra.DistributedUnLock(request.TaskID)
+			return
+		}
+
+		if len(dbTask.ToDoList) == 0 {
+			taskCollection.UpdateOne(context.Background(), bson.M{"task_id": dbTask.TaskID}, bson.M{"$set": bson.M{"update_time": dbTask.UpdateTime, "task_status": TaskStatusFinished}})
+			common.CreateResponse(c, common.UnknownErrorCode, "task is finished/stopped or the todo_list is empty")
+			infra.DistributedUnLock(request.TaskID)
 			return
 		}
 
@@ -283,10 +366,10 @@ func ControlAgentTask(c *gin.Context) {
 		}
 
 		if nCount < len(dbTask.ToDoList) {
-			dbTask.Status = "running"
+			dbTask.Status = TaskStatusRunning
 		} else {
 			nCount = len(dbTask.ToDoList)
-			dbTask.Status = "finished"
+			dbTask.Status = TaskStatusFinished
 		}
 		todoList := dbTask.ToDoList[:nCount]
 		dbTask.ToDoList = dbTask.ToDoList[nCount:len(dbTask.ToDoList)]
@@ -297,17 +380,22 @@ func ControlAgentTask(c *gin.Context) {
 		jID, err := job.NewJob(dbTask.TaskType, request.Concurrence, AgentJobTimeOut, true)
 		if err != nil {
 			common.CreateResponse(c, common.UnknownErrorCode, err.Error())
+			infra.DistributedUnLock(request.TaskID)
 			return
 		}
 
-		job.DistributeJob(jID, dbTask.TaskType, jobParm)
-		job.Finish(jID)
+		//Asynchronous distribution
+		go func() {
+			job.DistributeJob(jID, dbTask.TaskType, jobParm)
+			job.Finish(jID)
+			infra.DistributedUnLock(request.TaskID)
+		}()
 
 		dbTask.JobList = append(dbTask.JobList, jID)
 		dbTask.UpdateTime = time.Now().Unix()
 		_, err = taskCollection.UpdateOne(context.Background(), bson.M{"task_id": dbTask.TaskID},
 			bson.M{"$set": bson.M{"todo_list": dbTask.ToDoList, "finished_list": dbTask.FinishedList, "update_time": dbTask.UpdateTime,
-				"task_status": dbTask.Status, "job_list": dbTask.JobList}})
+				"task_status": dbTask.Status, "job_list": dbTask.JobList, "count_undistribute": len(dbTask.ToDoList), "count_distributed": len(dbTask.FinishedList)}})
 		if err != nil {
 			common.CreateResponse(c, common.DBOperateErrorCode, err.Error())
 			return
@@ -406,13 +494,20 @@ func createTask(request *AgentConfigTask, tType string) (string, float64, error)
 		request.IDList = []string{}
 	}
 	agentCollection := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.AgentHeartBeatCollection)
-	cursor, err := agentCollection.Find(context.Background(), bson.M{"$or": []bson.M{{"tags": request.Tag}, {"agent_id": bson.M{"$in": request.IDList}}}})
+
+	//task online send to online machine
+	onlineTime := time.Now().Add(time.Minute * -60).Unix()
+	filter := bson.M{"$or": []bson.M{{"last_heartbeat_time": bson.M{"$gt": onlineTime}, "tags": request.Tag},
+		{"last_heartbeat_time": bson.M{"$gt": onlineTime}, "agent_id": bson.M{"$in": request.IDList}}}}
+
+	cursor, err := agentCollection.Find(context.Background(), filter)
 	if err != nil {
 		ylog.Errorf("createTask", err.Error())
 		return "", 0, err
 	}
 	defer cursor.Close(context.Background())
 	todoList := make([]string, 0, 1024)
+	agentIDMap := make(map[string]bool, 2000)
 	for cursor.Next(context.Background()) {
 		var hb AgentHBInfo
 		err := cursor.Decode(&hb)
@@ -420,12 +515,20 @@ func createTask(request *AgentConfigTask, tType string) (string, float64, error)
 			ylog.Errorf("createTask", err.Error())
 			continue
 		}
+
+		//数据同时更新和查询，会导致返回重复数据，确保不重复
+		if _, ok := agentIDMap[hb.AgentId]; ok {
+			continue
+		} else {
+			agentIDMap[hb.AgentId] = true
+		}
+
 		ylog.Debugf("createTask", "heartbeat: %#v", hb)
 		todoList = append(todoList, hb.AgentId)
 	}
 
 	//将此次任务记录写回db
-	request.Status = "created"
+	request.Status = TaskStatusCreated
 	request.ToDoList = todoList
 	request.TaskType = tType
 	request.FinishedList = []string{}
@@ -487,44 +590,29 @@ func updateConfig(dbTask *AgentConfigTask, hb *AgentHBInfo) {
 	}
 }
 
-//GetTaskByID return agent config by agent_id.
+//GetTaskByID return task task_id.
 func GetTaskByID(c *gin.Context) {
-	var (
-		task       AgentConfigTask
-		showRes    = false
-		showDetail = false
-	)
+	var task AgentConfigTask
 	taskID := c.Param("id")
-	if c.Query("result") == "true" {
-		showRes = true
-	}
-	if c.Query("detail") == "true" {
-		showDetail = true
-	}
-	collection := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.AgentTaskCollection)
-	err := collection.FindOne(context.Background(), bson.M{"task_id": taskID}).Decode(&task)
+	collTask := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.AgentTaskCollection)
+	err := collTask.FindOne(context.Background(), bson.M{"task_id": taskID}).Decode(&task)
 	if err != nil && err != mongo.ErrNoDocuments {
 		ylog.Errorf("GetTaskByID", err.Error())
 		common.CreateResponse(c, common.DBOperateErrorCode, err.Error())
 		return
 	}
 
-	jobInfo := bson.M{}
-	for _, jID := range task.JobList {
-		jStat := job.GetStat(jID)
-		if showRes {
-			jRes := job.GetResult(jID)
-			jobInfo[jID] = bson.M{"info": jStat["info"], "stat": jStat["stat"], "res": jRes}
-		} else {
-			jobInfo[jID] = bson.M{"info": jStat["info"], "stat": jStat["stat"], "res": nil}
-		}
+	err = computeSubTaskStat(&task)
+	if err != nil {
+		ylog.Errorf("GetTaskByID", err.Error())
+		common.CreateResponse(c, common.DBOperateErrorCode, nil)
+		return
+	}
 
-	}
-	if !showDetail {
-		task.ToDoList = nil
-		task.FinishedList = nil
-	}
-	common.CreateResponse(c, common.SuccessCode, bson.M{"meta": task, "jobs": jobInfo})
+	task.ToDoList = []string{}
+	task.FinishedList = []string{}
+	common.CreateResponse(c, common.SuccessCode, task)
+	return
 }
 
 //GetTaskByID return agent config by agent_id.
@@ -542,4 +630,45 @@ func GetJobByID(c *gin.Context) {
 		common.CreateResponse(c, common.SuccessCode, bson.M{"info": jStat["info"], "stat": jStat["stat"], "res": nil})
 	}
 
+}
+
+func computeSubTaskStat(task *AgentConfigTask) error {
+	var res = make([]SubTaskCount, 3)
+	collSubTask := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.AgentSubTaskCollection)
+	pipeline := mongo.Pipeline{
+		{{"$match", bson.D{{"task_id", task.TaskID}}}},
+		{{"$group", bson.D{{"_id", "$status"}, {"count", bson.D{{"$sum", 1}}}}}},
+	}
+	opts := options.Aggregate().SetMaxTime(5 * time.Second)
+	cursor, err := collSubTask.Aggregate(context.TODO(), pipeline, opts)
+	if err != nil {
+		return err
+	}
+
+	err = cursor.All(context.Background(), &res)
+	if err != nil {
+		return err
+	}
+
+	for _, v := range res {
+		if v.ID == TaskStatusCreated {
+			task.SubTaskCreated = v.Count
+		} else if v.ID == TaskStatusSuccess {
+			task.SubTaskSucceed = v.Count
+		} else if v.ID == TaskStatusFail {
+			task.SubTaskFailed = v.Count
+		}
+	}
+
+	//write back db
+	collTask := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.AgentTaskCollection)
+	if (task.Status == TaskStatusFinished || task.Status == TaskStatusStopped) && time.Now().Unix()-task.UpdateTime >= 10 {
+		_, err = collTask.UpdateOne(context.Background(), bson.M{"task_id": task.TaskID}, bson.M{"$set": bson.M{"sub_task_created": task.SubTaskCreated,
+			"sub_task_failed": task.SubTaskFailed, "sub_task_succeed": task.SubTaskSucceed}})
+		if err != nil {
+			ylog.Errorf("GetTaskByID", err.Error())
+		}
+	}
+
+	return nil
 }

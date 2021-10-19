@@ -4,9 +4,14 @@ const DefaultConfigVersion = 0
 const DefaultAgentConfig = "agent_config"
 
 type SrvConnStatResp struct {
-	Code int            `json:"code"`
-	Msg  string         `json:"msg"`
-	Data []*AgentHBInfo `json:"data"`
+	Code int         `json:"code"`
+	Msg  string      `json:"msg"`
+	Data []*ConnStat `json:"data"`
+}
+
+type ConnStat struct {
+	AgentInfo   map[string]interface{}   `json:"agent_info"`
+	PluginsInfo []map[string]interface{} `json:"plugins_info"`
 }
 
 type SrvConnListResp struct {
@@ -15,44 +20,37 @@ type SrvConnListResp struct {
 	Data []string `json:"data"`
 }
 
+type SvrResponse struct {
+	Code    int         `json:"code"`
+	Message string      `json:"msg"`
+	Data    interface{} `json:"data"`
+}
+
 type AgentTaskMsg struct {
-	Name  string `json:"name"`
-	Data  string `json:"data"`
-	Token string `json:"token,omitempty"`
+	Name     string `json:"name" bson:"name"`
+	Data     string `json:"data" bson:"data"`
+	Token    string `json:"token,omitempty" bson:"token"`
+	DataType int32  `json:"data_type,omitempty" bson:"data_type"`
 }
 
 type AgentConfigMsg struct {
-	Name        string   `json:"name" binding:"required"`
-	Version     string   `json:"version,omitempty"`
-	SHA256      string   `json:"sha256,omitempty"`
-	DownloadURL []string `json:"download_url,omitempty"`
-	Detail      string   `json:"detail,omitempty"`
+	Name        string   `json:"name" binding:"required" bson:"name"`
+	Type        string   `json:"type,omitempty" bson:"type"`
+	Signature   string   `json:"signature,omitempty" bson:"signature"`
+	Version     string   `json:"version,omitempty" bson:"version"`
+	SHA256      string   `json:"sha256,omitempty" bson:"sha256"`
+	DownloadURL []string `json:"download_url,omitempty" bson:"download_url"`
+	Detail      string   `json:"detail,omitempty" bson:"detail"`
 }
 
 type AgentHBInfo struct {
-	Addr              string   `json:"addr" bson:"addr" `
-	AgentId           string   `json:"agent_id" bson:"agent_id"`
-	Cpu               float64  `json:"cpu" bson:"cpu"`
-	CreateAt          int64    `json:"create_at" bson:"create_at"`
-	LastHeartbeatTime int64    `json:"last_heartbeat_time" bson:"last_heartbeat_time"`
-	Memory            int64    `json:"memory" bson:"memory"`
-	NetType           string   `json:"net_type" bson:"net_type"`
-	Version           string   `json:"version" bson:"version"`
-	IntranetIPv4      []string `json:"intranet_ipv4" bson:"intranet_ipv4"`
-	IntranetIPv6      []string `json:"intranet_ipv6" bson:"intranet_ipv6"`
-	ExtranetIPv4      []string `json:"extranet_ipv4" bson:"extranet_ipv4"`
-	ExtranetIPv6      []string `json:"extranet_ipv6" bson:"extranet_ipv6"`
-	HostName          string   `json:"hostname" bson:"hostname"`
-	SourceIp          string   `json:"source_ip" bson:"source_ip"`
-	SourcePort        int64    `json:"source_port" bson:"source_port"`
-	Tags              []string `json:"tags" bson:"tags"`
+	AgentId    string   `json:"agent_id" bson:"agent_id"`
+	SourceIp   string   `json:"source_ip" bson:"source_ip"`
+	SourcePort int64    `json:"source_port" bson:"source_port"`
+	Tags       []string `json:"tags" bson:"tags"`
 
 	Config           []AgentConfigMsg `json:"config,omitempty" bson:"config"`
 	ConfigUpdateTime int64            `json:"config_update_time,omitempty" bson:"config_update_time"`
-
-	IO     float64                  `json:"io" bson:"io"`
-	Slab   int64                    `json:"slab" bson:"slab"`
-	Plugin []map[string]interface{} `json:"plugins" bson:"plugins"`
 }
 
 type DefaultConfig struct {
@@ -64,12 +62,14 @@ type DefaultConfig struct {
 }
 
 type AgentSubTask struct {
-	AgentID    string `json:"agent_id" bson:"agent_id" `
-	TaskID     string `json:"task_id" bson:"task_id" `
-	Name       string `json:"name" bson:"name"`
-	Data       string `json:"data" bson:"data"`
-	Token      string `json:"token" bson:"token"`
-	Status     string `json:"status" bson:"status"`
-	UpdateTime int64  `json:"update_time" bson:"update_time"`
-	TaskResult string `json:"task_result" bson:"task_result"`
+	TaskType   string                 `json:"task_type" bson:"task_type" `
+	AgentID    string                 `json:"agent_id" bson:"agent_id" `
+	TaskID     string                 `json:"task_id" bson:"task_id" `
+	TaskData   map[string]interface{} `json:"task_data" bson:"task_data"`
+	TaskUrl    string                 `json:"task_url" bson:"task_url"`
+	Token      string                 `json:"token" bson:"token"`
+	Status     string                 `json:"status" bson:"status"`
+	UpdateTime int64                  `json:"update_time" bson:"update_time"`
+	TaskResult interface{}            `json:"task_result" bson:"task_result"`
+	TaskResp   string                 `json:"task_resp" bson:"task_resp"`
 }
