@@ -2705,18 +2705,18 @@ int inode_permission_handler(struct kprobe *p, struct pt_regs *regs)
  *     don't enum all entries, just grab one with d_find_alias
  */
 
-//#ifdef CENTOS_CHECK
-//#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
-//    if (!hlist_empty(&inode->i_dentry)) {
-//        hlist_for_each_entry(tmp_dentry, &inode->i_dentry, d_u.d_alias)
-//#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-//    if (!hlist_empty(&inode->i_dentry)) {
-//        hlist_for_each_entry(tmp_dentry, &inode->i_dentry, d_alias)
-//#else
-//    if (!list_empty(&inode->i_dentry)) {
-//        list_for_each_entry(tmp_dentry, &inode->i_dentry, d_alias)
-//#endif
-//#else
+#ifdef CENTOS_CHECK
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
+    if (!hlist_empty(&inode->i_dentry)) {
+        hlist_for_each_entry(tmp_dentry, &inode->i_dentry, d_u.d_alias)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
+    if (!hlist_empty(&inode->i_dentry)) {
+        hlist_for_each_entry(tmp_dentry, &inode->i_dentry, d_alias)
+#else
+    if (!list_empty(&inode->i_dentry)) {
+        list_for_each_entry(tmp_dentry, &inode->i_dentry, d_alias)
+#endif
+#else
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)
     if (!hlist_empty(&inode->i_dentry)) {
 //#if LINUX_VERSION_CODE == KERNEL_VERSION(3, 13, 0) || LINUX_VERSION_CODE == KERNEL_VERSION(3, 16, 0)
@@ -2736,7 +2736,7 @@ int inode_permission_handler(struct kprobe *p, struct pt_regs *regs)
         list_for_each_entry(tmp_dentry, &inode->i_dentry, d_alias)
 #endif
 #endif
-//#endif
+#endif
         {
             parent = tmp_dentry->d_parent;
             if(!parent)
