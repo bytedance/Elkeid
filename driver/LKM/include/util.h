@@ -117,16 +117,16 @@ static __always_inline char *smith_get_pid_tree(int limit)
 
 static inline char *smith_strim(char *s)
 {
-	size_t size = strlen(s);
-	char *end, *first = s;
+    size_t size = strlen(s);
+    char *end, *first = s;
 
-	if (!size)
-		return s;
+    if (!size)
+        return s;
 
-	end = s + size - 1;
-	while (end >= s && isspace(*end))
-		end--;
-	*(end + 1) = '\0';
+    end = s + size - 1;
+    while (end >= s && isspace(*end))
+        end--;
+    *(++end) = '\0';
 
     while (isspace(*first))
         first++;
