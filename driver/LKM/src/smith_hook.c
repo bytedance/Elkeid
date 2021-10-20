@@ -2719,14 +2719,22 @@ int inode_permission_handler(struct kprobe *p, struct pt_regs *regs)
 #else
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)
     if (!hlist_empty(&inode->i_dentry)) {
+//#if LINUX_VERSION_CODE == KERNEL_VERSION(3, 13, 0) || LINUX_VERSION_CODE == KERNEL_VERSION(3, 16, 0)
+#ifdef D_ALIAS_CHECK
+        hlist_for_each_entry(tmp_dentry, &inode->i_dentry, d_alias)
+#else
         hlist_for_each_entry(tmp_dentry, &inode->i_dentry, d_u.d_alias)
+#endif
+//#else
+//        hlist_for_each_entry(tmp_dentry, &inode->i_dentry, d_u.d_alias)
+//#endif
 #else
     if (!list_empty(&inode->i_dentry)) {
-# if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 66)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 66)
         list_for_each_entry(tmp_dentry, &inode->i_dentry, d_u.d_alias)
-# else
+#else
         list_for_each_entry(tmp_dentry, &inode->i_dentry, d_alias)
-# endif
+#endif
 #endif
 #endif
         {
