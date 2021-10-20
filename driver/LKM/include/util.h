@@ -17,12 +17,6 @@
 #include <linux/ctype.h>
 #include <linux/delay.h>
 
-#ifdef CONFIG_X86
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 7, 0)
-#include <asm/paravirt.h>
-#endif
-#endif
-
 /*
  * constants & globals
  */
@@ -47,8 +41,6 @@ static unsigned int ROOT_PID_NS_INUM;
 extern unsigned long smith_kallsyms_lookup_name(const char *);
 
 extern char *__dentry_path(struct dentry *dentry, char *buf, int buflen);
-
-extern u64 GET_PPIN(void);
 
 extern u8 *smith_query_sb_uuid(struct super_block *sb);
 

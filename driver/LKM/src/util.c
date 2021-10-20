@@ -56,30 +56,6 @@ unsigned long smith_kallsyms_lookup_name(const char *name)
 
 #endif
 
-#ifdef CONFIG_X86
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 7, 0)
-u64 GET_PPIN(void)
-{
-	int err;
-	u64 res;
-	res = paravirt_read_msr_safe(0x4f, &err);
-	return res;
-}
-#else
-u64 GET_PPIN(void)
-{
-	return 0;
-}
-#endif
-#else
-
-u64 GET_PPIN(void)
-{
-    return 0;
-}
-
-#endif
-
 int prepend(char **buffer, int *buflen, const char *str, int namelen)
 {
     *buflen -= namelen;

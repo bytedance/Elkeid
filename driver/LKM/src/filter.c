@@ -17,7 +17,6 @@
 #define DEL_EXECVE_ARGV_SHITELIST 74        /* J */
 #define DEL_ALL_EXECVE_ARGV_SHITELIST 117   /* u */
 #define EXECVE_ARGV_CHECK 122               /* z */
-#define PRINT_PPIN 95                       /* _ */
 
 #define ADD_WRITE_NOTIFI 87                 /* W */
 #define DEL_WRITE_NOTIFI 120                /* v */
@@ -41,8 +40,6 @@ static int execve_exe_allowlist_limit = 0;
 static int execve_argv_allowlist_limit = 0;
 static int file_notify_checklist_limit = 512;
 
-static atomic_t device_read_flag = ATOMIC_INIT(0);
-
 static DEFINE_RWLOCK(exe_allowlist_lock);
 static DEFINE_RWLOCK(argv_allowlist_lock);
 static DEFINE_RWLOCK(file_notify_checklist_lock);
@@ -53,14 +50,10 @@ static int device_mmap(struct file *filp, struct vm_area_struct *vma);
 static ssize_t device_write(struct file *filp, const __user char *buff,
                             size_t len, loff_t * off);
 
-static ssize_t device_read(struct file *filp, char __user * buf, size_t count,
-        loff_t * offset);
-
 static const struct file_operations mchar_fops = {
         .owner = THIS_MODULE,
         .mmap = device_mmap,
         .write = device_write,
-        .read = device_read,
 };
 
 struct allowlist_node {
@@ -957,11 +950,6 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
         case DEL_ALL_NOTIFI:
             del_all_file_notify_checklist();
             break;
-
-
-        case PRINT_PPIN:
-            atomic_set(&device_read_flag, 1);
-            break;
     }
 
     if(parent)
@@ -969,25 +957,6 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
 
     if(data_main)
         smith_kfree(data_main);
-
-    return len;
-}
-
-static ssize_t device_read(struct file *filp, char __user * buf, size_t size,
-        loff_t * offset)
-{
-    int len;
-    u64 ppin;
-    char ppin_str[64];
-
-    if(atomic_cmpxchg(&device_read_flag, 1, 0) != 1)
-        return 0;
-
-    ppin = GET_PPIN();
-    snprintf(ppin_str, 64, "%llu", ppin);
-    len = strlen(ppin_str);
-    if (len > size || copy_to_user(buf, ppin_str, len))
-        return 0;
 
     return len;
 }
