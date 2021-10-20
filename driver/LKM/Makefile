@@ -10,11 +10,9 @@ ldflags-y		+= -r -T $(MODULE_DIR)/kprobe.lds
 ccflags-y		+= -I$(MODULE_DIR)/include
 ccflags-y		+= -I$(MODULE_DIR)
 
-LOAD_MODLUE_SYMBOL_NAME_STR := $(shell bash $(MODULE_DIR)/get_load_module_sysbol_name.sh)
 UBUNTU_CHECK := $(shell bash $(MODULE_DIR)/ubuntu_check.sh)
 CENTOS_CHECK := $(shell bash $(MODULE_DIR)/centos_check.sh)
 D_ALIAS_CHECK := $(shell bash $(MODULE_DIR)/d_alias_check.sh)
-ccflags-y += -D LOAD_MODLUE_SYMBOL_NAME=\"$(LOAD_MODLUE_SYMBOL_NAME_STR)\"
 
 ifeq ($(UBUNTU_CHECK),DISTRIB_ID=Ubuntu)
 ccflags-y += -D UBUNTU_CHECK
