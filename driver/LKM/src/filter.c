@@ -623,10 +623,7 @@ int insert_rb(struct rb_root *root, struct allowlist_node *data)
 
 int del_rb_by_data_exe_list(char *str)
 {
-    struct allowlist_node *data = NULL;
-    data = search_rb(&execve_exe_allowlist, str);
-    if(!data)
-        return 0;
+    struct allowlist_node *data;
 
     write_lock(&exe_allowlist_lock);
     /* make sure node is still in rb tree */
@@ -644,10 +641,7 @@ int del_rb_by_data_exe_list(char *str)
 
 int del_rb_by_data_argv_list(char *str)
 {
-    struct allowlist_node *data = NULL;
-    data = search_rb(&execve_argv_allowlist, str);
-    if(!data)
-        return 0;
+    struct allowlist_node *data;
 
     write_lock(&argv_allowlist_lock);
     /* make sure node is still in rb tree */
