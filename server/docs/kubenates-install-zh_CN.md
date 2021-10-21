@@ -65,7 +65,7 @@ kubectl create namespace elkeid
 ###  3、运行依赖组件
 > 运行依赖的镜像存在在docker的官方仓库中(地址)，运行前请确保运行的k8s能连通docker的官方仓库。镜像取决时间取决于你的机器网络情况。  
 >  
-> 这里提供的方法只为了测试或体验Elkeid，并且没有配置永久存储，不适用于生产环境使用，请使用前注意。
+> 这里提供的方法只为了测试或体验Elkeid，并且没有配置永久存储和集群外部访问，不适用于生产环境使用，请使用前注意。
 
 执行下面命令，安装zookeeper、mongodb、redis、kafka。
 ```
@@ -93,6 +93,14 @@ kubectl apply -f kube_elkeid_svc.yaml
 - 执行命令`curl http://{{k8s任意节点IP}}:30088/registry/detail?name=hids_svr_grpc`，检查输出结果  
 
 上述检查如果都没问题，说明各个服务启动成功。
+
+接着执行如下命令，新增用户。
+```
+//请将{{mg-POD-name}}替换成你mg服务对应的pod name(以mg-开头)
+// {{passwd}}和{{user_name}}需要自定义。
+// example: kubectl exec -it mg-69b74cb94-jswbt -- ./init  -t addUser -p hids_test -u hids_test
+kubectl exec -it {{mg-POD-name}} -- ./init  -t addUser -p {{passwd}} -u {{user_name}}
+```
 
 ##  Agent部署
 Server部署完后，可以得到以下资源：
