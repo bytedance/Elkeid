@@ -90,13 +90,13 @@ kubectl apply -f kube_elkeid_svc.yaml
 等待若干秒(取决于镜像拉取的速度)，按照下面步骤逐一检查各个服务：
 - 执行`kubectl -n elkeid get svc`，检查是否存在elkeid-sd/elkeid-mg/elkeid-ac这三个service
 - 执行`kubectl -n elkeid get pod`，检查分别以sd-/mg-/ac-开头的POD是否STATUS都为Running
-- 执行命令`curl http://{{k8s任意节点IP}}:30088/registry/detail?name=hids_svr_grpc`，检查输出结果  
+- 执行命令`curl http://{{k8s任意节点IP}}:30088/registry/summary`，检查输出是否为`{"data":{"hids_manage":1,"hids_svr_grpc":1,"hids_svr_http":1},"msg":"ok"}`
 
 上述检查如果都没问题，说明各个服务启动成功。
 
 接着执行如下命令，新增用户。
 ```
-//请将{{mg-POD-name}}替换成你mg服务对应的pod name(以mg-开头)
+// 请将{{mg-POD-name}}替换成你mg服务对应的pod name(以mg-开头)
 // {{passwd}}和{{user_name}}需要自定义。
 // example: kubectl exec -it mg-69b74cb94-jswbt -- ./init  -t addUser -p hids_test -u hids_test
 kubectl exec -it {{mg-POD-name}} -- ./init  -t addUser -p {{passwd}} -u {{user_name}}
