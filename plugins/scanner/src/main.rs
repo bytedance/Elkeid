@@ -1,22 +1,38 @@
 use crossbeam_channel::bounded;
 use log::*;
+use plugins::{bridge::Task, logger::*, Client, EncodeType};
 use scanner::{
-    config::{
-        CACHE_SIZE, NAME, RULES_SET, SCAN_DIR_CONFIG, SOCKET_PATH, VERSION, WAIT_INTERVAL_DAILY,
-    },
+    config::{CACHE_SIZE, NAME, RULES_SET, SCAN_DIR_CONFIG, VERSION, WAIT_INTERVAL_DAILY},
     cronjob::Cronjob,
     detector::Detector,
     fmonitor::FileMonitor,
 };
 
-use std::{thread, time::Duration};
+use std::{path::PathBuf, thread, time::Duration};
 
 fn main() {
     let pid = std::process::id();
     println!("scanner pid : {:?}", pid);
 
-    let builder = plugin_builder::Builder::new(SOCKET_PATH, NAME, VERSION).unwrap();
-    let (sender, receiver) = builder.set_name(NAME.to_string()).build();
+    let mut client = Client::new(true);
+    // set logger
+    let logger = Logger::new(Config {
+        max_size: 1024 * 1024 * 5,
+        path: PathBuf::from("./scanner.log"),
+        file_level: LevelFilter::Info,
+        remote_level: LevelFilter::Error,
+        max_backups: 10,
+        compress: true,
+        client: Some(client.clone()),
+    });
+    match set_boxed_logger(Box::new(logger)) {
+        Ok(_) => {}
+        Err(e) => {
+            error!("Err {:?}", e)
+        }
+    };
+
+    let mut client_c = client.clone();
     info!("Elkeid-scanner Init success!!!");
 
     let (s, r) = bounded(20);
@@ -26,8 +42,7 @@ fn main() {
     let s_recv_worker = s.clone();
     let s_recv_lock = s_lock.clone();
     let mut mworker = Detector::new(
-        sender,
-        receiver,
+        client_c,
         s_recv_worker,
         r,
         s_recv_lock,

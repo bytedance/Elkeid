@@ -7,7 +7,6 @@ pub const CACHE_SIZE: usize = 100;
 // Plugin Config
 pub const NAME: &str = "scanner";
 pub const VERSION: &str = "0.0.0.1";
-pub const SOCKET_PATH: &str = "../../plugin.sock";
 
 // Scanner Config
 pub const LOAD_MMAP_MAX_SIZE: usize = 1024 * 1024 * 44; // scan max file size
