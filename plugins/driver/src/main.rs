@@ -1,4 +1,4 @@
-use driver::transformer::Transformer;
+use driver::{kmod::Kmod, transformer::Transformer};
 use log::*;
 use plugins::{logger::*, Client};
 use ringslot::{Handler, RingSlot};
@@ -20,7 +20,16 @@ fn main() {
         client: Some(client.clone()),
     });
     set_boxed_logger(Box::new(logger)).unwrap();
-    info!("init kmod successfully");
+    let kmod = match Kmod::new() {
+        Ok(kmod) => {
+            info!("init kmod successfully");
+            kmod
+        }
+        Err(err) => {
+            error!("{}", err);
+            return;
+        }
+    };
     let handler = Handler::new();
     let control = handler.get_inner();
     let mut client_c = client.clone();

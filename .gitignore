@@ -35,3 +35,4 @@ _testmain.go
 *.local.yml
 target
 Cargo.lock
+output

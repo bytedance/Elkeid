@@ -6,7 +6,6 @@ use nix::{
     sys::utsname::uname,
 };
 use parking_lot::Mutex;
-use plugins::Client;
 use std::{
     env::consts::ARCH,
     ffi::CString,
@@ -100,7 +99,7 @@ impl Kmod {
             }
         }
         let src = format!(
-            "/ko/{}_{}_{}_{}.ko",
+            "{}_{}_{}_{}.ko",
             KMOD_NAME,
             KMOD_VERSION,
             uname().release(),
