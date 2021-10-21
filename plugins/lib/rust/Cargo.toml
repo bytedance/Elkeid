@@ -1,0 +1,23 @@
+[package]
+name = "plugins"
+version = "0.1.0"
+authors = ["zhanglei.sec <zhanglei.sec@bytedance.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+debug = []
+[dependencies]
+log = { version = "0.4", features = ["std"] }
+chrono = "0.4"
+flate2 = "1"
+crossbeam = "0.8"
+lazy_static = "1.4"
+protobuf = "2"
+parking_lot = "0.11"
+signal-hook = "0.3"
+libc = "0.2"
+serde_json = "1"
+
+[build-dependencies]
+protobuf-codegen-pure = "2.3"

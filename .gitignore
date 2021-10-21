@@ -33,3 +33,5 @@ _testmain.go
 /.vscode
 /output
 *.local.yml
+target
+Cargo.lock
