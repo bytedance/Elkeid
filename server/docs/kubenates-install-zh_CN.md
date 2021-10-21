@@ -5,7 +5,7 @@
 > Kubernetes集群集群部署，请参照官方文档：https://kubernetes.io/zh/docs/home/, https://www.kubernetes.org.cn/docs  
 
 ###  2、编译Elkeid后台镜像
-> 我们提供了预编好的Elkeid镜像，可以跳过这一步直接使用我们编译好的镜像：
+> 我们提供了预编好的Elkeid镜像，可以跳过这一步直接使用我们编译好的镜像:    
 >   mg.1.0.0.tar [下载](./quick-start-zh_CN.md#2-编译agent)  
 >   sd.1.0.0.tar [下载](./quick-start-zh_CN.md#2-编译agent)   
 >   ac.1.0.0.tar [下载](./quick-start-zh_CN.md#2-编译agent)   
@@ -47,8 +47,8 @@ cd Elkeid/server/build/kube/
 ##  Server部署
 * 下面所有步骤均需要在k8s集群的master上操作
 ###  1、同步所需配置到k8s的master上
-将`Elkeid/server/build/kube`下的全部yaml文件都拷贝到k8s的master上，然后切换到文件所在目录，后续操作均此目录下操作。
-包括下面五个yaml文件
+将`Elkeid/server/build/kube`下的全部yaml文件都拷贝到k8s的master上，然后切换到文件所在目录，后续操作均此目录下操作。  
+包括下面五个yaml文件:
 ```
 kube_elkeid_svc.yaml  
 kube_mongodb_svc.yaml  
@@ -57,7 +57,7 @@ kube_kafka_svc.yaml
 kube_redis_svc.yaml
 ```
 ###  2、创建k8s的命名空间
-所有服务默认都运行在elkeid命名空间下，所以需要创建所需的命名空间，请执行命令:
+所有服务默认都运行在elkeid命名空间下，请执行下面命令创建所需的命名空间:
 ```
 kubectl create namespace elkeid
 ```
@@ -102,7 +102,6 @@ kubectl apply -f kube_elkeid_svc.yaml
 
 ##  Agent部署
 Server部署完后，可以得到以下资源：
-- ServiceDiscovery地址(记为sd_host:sd_port): {{k8s任意节点IP}}:30088
 - Manager地址(记为mg_host:mg_port): {{k8s任意节点IP}}:30088
 - AgentCenter地址(记为ac_host:ac_port): {{k8s任意节点IP}}:30088
 
@@ -123,10 +122,9 @@ var ClientCert []byte
 var CaCert []byte
 
 func init() {
-        sd["sd"] = "sd_host:sd_port"
         priLB["ac"] = "ac_host:ac_port"  
         //这里"elkeid.com"需要与生成证书时使用的域名一致，如果生成时不是默认配置需要在这里一起修改
         setDialOptions(CaCert, ClientKey, ClientCert, "elkeid.com")
 }
 ```
-接着参照文档[Agent编译和部署](./quick-start-zh_CN.md#2-编译agent) 进行编译和部署Agent即可。
+接着参照文档[Agent编译和部署](./quick-start-zh_CN.md#2-编译agent) 后续步骤进行编译和部署Agent即可。
