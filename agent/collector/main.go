@@ -288,6 +288,7 @@ func main() {
 		defer close(modifyCh)
 		notify.Watch("/etc/cron.d", modifyCh, notify.InModify)
 		notify.Watch("/etc/crontab", modifyCh, notify.InModify)
+		notify.Watch("/var/spool/cron/", modifyCh, notify.InModify)
 		notify.Watch("/var/spool/cron/crontabs/", modifyCh, notify.InModify)
 		defer notify.Stop(modifyCh)
 		for {
