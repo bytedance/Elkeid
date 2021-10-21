@@ -1,0 +1,44 @@
+name: elkeid-agent
+arch: amd64
+platform: linux
+epoch: 3
+version: 1.7.0.0
+release: 1
+section: default
+priority: extra
+maintainer: zhanglei <zhanglei.sec@bytedance.com>
+description: |
+  elkeid-agent
+license: MIT
+contents:
+  - src: ./elkeid-agent.service
+    dst: /etc/elkeid/elkeid-agent.service
+    file_info:
+      mode: 0600
+      owner: root
+      group: root
+  - src: ./elkeid-agent
+    dst: /etc/elkeid/elkeid-agent
+    file_info:
+      mode: 0700
+      owner: root
+      group: root
+empty_folders:
+  - path: /etc/elkeid/log
+    mode: 0700
+    owner: root
+    group: root
+  - path: /etc/elkeid/plugin
+    mode: 0701
+    owner: root
+    group: root
+scripts:
+  postinstall: ./scripts/postinstall.sh
+  preremove: ./scripts/preremove.sh
+rpm:
+  group: Unspecified
+  compression: lzma
+overrides:
+  rpm:
+    depends:
+      - systemd
