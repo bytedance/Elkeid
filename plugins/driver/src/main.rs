@@ -1,95 +1,83 @@
-use config::*;
+use driver::transformer::Transformer;
 use log::*;
-use plugin_builder::Builder;
-use prepare::*;
-use std::fs::*;
-use std::io::{BufRead, BufReader};
-use std::time::Duration;
-
-mod cache;
-mod config;
-mod parser;
-mod prepare;
-
-const SLEEP_INTERVAL: Duration = Duration::from_millis(126);
-
-fn safety_exit() {
-    std::thread::sleep(SLEEP_INTERVAL);
-    warn!("Safety exit");
-    let _ = std::process::Command::new("rmmod")
-        .arg("hids_driver")
-        .env("PATH", "/sbin:/bin:/usr/bin:/usr/sbin")
-        .spawn();
-}
+use plugins::{logger::*, Client};
+use ringslot::{Handler, RingSlot};
+use std::{path::PathBuf, thread};
 
 fn main() {
-    let (sender, receiver) = Builder::new(SOCKET_PATH, "driver", VERSION).unwrap().build();
-    if let Some(dmesg) = check_crash() {
-        error!("Detect latest kernel panic, dmesg:{}", dmesg);
-        std::thread::sleep(SLEEP_INTERVAL);
-        return;
-    } else {
-        info!("Crash check passed");
-    }
-
-    if let Err(version) = check_kernel_version() {
-        error!("Unsupported kernel version:{}", version);
-        std::thread::sleep(SLEEP_INTERVAL);
-        return;
-    } else {
-        info!("Kernel version check passed");
-    }
-    if let Err(e) = prepare_ko() {
-        error!("{}", e);
-        std::thread::sleep(SLEEP_INTERVAL);
-        return;}
-
-    let handle = std::thread::spawn(move || {
-        let mut parser = parser::Parser::new(sender);
-        loop {
-            let pipe = match File::open(PIPE_PATH) {
-                Ok(pipe) => pipe,
+    let mut client = Client::new(true);
+    // set logger
+    let logger = Logger::new(Config {
+        max_size: 1024 * 1024 * 5,
+        path: PathBuf::from("./driver.log"),
+        #[cfg(not(feature = "debug"))]
+        file_level: LevelFilter::Info,
+        #[cfg(feature = "debug")]
+        file_level: LevelFilter::Debug,
+        remote_level: LevelFilter::Error,
+        max_backups: 10,
+        compress: true,
+        client: Some(client.clone()),
+    });
+    set_boxed_logger(Box::new(logger)).unwrap();
+    info!("init kmod successfully");
+    let handler = Handler::new();
+    let control = handler.get_inner();
+    let mut client_c = client.clone();
+    let _ = thread::Builder::new()
+        .name("task_receive".to_owned())
+        .spawn(move || loop {
+            match client_c.receive() {
+                Ok(_) => {
+                    // handle task
+                }
                 Err(e) => {
-                    error!("{}", e);
+                    error!("when receiving task,an error occurred:{}", e);
+                    handler.close();
+                    return;
+                }
+            }
+        });
+    info!("task receive handler is running");
+    // set record_send thread
+    let record_send = thread::Builder::new()
+        .name("record_send".to_string())
+        .spawn(move || {
+            let mut ringslot = match RingSlot::new(control) {
+                Ok(r) => r,
+                Err(e) => {
+                    error!("when open ringslot, an error occurred: {}", e);
                     return;
                 }
             };
-            let pipe = BufReader::new(pipe);
-            let lines = pipe.split(b'\x17');
-            for line in lines {
-                match line {
-                    Ok(content) => {
-                        let content = match String::from_utf8(content) {
-                            Ok(c) => c,
-                            Err(e) => {
-                                warn!("{}", e);
+            info!("init ringslot successfully");
+            let mut transformer = Transformer::new();
+            let mut buf = vec![0; 1024 * 1024];
+            loop {
+                match ringslot.read_rec() {
+                    Ok(rec) => {
+                        match transformer.transform(rec, &mut buf[..]) {
+                            Ok(written) => {
+                                debug!("write to writer: {:?}", &buf[..written]);
+                                if let Err(err) = client.raw_write_all(&buf[..written]) {
+                                    error!("when sending record,an error occurred:{}", err);
+                                    return;
+                                };
+                            }
+                            Err(err) => {
+                                error!("transform data failed: {}", err);
                                 continue;
                             }
                         };
-                        let fields: Vec<&str> = content.split('\x1e').collect();
-                        if parser.parse(fields).is_err() {
-                            return;
-                        };
                     }
-                    Err(e) => {
-                        error!("{}", e);
-                        break;
+                    Err(err) => {
+                        error!("read ringslot failed:{}", err);
+                        return;
                     }
                 }
             }
-            warn!("Pipe read end");
-            std::thread::sleep(Duration::from_secs(10));
-        }
-    });
-    loop {
-        match receiver.receive() {
-            Ok(t) => println!("{:?}", t),
-            Err(e) => {
-                error!("{}", e);
-                break;
-            }
-        }
-    }
-    let _ = handle.join();
-    safety_exit();
+        })
+        .unwrap();
+    let _ = record_send.join();
+    info!("plugin will exit");
 }
