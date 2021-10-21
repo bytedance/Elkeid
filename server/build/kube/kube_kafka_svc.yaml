@@ -6,11 +6,13 @@ metadata:
   labels:
     app: kafka
 spec:
+  type: NodePort
   ports:
     - port: 9092
       name: kafka-port
       targetPort: 9092
       protocol: TCP
+      nodePort: 30092
   selector:
     app: kafka
 ---

@@ -47,6 +47,7 @@ Elkeid是一个云原生的基于主机的安全(入侵检测与风险识别)解
 
 ## Quick Start
 * **[快速部署文档](server/docs/quick-start-zh_CN.md)**
+* **[k8s部署文档](server/docs/kubenates-install-zh_CN.md)**
 * **[docker体验文档](server/docs/docker-install-zh_CN.md)**
 * **[Deploy Question and Answer](server/docs/qa-zh_CN.md)**
 

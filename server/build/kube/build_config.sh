@@ -35,7 +35,7 @@ done
 if [ "$runType" == "full" ]; then
    cd ..
    ./cert_gen.sh elkeid.com hids-svr elkeid@elkeid.com
-   echo "generate certificate ok!"
+   echo "generate new certificate ok!"
    cd kube
 fi
 
@@ -51,16 +51,16 @@ ac_sk=$(tr -dc 'a-z0-9' < /proc/sys/kernel/random/uuid| cut -c1-32)
 manager_ak=$(tr -dc 'a-z0-9' < /proc/sys/kernel/random/uuid | cut -c1-16)
 manager_sk=$(tr -dc 'a-z0-9' < /proc/sys/kernel/random/uuid | cut -c1-32)
 manager_key=$(tr -dc 'a-z0-9' < /proc/sys/kernel/random/uuid | cut -c1-32)
-echo "generate key ok!"
+echo "generate new key ok!"
 
 rm -f kube_elkeid_svc.yaml
-cp kube_elkeid_svc.tpl kube_elkeid_svc.yaml
+cp kube_elkeid_svc.sample kube_elkeid_svc.yaml
 sed -i s#\<\<AC_AK\>\>#"${ac_ak}"#g  ./kube_elkeid_svc.yaml
 sed -i s#\<\<AC_SK\>\>#"${ac_sk}"#g  ./kube_elkeid_svc.yaml
 sed -i s#\<\<MG_AK\>\>#"${manager_ak}"#g  ./kube_elkeid_svc.yaml
 sed -i s#\<\<MG_SK\>\>#"${manager_sk}"#g  ./kube_elkeid_svc.yaml
 sed -i s#\<\<API_SECRET\>\>#"${manager_key}"#g  ./kube_elkeid_svc.yaml
-echo "update key ok!"
+echo "update kube_elkeid_svc key ok!"
 
 ca_crt=$(sed ':a;N;s/\n/\\n    /g;ta' ../cert/ca.crt)
 ca_key=$(sed ':a;N;s/\n/\\n    /g;ta' ../cert/ca.key)
@@ -70,6 +70,6 @@ sed -i s#\<\<CA_CRT\>\>#"${ca_crt}"#g  ./kube_elkeid_svc.yaml
 sed -i s#\<\<CA_KEY\>\>#"${ca_key}"#g  ./kube_elkeid_svc.yaml
 sed -i s#\<\<SERVER_CRT\>\>#"${server_crt}"#g  ./kube_elkeid_svc.yaml
 sed -i s#\<\<SERVER_KEY\>\>#"${server_key}"#g  ./kube_elkeid_svc.yaml
-echo "update certificate ok!"
+echo "update kube_elkeid_svc certificate ok!"
 
 echo "success!"

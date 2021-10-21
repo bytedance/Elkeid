@@ -48,6 +48,7 @@ The current open source module lacks a rule engine and detection rule, and canno
 
 ## Quick Start
 * **[Quick Start](server/docs/quick-start.md)**
+* **[k8s Deployment Document](server/docs/kubenates-install-zh_CN.md)**
 * **[Docker Test Deployment Document](server/docs/docker-install.md)**
 * **[Deploy Question and Answer](server/docs/qa.md)**
 

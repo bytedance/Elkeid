@@ -23,5 +23,3 @@ docker save -o ./ac.1.0.0.tar elkeid.com/elkeid-ac:1.0.0
 docker save -o ./mg.1.0.0.tar elkeid.com/elkeid-mg:1.0.0
 docker save -o ./sd.1.0.0.tar elkeid.com/elkeid-sd:1.0.0
 echo ">>>>>>>>>>done"
-
-
