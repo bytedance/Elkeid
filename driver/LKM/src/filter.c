@@ -549,9 +549,6 @@ static void rbtree_clear_file_notify(struct rb_node *this_node)
 
 static void del_all_file_notify_checklist(void)
 {
-    if(!file_notify_checklist.rb_node)
-        return;
-
     write_lock(&file_notify_checklist_lock);
     rbtree_clear_file_notify(file_notify_checklist.rb_node);
     file_notify_checklist = RB_ROOT;
@@ -596,6 +593,11 @@ struct allowlist_node *search_rb(struct rb_root *root, char *string)
     return NULL;
 }
 
+/*
+ * return value description for insert_rb():
+ *  0: succeeded to insert node to rbtree
+ *  1: same record was already inserted
+ */
 int insert_rb(struct rb_root *root, struct allowlist_node *data)
 {
     struct rb_node **new = &(root->rb_node), *parent = NULL;
@@ -610,51 +612,13 @@ int insert_rb(struct rb_root *root, struct allowlist_node *data)
         } else if (res > 0) {
             new = &((*new)->rb_right);
         } else {
-            smith_kfree(data->data);
-            smith_kfree(data);
-            return 0;
+            return 1;
         }
     }
 
     rb_link_node(&data->node, parent, new);
     rb_insert_color(&data->node, root);
-    return 1;
-}
-
-int del_rb_by_data_exe_list(char *str)
-{
-    struct allowlist_node *data;
-
-    write_lock(&exe_allowlist_lock);
-    /* make sure node is still in rb tree */
-    data = search_rb(&execve_exe_allowlist, str);
-    if (data) {
-        rb_erase(&data->node, &execve_exe_allowlist);
-        execve_exe_allowlist_limit--;
-    }
-    write_unlock(&exe_allowlist_lock);
-
-    smith_kfree(data->data);
-    smith_kfree(data);
-    return 1;
-}
-
-int del_rb_by_data_argv_list(char *str)
-{
-    struct allowlist_node *data;
-
-    write_lock(&argv_allowlist_lock);
-    /* make sure node is still in rb tree */
-    data = search_rb(&execve_argv_allowlist, str);
-    if (data) {
-        rb_erase(&data->node, &execve_argv_allowlist);
-        execve_argv_allowlist_limit--;
-    }
-    write_unlock(&argv_allowlist_lock);
-
-    smith_kfree(data->data);
-    smith_kfree(data);
-    return 1;
+    return 0;
 }
 
 static void rbtree_clear(struct rb_node *this_node)
@@ -672,6 +636,12 @@ static void rbtree_clear(struct rb_node *this_node)
     smith_kfree(node);
 }
 
+/**
+ * description of return value:
+ * 0: success, the new record was just added to rbtree
+ * 1: failed, the record was already in the rbtree
+ * < 0: error code
+ */
 static int add_execve_exe_allowlist(char *data)
 {
     struct allowlist_node *node;
@@ -687,18 +657,35 @@ static int add_execve_exe_allowlist(char *data)
 
     write_lock(&exe_allowlist_lock);
     rc = insert_rb(&execve_exe_allowlist, node);
-    if (rc)
+    if (!rc) {
         execve_exe_allowlist_limit++;
-    else
-        printk(KERN_INFO "[ELKEID] add_execve_exe_allowlist error\n");
-    write_unlock(&exe_allowlist_lock);
+        write_unlock(&exe_allowlist_lock);
+    } else {
+        write_unlock(&exe_allowlist_lock);
+        printk(KERN_INFO "[ELKEID] add_execve_exe_allowlist: already added.\n");
+        smith_kfree(node);
+    }
 
     return rc;
 }
 
-static int del_execve_exe_allowlist(char *data)
+static void del_execve_exe_allowlist(char *data)
 {
-    return del_rb_by_data_exe_list(data);
+    struct allowlist_node *node;
+
+    write_lock(&exe_allowlist_lock);
+    /* make sure node is still in rb tree */
+    node = search_rb(&execve_exe_allowlist, data);
+    if (node) {
+        rb_erase(&node->node, &execve_exe_allowlist);
+        execve_exe_allowlist_limit--;
+    }
+    write_unlock(&exe_allowlist_lock);
+
+    if (node) {
+        smith_kfree(node->data);
+        smith_kfree(node);
+    }
 }
 
 static int del_all_execve_exe_allowlist(void)
@@ -740,6 +727,12 @@ int execve_exe_check(char *data)
     return res;
 }
 
+/**
+ * description of return value:
+ * 0: success, the new record was just added to rbtree
+ * 1: failed, the record was already in the rbtree
+ * < 0: error code
+ */
 static int add_execve_argv_allowlist(char *data)
 {
     struct allowlist_node *node;
@@ -755,31 +748,44 @@ static int add_execve_argv_allowlist(char *data)
 
     write_lock(&argv_allowlist_lock);
     rc = insert_rb(&execve_argv_allowlist, node);
-    if (rc)
+    if (!rc) {
         execve_argv_allowlist_limit++;
-    else
-        printk(KERN_INFO "[ELKEID] add_execve_argv_allowlist error\n");
-    write_unlock(&argv_allowlist_lock);
+        write_unlock(&argv_allowlist_lock);
+    } else {
+        write_unlock(&argv_allowlist_lock);
+        printk(KERN_INFO"[ELKEID] add_execve_argv_allowlist: already added.\n");
+        smith_kfree(node);
+    }
 
     return rc;
 }
 
-static int del_execve_argv_allowlist(char *data)
+static void del_execve_argv_allowlist(char *data)
 {
-    return del_rb_by_data_argv_list(data);
+    struct allowlist_node *node;
+
+    write_lock(&argv_allowlist_lock);
+    /* make sure node is still in rb tree */
+    node = search_rb(&execve_argv_allowlist, data);
+    if (node) {
+        rb_erase(&node->node, &execve_argv_allowlist);
+        execve_argv_allowlist_limit--;
+    }
+    write_unlock(&argv_allowlist_lock);
+
+    if (node) {
+        smith_kfree(node->data);
+        smith_kfree(node);
+    }
 }
 
 static void del_all_execve_argv_allowlist(void)
 {
-    if(!execve_argv_allowlist.rb_node)
-        return;
-
     write_lock(&argv_allowlist_lock);
     rbtree_clear(execve_argv_allowlist.rb_node);
     execve_argv_allowlist = RB_ROOT;
     execve_argv_allowlist_limit = 0;
     write_unlock(&argv_allowlist_lock);
-
 }
 
 static void print_all_argv_allowlist(void)
@@ -820,12 +826,24 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
     struct path path;
     struct dentry *parent = NULL;
 
-    if (len < ALLOWLIST_NODE_MIN || len > ALLOWLIST_NODE_MAX)
-        return len;
-
     if(smith_get_user(flag, buff))
         return len;
 
+    /* check whether length is valid */
+    if (len < ALLOWLIST_NODE_MIN || len > ALLOWLIST_NODE_MAX)
+        return len;
+
+    /* exceeds records limits ? */
+    if (flag == ADD_EXECVE_EXE_SHITELIST &&
+        execve_exe_allowlist_limit > ALLOWLIST_LIMIT) {
+        return len;
+    }
+    if (flag == ADD_EXECVE_ARGV_SHITELIST &&
+        execve_argv_allowlist_limit > ALLOWLIST_LIMIT) {
+        return len;
+    }
+
+    /* try to grab user input */
     data_main = smith_kzalloc(len, GFP_KERNEL);
     if (!data_main)
         return len;
@@ -837,11 +855,8 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
 
     switch (flag) {
         case ADD_EXECVE_EXE_SHITELIST:
-            if (execve_exe_allowlist_limit <= ALLOWLIST_LIMIT){
-                /* assgin data_main to rb node */
-                add_execve_exe_allowlist(smith_strim(data_main));
+            if (!add_execve_exe_allowlist(smith_strim(data_main)))
                 data_main = NULL;
-            }
             break;
 
         case DEL_EXECVE_EXE_SHITELIST:
@@ -853,9 +868,8 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
             break;
 
         case EXECVE_EXE_CHECK:
-            res = execve_exe_check(data_main);
-            printk("[ELKEID DEBUG] execve_exe_check:%s %d\n",
-                   strim(data_main), res);
+            res = execve_exe_check(strim(data_main));
+            printk("[ELKEID DEBUG] execve_exe_check:%s %d\n", strim(data_main), res);
             break;
 
         case PRINT_ALL_ALLOWLIST:
@@ -864,11 +878,8 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
             break;
 
         case ADD_EXECVE_ARGV_SHITELIST:
-            if (execve_argv_allowlist_limit <= ALLOWLIST_LIMIT){
-                /* assgin data_main to rb node */
-                add_execve_argv_allowlist(smith_strim(data_main));
+            if (!add_execve_argv_allowlist(smith_strim(data_main)))
                 data_main = NULL;
-            }
             break;
 
         case DEL_EXECVE_ARGV_SHITELIST:
@@ -881,8 +892,7 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
 
         case EXECVE_ARGV_CHECK:
             res = execve_argv_check(strim(data_main));
-            printk("[ELKEID DEBUG] execve_argv_check:%s %d\n",
-                   strim(data_main), res);
+            printk("[ELKEID DEBUG] execve_argv_check:%s %d\n", strim(data_main), res);
             break;
 
         case ADD_WRITE_NOTIFI:

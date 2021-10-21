@@ -1,4 +1,4 @@
-## 1.7.0.0 pre-build ko
+## 1.7.0.0 pre-build x86_64 ko
 
 ### centos8
 4.18.0-147.0.3.el8_1.x86_64<br>
