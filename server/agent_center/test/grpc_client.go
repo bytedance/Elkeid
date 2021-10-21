@@ -22,7 +22,7 @@ var (
 
 	tlsServerName1 = "elkeid.com"
 	ServerPort     = "10.227.2.103:6751"
-	AgentCount     = 10
+	AgentCount     = 1
 )
 
 func main() {
