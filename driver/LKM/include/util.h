@@ -16,6 +16,7 @@
 #include <linux/pid_namespace.h>
 #include <linux/ctype.h>
 #include <linux/delay.h>
+#include <linux/fdtable.h>
 
 /*
  * constants & globals

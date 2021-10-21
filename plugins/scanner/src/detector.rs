@@ -1,7 +1,7 @@
-use crate::config::LOAD_MMAP_MAX_SIZE;
+use crate::{config::LOAD_MMAP_MAX_SIZE, ToAgentRecord};
 use anyhow::*;
 use coarsetime::Clock;
-use crossbeam_channel::{after, select, tick};
+use crossbeam_channel::{after, bounded, select, tick};
 use log::*;
 use lru::LruCache;
 use sha2::{Digest, Sha256};
@@ -31,7 +31,6 @@ pub struct DetectTask {
 #[derive(Serialize, Debug)]
 pub struct DetectOneTaskEvent<'a> {
     data_type: &'a str, // 6003
-    timestamp: &'a str, // timestamp
     types: &'a str,     // rule type / yara identifier
     exe: &'a str,       // file path
     exe_size: &'a str,  // file size
@@ -43,11 +42,33 @@ pub struct DetectOneTaskEvent<'a> {
     token: &'a str,     // task token
 }
 
+impl ToAgentRecord for DetectOneTaskEvent<'_> {
+    fn to_record(&self) -> plugins::Record {
+        let mut r = plugins::Record::new();
+        let mut pld = plugins::Payload::new();
+        r.set_data_type(6003);
+        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
+        let mut hmp = ::std::collections::HashMap::with_capacity(6);
+        hmp.insert("types".to_string(), self.types.to_string());
+        hmp.insert("exe".to_string(), self.exe.to_string());
+        hmp.insert("exe_size".to_string(), self.exe_size.to_string());
+        hmp.insert("exe_hash".to_string(), self.exe_hash.to_string());
+        hmp.insert("data".to_string(), self.data.to_string());
+        hmp.insert("create_at".to_string(), self.create_at.to_string());
+        hmp.insert("motify_at".to_string(), self.motify_at.to_string());
+        hmp.insert("error".to_string(), self.error.to_string());
+        hmp.insert("token".to_string(), self.token.to_string());
+
+        pld.set_fields(hmp);
+        r.set_data(pld);
+        return r;
+    }
+}
+
 // DetectFileEvent = Static file detect event
 #[derive(Serialize, Debug)]
 pub struct DetectFileEvent<'a> {
     data_type: &'a str, // 6001
-    timestamp: &'a str, // timestamp
     types: &'a str,     // rule type / yara identifier
     exe: &'a str,       // file path
     exe_size: &'a str,  // file_size
@@ -57,11 +78,31 @@ pub struct DetectFileEvent<'a> {
     data: &'a str,      // script content
 }
 
+impl ToAgentRecord for DetectFileEvent<'_> {
+    fn to_record(&self) -> plugins::Record {
+        let mut r = plugins::Record::new();
+        let mut pld = plugins::Payload::new();
+        r.set_data_type(6001);
+        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
+        let mut hmp = ::std::collections::HashMap::with_capacity(6);
+        hmp.insert("types".to_string(), self.types.to_string());
+        hmp.insert("exe".to_string(), self.exe.to_string());
+        hmp.insert("exe_size".to_string(), self.exe_size.to_string());
+        hmp.insert("exe_hash".to_string(), self.exe_hash.to_string());
+        hmp.insert("data".to_string(), self.data.to_string());
+        hmp.insert("create_at".to_string(), self.create_at.to_string());
+        hmp.insert("motify_at".to_string(), self.motify_at.to_string());
+
+        pld.set_fields(hmp);
+        r.set_data(pld);
+        return r;
+    }
+}
+
 // DetectFanoEvent = Proc pid/exe detect event
 #[derive(Serialize, Debug)]
 pub struct DetectFanoEvent<'a> {
     data_type: &'a str, // 6004
-    timestamp: &'a str, // timestamp
     types: &'a str,     // rule type / yara identifier
     pid: &'a str,       // process id
     exe_hash: &'a str,  // sha256
@@ -72,11 +113,32 @@ pub struct DetectFanoEvent<'a> {
     motify_at: &'a str, // file last modified time / mtime
 }
 
+impl ToAgentRecord for DetectFanoEvent<'_> {
+    fn to_record(&self) -> plugins::Record {
+        let mut r = plugins::Record::new();
+        let mut pld = plugins::Payload::new();
+        r.set_data_type(6004);
+        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
+        let mut hmp = ::std::collections::HashMap::with_capacity(6);
+        hmp.insert("types".to_string(), self.types.to_string());
+        hmp.insert("exe".to_string(), self.exe.to_string());
+        hmp.insert("exe_size".to_string(), self.exe_size.to_string());
+        hmp.insert("exe_hash".to_string(), self.exe_hash.to_string());
+        hmp.insert("data".to_string(), self.data.to_string());
+        hmp.insert("create_at".to_string(), self.create_at.to_string());
+        hmp.insert("motify_at".to_string(), self.motify_at.to_string());
+        hmp.insert("pid".to_string(), self.pid.to_string());
+        pld.set_fields(hmp);
+        r.set_data(pld);
+
+        return r;
+    }
+}
+
 // DetectProcEvent = Proc pid/exe detect event
 #[derive(Serialize, Debug, Default)]
 pub struct DetectProcEvent {
     data_type: String, // 6002
-    timestamp: String, // timestamp
     types: String,     // rule type
     pid: String,       // rule type / yara identifier
     exe_hash: String,  // exe sha256
@@ -93,6 +155,28 @@ pub struct DetectProcEvent {
     sessionid: String, // stat  - session id
     uid: String,       // real user uid
     pns: String,       // process ns
+}
+
+impl ToAgentRecord for DetectProcEvent {
+    fn to_record(&self) -> plugins::Record {
+        let mut r = plugins::Record::new();
+        let mut pld = plugins::Payload::new();
+        r.set_data_type(6002);
+        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
+        let mut hmp = ::std::collections::HashMap::with_capacity(6);
+        hmp.insert("types".to_string(), self.types.to_string());
+        hmp.insert("exe".to_string(), self.exe.to_string());
+        hmp.insert("exe_size".to_string(), self.exe_size.to_string());
+        hmp.insert("exe_hash".to_string(), self.exe_hash.to_string());
+        hmp.insert("data".to_string(), self.data.to_string());
+        hmp.insert("create_at".to_string(), self.create_at.to_string());
+        hmp.insert("motify_at".to_string(), self.motify_at.to_string());
+        hmp.insert("pid".to_string(), self.pid.to_string());
+        pld.set_fields(hmp);
+        r.set_data(pld);
+
+        return r;
+    }
 }
 
 //DetectProcEvent get pid info from proc
@@ -116,7 +200,6 @@ impl DetectProcEvent {
         pf.exe = exe.to_string();
         pf.exe_hash = sha256.to_string();
         pf.exe_size = size.to_string();
-        pf.timestamp = Clock::now_since_epoch().as_secs().to_string();
         pf.data = data.to_string();
         pf.create_at = create_at.to_string();
         pf.motify_at = motify_at.to_string();
@@ -149,9 +232,24 @@ struct Scanner {
 impl Scanner {
     pub fn new(rule_str: &str) -> Self {
         let mut compiler = yara::Compiler::new().unwrap();
-        compiler.add_rules_str(rule_str).unwrap();
-        let mut inner = compiler.compile_rules().unwrap();
-        inner.set_flags(13);
+        match compiler.add_rules_str(rule_str) {
+            Ok(_) => {}
+            Err(e) => {
+                error!("this rule is not working, {} \n {}", rule_str, e);
+                compiler = yara::Compiler::new().unwrap();
+                compiler.add_rules_str(crate::config::RULES_SET).unwrap();
+            }
+        };
+        let mut inner = match compiler.compile_rules() {
+            Ok(i) => i,
+            Err(e) => {
+                error!("this rule is not working, {} \n {}", rule_str, e);
+                let mut compiler = yara::Compiler::new().unwrap();
+                compiler.add_rules_str(crate::config::RULES_SET).unwrap();
+                compiler.compile_rules().unwrap()
+            }
+        };
+        inner.set_flags(13); // set quick scan mode
         let buffer: Vec<u8> = Vec::with_capacity(LOAD_MMAP_MAX_SIZE);
         return Self {
             inner: inner,
@@ -162,20 +260,20 @@ impl Scanner {
 
 // Detector wocker
 pub struct Detector {
-    pub sender: plugin::Sender,
+    pub client: plugins::Client,
     pub task_receiver: crossbeam_channel::Receiver<DetectTask>,
     s_locker: crossbeam_channel::Sender<()>,
     rule_str: String,
     scanner: Option<Scanner>,
     _recv_worker: JoinHandle<()>,
     malware_cache: lru::LruCache<String, String>,
+    rule_updater: crossbeam_channel::Receiver<String>,
     cache_size: usize,
 }
 
 impl Detector {
     pub fn new(
-        sender: plugin::Sender,
-        receiver: plugin::Receiver,
+        client: plugins::Client,
         task_sender: crossbeam_channel::Sender<DetectTask>,
         task_receiver: crossbeam_channel::Receiver<DetectTask>,
         s_locker: crossbeam_channel::Sender<()>,
@@ -183,17 +281,32 @@ impl Detector {
         cache_size: usize,
     ) -> Self {
         let recv_worker_s_locker = s_locker.clone();
+        let (s, r) = bounded(0);
         // Receive One-time-scan-task : Path
+        let mut r_client = client.clone();
         let recv_worker = thread::spawn(move || loop {
-            match receiver.receive() {
+            match r_client.receive() {
                 Ok(t) => {
-                    if !t.content.starts_with("/") {
+                    info!("recv task.data {:?}", &t.get_data());
+                    if !t.data.starts_with("/") {
+                        if t.data.starts_with("rule") {
+                            match s.send(t.data) {
+                                Ok(_) => {}
+                                Err(e) => {
+                                    error!("{}", e);
+                                    recv_worker_s_locker.send(()).unwrap();
+                                    // Exit if plugin recive task failed.
+                                    return;
+                                }
+                            };
+                        }
                         continue;
                     }
+
                     let task = DetectTask {
                         task_type: "6003".to_string(),
                         pid: 0,
-                        path: t.content.to_string(),
+                        path: t.data.to_string(),
                         rpath: "".to_string(),
                         token: t.token,
                         btime: 0,
@@ -215,12 +328,13 @@ impl Detector {
         });
 
         return Self {
-            sender: sender,
+            client: client,
             task_receiver: task_receiver,
             s_locker: s_locker,
             rule_str: rule_str.into(),
             scanner: Some(Scanner::new(&rule_str)),
             _recv_worker: recv_worker,
+            rule_updater: r,
             malware_cache: LruCache::new(cache_size),
             cache_size: cache_size,
         };
@@ -235,6 +349,18 @@ impl Detector {
                 recv(ticker)-> _ =>{
                     // cron to clear cache
                     self.malware_cache= LruCache::new(self.cache_size);
+                },
+                recv(self.rule_updater)->rules=>{
+                    let rule_str = match rules{
+                        Ok(s)=>{s},
+                        Err(e)=>{
+                            error!("recv rule err : {:?}", e);
+                            self.rule_str.clone()
+                        }
+                    };
+                    self.rule_str = rule_str;
+                    self.scanner = Some(Scanner::new(&self.rule_str));
+                    info!("rule update ok");
                 },
                 recv(self.task_receiver)->data=>{
                     // recv scan task
@@ -295,7 +421,6 @@ impl Detector {
                                     }
                                     let t = &DetectFileEvent {
                                         data_type: "6001",
-                                        timestamp: &Clock::now_since_epoch().as_secs().to_string(),
                                         types: first_result.identifier,
                                         exe: &task.rpath,
                                         exe_size: &task.size.to_string(),
@@ -304,15 +429,12 @@ impl Detector {
                                         motify_at:&task.mtime.to_string(),
                                         exe_hash: &sha256sum,
                                     };
-                                    match self.sender.send(&t){
-                                        Ok(_) =>{},
-                                        Err(e) =>{
-                                            // should exits
-                                            warn!("send err, should exit : {:?}",e);
-                                            work_s_locker.send(()).unwrap();
-                                            return
-                                        }
-                                    }
+                                    if let Err(e) = self.client.send_record(&t.to_record()) {
+                                        warn!("send err, should exit : {:?}",e);
+                                        work_s_locker.send(()).unwrap();
+                                        return
+                                    };
+
                                 }
                             }
                         },// dir
@@ -371,15 +493,11 @@ impl Detector {
                                         task.btime,
                                         task.mtime,
                                     ).unwrap_or_default();
-                                    match self.sender.send(&t){
-                                        Ok(_) =>{},
-                                        Err(e) =>{
-                                            // should exits
-                                            error!("send err, should exit : {:?}",e);
-                                            work_s_locker.send(()).unwrap();
-                                            return
-                                        }
-                                    }
+                                    if let Err(e) = self.client.send_record(&t.to_record()) {
+                                        warn!("send err, should exit : {:?}",e);
+                                        work_s_locker.send(()).unwrap();
+                                        return
+                                    };
                                 }
                             }
                         }, // proc
@@ -392,7 +510,6 @@ impl Detector {
                                 Err(e)=>{
                                     let resp = &DetectOneTaskEvent{
                                         data_type:"6003",
-                                        timestamp: &Clock::now_since_epoch().as_secs().to_string(),
                                         types: "",
                                         exe: &task.path,
                                         exe_size: "",
@@ -403,16 +520,12 @@ impl Detector {
                                         error: &format!("{:?}",e),
                                         token: &task.token,
                                     };
-                                    match self.sender.send(&resp){
-                                        Ok(_) =>{},
-                                        Err(e) =>{
-                                            // should exits
-                                            error!("send err, should exit : {:?}",e);
-                                            work_s_locker.send(()).unwrap();
-                                            return
-                                        }
+                                    if let Err(e) = self.client.send_record(&resp.to_record()) {
+                                        warn!("send err, should exit : {:?}",e);
+                                        work_s_locker.send(()).unwrap();
+                                        return
                                     };
-                                    return
+                                    continue
                                 }
                             };
                             let btime = get_file_bmtime(&meta);
@@ -422,7 +535,6 @@ impl Detector {
                                     warn!("err open file {:?}, {:?}",&task.path,e);
                                     let resp = &DetectOneTaskEvent{
                                         data_type:"6003",
-                                        timestamp: &Clock::now_since_epoch().as_secs().to_string(),
                                         types: "",
                                         exe: &task.path,
                                         exe_size: "",
@@ -434,16 +546,12 @@ impl Detector {
                                         error: &format!("err open file {:?}",e),
                                         token: &task.token,
                                     };
-                                    match self.sender.send(&resp){
-                                        Ok(_) =>{},
-                                        Err(e) =>{
-                                            // should exits
-                                            error!("send err, should exit : {:?}",e);
-                                            work_s_locker.send(()).unwrap();
-                                            return
-                                        }
-                                    }
-                                    continue
+                                    if let Err(e) = self.client.send_record(&resp.to_record()) {
+                                        warn!("send err, should exit : {:?}",e);
+                                        work_s_locker.send(()).unwrap();
+                                        return
+                                    };
+                                    return
                                 },
                             };
                             if let Some(t) =  &mut self.scanner{
@@ -455,7 +563,6 @@ impl Detector {
                                         error!("Error read_to_end_file {}", e);
                                         let resp = &DetectOneTaskEvent{
                                             data_type:"6003",
-                                            timestamp: &Clock::now_since_epoch().as_secs().to_string(),
                                             types: "",
                                             exe: &task.path,
                                             exe_size: "",
@@ -466,15 +573,11 @@ impl Detector {
                                             error: &format!("Error read_to_end_file:{:?}",e),
                                             token: &task.token,
                                         };
-                                        match self.sender.send(&resp){
-                                            Ok(_) =>{},
-                                            Err(e) =>{
-                                                // should exits
-                                                error!("send err, should exit : {:?}",e);
-                                                work_s_locker.send(()).unwrap();
-                                                return
-                                            }
-                                        }
+                                        if let Err(e) = self.client.send_record(&resp.to_record()) {
+                                            warn!("send err, should exit : {:?}",e);
+                                            work_s_locker.send(()).unwrap();
+                                            return
+                                        };
                                         continue;
                                     }
                                 }
@@ -496,7 +599,6 @@ impl Detector {
 
                                     let t = &DetectOneTaskEvent{
                                         data_type:"6003",
-                                        timestamp: &Clock::now_since_epoch().as_secs().to_string(),
                                         types: &first_result.identifier,
                                         exe: &task.path,
                                         exe_size: &fsize.to_string(),
@@ -507,15 +609,14 @@ impl Detector {
                                         error: "",
                                         token: &task.token,
                                     };
-                                    if let Err(e) = self.sender.send(&t){
-                                        error!("send err, should exit : {:?}",e);
+                                    if let Err(e) = self.client.send_record(&t.to_record()) {
+                                        warn!("send err, should exit : {:?}",e);
                                         work_s_locker.send(()).unwrap();
                                         return
-                                    }
+                                    };
                                 }else{
                                     let t = &DetectOneTaskEvent{
                                         data_type:"6003",
-                                        timestamp: &Clock::now_since_epoch().as_secs().to_string(),
                                         types: "not_detected",
                                         exe: &task.path,
                                         exe_size: &fsize.to_string(),
@@ -526,11 +627,11 @@ impl Detector {
                                         error: "",
                                         token: &task.token,
                                     };
-                                    if let Err(e) = self.sender.send(&t){
-                                        error!("send err, should exit : {:?}",e);
+                                    if let Err(e) = self.client.send_record(&t.to_record()) {
+                                        warn!("send err, should exit : {:?}",e);
                                         work_s_locker.send(()).unwrap();
                                         return
-                                    }
+                                    };
                                 }
                             }
                         }, // one-time-task
@@ -580,7 +681,6 @@ impl Detector {
                                     self.malware_cache.put(task.rpath.to_string(), first_result.identifier.to_string());
                                     let t = DetectFanoEvent{
                                         data_type:"6004",
-                                        timestamp:&Clock::now_since_epoch().as_secs().to_string(),
                                         types:&first_result.identifier,
                                         pid:&task.pid.to_string(),
                                         exe:&task.rpath,
@@ -590,15 +690,11 @@ impl Detector {
                                         create_at:&ctime.to_string(),
                                         motify_at:&mtime.to_string(),
                                     };
-                                    match self.sender.send(&t){
-                                        Ok(_) =>{},
-                                        Err(e) =>{
-                                            // should exits
-                                            error!("send err, should exit : {:?}",e);
-                                            work_s_locker.send(()).unwrap();
-                                            return
-                                        }
-                                    }
+                                    if let Err(e) = self.client.send_record(&t.to_record()) {
+                                        warn!("send err, should exit : {:?}",e);
+                                        work_s_locker.send(()).unwrap();
+                                        return
+                                    };
                                 }
                             }
                         }, // fanotify
