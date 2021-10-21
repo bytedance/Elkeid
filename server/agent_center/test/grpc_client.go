@@ -21,7 +21,7 @@ var (
 	defaultClientCrtFile1 = "../conf/client.crt"
 
 	tlsServerName1 = "elkeid.com"
-	ServerPort     = "10.227.2.103:6751"
+	ServerPort     = "10.63.84.5:30751"
 	AgentCount     = 1
 )
 

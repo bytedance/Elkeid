@@ -296,6 +296,10 @@ spec:
       labels:
         app: mg
     spec:
+      initContainers:
+        - name: wait-sd
+          image: busybox
+          command: ['sh', '-c', 'until nslookup elkeid-sd; do echo waiting for elkeid-sd; sleep 1; done;']
       containers:
         - name: mg
           image: elkeid.com/elkeid-mg:1.0.0
@@ -444,6 +448,10 @@ spec:
       labels:
         app: ac
     spec:
+      initContainers:
+        - name: wait-sd
+          image: busybox
+          command: ['sh', '-c', 'until nslookup elkeid-sd; do echo waiting for elkeid-sd; sleep 1; done;']
       containers:
         - name: ac
           image: elkeid.com/elkeid-ac:1.0.0

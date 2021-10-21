@@ -6,13 +6,11 @@ metadata:
   labels:
     app: kafka
 spec:
-  type: NodePort
   ports:
     - port: 9092
       name: kafka-port
       targetPort: 9092
       protocol: TCP
-      nodePort: 30092
   selector:
     app: kafka
 ---
@@ -32,6 +30,10 @@ spec:
         name: kafka
         app: kafka
     spec:
+      initContainers:
+        - name: wait-zk
+          image: busybox
+          command: ['sh', '-c', 'until nslookup zookeeper-service; do echo waiting for zookeeper-service; sleep 1; done;']
       containers:
         - name: kafka
           image: docker.io/wurstmeister/kafka:2.12-2.5.0

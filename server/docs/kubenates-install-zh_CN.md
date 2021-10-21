@@ -43,6 +43,7 @@ cd Elkeid/server/build/kube/
 ./build_config.sh
 ```
 > 注意该命令会在 Elkeid/server/build/cert 目录生成新的证书。所以必须重新编译Agent，不能复用已有的Agent，否则会因为证书不一致而无法正常运行。
+> 如果不需要替换证书，可执行 ./build_config.sh -t simple
 
 ##  Server部署
 * 下面所有步骤均需要在k8s集群的master上操作
@@ -66,24 +67,17 @@ kubectl create namespace elkeid
 >  
 > 这里提供的方法只为了测试或体验Elkeid，并且没有配置永久存储，不适用于生产环境使用，请使用前注意。
 
-执行下面命令，安装zookeeper、mongodb、redis。
+执行下面命令，安装zookeeper、mongodb、redis、kafka。
 ```
 kubectl apply -f kube_zookeeper_svc.yaml
 kubectl apply -f kube_redis_svc.yaml
 kubectl apply -f kube_mongodb_svc.yaml
-```
-
-等待若干秒(取决于镜像拉取的速度)，按照下面步骤逐一检查各个服务：
-- 执行`kubectl -n elkeid get svc`，检查是否存在`zookeeper-service/mongodb-service/redis-service`这三个service
-- 执行`kubectl -n elkeid get pod`，检查分别以`zookeeper-/redis-/mongodb-`开头的POD是否STATUS都为Running
-
-上述检查如果都没问题，说明各个服务启动成功，然后安装kafka(kafka依赖zookeeper，需等zookeeper启动后才可执行).
-```
 kubectl apply -f kube_kafka_svc.yaml
 ```
+
 等待若干秒(取决于镜像拉取的速度)，按照下面步骤逐一检查各个服务：
-- 执行`kubectl -n elkeid get svc`，检查是否存在`kafka-service`的service
-- 执行`kubectl -n elkeid get pod`，检查分别以`kafka-`开头的POD是否STATUS都为Running
+- 执行`kubectl -n elkeid get svc`，检查是否存在`zookeeper-service/mongodb-service/redis-service/kafka-service`这四个service
+- 执行`kubectl -n elkeid get pod`，检查分别以`zookeeper-/redis-/mongodb-/kafka-`开头的POD是否STATUS都为Running
 
 上述检查如果都没问题，说明各个服务启动成功。
 
