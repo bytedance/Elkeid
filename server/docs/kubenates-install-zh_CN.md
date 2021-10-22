@@ -6,9 +6,9 @@
 
 ###  2、编译Elkeid后台镜像
 > 我们提供了预编好的Elkeid镜像，可以跳过这一步直接使用我们编译好的镜像:    
->   mg.1.0.0.tar [下载](./quick-start-zh_CN.md#2-编译agent)  
->   sd.1.0.0.tar [下载](./quick-start-zh_CN.md#2-编译agent)   
->   ac.1.0.0.tar [下载](./quick-start-zh_CN.md#2-编译agent)   
+>   mg.1.0.0.tar [下载](https://lf3-elkeid.bytetos.com/obj/elkeid-download/imags/mg.1.0.0.tar)  
+>   sd.1.0.0.tar [下载](https://lf3-elkeid.bytetos.com/obj/elkeid-download/imags/sd.1.0.0.tar)   
+>   ac.1.0.0.tar [下载](https://lf3-elkeid.bytetos.com/obj/elkeid-download/imags/ac.1.0.0.tar)   
 
 需要准备好一台机器来编译Elkeid后台镜像，并且请确保编译机器上已经安装好docker
 > Docker安装请参考官方文档：https://docs.docker.com/engine/install/  
@@ -35,6 +35,7 @@ ctr -n k8s.io i import sd-1.0.0.tar
 ctr -n k8s.io i import ac-1.0.0.tar
 ```
 > 需要在集群的每个节点都导入一遍这三个镜像
+> crictl安装配置请参考官方文档：https://kubernetes.io/zh/docs/tasks/debug-application-cluster/crictl/
 
 ###  4、生成所需的k8s配置
 执行如下命令，生成新的通信证书和k8s配置文件。
