@@ -26,13 +26,24 @@ ac.1.0.0.tar
 
 ###  3、将Elkeid后台镜像导入镜像仓库
 如果有私有镜像仓库，可以直接将镜像导入私有仓库直接使用。  
-这里提供一个直接导入的方法，将三个镜像拷贝到k8s集群的每个节点，并执行一遍如下命令，将镜像直接导入该节点的本地仓库。
+
+这里提供一个直接导入的方法。
+将三个镜像拷贝到k8s集群的每个节点，并执行一遍如下命令将镜像直接导入本地仓库。
+如果是docker环境，请执行：
+```
+docker load <  mg.1.0.0.tar
+docker load <  sd-1.0.0.tar
+docker load <  ac-1.0.0.tar
+```
+
+如果是containerd环境，请执行
 ```
 ctr -n k8s.io i import mg.1.0.0.tar
 ctr -n k8s.io i import sd-1.0.0.tar
 ctr -n k8s.io i import ac-1.0.0.tar
 ```
 > 需要在集群的每个节点都导入一遍这三个镜像   
+> 
 > crictl安装配置请参考官方文档：https://kubernetes.io/zh/docs/tasks/debug-application-cluster/crictl/
 
 ###  4、生成所需的k8s配置
