@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/bytedance/Elkeid/server/manager/biz/common"
 	"github.com/bytedance/Elkeid/server/manager/infra"
-	"github.com/bytedance/Elkeid/server/manager/infra/def"
 	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	"github.com/bytedance/Elkeid/server/manager/task"
 	"github.com/gin-gonic/gin"
@@ -22,8 +21,19 @@ func UpdateSubTask(c *gin.Context) {
 		return
 	}
 
-	for _, v := range request {
-		task.SubTaskUpdateAsyncWrite(v)
+	for i, _ := range request {
+		//丢弃token为空的
+		if token, ok := request[i]["token"]; !ok {
+			continue
+		} else {
+			if token.(string) == "" {
+				continue
+			}
+		}
+
+		stUpdater := map[string]interface{}{"token": request[i]["token"]}
+		stUpdater["task_result"] = request[i]
+		task.SubTaskUpdateAsyncWrite(stUpdater)
 	}
 	common.CreateResponse(c, common.SuccessCode, nil)
 }
@@ -80,7 +90,7 @@ func GetSubTaskByID(c *gin.Context) {
 	res := make([]interface{}, 0)
 	defer cursor.Close(context.Background())
 	for cursor.Next(context.Background()) {
-		var subTask def.AgentSubTask
+		var subTask map[string]interface{}
 		err := cursor.Decode(&subTask)
 		if err != nil {
 			ylog.Errorf("GetSubTaskByID", err.Error())

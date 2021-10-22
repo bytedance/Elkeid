@@ -7,6 +7,7 @@ import (
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/bytedance/Elkeid/server/agent_center/httptrans/client"
 	"github.com/patrickmn/go-cache"
+	"sync"
 	"time"
 )
 
@@ -36,22 +37,57 @@ type Connection struct {
 	//otherwise, send the command to the agent.
 	CommandChan chan *Command `json:"-"`
 
-	AgentID           string                   `json:"agent_id"`
-	Addr              string                   `json:"addr"`
-	CreateAt          int64                    `json:"create_at"`
-	Cpu               float64                  `json:"cpu"`
-	Memory            int64                    `json:"memory"`
-	NetType           string                   `json:"net_type"`
-	LastHeartBeatTime int64                    `json:"last_heartbeat_time"`
-	HostName          string                   `json:"hostname"`
-	Version           string                   `json:"version"`
-	IntranetIPv4      []string                 `json:"intranet_ipv4"`
-	ExtranetIPv4      []string                 `json:"extranet_ipv4"`
-	IntranetIPv6      []string                 `json:"intranet_ipv6"`
-	ExtranetIPv6      []string                 `json:"extranet_ipv6"`
-	IO                float64                  `json:"io"`
-	Slab              int64                    `json:"slab"`
-	Plugin            []map[string]interface{} `json:"plugins"`
+	AgentID    string `json:"agent_id"`
+	SourceAddr string `json:"addr"`
+	CreateAt   int64  `json:"create_at"`
+
+	agentDetailLock  sync.RWMutex
+	agentDetail      map[string]interface{} `json:"agent_detail"`
+	pluginDetailLock sync.RWMutex
+	pluginDetail     map[string]map[string]interface{} `json:"plugin_detail"`
+}
+
+func (c *Connection) GetAgentDetail() map[string]interface{} {
+	c.agentDetailLock.RLock()
+	defer c.agentDetailLock.RUnlock()
+	if c.agentDetail == nil {
+		return map[string]interface{}{}
+	}
+	return c.agentDetail
+}
+
+func (c *Connection) SetAgentDetail(detail map[string]interface{}) {
+	c.agentDetailLock.Lock()
+	defer c.agentDetailLock.Unlock()
+	c.agentDetail = detail
+}
+
+func (c *Connection) GetPluginDetail(name string) map[string]interface{} {
+	c.pluginDetailLock.Lock()
+	defer c.pluginDetailLock.Unlock()
+	if c.pluginDetail == nil {
+		return map[string]interface{}{}
+	}
+	return c.pluginDetail[name]
+}
+
+func (c *Connection) SetPluginDetail(name string, detail map[string]interface{}) {
+	c.pluginDetailLock.Lock()
+	defer c.pluginDetailLock.Unlock()
+	if c.pluginDetail == nil {
+		c.pluginDetail = map[string]map[string]interface{}{}
+	}
+	c.pluginDetail[name] = detail
+}
+
+func (c *Connection) GetPluginsList() []map[string]interface{} {
+	c.pluginDetailLock.Lock()
+	defer c.pluginDetailLock.Unlock()
+	res := make([]map[string]interface{}, 0, len(c.pluginDetail))
+	for k := range c.pluginDetail {
+		res = append(res, c.pluginDetail[k])
+	}
+	return res
 }
 
 type Command struct {
@@ -77,6 +113,7 @@ func NewGRPCPool(config *Config) *GRPCPool {
 	}
 
 	go g.checkConfig()
+	go g.checkTask()
 	return g
 }
 

@@ -8,6 +8,7 @@ require (
 	github.com/eapache/go-resiliency v1.2.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gin-gonic/gin v1.7.0
+	github.com/gogo/protobuf v1.2.1
 	github.com/golang/protobuf v1.4.3
 	github.com/golang/snappy v0.0.2
 	github.com/json-iterator/go v1.1.9

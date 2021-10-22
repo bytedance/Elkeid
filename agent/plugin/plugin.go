@@ -1,179 +1,398 @@
 package plugin
 
 import (
+	"bufio"
+	"context"
+	"encoding/binary"
 	"errors"
-	"net"
+	"io"
 	"os"
 	"os/exec"
 	"path"
-	"strconv"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
-	"github.com/prometheus/procfs"
-	"github.com/tinylib/msgp/msgp"
-	"go.uber.org/atomic"
+	"github.com/bytedance/Elkeid/agent/agent"
+	"github.com/bytedance/Elkeid/agent/core"
+	"github.com/bytedance/Elkeid/agent/proto"
+	"github.com/bytedance/Elkeid/agent/resource"
+	"github.com/bytedance/Elkeid/agent/utils"
 	"go.uber.org/zap"
 )
 
-// The time to wait before forcing the plug-in to kill,
-// this is to leave the necessary time for the plugin to the clean environment normally
-const exitTimeout = 1 * time.Second
+var (
+	m      = &sync.Map{}
+	syncCh = make(chan map[string]*proto.Config, 1)
+)
 
-// Plugin contains the process, socket, metadata and other information of a plugin
+var (
+	ErrDuplicatePlugin = errors.New("multiple load the same plugin")
+)
+
 type Plugin struct {
-	name       string
-	version    string
-	checksum   string
-	cmd        *exec.Cmd
-	conn       net.Conn
-	runtimePID int
-	pgid       int
-	IO         uint64
-	CPU        float64
-	reader     *msgp.Reader
-	exited     atomic.Value
-	Counter    atomic.Uint64
+	Config proto.Config
+	mu     *sync.Mutex
+	cmd    *exec.Cmd
+	// 从agent视角看待的rx tx
+	rx         io.ReadCloser
+	updateTime time.Time
+	reader     *bufio.Reader
+	tx         io.WriteCloser
+	taskCh     chan proto.Task
+	done       chan struct{}
+	wg         *sync.WaitGroup
+	// 与上面的rx tx概念相反 是从plugin视角看待的
+	rxBytes uint64
+	txBytes uint64
+	rxCnt   uint64
+	txCnt   uint64
+	*zap.SugaredLogger
 }
 
-// Name func returns the name of the plugin
-func (p *Plugin) Name() string {
-	return p.name
+type PluginState struct {
+	Name string
+	resource.ProcInfo
+	Version string
+	Pid     int
+	Exited  bool
+	RxSpeed float64
+	TxSpeed float64
+	RxTPS   float64
+	TxTPS   float64
 }
 
-// Version func returns the version of the plugin
-func (p *Plugin) Version() string {
-	return p.version
-}
-
-// Checksum func returns the checksum of the plugin
-func (p *Plugin) Checksum() string {
-	return p.checksum
-}
-
-// PID func returns the real run pid of the plugin
-func (p *Plugin) PID() int {
-	return p.runtimePID
-}
-
-// Close func is used to close this plugin,
-// when closing it will kill all processes under the same process group
-func (p *Plugin) Close(timeout bool) {
-	p.exited.Store(true)
-	if p.conn != nil {
-		p.conn.Close()
+func (p *Plugin) GetState(now time.Time) (state PluginState) {
+	instant := now.Sub(p.updateTime).Seconds()
+	if instant != 0 {
+		state.RxSpeed = float64(atomic.SwapUint64(&p.rxBytes, 0)) / float64(instant)
+		state.TxSpeed = float64(atomic.SwapUint64(&p.txBytes, 0)) / float64(instant)
+		state.RxTPS = float64(atomic.SwapUint64(&p.rxCnt, 0)) / float64(instant)
+		state.TxTPS = float64(atomic.SwapUint64(&p.txCnt, 0)) / float64(instant)
 	}
-	if timeout {
-		time.Sleep(exitTimeout)
-	}
-	if p.pgid != 0 {
-		syscall.Kill(-p.pgid, syscall.SIGKILL)
-	}
-	if p.cmd != nil && p.cmd.Process != nil {
-		p.cmd.Process.Kill()
-	}
-}
-
-// Receive func is used to read data from the socket connection of plugin
-func (p *Plugin) Receive() (*PluginData, error) {
-	data := &PluginData{}
-	err := data.DecodeMsg(p.reader)
-	p.Counter.Add(uint64(len(*data)))
-	return data, err
-}
-
-// Send func is used to send tasks to this plugin
-func (p *Plugin) Send(t Task) error {
-	w := msgp.NewWriter(p.conn)
-	err := t.EncodeMsg(w)
-	if err != nil {
-		return err
-	}
-	err = w.Flush()
-	return err
-}
-
-func (p *Plugin) Run() error {
-	if p.cmd == nil {
-		return errors.New("Plugin cmd is nil")
-	}
-	err := p.cmd.Start()
-	if err != nil {
-		return err
-	}
-	go p.cmd.Wait()
-	if p.cmd.Process == nil {
-		return errors.New("Plugin cmd process is nil")
-	}
-	pgid, err := syscall.Getpgid(p.cmd.Process.Pid)
-	if err != nil {
-		return err
-	}
-	p.pgid = pgid
-	return nil
-}
-
-func (p *Plugin) Connected() bool {
-	return p.conn != nil
-}
-
-// Connect func is used to verify the connection request,
-// if the pgid is inconsistent, an error will be returned
-// Note that it is necessary to call Server's Delete func to clean up after this func returns error
-func (p *Plugin) Connect(req RegistRequest, conn net.Conn) error {
-	if p.conn != nil {
-		return errors.New("The same plugin has been connected, it may be a malicious attack")
-	}
-	reqPgid, err := syscall.Getpgid(int(req.Pid))
-	if err != nil {
-		return errors.New("Cann't get req process which pid is " + strconv.FormatUint(uint64(req.Pid), 10))
-	}
-	cmdPgid, err := syscall.Getpgid(int(req.Pid))
-	if err != nil {
-		return errors.New("Cann't get cmd process which pid is " + strconv.FormatUint(uint64(p.cmd.Process.Pid), 10))
-	}
-	if reqPgid != cmdPgid {
-		return errors.New("Pgid does not match")
-	}
-	p.runtimePID = int(req.Pid)
-	proc, err := procfs.NewProc(p.runtimePID)
-	if err == nil {
-		procIO, err := proc.IO()
-		if err == nil {
-			p.IO = procIO.ReadBytes + procIO.WriteBytes
-		}
-		procStat, err := proc.Stat()
-		if err == nil {
-			p.CPU = procStat.CPUTime()
+	state.Name = p.Config.Name
+	state.Version = p.Config.Version
+	state.Exited = p.IsExited()
+	state.Pid = p.cmd.Process.Pid
+	p.updateTime = now
+	if !state.Exited {
+		var err error
+		state.ProcInfo, err = resource.GetProcInfo(state.Pid, now)
+		if err != nil {
+			zap.S().Error(err)
 		}
 	}
-	p.conn = conn
-	p.version = req.Version
-	p.name = req.Name
-	p.reader = msgp.NewReaderSize(conn, 8*1024)
-
-	return nil
+	return
 }
 
-// NewPlugin func creates a new plugin instance
-func NewPlugin(name, version, checksum, runPath string) (*Plugin, error) {
-	var err error
-	dir, file := path.Split(runPath)
-	zap.S().Infof("Plugin work directory: %s", dir)
-	c := exec.Command(runPath)
-	c.Dir = dir
-	c.Stderr, err = os.OpenFile(dir+file+".stderr", os.O_RDWR|os.O_CREATE, 0700)
-	if err != nil {
-		return nil, err
+func (p *Plugin) Shutdown() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.IsExited() {
+		return
 	}
-	c.Stdin = nil
-	c.Stdout, err = os.OpenFile(dir+file+".stdout", os.O_RDWR|os.O_CREATE, 0700)
-	if err != nil {
-		return nil, err
+	p.Info("plugin is running, will shutdown it")
+	p.tx.Close()
+	p.rx.Close()
+	select {
+	case <-time.After(time.Second * 30):
+		p.Warn("because of plugin exit's timeout, will kill it")
+		syscall.Kill(-p.cmd.Process.Pid, syscall.SIGKILL)
+		<-p.done
+		p.Info("plugin has been killed")
+	case <-p.done:
+		p.Info("plugin has been shutdown gracefully")
 	}
-	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pgid: 0}
-	exited := atomic.Value{}
-	exited.Store(false)
-	p := Plugin{cmd: c, name: name, version: version, checksum: checksum, exited: exited}
-	return &p, nil
+}
+
+func (p *Plugin) IsExited() bool {
+	return p.cmd.ProcessState != nil
+}
+
+func (p *Plugin) ReceiveData() (rec *proto.EncodedRecord, err error) {
+	var length uint32
+	var recordBuf []byte
+	var lengthBuf []byte
+	lengthBuf, err = p.reader.Peek(4)
+	if err != nil {
+		return
+	}
+	p.reader.Discard(4)
+	length = binary.LittleEndian.Uint32(lengthBuf)
+	atomic.AddUint64(&p.txBytes, uint64(length))
+	recordBuf, err = p.reader.Peek(int(length))
+	if err != nil {
+		if errors.Is(err, bufio.ErrBufferFull) {
+			p.reader.Discard(int(length))
+		}
+		return
+	}
+	index := 1
+	rec = core.RecordPool.Get().(*proto.EncodedRecord)
+	var dataType, timestamp int
+	var consumed int
+	dataType, consumed, err = readVarint(recordBuf[index:])
+	if err != nil {
+		return
+	}
+	rec.DataType = int32(dataType)
+	index += consumed + 1
+	timestamp, consumed, err = readVarint(recordBuf[index:])
+	if err != nil {
+		return
+	}
+	rec.Timestamp = int64(timestamp)
+	index += consumed + 1
+	if index < len(recordBuf) {
+		_, consumed, err = readVarint(recordBuf[index:])
+		if err != nil {
+			return
+		}
+		index += consumed
+		rec.Data = append(rec.Data, recordBuf[index:]...)
+	}
+	p.reader.Discard(int(length))
+	atomic.AddUint64(&p.txCnt, 1)
+	return
+}
+
+func (p *Plugin) SendTask(task proto.Task) (err error) {
+	p.Infof("send task to plugin, data type is %v, token is %v", task.DataType, task.Token)
+	select {
+	case p.taskCh <- task:
+	default:
+		err = errors.New("plugin is processing task or context has been cancled")
+	}
+	return
+}
+
+func (p *Plugin) GetWorkingDirectory() string {
+	return p.cmd.Dir
+}
+func Load(ctx context.Context, config proto.Config) (plg *Plugin, err error) {
+	loadedPlg, ok := m.Load(config.Name)
+	if ok {
+		loadedPlg := loadedPlg.(*Plugin)
+		if loadedPlg.Config.Version == config.Version && loadedPlg.cmd.ProcessState == nil {
+			err = ErrDuplicatePlugin
+			return
+		}
+		if loadedPlg.Config.Version != config.Version && loadedPlg.cmd.ProcessState == nil {
+			loadedPlg.Infof("because of the different plugin's version,the previous version will be shutdown...")
+			loadedPlg.Shutdown()
+			loadedPlg.Infof("shutdown successfully")
+		}
+	}
+	if config.Signature == "" {
+		config.Signature = config.Sha256
+	}
+	logger := zap.S().With("plugin", config.Name, "pver", config.Version, "psign", config.Signature)
+	logger.Info("plugin is loading...")
+	workingDirectory := path.Join(agent.WorkingDirectory, "plugin", config.Name)
+	// for compatibility
+	os.Remove(path.Join(workingDirectory, config.Name+".stderr"))
+	os.Remove(path.Join(workingDirectory, config.Name+".stdout"))
+	execPath := path.Join(workingDirectory, config.Name)
+	err = utils.CheckSignature(execPath, config.Signature)
+	if err != nil {
+		logger.Warn("check local plugin's signature failed: ", err)
+		logger.Info("downloading plugin from remote server...")
+		err = utils.Download(ctx, execPath, config)
+		if err != nil {
+			return
+		}
+		logger.Info("download done")
+	}
+	cmd := exec.Command(execPath)
+	var rx_r, rx_w, tx_r, tx_w *os.File
+	rx_r, rx_w, err = os.Pipe()
+	if err != nil {
+		return
+	}
+	tx_r, tx_w, err = os.Pipe()
+	if err != nil {
+		return
+	}
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.ExtraFiles = append(cmd.ExtraFiles, tx_r, rx_w)
+	cmd.Dir = workingDirectory
+	var errFile *os.File
+	errFile, err = os.OpenFile(execPath+".stderr", os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0o0600)
+	if err != nil {
+		return
+	}
+	defer errFile.Close()
+	cmd.Stderr = errFile
+	if config.Detail != "" {
+		cmd.Env = append(cmd.Env, "DETAIL="+config.Detail)
+	}
+	logger.Info("plugin's process will start")
+	err = cmd.Start()
+	tx_r.Close()
+	rx_w.Close()
+	if err != nil {
+		return
+	}
+	plg = &Plugin{
+		Config:        config,
+		mu:            &sync.Mutex{},
+		cmd:           cmd,
+		rx:            rx_r,
+		updateTime:    time.Now(),
+		reader:        bufio.NewReaderSize(rx_r, 1024*512),
+		tx:            tx_w,
+		done:          make(chan struct{}),
+		taskCh:        make(chan proto.Task),
+		wg:            &sync.WaitGroup{},
+		SugaredLogger: logger,
+	}
+	plg.wg.Add(3)
+	go func() {
+		defer plg.wg.Done()
+		defer plg.Info("gorountine of waiting plugin's process will exit")
+		err = cmd.Wait()
+		rx_r.Close()
+		tx_w.Close()
+		if err != nil {
+			plg.Errorf("plugin has exited with error:%v,code:%d", err, cmd.ProcessState.ExitCode())
+		} else {
+			plg.Infof("plugin has exited with code %d", cmd.ProcessState.ExitCode())
+		}
+		close(plg.done)
+	}()
+	go func() {
+		defer plg.wg.Done()
+		defer plg.Info("gorountine of receiving plugin's data will exit")
+		for {
+			rec, err := plg.ReceiveData()
+			if err != nil {
+				if errors.Is(err, bufio.ErrBufferFull) {
+					plg.Warn("when receiving data, buffer is full, skip this record")
+					continue
+				} else if !(errors.Is(err, io.EOF) || errors.Is(err, io.ErrClosedPipe) || errors.Is(err, os.ErrClosed)) {
+					plg.Error("when receiving data, an error occurred: ", err)
+				} else {
+					break
+				}
+			}
+			core.Transmission(rec, true)
+		}
+	}()
+	go func() {
+		defer plg.wg.Done()
+		defer plg.Info("gorountine of sending task to plugin will exit")
+		for {
+			select {
+			case <-plg.done:
+				return
+			case task := <-plg.taskCh:
+				s := task.Size()
+				var dst = make([]byte, 4+s)
+				_, err = task.MarshalToSizedBuffer(dst[4:])
+				if err != nil {
+					plg.Errorf("when marshaling a task, an error occurred: %v, ignored this task: %+v", err, task)
+					continue
+				}
+				binary.LittleEndian.PutUint32(dst[:4], uint32(s))
+				var n int
+				n, err = plg.tx.Write(dst)
+				if err != nil {
+					if !errors.Is(err, os.ErrClosed) {
+						plg.Error("when sending task, an error occurred: ", err)
+					}
+					return
+				}
+				atomic.AddUint64(&plg.rxCnt, 1)
+				atomic.AddUint64(&plg.rxBytes, uint64(n))
+			}
+		}
+	}()
+	m.Store(config.Name, plg)
+	return
+}
+
+func Get(name string) (*Plugin, bool) {
+	plg, ok := m.Load(name)
+	if ok {
+		return plg.(*Plugin), ok
+	}
+	return nil, ok
+}
+
+func GetAll() (plgs []*Plugin) {
+	m.Range(func(key, value interface{}) bool {
+		plg := value.(*Plugin)
+		plgs = append(plgs, plg)
+		return true
+	})
+	return
+}
+
+func Sync(cfgs map[string]*proto.Config) (err error) {
+	select {
+	case syncCh <- cfgs:
+	default:
+		err = errors.New("plugins are syncing or context has been cancled")
+	}
+	return
+}
+
+func Startup(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+	defer zap.S().Info("plugin daemon will exit")
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+	zap.S().Info("plugin daemon startup")
+	for {
+		select {
+		case <-ctx.Done():
+			zap.S().Info("context has been canceled, will shutdown all plugins")
+			subWg := &sync.WaitGroup{}
+			m.Range(func(key, value interface{}) bool {
+				subWg.Add(1)
+				plg := value.(*Plugin)
+				go func() {
+					defer subWg.Done()
+					plg.Shutdown()
+					plg.wg.Wait()
+				}()
+				return true
+			})
+			subWg.Wait()
+			zap.S().Info("shutdown all plugins done")
+			m = &sync.Map{}
+			return
+		case cfgs := <-syncCh:
+			zap.S().Infof("syncing plugins...")
+			// 加载插件
+			for _, cfg := range cfgs {
+				if cfg.Name != agent.Product {
+					plg, err := Load(ctx, *cfg)
+					// 相同版本的同名插件正在运行，无需操作
+					if err == ErrDuplicatePlugin {
+						continue
+					}
+					if err != nil {
+						zap.S().Errorf("when load plugin %v:%v, an error occurred: %v", cfg.Name, cfg.Version, err)
+					} else {
+						plg.Infof("plugin has been loaded")
+					}
+				}
+			}
+			// 移除插件
+			for _, plg := range GetAll() {
+				if _, ok := cfgs[plg.Config.Name]; !ok {
+					plg.Infof("when syncing, plugin will be shutdown")
+					plg.Shutdown()
+					plg.Infof("shutdown successfully")
+					m.Delete(plg.Config.Name)
+					if err := os.RemoveAll(plg.GetWorkingDirectory()); err != nil {
+						plg.Error("delete dir of plugin failed: ", err)
+					}
+				}
+			}
+			zap.S().Infof("sync done")
+		}
+	}
 }

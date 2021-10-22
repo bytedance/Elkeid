@@ -2,7 +2,7 @@ package http_handler
 
 import (
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
-	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/grpc_hander"
+	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/grpc_handler"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/gin-gonic/gin"
 )
@@ -66,7 +66,7 @@ func PostCommand(c *gin.Context) {
 		mgCommand.Task = &task
 	}
 
-	err = grpc_hander.GlobalGRPCPool.PostCommand(taskModel.AgentID, mgCommand)
+	err = grpc_handler.GlobalGRPCPool.PostCommand(taskModel.AgentID, mgCommand)
 	if err != nil {
 		CreateResponse(c, UnknownErrorCode, err.Error())
 		ylog.Errorf("PostCommand", "error : %s", err.Error())
