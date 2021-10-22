@@ -2,52 +2,31 @@ package kafka
 
 import (
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
-	jsoniter "github.com/json-iterator/go"
+	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
+	"github.com/gogo/protobuf/proto"
 	"sync"
 	"time"
 
 	"github.com/Shopify/sarama"
 )
 
-var bytesPool *sync.Pool
-var json = jsoniter.Config{
-	EscapeHTML:             false, //No html escaping
-	SortMapKeys:            false,
-	ValidateJsonRawMessage: true,
-}.Froze()
-
-func init() {
-	bytesPool = &sync.Pool{
+var (
+	MQMsgPool = &sync.Pool{
 		New: func() interface{} {
-			return nil
+			return &pb.MQData{}
 		},
 	}
-}
 
-// BSerialize, use bytesPool
-func BSerialize(v interface{}) ([]byte, error) {
-	stream := json.BorrowStream(nil)
-	defer json.ReturnStream(stream)
-	stream.WriteVal(v)
-	if stream.Error != nil {
-		return nil, stream.Error
+	mqProducerMessagePool = &sync.Pool{
+		New: func() interface{} {
+			return &sarama.ProducerMessage{}
+		},
 	}
-	result := stream.Buffer()
-	rLen := len(result)
+)
 
-	var copied []byte
-	tmp := bytesPool.Get()
-	if tmp != nil {
-		copied = tmp.([]byte)
-		if cap(copied) < rLen {
-			copied = make([]byte, rLen)
-		}
-	} else {
-		copied = make([]byte, rLen)
-	}
-
-	copy(copied[:rLen], result)
-	return copied[:rLen], nil
+// PBSerialize
+func PBSerialize(v proto.Message) ([]byte, error) {
+	return proto.Marshal(v)
 }
 
 // Producer represents the kafka async producer
@@ -100,10 +79,7 @@ func NewProducer(addrs []string, topic string, clientID string) (*Producer, erro
 			select {
 			case succ := <-producer.Successes():
 				//Put back to sync.pool
-				v, err := succ.Value.Encode()
-				if err != nil {
-					bytesPool.Put(v)
-				}
+				mqProducerMessagePool.Put(succ)
 				ylog.Debugf("KAFKA", "send msg succ, topic:%s, patition:%d, offset:%d", succ.Topic, succ.Partition, succ.Offset)
 
 			case err := <-producer.Errors():
@@ -115,12 +91,21 @@ func NewProducer(addrs []string, topic string, clientID string) (*Producer, erro
 	return &Producer{Producer: producer, Topic: topic}, nil
 }
 
-//send message with key
-func (p *Producer) SendWithKey(key string, msg interface{}) {
-	b, err := BSerialize(msg)
+// Send 发送
+func (p *Producer) SendPBWithKey(key string, msg proto.Message) {
+	defer func() {
+		MQMsgPool.Put(msg)
+	}()
+	b, err := PBSerialize(msg)
 	if err != nil {
-		ylog.Errorf("KAFKA", "SendWithKey Error %v", err)
+		ylog.Errorf("KAFKA", "SendPBWithKey Error %s", err.Error())
 		return
 	}
-	p.Producer.Input() <- &sarama.ProducerMessage{Topic: p.Topic, Value: sarama.ByteEncoder(b), Key: sarama.StringEncoder(key)}
+
+	proMsg := mqProducerMessagePool.Get().(*sarama.ProducerMessage)
+	proMsg.Topic = p.Topic
+	proMsg.Value = sarama.ByteEncoder(b)
+	proMsg.Key = sarama.StringEncoder(key)
+	proMsg.Metadata = nil
+	p.Producer.Input() <- proMsg
 }

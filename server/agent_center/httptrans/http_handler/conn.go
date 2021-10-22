@@ -3,7 +3,7 @@ package http_handler
 import (
 	"fmt"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
-	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/grpc_hander"
+	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/grpc_handler"
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,15 +18,28 @@ type ResetRequest struct {
 	Count  int      `json:"count"`
 }
 
+type ConnStatRsp struct {
+	AgentInfo   map[string]interface{}   `json:"agent_info"`
+	PluginsInfo []map[string]interface{} `json:"plugins_info"`
+}
+
 func ConnStat(c *gin.Context) {
-	res := grpc_hander.GlobalGRPCPool.GetList()
+	res := grpc_handler.GlobalGRPCPool.GetList()
 	ylog.Debugf("ConnStat", ">>>>API ConnStat connMap len: %d", len(res))
-	CreateResponse(c, SuccessCode, res)
+	resList := make([]ConnStatRsp, 0, len(res))
+	for _, v := range res {
+		tmp := ConnStatRsp{
+			AgentInfo:   v.GetAgentDetail(),
+			PluginsInfo: v.GetPluginsList(),
+		}
+		resList = append(resList, tmp)
+	}
+	CreateResponse(c, SuccessCode, resList)
 	return
 }
 
 func ConnList(c *gin.Context) {
-	res := grpc_hander.GlobalGRPCPool.GetList()
+	res := grpc_handler.GlobalGRPCPool.GetList()
 	ylog.Debugf("ConnStat", ">>>>API ConnStat connMap len: %d", len(res))
 	resList := make([]string, 0, len(res))
 	for _, v := range res {
@@ -37,7 +50,7 @@ func ConnList(c *gin.Context) {
 }
 
 func ConnCount(c *gin.Context) {
-	count := grpc_hander.GlobalGRPCPool.GetCount()
+	count := grpc_handler.GlobalGRPCPool.GetCount()
 	ylog.Debugf("ConnCount", ">>>>API ConnCount %d", count)
 	CreateResponse(c, SuccessCode, count)
 	return
@@ -56,11 +69,11 @@ func ConnReset(c *gin.Context) {
 	detail := gin.H{}
 	switch param.Type {
 	case ConnResetRandom:
-		conn := grpc_hander.GlobalGRPCPool.GetList()
+		conn := grpc_handler.GlobalGRPCPool.GetList()
 		id := 0
 		for id = 0; id < param.Count && id < len(conn); id++ {
 			agentID := conn[id].AgentID
-			err := grpc_hander.GlobalGRPCPool.Close(agentID)
+			err := grpc_handler.GlobalGRPCPool.Close(agentID)
 			if err != nil {
 				detail[agentID] = err.Error()
 			} else {
@@ -71,7 +84,7 @@ func ConnReset(c *gin.Context) {
 		res["detail"] = detail
 	case ConnResetStrict:
 		for _, v := range param.IDList {
-			err := grpc_hander.GlobalGRPCPool.Close(v)
+			err := grpc_handler.GlobalGRPCPool.Close(v)
 			if err != nil {
 				detail[v] = err.Error()
 			} else {

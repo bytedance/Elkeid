@@ -34,8 +34,13 @@ func (w *subTaskUpdateWriter) Run() {
 		select {
 		case tmp := <-w.queue:
 			item = tmp.(map[string]interface{})
-			filter := bson.M{"token": item["token"]}
-			updates := bson.M{"$set": bson.M{"task_result": item["data"], "update_time": time.Now().Unix(), "status": "finished"}}
+			token, ok := item["token"]
+			if !ok {
+				continue
+			}
+			filter := bson.M{"token": token}
+			item["update_time"] = time.Now().Unix()
+			updates := bson.M{"$set": item}
 			model := mongo.NewUpdateOneModel().
 				SetFilter(filter).SetUpdate(updates).SetUpsert(true)
 			writes = append(writes, model)

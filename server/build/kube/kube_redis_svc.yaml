@@ -1,0 +1,105 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: redis-config
+  namespace: elkeid
+  labels:
+    app: redis
+data:
+  redis.conf: |-
+    dir /data
+    port 6379
+    bind 0.0.0.0
+    appendonly yes
+    protected-mode no
+    pidfile /data/redis-6379.pid
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: elkeid
+  labels:
+    app: redis
+spec:
+  type: ClusterIP
+  ports:
+    - name: redis
+      port: 6379
+  selector:
+    app: redis
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: elkeid
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      initContainers:
+        - name: system-init
+          image: hub-mirror.c.163.com/library/busybox:1.33
+          imagePullPolicy: IfNotPresent
+          command:
+            - "sh"
+            - "-c"
+            - "echo 2048 > /proc/sys/net/core/somaxconn && echo never > /sys/kernel/mm/transparent_hugepage/enabled"
+          securityContext:
+            privileged: true
+            runAsUser: 0
+          volumeMounts:
+            - name: sys
+              mountPath: /sys
+      containers:
+        - name: redis
+          image: hub-mirror.c.163.com/library/redis:6.0.5
+          command:
+            - "sh"
+            - "-c"
+            - "redis-server /usr/local/etc/redis/redis.conf"
+          ports:
+            - containerPort: 6379
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
+            requests:
+              cpu: 1000m
+              memory: 1024Mi
+          livenessProbe:
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 300
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          volumeMounts:
+            - name: config
+              mountPath: /usr/local/etc/redis/redis.conf
+              subPath: redis.conf
+      volumes:
+        - name: config
+          configMap:
+            name: redis-config
+        - name: sys
+          hostPath:
+            path: /sys
