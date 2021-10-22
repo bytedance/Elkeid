@@ -106,7 +106,7 @@ func agentListRlt(k, v interface{}) (interface{}, error) {
 func agentHBRlt(k, v interface{}) (interface{}, error) {
 	jPack, ok := v.(JobResWithArgs)
 	if ok && jPack.Response != nil && jPack.Response.StatusCode == 200 {
-		r := SrvConnStatResp{Data: make([]*AgentHBInfo, 0)}
+		r := SrvConnStatResp{}
 		if err := json.Unmarshal(jPack.Response.Bytes(), &r); err != nil {
 			ylog.Errorf("agentHBRlt", "error %s; res:%s", err.Error(), jPack.Response.String())
 			return nil, err
@@ -122,8 +122,10 @@ func agentHBRlt(k, v interface{}) (interface{}, error) {
 		}
 
 		for i, _ := range r.Data {
-			r.Data[i].SourceIp = arr[0]
-			r.Data[i].SourcePort = port
+			if r.Data[i].AgentInfo != nil {
+				r.Data[i].AgentInfo["source_ip"] = arr[0]
+				r.Data[i].AgentInfo["source_port"] = port
+			}
 			task.HBAsyncWrite(r.Data[i])
 		}
 	}

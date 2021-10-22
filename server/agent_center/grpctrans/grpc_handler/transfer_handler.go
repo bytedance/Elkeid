@@ -1,4 +1,4 @@
-package grpc_hander
+package grpc_handler
 
 import (
 	"context"
@@ -57,7 +57,7 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 	createAt := time.Now().UnixNano() / (1000 * 1000 * 1000)
 	connection := pool.Connection{
 		AgentID:     agentID,
-		Addr:        addr,
+		SourceAddr:  addr,
 		CreateAt:    createAt,
 		CommandChan: make(chan *pool.Command),
 		Ctx:         ctx,
@@ -75,7 +75,7 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 	}()
 
 	//Process the first of data
-	handleRawData(data)
+	handleRawData(data, &connection)
 
 	//Receive data from agent
 	go recvData(stream, &connection)
@@ -108,7 +108,7 @@ func recvData(stream pb.Transfer_TransferServer, conn *pool.Connection) {
 				ylog.Errorf("recvData", "Transfer Recv Error %s, now close the recv direction of the tcp, %s ", err.Error(), conn.AgentID)
 				return
 			}
-			handleRawData(data)
+			handleRawData(data, conn)
 		}
 	}
 }

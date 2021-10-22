@@ -1,0 +1,470 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sd-conf
+  namespace: elkeid
+data:
+  conf.yaml: |
+    ############################# HTTP Settings #############################
+    # Ip: bind ip address
+    # port: the address the http server listens on.
+    Server:
+      Ip: "0.0.0.0"
+      Port: 8088
+
+    ############################# Cluster Settings #############################
+    #Mode: "config"
+    #Members: server ip:port list
+    Cluster:
+      Mode: "config"
+      Members: ["elkeid-sd:8088"]
+
+    ############################# Log Settings #############################
+    # log.path: where to write logging data.
+    # log.loglevel: where to write logging data.
+    #         DebugLevel = -1
+    #         InfoLevel = 0
+    #         WarnLevel = 1
+    #         ErrorLevel = 2
+    log:
+      path: ./service_discovery.log
+      loglevel: 0
+
+    ############################# Auth Settings #############################
+    Auth:
+      Enable: true
+      Keys:
+        <<AC_AK>>: <<AC_SK>>
+        <<MG_AK>>: <<MG_SK>>
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elkeid-sd
+  namespace: elkeid
+  labels:
+    app: sd
+spec:
+  type: NodePort
+  ports:
+    - port: 8088
+      targetPort: 8088
+      nodePort: 30088
+  selector:
+    app: sd
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sd
+  namespace: elkeid
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sd
+  template:
+    metadata:
+      labels:
+        app: sd
+    spec:
+      containers:
+        - name: sd
+          image: elkeid.com/elkeid-sd:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8088
+          volumeMounts:
+            - name: sd-conf-file
+              mountPath: /service_discovery/conf
+              readOnly: true
+      volumes:
+        - name: sd-conf-file
+          configMap:
+            name: sd-conf
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mg-conf
+  namespace: elkeid
+data:
+  index.json: |
+    [
+      {
+        "collection": "agent_heartbeat",
+        "index": [
+          {
+            "keys": {
+              "agent_id": 1
+            },
+            "unique": true
+          },            {
+            "keys": {
+              "first_heartbeat_time": 1
+            },
+            "unique": false
+          },
+          {
+            "keys": {
+              "last_heartbeat_time": 1
+            },
+            "unique": false
+          },
+          {
+            "keys": {
+              "tags": 1
+            },
+            "unique": false
+          },
+          {
+            "keys": {
+              "intranet_ipv4": 1
+            },
+            "unique": false
+          },
+          {
+            "keys": {
+              "intranet_ipv6": 1
+            },
+            "unique": false
+          },
+          {
+            "keys": {
+              "extranet_ipv6": 1
+            },
+            "unique": false
+          },
+          {
+            "keys": {
+              "extranet_ipv4": 1
+            },
+            "unique": false
+          }
+        ]
+      },
+      {
+        "collection": "agent_task",
+        "index": [
+          {
+            "keys": {
+              "task_id": 1
+            },
+            "unique": true
+          },            {
+            "keys": {
+              "task_type": 1
+            },
+            "unique": false
+          },
+          {
+            "keys": {
+              "task_status": 1
+            },
+            "unique": false
+          }
+        ]
+      },
+      {
+        "collection": "agent_subtask",
+        "index": [
+          {
+            "keys": {
+              "token": 1
+            },
+            "unique": true
+          },            {
+            "keys": {
+              "name": 1
+            },
+            "unique": false
+          },
+          {
+            "keys": {
+              "agent_id": 1
+            },
+            "unique": false
+          },
+          {
+            "keys": {
+              "status": 1
+            },
+            "unique": false
+          }
+        ]
+      }
+    ]
+  svr.yml: |
+    ############################# Manager HTTP Settings #############################
+    # port: the address the http server listens on.
+    # innerauth:The encryption key for communication between hids manage centers.
+    #           It is recommended to randomly generate a new one during each deployment.
+    #           Each machine in the cluster needs to be configured consistently.
+    # apiauth:
+    #    enable: whether to enable token authentication for http
+    #    secret: the initial key of apiauth,
+    #            it is recommended to randomly generate a new one every time you deploy.(notice key is case-insensitive)
+    http:
+      port: 6701
+      innerauth:
+        <<MG_AK>>: <<MG_SK>>
+      apiauth:
+        enable: true
+        secret: <<API_SECRET>>
+
+    ############################# Manager Log Settings #############################
+    # log.path: where to write logging data.
+    # log.loglevel: where to write logging data.
+    #         DebugLevel = -1
+    #         InfoLevel = 0
+    #         WarnLevel = 1
+    #         ErrorLevel = 2
+    log:
+      path: ./log/svr.log
+      loglevel: 0
+
+    ############################# Service Discovery Settings #############################
+    # addr: addr list of service discovery.
+    # name: the name registered to the service discovery, used to uniquely identify the hids manager.
+    # credentials:  use to identify the manager when requesting the sd,
+    #               ak/sk must be added to the configuration file for service discovery(notice ak is case-insensitive)
+    sd:
+      addrs: ["elkeid-sd:8088"]
+      name: hids_manage
+      credentials:
+        ak: <<MG_AK>>
+        sk: <<MG_SK>>
+
+    ############################# Agent Center Settings #############################
+    # name: the name of the Agent Center registered to the service discovery,which used to find the Agent Center address.
+    # credentials:  use to identify the manager when requesting the server,
+    #               ak/sk must be added to the configuration file of the Agent Center.(notice ak is case-insensitive)
+    server:
+      name: hids_svr
+      credentials:
+        ak: <<MG_AK>>
+        sk: <<MG_SK>>
+
+    ############################# Redis Settings #############################
+    # addrs: addr of redis.
+    # passwd: password,which can be empty.
+    redis:
+      addrs: ["redis-service:6379"]
+      passwd:
+
+
+    ############################# Mongodb Settings #############################
+    mongo:
+      uri: mongodb://hids:I7ILUz7WhOJUWygy@mongodb-service:27017/hids_server?authSource=hids_server
+      dbname: hids_server
+
+    k8ssec:
+      addr: "elkeid-ks:7705"
+      credentials:
+        ak: <<MG_AK>>
+        sk: <<MG_SK>>
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elkeid-mg
+  namespace: elkeid
+  labels:
+    app: mg
+spec:
+  type: NodePort
+  ports:
+    - port: 6701
+      targetPort: 6701
+      nodePort: 30701
+  selector:
+    app: mg
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mg
+  namespace: elkeid
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mg
+  template:
+    metadata:
+      labels:
+        app: mg
+    spec:
+      initContainers:
+        - name: wait-sd
+          image: busybox
+          command: ['sh', '-c', 'until nslookup elkeid-sd; do echo waiting for elkeid-sd; sleep 1; done;']
+      containers:
+        - name: mg
+          image: elkeid.com/elkeid-mg:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6701
+          volumeMounts:
+            - name: mg-conf-file
+              mountPath: /manager/conf
+              readOnly: true
+      volumes:
+        - name: mg-conf-file
+          configMap:
+            name: mg-conf
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ac-conf
+  namespace: elkeid
+data:
+  ca.crt: |
+    <<CA_CRT>>
+  ca.key: |
+    <<CA_KEY>>
+  server.crt: |
+    <<SERVER_CRT>>
+  server.key: |
+    <<SERVER_KEY>>
+  svr.yml: |
+    #############################  Manager Settings #############################
+    # addrs: addr list of manager center.
+    manage:
+      addrs:
+        - elkeid-mg:6701
+
+    ############################# Service Discovery Settings #############################
+    # addrs: addr list of service discovery.
+    # name: the name registered to the service discovery, used to uniquely identify the agent_center.
+    # credentials: used as identification when accessing sd, ak/sk must be added to the configuration file of service discovery
+    sd:
+      name: hids_svr
+      addrs:
+        - elkeid-sd:8088
+      auth:
+        ak: <<AC_AK>>
+        sk: <<AC_SK>>
+
+    ############################# Kafka Settings #############################
+    kafka:
+      addrs:
+        - kafka-service:9092
+      topic: hids_svr
+      logpath: ./log/sarama.log
+
+
+    ############################# Agent Center Settings #############################
+    # log.path: where to write logging data.
+    # log.loglevel: where to write logging data.
+    #         DebugLevel = -1
+    #         InfoLevel = 0
+    #         WarnLevel = 1
+    #         ErrorLevel = 2
+    #
+    # ssl communication certificate configuration. grpc will do two-way ssl verification, so the certificate needs to be consistent with the agent side.
+    # ssl.keyfile: private key path
+    # ssl.certfile: certification path
+    # ssl.cafile: ca certification path
+    #
+    #
+    # grpc.connlimit: grpc service, the maximum number of agent connection.
+    #
+    #
+    # http.auth.enable: Whether to enable identity verification for http service
+    # http.auth.aksk: Used to identify the client. work when http.auth.enable = true
+    # http.ssl.enable: whether to enable ssl for http service
+    # pprof.enable:  whether to enable pprof for debug.
+    server:
+      log:
+        applog:
+          path: ./log/svr.log
+          loglevel: 0
+
+      ssl:
+        keyfile: ./conf/server.key
+        certfile: ./conf/server.crt
+        cafile: ./conf/ca.crt
+
+      grpc:
+        port: 6751
+        connlimit: 1500
+
+      http:
+        port: 6752
+        auth:
+          enable: true
+          aksk:
+            <<MG_AK>>: <<MG_SK>>
+        ssl:
+          enable: true
+
+      pprof:
+        enable: true
+        port: 6753
+
+      rawdata:
+        port: 6754
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elkeid-ac
+  namespace: elkeid
+  labels:
+    app: ac
+spec:
+  type: NodePort
+  ports:
+    - port: 6751
+      targetPort: 6751
+      name: grpc
+      nodePort: 30751
+    - port: 6752
+      targetPort: 6752
+      name: http
+      nodePort: 30752
+    - port: 6754
+      targetPort: 6754
+      name: rawdata
+      nodePort: 30754
+  selector:
+    app: ac
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ac
+  namespace: elkeid
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ac
+  template:
+    metadata:
+      labels:
+        app: ac
+    spec:
+      initContainers:
+        - name: wait-sd
+          image: busybox
+          command: ['sh', '-c', 'until nslookup elkeid-sd; do echo waiting for elkeid-sd; sleep 1; done;']
+      containers:
+        - name: ac
+          image: elkeid.com/elkeid-ac:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6751
+            - containerPort: 6752
+            - containerPort: 6754
+          volumeMounts:
+            - name: ac-conf-file
+              mountPath: /agent_center/conf
+              readOnly: true
+      volumes:
+        - name: ac-conf-file
+          configMap:
+            name: ac-conf
