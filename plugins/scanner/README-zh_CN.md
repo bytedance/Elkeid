@@ -11,7 +11,6 @@ Yara Scanner 使用 [yara 规则](https://yara.readthedocs.io/)对系统进程�
 
 ### 插件配置
 ```
-const SOCKET_PATH:&str = ../../plugin.sock";
 const NAME:&str = "scanner";
 const VERSION:&str = "0.0.0.0";
 ```
@@ -94,6 +93,58 @@ sha256 = feae8dfe029571d0e7c6c2e873dd03c8134573a33240aabe1a34be13956b7a45
 "https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg",
 "https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg"
 ```
+
+## 插件任务下发
+
+使用 manager API 对 agent 下发插件任务
+
+* 创建任务 POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
+* 执行任务 POST http://{{IP}}:{PORT}/api/v1/agent/controlTask
+
+
+
+### 临时扫描任务下发
+* 创建任务 POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
+
+data 为扫描文件（非文件夹）的绝对路径
+
+```json
+{
+    "tag": "test_all",
+    "id_list": [
+        "33623333-3365-4905-b417-331e183333ff"
+    ],
+    "data": {
+        "task": {
+            "data_type":6001,
+            "name": "scanner",
+            "data": "/root/xmirg"
+        }
+    }
+}
+```
+
+### 规则更新下发
+* 创建任务 POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
+
+data 为以 rule 开头的规则字符串，规则更新以覆盖方式进行
+
+```json
+{
+    "tag": "test_all",
+    "id_list": [
+        "33623333-3365-4905-b417-331e183333ff"
+    ],
+    "data": {
+        "task": {
+            "data_type":6002,
+            "name": "scanner",
+            "data": "rule miner_script \n{ strings:\n$a1 = \"stratum+tcp\"\n$a2 = \"stratum+udp\"\n$a3 = \"stratum+ssl\"\n$a4 = \"ethproxy+tcp\"\n$a5 = \"nicehash+tcp\"\ncondition:\nis_script and any of them\n}"
+        }
+    }
+}
+```
+
 
 
 ## 已知问题
