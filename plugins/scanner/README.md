@@ -14,7 +14,6 @@ In `config.rs`, there are the following constants. In order to avoid occupying t
 
 ### Plugin Config
 ```
-const SOCKET_PATH:&str = ../../plugin.sock";
 const NAME:&str = "scanner";
 const VERSION:&str = "0.0.0.0";
 ```
@@ -94,6 +93,57 @@ sha256 = feae8dfe029571d0e7c6c2e873dd03c8134573a33240aabe1a34be13956b7a45
 "https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg",
 "https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg"
 ```
+
+## plugin task
+
+Sending plugin-task using manager API
+
+* create task : POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
+* run task : POST http://{{IP}}:{PORT}/api/v1/agent/controlTask
+
+
+
+### scan task
+* create task POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
+
+data : The absolute path of the file (not dir) to be scanned.
+
+```json
+{
+    "tag": "test_all",
+    "id_list": [
+        "33623333-3365-4905-b417-331e183333ff"
+    ],
+    "data": {
+        "task": {
+            "name": "scanner",
+            "data": "/root/xmirg"
+        }
+    }
+}
+```
+
+### rule update task
+* create task POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
+
+data : A long string startswith "rule", and the new rules will overwrite the original rules.
+
+```json
+{
+    "tag": "test_all",
+    "id_list": [
+        "33623333-3365-4905-b417-331e183333ff"
+    ],
+    "data": {
+        "task": {
+            "name": "scanner",
+            "data": "rule miner_script \n{ strings:\n$a1 = \"stratum+tcp\"\n$a2 = \"stratum+udp\"\n$a3 = \"stratum+ssl\"\n$a4 = \"ethproxy+tcp\"\n$a5 = \"nicehash+tcp\"\ncondition:\nis_script and any of them\n}"
+        }
+    }
+}
+```
+
+
 
 ## Known Errors & Bugs
 * Creation time / birth_time is not available for some filesystems
