@@ -5,11 +5,13 @@ authors = ["zhanglei.sec <zhanglei.sec@bytedance.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
+[features]
+debug = ["plugins/debug"]
 [dependencies]
-anyhow = "1"
-plugin_builder = { path = "../support/rust/plugin_builder" }
-plugin = { path = "../support/rust/plugin" }
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
-serde_json = { version = "1.0"}
+serde_json = { version = "1.0" }
+plugins = { path = "../lib/rust" }
+parking_lot = "0.11"
+pest = "2.0"
+pest_derive = "2.0"

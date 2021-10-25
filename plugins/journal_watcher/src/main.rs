@@ -1,64 +1,257 @@
-use log::{error, info};
-use serde_json;
-use std::io::{BufRead, BufReader};
-use std::process::{Command, Stdio};
-use std::thread;
-use std::time::Duration;
-use watcher::{JournalWatcher, Record};
+use log::*;
+use parking_lot::Mutex;
+use pest::Parser;
+use pest_derive::Parser;
+use plugins::{logger::*, Client, Record};
+use serde::Deserialize;
+use std::{
+    io::{BufRead, BufReader},
+    path::PathBuf,
+    process::{Child, Command, Stdio},
+    sync::Arc,
+    thread,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
-mod watcher;
-
-const SENDER_SLEEP_INTERVAL: Duration = Duration::from_millis(126);
-const SOCK_PATH: &str = "../../plugin.sock";
-const NAME: &str = "journal_watcher";
-const VERSION: &str = "1.6.0.0";
-
+#[derive(Parser)]
+#[grammar = "sshd.pest"]
+pub struct SSHDParser;
+#[derive(Deserialize)]
+pub struct Entry {
+    #[serde(rename = "MESSAGE")]
+    message: String,
+    #[serde(rename = "_PID")]
+    pid: String,
+}
 fn main() {
-    let (sender, receiver) = plugin_builder::Builder::new(SOCK_PATH, NAME, VERSION)
-        .unwrap()
-        .build();
-    thread::spawn(move || {
-        let mut watcher = JournalWatcher::new(sender);
-        loop {
-            let mut journal = match Command::new("journalctl")
+    let mut client = Client::new(false);
+    let logger = Logger::new(Config {
+        max_size: 1024 * 1024 * 5,
+        path: PathBuf::from("./journal_watcher.log"),
+        file_level: LevelFilter::Info,
+        remote_level: LevelFilter::Error,
+        max_backups: 10,
+        compress: true,
+        client: Some(client.clone()),
+    });
+    set_boxed_logger(Box::new(logger)).unwrap();
+    info!("journal_watcher startup");
+
+    let journalctl: Arc<Mutex<Option<Child>>> = Arc::new(Mutex::new(None));
+    let journalctl_c = journalctl.clone();
+    let mut client_c = client.clone();
+    let _ = thread::Builder::new()
+        .name("task_receive".to_owned())
+        .spawn(move || loop {
+            match client.receive() {
+                Ok(_) => {
+                    // handle task
+                }
+                Err(e) => {
+                    let mut journalctl = journalctl.lock();
+                    if let Some(journalctl) = journalctl.as_mut() {
+                        let _ = journalctl.kill();
+                    }
+                    *journalctl = None;
+                    error!("when receiving task,an error occurred:{}", e);
+                    return;
+                }
+            }
+        });
+    thread::Builder::new()
+        .name("send_record".to_owned())
+        .spawn(move || loop {
+            let mut child = match Command::new("journalctl")
                 .args(&["-f", "_COMM=sshd", "-o", "json"])
                 .stdout(Stdio::piped())
                 .spawn()
             {
-                Ok(j) => j,
-                Err(e) => {
-                    error!("{}", e);
+                Ok(c) => c,
+                Err(err) => {
+                    error!("spawn journalctl failed: {}", err);
                     return;
                 }
             };
-            for line in BufReader::new(journal.stdout.take().unwrap()).lines() {
-                match line {
-                    Ok(line) => {
-                        if let Ok(r) = serde_json::from_str::<Record>(line.as_str()) {
-                            if let Err(_) = watcher.parse(r) {
-                                return;
-                            };
-                        };
-                    }
-                    Err(e) => {
-                        error!("{}", e);
+            let stdout = child.stdout.take().unwrap();
+            {
+                let mut journalctl = journalctl_c.lock();
+                *journalctl = Some(child);
+            }
+            let reader = BufReader::new(stdout);
+            for line in reader.lines() {
+                let line = match line {
+                    Ok(line) => line,
+                    Err(err) => {
+                        error!("when reading a line, an error occurred: {}", err);
                         break;
                     }
+                };
+                debug!("{}", line);
+                let entry = match serde_json::from_str::<Entry>(&line) {
+                    Ok(entry) => entry,
+                    Err(err) => {
+                        warn!("when parsing a line, an error occurred: {}", err);
+                        continue;
+                    }
+                };
+                let mut rec = if let Ok(mut event) = SSHDParser::parse(Rule::event, &entry.message)
+                {
+                    let event = event.next().unwrap().into_inner().next().unwrap();
+                    match event.as_rule() {
+                        Rule::login => {
+                            let mut login = event.into_inner();
+                            debug!("{}", login);
+                            let mut rec = Record::new();
+                            rec.set_data_type(4000);
+                            let fields = rec.mut_data().mut_fields();
+                            fields.insert(
+                                "status".to_owned(),
+                                match login.next().unwrap().as_str() {
+                                    "Accepted" => "true",
+                                    _ => "false",
+                                }
+                                .to_owned(),
+                            );
+                            fields.insert(
+                                "types".to_owned(),
+                                login.next().unwrap().as_str().to_owned(),
+                            );
+                            fields.insert(
+                                "invalid".to_owned(),
+                                match login.next().unwrap().as_str() {
+                                    "invalid user" => "true",
+                                    _ => "false",
+                                }
+                                .to_owned(),
+                            );
+                            fields.insert(
+                                "user".to_owned(),
+                                login.next().unwrap().as_str().to_owned(),
+                            );
+                            fields.insert(
+                                "sip".to_owned(),
+                                login.next().unwrap().as_str().to_owned(),
+                            );
+                            fields.insert(
+                                "sport".to_owned(),
+                                login.next().unwrap().as_str().to_owned(),
+                            );
+                            fields.insert(
+                                "extra".to_owned(),
+                                login.next().unwrap().as_str().to_owned(),
+                            );
+                            rec
+                        }
+                        Rule::certify => {
+                            let mut certify = event.into_inner();
+                            debug!("{}", certify);
+                            let mut rec = Record::new();
+                            rec.set_data_type(4001);
+                            let fields = rec.mut_data().mut_fields();
+                            fields.insert(
+                                "authorized".to_owned(),
+                                certify.next().unwrap().as_str().to_owned(),
+                            );
+                            fields.insert(
+                                "principal".to_owned(),
+                                certify.next().unwrap().as_str().to_owned(),
+                            );
+                            rec
+                        }
+                        _ => {
+                            warn!("unknown event type: {}", event);
+                            continue;
+                        }
+                    }
+                } else {
+                    continue;
+                };
+                rec.set_timestamp(
+                    SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs() as i64,
+                );
+                rec.mut_data()
+                    .mut_fields()
+                    .insert("pid".to_owned(), entry.pid);
+                rec.mut_data()
+                    .mut_fields()
+                    .insert("rawlog".to_owned(), entry.message);
+                if client_c.send_record(&rec).is_err() {
+                    let mut journalctl = journalctl_c.lock();
+                    if let Some(journalctl) = journalctl.as_mut() {
+                        let _ = journalctl.kill();
+                    }
+                    *journalctl = None;
+                    return;
+                };
+            }
+            let mut journalctl = journalctl_c.lock();
+            if let Some(journalctl) = journalctl.as_mut() {
+                let _ = journalctl.kill();
+                let res = journalctl.wait();
+                match res {
+                    Ok(res) => {
+                        info!("journalctl has exited with code: {}", res);
+                    }
+                    Err(res) => {
+                        error!("journalctl has exited with error: {}", res);
+                    }
                 }
+            } else {
+                info!("journalctl was none,exit now");
+                return;
             }
-            journal.kill();
-            journal.wait();
-            std::thread::sleep(std::time::Duration::from_secs(10));
-        }
-    });
-    loop {
-        match receiver.receive() {
-            Ok(t) => info!("{:?}", t),
-            Err(e) => {
-                error!("{}", e);
-                break;
-            }
-        }
+            thread::sleep(Duration::from_secs(10));
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+    info!("journal_watcher exited");
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn parse_login() {
+        SSHDParser::parse(
+            Rule::login,
+            "Accepted publickey for zhanglei.sec from 10.87.61.221 port 50998 ssh2: RSA SHA256:l9nMCPKgwkWtfRKH4INyvpU3e+PIXtdKsm3jrvXRuMo",
+        )
+        .unwrap();
+        SSHDParser::parse(
+            Rule::login,
+            "Accepted gssapi-with-mic for zhanglei.sec from 10.2.222.166 port 57302 ssh2",
+        )
+        .unwrap();
+        SSHDParser::parse(
+            Rule::login,
+            "Failed password for zhanglei.sec from 10.2.222.166 port 57294 ssh2",
+        )
+        .unwrap();
+        SSHDParser::parse(
+            Rule::login,
+            "Failed none for  from 10.2.222.166 port 57294 ssh2",
+        )
+        .unwrap();
+        SSHDParser::parse(
+            Rule::login,
+            "Failed password for invalid user zhanglei.sec from 10.2.222.166 port 57294 ssh2",
+        )
+        .unwrap();
     }
-    std::thread::sleep(SENDER_SLEEP_INTERVAL);
+    #[test]
+    fn parse_certify() {
+        SSHDParser::parse(
+            Rule::certify,
+            "Authorized to zhanglei.sec, krb5 principal zhanglei.sec@BYTEDANCE.COM (krb5_kuserok)",
+        )
+        .unwrap();
+        SSHDParser::parse(
+            Rule::certify,
+            "Authorized to tiger, krb5 principal zhanglei.sec@BYTEDANCE.COM (krb5_kuserok)",
+        )
+        .unwrap();
+    }
 }

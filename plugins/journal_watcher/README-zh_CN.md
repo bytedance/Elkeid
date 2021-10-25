@@ -38,14 +38,5 @@ cargo build --release --target x86_64-unknown-linux-musl
 详情请查阅：
 https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html
 
-## 配置
-在[main.rs](./src/main.rs)中,有下面几个常量：
-```
-const AGENT_SOCK_PATH:&str = ../..//plugin.sock";
-const PLUGIN_NAME:&str = "journal_watcher";
-const PLUGIN_VERSION:&str = "1.6.0.0";
-```
-这些常量可以根据需要进行修改，但是要注意：他们需要与[Agent参数](../README-zh_CN.md#参数和选项)以及[Agent的配置文件](../README-zh_CN.md#配置文件)保持一致。
-
 ## License
 journal_watcher plugin is distributed under the Apache-2.0 license.
