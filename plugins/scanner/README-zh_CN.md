@@ -116,6 +116,7 @@ data 为扫描文件（非文件夹）的绝对路径
     ],
     "data": {
         "task": {
+            "data_type":6001,
             "name": "scanner",
             "data": "/root/xmirg"
         }
@@ -126,7 +127,7 @@ data 为扫描文件（非文件夹）的绝对路径
 ### 规则更新下发
 * 创建任务 POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
 
-data 为以 rule开头的规则字符串，规则更新以覆盖方式进行
+data 为以 rule 开头的规则字符串，规则更新以覆盖方式进行
 
 ```json
 {
@@ -136,6 +137,7 @@ data 为以 rule开头的规则字符串，规则更新以覆盖方式进行
     ],
     "data": {
         "task": {
+            "data_type":6002,
             "name": "scanner",
             "data": "rule miner_script \n{ strings:\n$a1 = \"stratum+tcp\"\n$a2 = \"stratum+udp\"\n$a3 = \"stratum+ssl\"\n$a4 = \"ethproxy+tcp\"\n$a5 = \"nicehash+tcp\"\ncondition:\nis_script and any of them\n}"
         }

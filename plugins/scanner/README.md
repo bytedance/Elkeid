@@ -108,6 +108,7 @@ Sending plugin-task using manager API
 
 data : The absolute path of the file (not dir) to be scanned.
 
+
 ```json
 {
     "tag": "test_all",
@@ -116,6 +117,7 @@ data : The absolute path of the file (not dir) to be scanned.
     ],
     "data": {
         "task": {
+            "data_type":6001,
             "name": "scanner",
             "data": "/root/xmirg"
         }
@@ -136,6 +138,7 @@ data : A long string startswith "rule", and the new rules will overwrite the ori
     ],
     "data": {
         "task": {
+            "data_type":6002,
             "name": "scanner",
             "data": "rule miner_script \n{ strings:\n$a1 = \"stratum+tcp\"\n$a2 = \"stratum+udp\"\n$a3 = \"stratum+ssl\"\n$a4 = \"ethproxy+tcp\"\n$a5 = \"nicehash+tcp\"\ncondition:\nis_script and any of them\n}"
         }
