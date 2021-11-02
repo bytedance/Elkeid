@@ -394,7 +394,7 @@ After compiling, you should get three binary files of driver journal_watcher col
 ### 6. Upload the plugin
 Calculate the sha256 of the above two ternary files, upload them to an accessible file server, and obtain the corresponding download address:
 We have uploaded the pre-compiled plug-in. If you use the pre-compiled plug-in, you can skip this step directly. The following will also take our pre-compiled plug-in address as an example.
--driver plug-in (sha256: a9ab7a2eda69b83d830a6061a393f886a7b125ea63e7ae1df4a276105764b37d)
+-driver plug-in (sha256: d817195d0ce10974427ed15ef9fa86345bd666db83f5168963af4bb46bbc08d6)
 ```
 https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg
 https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg
@@ -452,7 +452,7 @@ curl --location --request POST'http://m_host:m_port/api/v1/agent/createTask/conf
                    "https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg","https://lf6-elkeid.bytetos.com/obj/elkeid-download /plugin/driver/driver_1.6.0.0_amd64.plg","https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg","https:/ /lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg"
                ],
                "version": "1.6.0.0",
-               "sha256": "a9ab7a2eda69b83d830a6061a393f886a7b125ea63e7ae1df4a276105764b37d",
+               "sha256": "d817195d0ce10974427ed15ef9fa86345bd666db83f5168963af4bb46bbc08d6",
                "detail": ""
            },
            {
@@ -499,7 +499,7 @@ You can see the following response, indicating that the configuration has been i
 ### 9. Verify configuration
 In the agent log, we can see the following records:
 ```
-2021-04-15T16:17:40.537+0800 INFO transport/client.go:69 Config:<Name:"driver" Version:"1.6.0.0" SHA256:"a9ab7a2eda69b83d830a6061a393f886a7b125ea63e7ae1df4a276105764b37d" DownloadURL:"https://lf3-elkeid. bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg" DownloadURL:"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0 .0_amd64.plg" DownloadURL:"https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg" DownloadURL:"https://lf26-elkeid.bytetos .com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg"> Config:<Name:"journal_watcher" Version:"1.6.0.0" SHA256:"a0c065514debf6f2109aa873ece86ec89b0e6ccedfa05c124b5863:"Downloada4568ee20c" -elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg" DownloadURL:"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/ journal_watcher_1.6.0.0_amd64.plg" DownloadURL:"https://lf9-elkeid.byte tos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg" Downloa
+2021-04-15T16:17:40.537+0800 INFO transport/client.go:69 Config:<Name:"driver" Version:"1.6.0.0" SHA256:"d817195d0ce10974427ed15ef9fa86345bd666db83f5168963af4bb46bbc08d6" DownloadURL:"https://lf3-elkeid. bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg" DownloadURL:"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0 .0_amd64.plg" DownloadURL:"https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg" DownloadURL:"https://lf26-elkeid.bytetos .com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg"> Config:<Name:"journal_watcher" Version:"1.6.0.0" SHA256:"a0c065514debf6f2109aa873ece86ec89b0e6ccedfa05c124b5863:"Downloada4568ee20c" -elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg" DownloadURL:"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/ journal_watcher_1.6.0.0_amd64.plg" DownloadURL:"https://lf9-elkeid.byte tos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg" Downloa
 dURL:"https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg">
 ```
 This shows that the instructions issued by the plug-in have been received, and then we can see the related logs of the plug-in loading:

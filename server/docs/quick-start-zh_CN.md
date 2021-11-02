@@ -392,7 +392,7 @@ cat /etc/elkeid/log/elkeid-agent.log
 ### 6. 上传插件
 计算上述两个三进制文件sha256，并上传至可访问的文件服务器，并获得相应的下载地址：
 我们已经上传了预编译好的插件，如果采用预编译插件可以直接跳过这步，下面也会以我们预编译好的插件地址为例。
-- driver插件(sha256:a9ab7a2eda69b83d830a6061a393f886a7b125ea63e7ae1df4a276105764b37d)
+- driver插件(sha256:d817195d0ce10974427ed15ef9fa86345bd666db83f5168963af4bb46bbc08d6)
 ```
 https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg
 https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg
@@ -450,7 +450,7 @@ curl --location --request POST 'http://m_host:m_port/api/v1/agent/createTask/con
                     "https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg","https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg","https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg","https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg"
                 ],
                 "version": "1.6.0.0",
-                "sha256": "a9ab7a2eda69b83d830a6061a393f886a7b125ea63e7ae1df4a276105764b37d",
+                "sha256": "d817195d0ce10974427ed15ef9fa86345bd666db83f5168963af4bb46bbc08d6",
                 "detail": ""
             },
             {
@@ -497,13 +497,13 @@ curl --location --request POST 'http://m_host:m_port/api/v1/agent/controlTask' -
 ### 9. 验证配置
 在Agent的日志中，我们可以看到如下记录：
 ```
-2021-04-15T16:17:40.537+0800    INFO    transport/client.go:69  Config:<Name:"driver" Version:"1.6.0.0" SHA256:"a9ab7a2eda69b83d830a6061a393f886a7b125ea63e7ae1df4a276105764b37d" DownloadURL:"https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg" DownloadURL:"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg" DownloadURL:"https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg" DownloadURL:"https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg" > Config:<Name:"journal_watcher" Version:"1.6.0.0" SHA256:"a0c065514debf6f2109aa873ece86ec89b0e6ccedfa05c124b5863a4568ee20c" DownloadURL:"https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg" DownloadURL:"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg" DownloadURL:"https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg" DownloadURL:"https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg" > 
+2021-04-15T16:17:40.537+0800    INFO    transport/client.go:69  Config:<Name:"driver" Version:"1.6.0.0" SHA256:"d817195d0ce10974427ed15ef9fa86345bd666db83f5168963af4bb46bbc08d6" DownloadURL:"https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg" DownloadURL:"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg" DownloadURL:"https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg" DownloadURL:"https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg" > Config:<Name:"journal_watcher" Version:"1.6.0.0" SHA256:"a0c065514debf6f2109aa873ece86ec89b0e6ccedfa05c124b5863a4568ee20c" DownloadURL:"https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg" DownloadURL:"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg" DownloadURL:"https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg" DownloadURL:"https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg" > 
 ```
 这说明接收到了插件下发的指令，进而我们可以看到插件加载相关日志：
 ```
 2021-04-15T16:17:42.803+0800    INFO    plugin/plugin.go:162    Plugin work directory: /etc/elkeid/plugin/driver/
 2021-04-15T16:17:42.807+0800    INFO    plugin/server.go:126    Received a registration:{Pid:1746809 Name:driver Version:1.6.0.0}
-2021-04-15T16:17:42.807+0800    INFO    plugin/server.go:141    Plugin has been successfully connected:&{name:driver version:1.6.0.0 checksum:a9ab7a2eda69b83d830a6061a393f886a7b125ea63e7ae1df4a276105764b37d cmd:0xc000388000 conn:0xc000314088 runtimePID:1746809 pgid:1746809 IO:253952 CPU:0 reader:0xc00007e200 exited:{Value:{v:false} _:[]} Counter:{_:[] v:0}}
+2021-04-15T16:17:42.807+0800    INFO    plugin/server.go:141    Plugin has been successfully connected:&{name:driver version:1.6.0.0 checksum:d817195d0ce10974427ed15ef9fa86345bd666db83f5168963af4bb46bbc08d6 cmd:0xc000388000 conn:0xc000314088 runtimePID:1746809 pgid:1746809 IO:253952 CPU:0 reader:0xc00007e200 exited:{Value:{v:false} _:[]} Counter:{_:[] v:0}}
 2021-04-15T16:17:43.649+0800    INFO    plugin/plugin.go:162    Plugin work directory: /etc/elkeid/plugin/journal_watcher/
 2021-04-15T16:17:43.650+0800    INFO    plugin/server.go:126    Received a registration:{Pid:1746883 Name:journal_watcher Version:1.6.0.0}
 2021-04-15T16:17:43.650+0800    INFO    plugin/server.go:141    Plugin has been successfully connected:&{name:journal_watcher version:1.6.0.0 checksum:a0c065514debf6f2109aa873ece86ec89b0e6ccedfa05c124b5863a4568ee20c cmd:0xc000162580 conn:0xc000010040 runtimePID:1746883 pgid:1746883 IO:0 CPU:0 reader:0xc000324180 exited:{Value:{v:false} _:[]} Counter:{_:[] v:0}}
