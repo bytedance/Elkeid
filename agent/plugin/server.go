@@ -87,9 +87,9 @@ var instance *Server
 // GetServer func is used to obtain the server instance, please note: this function is not concurrently safe
 func GetServer() (*Server, error) {
 	if instance == nil {
-		syscall.Unlink("plugin.sock")
-		os.RemoveAll("plugin.sock")
-		l, err := net.Listen("unix", "plugin.sock")
+		syscall.Unlink(global.WorkingDirectory + "/plugin.sock")
+		os.RemoveAll(global.WorkingDirectory + "/plugin.sock")
+		l, err := net.Listen("unix", global.WorkingDirectory+"/plugin.sock")
 		if err != nil {
 			return nil, err
 		}
