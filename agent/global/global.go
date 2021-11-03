@@ -13,16 +13,17 @@ import (
 )
 
 var (
-	PrivateIPv4     []string
-	PublicIPv4      []string
-	PrivateIPv6     []string
-	PublicIPv6      []string
-	AgentID         string
-	Hostname        string
-	Platform        string
-	PlatformFamily  string
-	PlatformVersion string
-	KernelVersion   string
+	PrivateIPv4      []string
+	PublicIPv4       []string
+	PrivateIPv6      []string
+	PublicIPv6       []string
+	AgentID          string
+	Hostname         string
+	Platform         string
+	PlatformFamily   string
+	PlatformVersion  string
+	KernelVersion    string
+	WorkingDirectory string
 )
 
 const (
@@ -35,6 +36,7 @@ var (
 )
 
 func init() {
+	WorkingDirectory, _ = os.Getwd()
 	GrpcChannel = make(chan []*Record, 1000)
 	id, err := ioutil.ReadFile("agent-id")
 	if err != nil {
