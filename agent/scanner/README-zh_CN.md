@@ -48,19 +48,23 @@ const VERSION:&str = "0.0.0.0";
 
 * Requirements
 ```bash
+llvm
+musl-gcc
 libclang >= 3.9 (requried by rust-bindgen)
 gcc >= 6.3 (suggested gcc 6.3.0 which is the default version in debian 9)
 ```
+Optional - [musl tool-chain](https://www.musl-libc.org/how.html)
 
 * Build-essential
 ```bash
 # debian & ubuntu
-apt-get install build-essential clang llvm
+apt-get install build-essential clang llvm musl-tools llvm-dev
 # centos & rhel
 yum groupinstall "Development Tools" && yum install clang llvm
 ```
 
-* Rust 1.48.0
+
+* Rust 1.56 +
 
 快速安装 [rust](https://www.rust-lang.org/tools/install) 环境：
 ```
@@ -69,10 +73,13 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 # add build target x86_64-unknown-linux-gnu
 rustup target add x86_64-unknown-linux-gnu
 
+# add build target x86_64-unknown-linux-musl
+rustup target add x86_64-unknown-linux-musl
+
 ```
 
 ## 编译
-执行以下命令:
+方式1:执行以下命令:
 ```
 chmod +x build.sh && ./build.sh
 ```
@@ -83,16 +90,32 @@ RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_64-
 你将会在`target/x86_64-unknown-linux-gnu/release/`下面找到`scanner`二进制文件。静态链接的二进制文件(更易于分发)。
 
 
+
+方式2:执行以下命令:
+```
+cargo build --release --target x86_64-unknown-linux-musl
+```
+你将会在`target/x86_64-unknown-linux-musl/release/`下面找到`scanner`二进制文件。静态链接的二进制文件(更易于分发)。
+
+
+## 检查
+如果检查结果为动态链接的可执行文件，则非预期，请检查编译链
+```
+ldd ./target/x86_64-unknown-linux-gnu/release/scanner
+#output
+   not a dynamic executable
+```
+
+
 ## 预编译产物
 
-sha256 = feae8dfe029571d0e7c6c2e873dd03c8134573a33240aabe1a34be13956b7a45
-
+sha256 = e216470f52601b5268b248e4bb60e2f6b0e8b0a86bd18a799057461526c81a4b
 
 ```bash
-"https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg",
-"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg",
-"https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg",
-"https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg"
+"https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.2.pkg",
+"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.2.pkg",
+"https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.2.pkg",
+"https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.2.pkg"
 ```
 
 

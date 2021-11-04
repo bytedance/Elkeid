@@ -52,6 +52,8 @@ More Yara rules [Ref](https://github.com/InQuest/awesome-yara)
 
 * Requirements
 ```bash
+llvm
+musl-gcc
 libclang >= 3.9 (requried by rust-bindgen)
 gcc >= 6.3 (suggested gcc 6.3.0 which is the default version in debian 9)
 ```
@@ -63,14 +65,18 @@ apt-get install build-essential clang llvm
 # centos & rhel
 yum groupinstall "Development Tools" && yum install clang llvm
 ```
+Optional - [musl tool-chain](https://www.musl-libc.org/how.html)
 
-* Rust 1.48.0
+* Rust 1.56 +
 
 Please install [rust](https://www.rust-lang.org/tools/install) environment:
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 # add build target x86_64-unknown-linux-gnu
 rustup target add x86_64-unknown-linux-gnu
+
+# add build target x86_64-unknown-linux-musl
+rustup target add x86_64-unknown-linux-musl
 ```
 
 ## Building
@@ -84,15 +90,31 @@ RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_64-
 ```
 You will find the scanner binary file under `target/x86_64-unknown-linux-gnu/release/`.
 
+
+musl style:
+```
+cargo build --release --target x86_64-unknown-linux-musl
+```
+You will find the scanner binary file under `target/x86_64-unknown-linux-musl/release/`.
+
+
+## check static binary
+
+```
+ldd ./target/x86_64-unknown-linux-gnu/release/scanner
+#output
+   not a dynamic executable
+```
+
 ## Pre-compiled binary
 
-sha256 = feae8dfe029571d0e7c6c2e873dd03c8134573a33240aabe1a34be13956b7a45
+sha256 = e216470f52601b5268b248e4bb60e2f6b0e8b0a86bd18a799057461526c81a4b
 
 ```bash
-"https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg",
-"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg",
-"https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg",
-"https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.1.pkg"
+"https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.2.pkg",
+"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.2.pkg",
+"https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.2.pkg",
+"https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-0.0.0.2.pkg"
 ```
 
 ## Known Errors & Bugs
