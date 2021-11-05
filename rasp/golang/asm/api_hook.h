@@ -2,10 +2,10 @@
 #define GO_PROBE_API_HOOK_H
 
 #include "inline_hook.h"
-#include <common/singleton.h>
+#include <zero/singleton.h>
 
 class CAPIHook: public CInlineHook {
-#define gAPIHook SINGLETON(CAPIHook)
+#define gAPIHook zero::Singleton<CAPIHook>::getInstance()
 public:
     bool hook(void *address, void *replace, void **backup) override;
     bool unhook(void *address, void *backup) override;

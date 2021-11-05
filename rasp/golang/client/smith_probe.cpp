@@ -1,12 +1,12 @@
 #include "smith_probe.h"
-#include <common/log.h>
+#include <zero/log.h>
 #include <go/api/api.h>
 
 constexpr auto WAIT_TIMEOUT = timespec {30, 0};
 
 void CSmithProbe::start() {
     mClient.start();
-    mThread.start(this, &CSmithProbe::traceThread);
+    mThread.start(&CSmithProbe::traceThread);
 }
 
 void CSmithProbe::stop() {

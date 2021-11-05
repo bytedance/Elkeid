@@ -1,5 +1,5 @@
 #include "elf/loader.h"
-#include <common/log.h>
+#include <zero/log.h>
 #include <csignal>
 #include <go/symbol/build_info.h>
 #include <go/symbol/line_table.h>
@@ -8,14 +8,14 @@
 #include <asm/api_hook.h>
 
 int main(int argc, char **argv, char **env) {
-    INIT_CONSOLE_LOG(INFO);
+    INIT_CONSOLE_LOG(zero::INFO);
 
     if (argc < 2) {
         LOG_ERROR("require input file");
         return -1;
     }
 
-    ELFLoader loader;
+    CELFLoader loader;
 
     if (!loader.load(argv[1]))
         return -1;
@@ -48,22 +48,17 @@ int main(int argc, char **argv, char **env) {
         table.findByFuncName("errors.(*errorString).Error", (go::interface_item **)CAPIBase::errorInterface());
     }
 
-    if (!gWorkspace->init()) {
-        LOG_ERROR("workspace init failed");
-        return -1;
-    }
-
     gSmithProbe->start();
 
     for (const auto &api : GOLANG_API) {
-        for (unsigned long i = 0; i < gLineTable->mFuncNum; i++) {
-            CFunction func = {};
+        for (unsigned int i = 0; i < gLineTable->mFuncNum; i++) {
+            CFunc func = {};
 
             if (!gLineTable->getFunc(i, func))
                 break;
 
             const char *name = func.getName();
-            void *entry = func.getEntry();
+            void *entry = (void *)func.getEntry();
 
             if ((api.ignoreCase ? strcasecmp(api.name, name) : strcmp(api.name, name)) == 0) {
                 LOG_INFO("hook %s: %p", name, entry);

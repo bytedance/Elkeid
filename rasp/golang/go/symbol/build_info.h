@@ -6,7 +6,7 @@
 #include <go/type/basic.h>
 #include <list>
 #include <vector>
-#include <common/singleton.h>
+#include <zero/singleton.h>
 
 struct CModule {
     std::string path;
@@ -29,7 +29,7 @@ struct CModuleInfo {
 };
 
 class CBuildInfo {
-#define gBuildInfo SINGLETON(CBuildInfo)
+#define gBuildInfo zero::Singleton<CBuildInfo>::getInstance()
 public:
     bool load();
     bool load(const std::string& file);

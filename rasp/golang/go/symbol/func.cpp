@@ -14,19 +14,72 @@ constexpr auto STACK_TOP_FUNCTION = {
         "runtime.goexit"
 };
 
-const char *CFunction::getName() const {
-    return &mLineTable->mFuncNameTable[mFuncInfo->name_offset];
+CFuncTablePtr::CFuncTablePtr(const char *table, unsigned int size) {
+    mTable = table;
+    mSize = size;
 }
 
-void *CFunction::getEntry() const {
-    return (void *)mFuncInfo->entry;
+CFuncTablePtr &CFuncTablePtr::operator++() {
+    mTable += 2 * mSize;
+    return *this;
 }
 
-int CFunction::getFrameSize(void *pc) const {
-    if (mFuncInfo->pc_sp == 0)
+CFuncTablePtr CFuncTablePtr::operator+(unsigned int offset) {
+    return CFuncTablePtr(mTable + offset * 2 * mSize, mSize);
+}
+
+CFuncTablePtr CFuncTablePtr::operator-(unsigned int offset) {
+    return CFuncTablePtr(mTable - offset * 2 * mSize, mSize);
+}
+
+const CFuncEntry &CFuncTablePtr::operator*() {
+    auto peek = [&](const char *address) -> uint64_t {
+        if (mSize == 4)
+            return *(uint32_t *)address;
+
+        return *(uint64_t *)address;
+    };
+
+    mEntry.entry = (uintptr_t)peek(mTable);
+    mEntry.offset = (unsigned long)peek(mTable + mSize);
+
+    return mEntry;
+}
+
+const CFuncEntry *CFuncTablePtr::operator->() {
+    return &operator*();
+}
+
+CFuncEntry CFuncTablePtr::operator[](unsigned int index) {
+    return *operator+(index);
+}
+
+bool CFuncTablePtr::operator==(const CFuncTablePtr &ptr) {
+    return mTable == ptr.mTable;
+}
+
+bool CFuncTablePtr::operator!=(const CFuncTablePtr &ptr) {
+    return mTable != ptr.mTable;
+}
+
+uintptr_t CFunc::getEntry() const {
+    if (mLineTable->mVersion < VERSION118)
+        return *(uintptr_t *)mFuncData;
+
+    return mLineTable->mTextStart + *(unsigned int *)mFuncData;
+}
+
+const char *CFunc::getName() const {
+    return &mLineTable->mFuncNameTable[getNameOffset()];
+}
+
+int CFunc::getFrameSize(uintptr_t pc) const {
+    unsigned int sp = getPCSp();
+
+    if (sp == 0)
         return 0;
 
-    int x = getPCValue(mFuncInfo->pc_sp, pc);
+    int x = mLineTable->getPCValue(sp, getEntry(), pc);
 
     if (x == -1)
         return 0;
@@ -37,87 +90,57 @@ int CFunction::getFrameSize(void *pc) const {
     return x;
 }
 
-int CFunction::getSourceLine(void *pc) const {
-    return getPCValue(mFuncInfo->pc_line, pc);
+int CFunc::getSourceLine(uintptr_t pc) const {
+    return mLineTable->getPCValue(getPCLine(), getEntry(), pc);
 }
 
-const char *CFunction::getSourceFile(void *pc) const {
-    int fileNo = getPCValue(mFuncInfo->pc_file, pc);
+const char *CFunc::getSourceFile(uintptr_t pc) const {
+    int n = mLineTable->getPCValue(getPCFile(), getEntry(), pc);
 
-    if (fileNo == -1 || fileNo > mLineTable->mFileNum)
+    if (n == -1 || n > mLineTable->mFileNum)
         return "";
 
-    if (mLineTable->mVersion == emVersion12)
-        return &mLineTable->mFuncData[*(int *)&mLineTable->mFileTable[fileNo * 4]];
+    if (mLineTable->mVersion == VERSION12)
+        return &mLineTable->mFuncData[*(int *)&mLineTable->mFileTable[n * 4]];
 
-    auto cuOffset = ((go::func_info_v116*)mFuncInfo)->cu_offset;
-    auto fnOffset = *(int *)&mLineTable->mCuTable[(cuOffset + fileNo) * 4];
+    unsigned int offset = *(unsigned int *)&mLineTable->mCuTable[(getCuOffset() + n) * 4];
 
-    return &mLineTable->mFileTable[fnOffset];
+    if (!offset)
+        return "";
+
+    return &mLineTable->mFileTable[offset];
+
 }
 
-bool CFunction::isStackTop() const {
-    auto name = getName();
+bool CFunc::isStackTop() const {
+    const char *name = getName();
 
     return std::any_of(STACK_TOP_FUNCTION.begin(), STACK_TOP_FUNCTION.end(), [=](const auto& f) {
         return strcmp(f, name) == 0;
     });
 }
 
-unsigned int CFunction::readVarInt(const unsigned char **pp) {
-    unsigned int v = 0;
-    unsigned int shift = 0;
-
-    const unsigned char *p = *pp;
-
-    while (true) {
-        unsigned int b = *p++;
-        v |= (b & 0x7F) << shift;
-
-        if ((b & 0x80) == 0)
-            break;
-
-        shift += 7;
-    }
-
-    *pp = p;
-
-    return v;
+unsigned int CFunc::field(unsigned int n) const {
+    unsigned int size = mLineTable->mVersion >= VERSION118 ? 4 : mLineTable->mPtrSize;
+    return *(unsigned int *)&mFuncData[size + (n - 1) * 4];
 }
 
-bool CFunction::step(const unsigned char **p, unsigned long *pc, int *val, bool first) const {
-    auto uv_delta = readVarInt(p);
-
-    if (uv_delta == 0 && !first)
-        return false;
-
-    if ((uv_delta & 1) != 0) {
-        uv_delta = ~(uv_delta >> 1);
-    } else {
-        uv_delta >>= 1;
-    }
-
-    auto v_delta = (int)uv_delta;
-    unsigned long pc_delta = readVarInt(p) * mLineTable->mQuantum;
-
-    *pc += pc_delta;
-    *val += v_delta;
-
-    return true;
+unsigned int CFunc::getNameOffset() const {
+    return field(1);
 }
 
-int CFunction::getPCValue(int offset, void *targetPC) const {
-    const unsigned char *p = (unsigned char *)&mLineTable->mPCTable[offset];
+unsigned int CFunc::getPCSp() const {
+    return field(4);
+}
 
-    int val = -1;
-    auto entry = mFuncInfo->entry;
-    auto pc = entry;
+unsigned int CFunc::getPCFile() const {
+    return field(5);
+}
 
-    while (step(&p, &pc, &val, pc == entry)) {
-        if ((unsigned long)targetPC < pc) {
-            return val;
-        }
-    }
+unsigned int CFunc::getPCLine() const {
+    return field(6);
+}
 
-    return -1;
+unsigned int CFunc::getCuOffset() const {
+    return field(8);
 }

@@ -1,13 +1,21 @@
 #include "inline_hook.h"
-#include <common/log.h>
+#include <zero/log.h>
 #include <sys/mman.h>
+#include <unistd.h>
 
-constexpr unsigned char TRAP_TEMPLATE[] = { 0x49, 0xBC, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x41, 0xFF, 0xE4 };
-constexpr unsigned char ESCAPE_TEMPLATE[] = { 0x49, 0xBC, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x41, 0xFF, 0xE4 };
+/*
+ * jump template:
+ *      jmp *0(%rip)
+ *      .dq address
+ * */
 
-constexpr auto GUIDE = 2;
-constexpr auto TRAP_SIZE = sizeof(TRAP_TEMPLATE);
-constexpr auto ESCAPE_SIZE = sizeof(ESCAPE_TEMPLATE);
+constexpr unsigned char JUMP_TEMPLATE[] = {
+        0xFF, 0x25, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+constexpr auto GUIDE = 6;
+constexpr auto JUMP_SIZE = sizeof(JUMP_TEMPLATE);
 
 CInlineHook::CInlineHook() {
     mPagesize = sysconf(_SC_PAGESIZE);
@@ -16,7 +24,7 @@ CInlineHook::CInlineHook() {
 
 unsigned long CInlineHook::getCodeTail(void *address) {
     ZydisDecodedInstruction instruction = {};
-    ZyanUSize length = ZYDIS_MAX_INSTRUCTION_LENGTH + TRAP_SIZE;
+    ZyanUSize length = ZYDIS_MAX_INSTRUCTION_LENGTH + JUMP_SIZE;
 
     unsigned long tail = 0;
 
@@ -33,7 +41,7 @@ unsigned long CInlineHook::getCodeTail(void *address) {
 
         tail += instruction.length;
 
-    } while (tail < TRAP_SIZE);
+    } while (tail < JUMP_SIZE);
 
     return tail;
 }
@@ -46,20 +54,20 @@ bool CInlineHook::hook(void *address, void *replace, void **backup) {
         return false;
     }
 
-    std::unique_ptr<char> escape(new char[tail + ESCAPE_SIZE]());
+    std::unique_ptr<char> escape(new char[tail + JUMP_SIZE]());
 
-    if (!setCodeWriteable(escape.get(), tail + ESCAPE_SIZE))
+    if (!setCodeWriteable(escape.get(), tail + JUMP_SIZE))
         return false;
 
     memcpy(escape.get(), address, tail);
-    memcpy(escape.get() + tail, ESCAPE_TEMPLATE, ESCAPE_SIZE);
+    memcpy(escape.get() + tail, JUMP_TEMPLATE, JUMP_SIZE);
 
     *(void **)(escape.get() + tail + GUIDE) = (char *)address + tail;
 
-    if (!setCodeWriteable(address, TRAP_SIZE))
+    if (!setCodeWriteable(address, JUMP_SIZE))
         return false;
 
-    memcpy(address, TRAP_TEMPLATE, TRAP_SIZE);
+    memcpy(address, JUMP_TEMPLATE, JUMP_SIZE);
     *(void **)((char *)address + GUIDE) = replace;
 
     *backup = escape.release();
@@ -68,15 +76,15 @@ bool CInlineHook::hook(void *address, void *replace, void **backup) {
 }
 
 bool CInlineHook::unhook(void *address, void *backup) {
-    if (memcmp(address, TRAP_TEMPLATE, GUIDE) != 0) {
+    if (memcmp(address, JUMP_TEMPLATE, GUIDE) != 0) {
         LOG_ERROR("trap magic error");
         return false;
     }
 
-    if (!setCodeWriteable(address, TRAP_SIZE))
+    if (!setCodeWriteable(address, JUMP_SIZE))
         return false;
 
-    memcpy(address, backup, TRAP_SIZE);
+    memcpy(address, backup, JUMP_SIZE);
 
     delete [](char*)backup;
 
