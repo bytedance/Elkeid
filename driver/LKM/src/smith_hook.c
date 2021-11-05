@@ -2535,9 +2535,6 @@ int write_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if (len <= 0 || !S_ISREG(file_inode(file)->i_mode))
         return 0;
 
-    pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    file_path = smith_d_path(&(file)->f_path, pname_buf, PATH_MAX);
-
     kbuf = smith_kzalloc(len, GFP_ATOMIC);
     if(!kbuf)
         goto out;
@@ -2556,7 +2553,7 @@ int write_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if (buffer)
         smith_kfree(buffer);
 
-    out:
+out:
     if (pname_buf)
         smith_kfree(pname_buf);
 
