@@ -1,32 +1,63 @@
-#include "line_table.h"
-#include <common/log.h>
-#include <common/utils/process.h>
+ #include "line_table.h"
+#include <zero/log.h>
+#include <zero/proc/process.h>
+#include <zero/filesystem/path.h>
 #include <elfio/elfio.hpp>
 #include <sys/user.h>
+#include <unistd.h>
 
 constexpr auto GO_LINE_TABLE = "gopclntab";
 
 constexpr auto LINE_TABLE_MAGIC_12 = 0xFFFFFFFB;
 constexpr auto LINE_TABLE_MAGIC_116 = 0xFFFFFFFA;
+constexpr auto LINE_TABLE_MAGIC_118 = 0xFFFFFFF0;
+
+static unsigned int readVarInt(const unsigned char **pp) {
+    unsigned int v = 0;
+    unsigned int shift = 0;
+
+    const unsigned char *p = *pp;
+
+    while (true) {
+        unsigned int b = *p++;
+        v |= (b & 0x7F) << shift;
+
+        if ((b & 0x80) == 0)
+            break;
+
+        shift += 7;
+    }
+
+    *pp = p;
+
+    return v;
+}
 
 bool CLineTable::load(const char *table) {
     mQuantum = (unsigned char)table[6];
     mPtrSize = (unsigned char)table[7];
 
-    auto magic = *(unsigned int *)table;
+    auto peek = [&](const char *address) -> uint64_t {
+        if (mPtrSize == 4)
+            return *(uint32_t *)address;
+
+        return *(uint64_t *)address;
+    };
+
+    unsigned int magic = *(unsigned int *)table;
 
     switch (magic) {
         case LINE_TABLE_MAGIC_12: {
-            mVersion = emVersion12;
+            mVersion = VERSION12;
 
-            mFuncNum = peek(&table[8]);
+            mFuncNum = (unsigned int)peek(&table[8]);
             mFuncData = table;
             mFuncNameTable = table;
             mFuncTable = &table[8 + mPtrSize];
             mPCTable = table;
 
-            unsigned long funcTableSize = mFuncNum * 2 * mPtrSize + mPtrSize;
-            unsigned long fileOffset = *(unsigned int *)&mFuncTable[funcTableSize];
+            unsigned int funcTableSize = mFuncNum * 2 * mPtrSize + mPtrSize;
+            unsigned int fileOffset = *(unsigned int *)&mFuncTable[funcTableSize];
 
             mFileTable = &table[fileOffset];
             mFileNum = *(unsigned int *)mFileTable;
@@ -35,10 +66,10 @@ bool CLineTable::load(const char *table) {
         }
 
         case LINE_TABLE_MAGIC_116: {
-            mVersion = emVersion116;
+            mVersion = VERSION116;
 
-            mFuncNum = peek(&table[8]);
-            mFileNum = peek(&table[8 + mPtrSize]);
+            mFuncNum = (unsigned int)peek(&table[8]);
+            mFileNum = (unsigned int)peek(&table[8 + mPtrSize]);
 
             mFuncNameTable = &table[peek(&table[8 + 2 * mPtrSize])];
             mCuTable = &table[peek(&table[8 + 3 * mPtrSize])];
@@ -50,6 +81,21 @@ bool CLineTable::load(const char *table) {
             break;
         }
 
+        case LINE_TABLE_MAGIC_118: {
+            mVersion = VERSION118;
+
+            mFuncNum = (unsigned int)peek(&table[8]);
+            mFileNum = (unsigned int)peek(&table[8 + mPtrSize]);
+            mTextStart = (uintptr_t)peek(&table[8 + 2 * mPtrSize]);
+
+            mFuncNameTable = &table[peek(&table[8 + 3 * mPtrSize])];
+            mCuTable = &table[peek(&table[8 + 4 * mPtrSize])];
+            mFileTable = &table[peek(&table[8 + 5 * mPtrSize])];
+            mPCTable = &table[peek(&table[8 + 6 * mPtrSize])];
+            mFuncData = &table[peek(&table[8 + 7 * mPtrSize])];
+            mFuncTable = &table[peek(&table[8 + 7 * mPtrSize])];
+        }
+
         default:
             return false;
     }
@@ -57,25 +103,17 @@ bool CLineTable::load(const char *table) {
     return true;
 }
 
-unsigned long CLineTable::peek(const char *address) const {
-    if (mPtrSize == 4) {
-        return *(unsigned int *)address;
-    }
-
-    return *(unsigned long *)address;
-}
-
 bool CLineTable::load() {
-    return load(CPath::getAPPPath());
+    return load(zero::filesystem::path::getApplicationPath());
 }
 
 bool CLineTable::load(const std::string &file) {
-    CProcessMap processMap;
+    zero::proc::CProcessMapping processMapping;
 
-    if (!CProcess::getFileMemoryBase(getpid(), file, processMap))
+    if (!zero::proc::getImageBase(getpid(), file, processMapping))
         return false;
 
-    return load(file, processMap.start);
+    return load(file, processMapping.start);
 }
 
 bool CLineTable::load(const std::string &file, unsigned long base) {
@@ -88,7 +126,7 @@ bool CLineTable::load(const std::string &file, unsigned long base) {
             reader.sections.begin(),
             reader.sections.end(),
             [](const auto& s) {
-                return CStringHelper::findStringIC(s->get_name(), GO_LINE_TABLE);
+                return zero::strings::containsIC(s->get_name(), GO_LINE_TABLE);
             });
 
     if (it == reader.sections.end()) {
@@ -119,43 +157,69 @@ bool CLineTable::load(const std::string &file, unsigned long base) {
     return load((char *)base + (*it)->get_address() - ((*minElement)->get_virtual_address() & ~(PAGE_SIZE - 1)));
 }
 
-const go::func_item *CLineTable::getFuncItem(unsigned long index) const {
-    return &((go::func_item *)mFuncTable)[index];
+CFuncTablePtr CLineTable::getFuncTable() const {
+    return CFuncTablePtr(mFuncTable, mVersion >= VERSION118 ? 4 : mPtrSize);
 }
 
-const go::func_info *CLineTable::getFuncInfo(unsigned long index) const {
-    return (go::func_info *)&mFuncData[getFuncItem(index)->func_offset];
-}
-
-bool CLineTable::findFunc(void *pc, CFunction &func) {
-    auto address = (unsigned long)pc;
-
-    auto begin = getFuncItem(0);
-    auto back = getFuncItem(mFuncNum);
+bool CLineTable::findFunc(uintptr_t address, CFunc &func) {
+    auto begin = getFuncTable();
+    auto back = begin + mFuncNum;
     auto end = back + 1;
 
     if (address < begin->entry || address >= back->entry)
         return false;
 
-    auto it = std::upper_bound(begin, end, address, [](auto value, const auto& i) {
-       return value < i.entry;
+    auto it = std::upper_bound(begin, end, address, [&](auto value, const auto& i) {
+        return value < i.entry + (mVersion >= VERSION118 ? mTextStart : 0);
     });
 
     if (it == end)
         return false;
 
     func.mLineTable = this;
-    func.mFuncInfo = (go::func_info *)&mFuncData[(it - 1)->func_offset];
+    func.mFuncData = &mFuncData[(it - 1)->offset];
 
     return true;
 }
 
-bool CLineTable::getFunc(unsigned long index, CFunction &func) {
+bool CLineTable::getFunc(unsigned int index, CFunc &func) {
     if (index >= mFuncNum)
         return false;
 
     func.mLineTable = this;
-    func.mFuncInfo = getFuncInfo(index);
+    func.mFuncData = &mFuncData[getFuncTable()[index].offset];
+
+    return true;
+}
+
+int CLineTable::getPCValue(unsigned int offset, uintptr_t entry, uintptr_t targetPC) const {
+    const unsigned char *p = (unsigned char *)&mPCTable[offset];
+
+    int value = -1;
+    uintptr_t pc = entry;
+
+    while (step(&p, &pc, &value, pc == entry)) {
+        if (targetPC < pc)
+            return value;
+    }
+
+    return -1;
+}
+
+bool CLineTable::step(const unsigned char **p, uintptr_t *pc, int *value, bool first) const {
+    unsigned int uv = readVarInt(p);
+
+    if (uv == 0 && !first)
+        return false;
+
+    if ((uv & 1) != 0) {
+        uv = ~(uv >> 1);
+    } else {
+        uv >>= 1;
+    }
+
+    *pc += readVarInt(p) * mQuantum;
+    *value += (int)uv;
 
     return true;
 }

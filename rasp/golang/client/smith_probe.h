@@ -3,12 +3,12 @@
 
 #include "smith_client.h"
 #include <z_sync.h>
-#include <common/utils/circular_buffer.h>
+#include <zero/atomic/circular_buffer.h>
 
 constexpr auto TRACE_BUFFER_SIZE = 100;
 
 class CSmithProbe: public ISmithNotify {
-#define gSmithProbe SINGLETON(CSmithProbe)
+#define gSmithProbe zero::Singleton<CSmithProbe>::getInstance()
 public:
     void start();
     void stop();
@@ -37,8 +37,8 @@ private:
     CSmithClient mClient{this};
 
 private:
-    CThread<CSmithProbe> mThread;
-    CCircularBuffer<CSmithTrace, TRACE_BUFFER_SIZE> mTraces;
+    zero::Thread<CSmithProbe> mThread{this};
+    zero::atomic::CircularBuffer<CSmithTrace, TRACE_BUFFER_SIZE> mTraces;
 };
 
 

@@ -6,35 +6,24 @@
 #include <type_traits>
 
 namespace go {
-    struct FieldMetadata {
-        unsigned long offset;
-        unsigned long size;
-        bool floating;
-    };
+    template<unsigned int... Is>
+    struct seq {};
 
-    template<std::size_t... I1s>
-    struct ConcatHelper {
-        template<typename T, std::size_t... I2s>
-        static constexpr std::array<T, sizeof...(I1s) + sizeof...(I2s)>
-                concat(
-                        std::array<T, sizeof...(I1s)> const &lhs,
-                        std::array<T, sizeof...(I2s)> const &rhs,
-                        std::index_sequence<I2s...>
-                                ) {
-            return {lhs[I1s]..., rhs[I2s]...};
-        }
-    };
+    template<unsigned int N, unsigned int... Is>
+    struct gen_seq : gen_seq<N - 1, N - 1, Is...> {};
 
-    template<std::size_t... I1s>
-    ConcatHelper<I1s...> get_helper_type(std::index_sequence<I1s...>);
+    template<unsigned int... Is>
+    struct gen_seq<0, Is...> : seq<Is...> {};
 
-    template<typename T, std::size_t N1, std::size_t N2>
-    constexpr std::array<T, N1 + N2> array_cat(std::array<T, N1> const &lhs, std::array<T, N2> const &rhs) {
-        return decltype(get_helper_type(std::make_index_sequence<N1>{}))::concat(
-                lhs,
-                rhs,
-                std::make_index_sequence<N2>{}
-        );
+    template<typename T, size_t N1, unsigned int... I1, size_t N2, unsigned int... I2>
+    constexpr std::array<T, N1 + N2>
+    array_cat(const std::array<T, N1> &a1, const std::array<T, N2> &a2, seq<I1...>, seq<I2...>) {
+        return {a1[I1]..., a2[I2]...};
+    }
+
+    template<typename T, size_t N1, size_t N2>
+    constexpr std::array<T, N1 + N2> array_cat(const std::array<T, N1> &a1, const std::array<T, N2> &a2) {
+        return array_cat(a1, a2, gen_seq<N1>{}, gen_seq<N2>{});
     }
 
     template<typename>
@@ -52,6 +41,12 @@ namespace go {
     template<typename T>
     struct is_non_trivial_array<T[]> : public std::true_type {};
 
+    struct FieldMetadata {
+        unsigned long offset;
+        unsigned long size;
+        bool floating;
+    };
+
     template<typename T>
     struct Metadata {
         static constexpr bool hasNonTrivialArray() {
@@ -59,16 +54,19 @@ namespace go {
         }
 
         static constexpr int getFloatRegister() {
+            if (hasNonTrivialArray())
+                return 0;
+
             return std::is_floating_point<T>::value ||
                    std::is_same<T, float _Complex>::value ||
                    std::is_same<T, double _Complex>::value ? 1 : 0;
         }
 
         static constexpr int getIntegerRegister() {
-            return std::is_floating_point<T>::value ||
-                   std::is_same<T, float _Complex>::value ||
-                   std::is_same<T, double _Complex>::value ||
-                   is_non_trivial_array<T>::value ? 0 : 1;
+            if (hasNonTrivialArray())
+                return 0;
+
+            return getFloatRegister() ? 0 : 1;
         }
 
         static constexpr unsigned long getAlign() {
@@ -84,9 +82,7 @@ namespace go {
                     FieldMetadata{
                             offset + (offset % alignof(T) ? alignof(T) - offset % alignof(T) : 0),
                             sizeof(T),
-                            std::is_floating_point<T>::value ||
-                            std::is_same<T, float _Complex>::value ||
-                            std::is_same<T, double _Complex>::value
+                            getFloatRegister()
                     }
             };
         }

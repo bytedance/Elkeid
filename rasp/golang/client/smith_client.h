@@ -4,10 +4,10 @@
 #include "smith_message.h"
 #include <mutex>
 #include <event.h>
-#include <common/interface.h>
-#include <common/thread.h>
+#include <zero/interface.h>
+#include <zero/thread.h>
 
-class ISmithNotify: public Interface {
+class ISmithNotify: public zero::Interface {
 public:
     virtual void onMessage(const CSmithMessage &message) = 0;
 };
@@ -52,7 +52,7 @@ private:
     event *mTimer{};
     bufferevent *mBev{};
     event_base *mEventBase;
-    CThread<CSmithClient> mThread;
+    zero::Thread<CSmithClient> mThread{this};
 };
 
 

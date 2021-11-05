@@ -1,7 +1,7 @@
 #include <dlfcn.h>
-#include <common/utils/path.h>
+#include <zero/log.h>
+#include <zero/filesystem/path.h>
 #include <go/symbol/build_info.h>
-#include <common/log.h>
 #include <go/symbol/line_table.h>
 #include <asm/api_hook.h>
 #include <go/api/api.h>
@@ -10,9 +10,12 @@ using GOStartPtr = void (*)();
 using GetFirstModuleDataPtr = void *(*)();
 
 int main() {
-    INIT_CONSOLE_LOG(INFO);
+    INIT_CONSOLE_LOG(zero::INFO);
 
-    std::string path = CPath::join(CPath::getAPPDir(), "go_sample.so");
+    std::string path = zero::filesystem::path::join(
+            zero::filesystem::path::getApplicationDirectory(),
+            "go_sample.so"
+    );
 
     void* handle = dlopen(path.c_str(), RTLD_LAZY);
 
@@ -33,11 +36,6 @@ int main() {
         LOG_INFO("go version: %s", gBuildInfo->mVersion.c_str());
     }
 
-    if (!gWorkspace->init()) {
-        LOG_ERROR("workspace init failed");
-        return -1;
-    }
-
     gSmithProbe->start();
 
     auto firstModule = pfnGetFirstModuleData();
@@ -49,14 +47,14 @@ int main() {
     }
 
     for (const auto &api : GOLANG_API) {
-        for (unsigned long i = 0; i < gLineTable->mFuncNum; i++) {
-            CFunction func = {};
+        for (unsigned int i = 0; i < gLineTable->mFuncNum; i++) {
+            CFunc func = {};
 
             if (!gLineTable->getFunc(i, func))
                 break;
 
             const char *name = func.getName();
-            void *entry = func.getEntry();
+            void *entry = (void *)func.getEntry();
 
             if ((api.ignoreCase ? strcasecmp(api.name, name) : strcmp(api.name, name)) == 0) {
                 LOG_INFO("hook %s: %p", name, entry);

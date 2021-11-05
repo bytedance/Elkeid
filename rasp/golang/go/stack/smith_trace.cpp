@@ -1,48 +1,38 @@
 #include "smith_trace.h"
-#include <printf.h>
 #include <go/symbol/line_table.h>
 #include <cstring>
+#include <printf.h>
 
-CSmithTracer::CSmithTracer(int classID, int methodID, void *sp, void *I, void *FP) {
-    mTrace.classID = classID;
-    mTrace.methodID = methodID;
-
-    mI = I;
-    mFP = FP;
-    mPC = sp;
-    mStack = (char *)sp + sizeof(unsigned long);
+void CSmithTrace::push(const go::Int &arg) {
+    snprintf(args[count++], ARG_LENGTH, "%lld", arg);
 }
 
-void CSmithTracer::push(const go::Int &arg) {
-    snprintf(mTrace.args[mTrace.count++], ARG_LENGTH, "%lld", arg);
+void CSmithTrace::push(const go::Uint32 &arg) {
+    snprintf(args[count++], ARG_LENGTH, "%u", arg);
 }
 
-void CSmithTracer::push(const go::Uint32 &arg) {
-    snprintf(mTrace.args[mTrace.count++], ARG_LENGTH, "%u", arg);
+void CSmithTrace::push(const go::Uintptr &arg) {
+    snprintf(args[count++], ARG_LENGTH, "0x%lx", arg);
 }
 
-void CSmithTracer::push(const go::Uintptr &arg) {
-    snprintf(mTrace.args[mTrace.count++], ARG_LENGTH, "0x%p", arg);
+void CSmithTrace::push(const go::interface &arg) {
+    snprintf(args[count++], ARG_LENGTH, "0x%p:0x%p", arg.t, arg.v);
 }
 
-void CSmithTracer::push(const go::interface &arg) {
-    snprintf(mTrace.args[mTrace.count++], ARG_LENGTH, "0x%p:0x%p", arg.t, arg.v);
-}
-
-void CSmithTracer::push(const go::string &arg) {
-    char *buffer = mTrace.args[mTrace.count++];
+void CSmithTrace::push(const go::string &arg) {
+    char *buffer = args[count++];
 
     if (arg.empty())
         return;
 
-    snprintf(buffer, ARG_LENGTH, "%.*s", arg.length, arg.data);
+    snprintf(buffer, ARG_LENGTH, "%.*s", (int)arg.length, arg.data);
 }
 
-void CSmithTracer::push(const go::slice<go::string> &arg) {
-    char *buffer = mTrace.args[mTrace.count++];
+void CSmithTrace::push(const go::slice<go::string> &arg) {
+    char *buffer = args[count++];
 
     for (int i = 0; i < arg.count * 2 - 1; i++) {
-        auto length = strlen(buffer);
+        size_t length = strlen(buffer);
 
         if (i % 2) {
             if (length + 1 >= ARG_LENGTH)
@@ -50,7 +40,7 @@ void CSmithTracer::push(const go::slice<go::string> &arg) {
 
             strcat(buffer, " ");
         } else {
-            auto index = i/2;
+            int index = i/2;
 
             if (arg[index].empty())
                 continue;
@@ -63,8 +53,8 @@ void CSmithTracer::push(const go::slice<go::string> &arg) {
     }
 }
 
-void CSmithTracer::push(const go::tcp_address *arg) {
-    char *buffer = mTrace.args[mTrace.count++];
+void CSmithTrace::push(const go::tcp_address *arg) {
+    char *buffer = args[count++];
 
     if (!arg)
         return;
@@ -85,7 +75,7 @@ void CSmithTracer::push(const go::tcp_address *arg) {
                     arg->ip[4], arg->ip[5], arg->ip[6], arg->ip[7],
                     arg->ip[8], arg->ip[9], arg->ip[10], arg->ip[11],
                     arg->ip[12], arg->ip[13], arg->ip[14], arg->ip[15]
-                    );
+            );
             break;
 
         default:
@@ -97,11 +87,11 @@ void CSmithTracer::push(const go::tcp_address *arg) {
         return;
     }
 
-    snprintf(buffer, ARG_LENGTH, "%s:%lld:%.*s", address, arg->port, arg->zone.length, arg->zone.data);
+    snprintf(buffer, ARG_LENGTH, "%s:%lld:%.*s", address, arg->port, (int)arg->zone.length, arg->zone.data);
 }
 
-void CSmithTracer::push(const go::ip_address *arg) {
-    char *buffer = mTrace.args[mTrace.count++];
+void CSmithTrace::push(const go::ip_address *arg) {
+    char *buffer = args[count++];
 
     if (!arg)
         return;
@@ -134,24 +124,24 @@ void CSmithTracer::push(const go::ip_address *arg) {
         return;
     }
 
-    snprintf(buffer, ARG_LENGTH, "%s:%.*s", address, arg->zone.length, arg->zone.data);
+    snprintf(buffer, ARG_LENGTH, "%s:%.*s", address, (int)arg->zone.length, arg->zone.data);
 }
 
-void CSmithTracer::push(const go::unix_address *arg) {
-    char *buffer = mTrace.args[mTrace.count++];
+void CSmithTrace::push(const go::unix_address *arg) {
+    char *buffer = args[count++];
 
     if (!arg || arg->name.empty())
         return;
 
     if (arg->net.empty()) {
-        snprintf(buffer, ARG_LENGTH, "%.*s", arg->name.length, arg->name.data);
+        snprintf(buffer, ARG_LENGTH, "%.*s", (int)arg->name.length, arg->name.data);
         return;
     }
 
-    snprintf(buffer, ARG_LENGTH, "%.*s:%.*s", arg->name.length, arg->name.data, arg->net.length, arg->net.data);
+    snprintf(buffer, ARG_LENGTH, "%.*s:%.*s", (int)arg->name.length, arg->name.data, (int)arg->net.length, arg->net.data);
 }
 
-void CSmithTracer::push(const go::exec_cmd *arg) {
+void CSmithTrace::push(const go::exec_cmd *arg) {
     if (!arg)
         return;
 
@@ -159,11 +149,11 @@ void CSmithTracer::push(const go::exec_cmd *arg) {
     push(arg->args);
 }
 
-void CSmithTracer::traceback() {
-    for (auto &st : mTrace.stackTrace) {
-        void *pc = *(void **)mPC;
+void CSmithTrace::traceback(void *sp) {
+    for (auto &st : stackTrace) {
+        uintptr_t pc = *(uintptr_t *)sp;
 
-        CFunction func = {};
+        CFunc func = {};
 
         if (!gLineTable->findFunc(pc, func))
             break;
@@ -178,6 +168,6 @@ void CSmithTracer::traceback() {
         if (frameSize == 0)
             break;
 
-        mPC = (char *)mPC + frameSize + sizeof(unsigned long);
+        sp = (char *)sp + frameSize + sizeof(uintptr_t);
     }
 }

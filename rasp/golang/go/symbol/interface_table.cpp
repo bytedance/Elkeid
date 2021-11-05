@@ -1,23 +1,25 @@
 #include "interface_table.h"
 #include "line_table.h"
-#include <common/log.h>
-#include <common/utils/process.h>
+#include <zero/log.h>
+#include <zero/proc/process.h>
+#include <zero/filesystem/path.h>
 #include <elfio/elfio.hpp>
 #include <sys/user.h>
+#include <unistd.h>
 
 constexpr auto GO_INTERFACE_TABLE = "itablink";
 
 bool CInterfaceTable::load() {
-    return load(CPath::getAPPPath());
+    return load(zero::filesystem::path::getApplicationPath());
 }
 
 bool CInterfaceTable::load(const std::string &file) {
-    CProcessMap processMap;
+    zero::proc::CProcessMapping processMapping;
 
-    if (!CProcess::getFileMemoryBase(getpid(), file, processMap))
+    if (!zero::proc::getImageBase(getpid(), file, processMapping))
         return false;
 
-    return load(file, processMap.start);
+    return load(file, processMapping.start);
 }
 
 bool CInterfaceTable::load(const std::string &file, unsigned long base) {
@@ -30,7 +32,7 @@ bool CInterfaceTable::load(const std::string &file, unsigned long base) {
             reader.sections.begin(),
             reader.sections.end(),
             [](const auto& s) {
-                return CStringHelper::findStringIC(s->get_name(), GO_INTERFACE_TABLE);
+                return zero::strings::containsIC(s->get_name(), GO_INTERFACE_TABLE);
             });
 
     if (it == reader.sections.end()) {
@@ -75,9 +77,9 @@ bool CInterfaceTable::findByFuncName(const char *name, go::interface_item **item
     auto end = begin + mNumber;
 
     auto it = std::find_if(begin, end, [=](const auto &i) {
-        CFunction func = {};
+        CFunc func = {};
 
-        if (!gLineTable->findFunc((void *)i->func[0], func))
+        if (!gLineTable->findFunc(i->func[0], func))
             return false;
 
         return strcmp(func.getName(), name) == 0;
