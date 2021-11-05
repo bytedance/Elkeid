@@ -24,8 +24,8 @@ namespace go {
     typedef double _Complex Complex128;
 
     enum endian {
-        emLittleEndian,
-        emBigEndian
+        LittleEndian,
+        BigEndian,
     };
 
     struct interface {

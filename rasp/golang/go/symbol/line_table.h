@@ -3,41 +3,46 @@
 
 #include "func.h"
 #include <go/type/basic.h>
-#include <go/type/function.h>
-#include <common/singleton.h>
+#include <zero/singleton.h>
 
-enum emGOVersion {
-    emVersion12,
-    emVersion116
+enum emGolangVersion {
+    VERSION12,
+    VERSION116,
+    VERSION118
 };
 
 class CLineTable {
-#define gLineTable SINGLETON(CLineTable)
+#define gLineTable zero::Singleton<CLineTable>::getInstance()
 public:
     bool load();
     bool load(const std::string& file);
     bool load(const std::string& file, unsigned long base);
     bool load(const char *table);
 
-private:
-    unsigned long peek(const char *address) const;
+public:
+    bool getFunc(unsigned int index, CFunc &func);
+    bool findFunc(uintptr_t address, CFunc &func);
 
 public:
-    bool findFunc(void *pc, CFunction &func);
-    bool getFunc(unsigned long index, CFunction &func);
+    int getPCValue(unsigned int offset, uintptr_t entry, uintptr_t targetPC) const;
 
 private:
-    const go::func_item *getFuncItem(unsigned long index) const;
-    const go::func_info *getFuncInfo(unsigned long index) const;
+    bool step(const unsigned char **p, uintptr_t *pc, int *value, bool first) const;
+
+private:
+    CFuncTablePtr getFuncTable() const;
 
 public:
-    emGOVersion mVersion;
+    emGolangVersion mVersion;
+
+public:
     unsigned int mQuantum;
     unsigned int mPtrSize;
+    unsigned int mFuncNum;
+    unsigned int mFileNum;
 
 public:
-    unsigned long mFuncNum;
-    unsigned long mFileNum;
+    uintptr_t mTextStart;
 
 public:
     const char *mFuncNameTable;

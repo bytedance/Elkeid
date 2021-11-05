@@ -1,9 +1,10 @@
 #include "build_info.h"
-#include <common/log.h>
-#include <common/utils/path.h>
-#include <common/utils/process.h>
+#include <zero/log.h>
+#include <zero/proc/process.h>
+#include <zero/filesystem/path.h>
 #include <regex>
 #include <sys/user.h>
+#include <unistd.h>
 
 constexpr auto GO_BUILD_INFO = "buildinfo";
 constexpr auto GO_BUILD_INFO_MAGIC = "\xff Go buildinf:";
@@ -13,12 +14,12 @@ constexpr auto GO_REGISTER_BASED_MAJOR = 1;
 constexpr auto GO_REGISTER_BASED_MINOR = 17;
 
 bool CBuildInfo::load(const std::string &file) {
-    CProcessMap processMap;
+    zero::proc::CProcessMapping processMapping;
 
-    if (!CProcess::getFileMemoryBase(getpid(), file, processMap))
+    if (!zero::proc::getImageBase(getpid(), file, processMapping))
         return false;
 
-    return load(file, processMap.start);
+    return load(file, processMapping.start);
 }
 
 bool CBuildInfo::load(const std::string &file, unsigned long base) {
@@ -33,7 +34,7 @@ bool CBuildInfo::load(const std::string &file, unsigned long base) {
             reader.sections.begin(),
             reader.sections.end(),
             [](const auto& s) {
-                return CStringHelper::findStringIC(s->get_name(), GO_BUILD_INFO);
+                return zero::strings::containsIC(s->get_name(), GO_BUILD_INFO);
             });
 
     if (it == reader.sections.end()) {
@@ -41,8 +42,8 @@ bool CBuildInfo::load(const std::string &file, unsigned long base) {
         return false;
     }
 
-    auto data = (char *)(*it)->get_address();
-    auto magicSize = strlen(GO_BUILD_INFO_MAGIC);
+    char *data = (char *)(*it)->get_address();
+    size_t magicSize = strlen(GO_BUILD_INFO_MAGIC);
 
     if (reader.get_type() != ET_EXEC) {
         std::vector<ELFIO::segment *> loads;
@@ -73,22 +74,21 @@ bool CBuildInfo::load(const std::string &file, unsigned long base) {
     mPtrSize = (unsigned char)data[magicSize];
     mEndian = (go::endian)data[magicSize + 1];
 
-    auto buildVersion = *(go::string **)&data[GO_BUILD_VERSION_OFFSET];
-    auto modInfo = *(go::string **)&data[GO_BUILD_VERSION_OFFSET + mPtrSize];
+    go::string *buildVersion = *(go::string **)&data[GO_BUILD_VERSION_OFFSET];
+    go::string *modInfo = *(go::string **)&data[GO_BUILD_VERSION_OFFSET + mPtrSize];
 
     mVersion = buildVersion->toSTDString();
 
     std::smatch match;
-    std::regex_match(mVersion, match, std::regex(R"(^go(\d+)\.(\d+).*)"));
 
-    if (match.size() >= 3) {
-        unsigned long major = 0;
-        unsigned long minor = 0;
+    if (!std::regex_match(mVersion, match, std::regex(R"(^go(\d+)\.(\d+).*)")))
+        return false;
 
-        if (CStringHelper::toNumber(match[1], major) && CStringHelper::toNumber(match[2], minor)) {
-            mRegisterBased = major > GO_REGISTER_BASED_MAJOR ||
-                    (major == GO_REGISTER_BASED_MAJOR && minor >= GO_REGISTER_BASED_MINOR);
-        }
+    unsigned long major = 0;
+    unsigned long minor = 0;
+
+    if (zero::strings::toNumber(match.str(1), major) && zero::strings::toNumber(match.str(2), minor)) {
+        mRegisterBased = major > GO_REGISTER_BASED_MAJOR || (major == GO_REGISTER_BASED_MAJOR && minor >= GO_REGISTER_BASED_MINOR);
     }
 
     if (modInfo->empty()) {
@@ -100,7 +100,7 @@ bool CBuildInfo::load(const std::string &file, unsigned long base) {
 }
 
 bool CBuildInfo::load() {
-    return load(CPath::getAPPPath());
+    return load(zero::filesystem::path::getApplicationPath());
 }
 
 bool CBuildInfo::readModuleInfo(const go::string *modInfo) {
@@ -109,11 +109,11 @@ bool CBuildInfo::readModuleInfo(const go::string *modInfo) {
         return false;
     }
 
-    auto info = std::string(modInfo->data + 16, modInfo->length - 32);
-    auto mods = CStringHelper::split(info, '\n');
+    std::string info(modInfo->data + 16, modInfo->length - 32);
+    std::vector<std::string> mods = zero::strings::split(info, '\n');
 
     auto readEntry = [](const std::string &m, CModule &module) {
-        auto tokens = CStringHelper::split(m, '\t');
+        std::vector<std::string> tokens = zero::strings::split(m, '\t');
 
         if (tokens.size() < 3)
             return false;
@@ -128,28 +128,28 @@ bool CBuildInfo::readModuleInfo(const go::string *modInfo) {
     };
 
     for (const auto &m: mods) {
-        if (CStringHelper::startsWith(m, "path")) {
-            auto tokens = CStringHelper::split(m, '\t');
+        if (zero::strings::startsWith(m, "path")) {
+            std::vector<std::string> tokens = zero::strings::split(m, '\t');
 
             if (tokens.size() != 2)
                 continue;
 
             mModuleInfo.path = tokens[1];
-        } else if (CStringHelper::startsWith(m, "mod")) {
+        } else if (zero::strings::startsWith(m, "mod")) {
             CModule module = {};
 
             if (!readEntry(m, module))
                 continue;
 
             mModuleInfo.main = module;
-        } else if (CStringHelper::startsWith(m, "dep")) {
+        } else if (zero::strings::startsWith(m, "dep")) {
             CModule module = {};
 
             if (!readEntry(m, module))
                 continue;
 
             mModuleInfo.deps.push_back(module);
-        } else if (CStringHelper::startsWith(m, "=>")) {
+        } else if (zero::strings::startsWith(m, "=>")) {
             CModule module = {};
 
             if (!readEntry(m, module))

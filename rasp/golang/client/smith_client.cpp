@@ -1,7 +1,7 @@
 #include "smith_client.h"
 #include <event2/thread.h>
 #include <sys/un.h>
-#include <common/log.h>
+#include <zero/log.h>
 
 constexpr auto CLIENT_TIMER = 60;
 
@@ -36,7 +36,7 @@ bool CSmithClient::start() {
     connect();
     setTimer();
 
-    mThread.start(this, &CSmithClient::loopThread);
+    mThread.start(&CSmithClient::loopThread);
 
     return true;
 }

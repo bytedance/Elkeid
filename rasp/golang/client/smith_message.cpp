@@ -1,6 +1,6 @@
 #include "smith_message.h"
 #include <unistd.h>
-#include <common/utils/time_helper.h>
+#include <ctime>
 
 constexpr auto RUNTIME = "golang";
 constexpr auto PROBE_VERSION = "1.0.0";
@@ -12,7 +12,7 @@ void to_json(nlohmann::json &j, const CSmithMessage &m) {
         {"pid", pid},
         {"runtime", RUNTIME},
         {"runtime_version", gBuildInfo->mVersion},
-        {"time", CTimeHelper::getUnixTimestamp()},
+        {"time", std::time(nullptr)},
         {"message_type", m.operate},
         {"probe_version", PROBE_VERSION},
         {"data", m.data}
@@ -34,7 +34,7 @@ void to_json(nlohmann::json &j, const CSmithTrace &t) {
         j["args"].push_back(std::string(t.args[i], ARG_LENGTH).c_str());
 
     for (const auto& stackTrace: t.stackTrace) {
-        if (stackTrace.pc == nullptr)
+        if (stackTrace.pc == 0)
             break;
 
         char stack[4096] = {};
@@ -44,7 +44,7 @@ void to_json(nlohmann::json &j, const CSmithTrace &t) {
                  stackTrace.func.getName(),
                  stackTrace.func.getSourceFile(stackTrace.pc),
                  stackTrace.func.getSourceLine(stackTrace.pc),
-                 (unsigned long)stackTrace.pc - (unsigned long)stackTrace.func.getEntry()
+                 stackTrace.pc - stackTrace.func.getEntry()
         );
 
         j["stack_trace"].push_back(stack);

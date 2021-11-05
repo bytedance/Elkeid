@@ -2,13 +2,13 @@
 #include "go/symbol/line_table.h"
 #include "go/symbol/interface_table.h"
 #include "go/api/api.h"
-#include <common/log.h>
+#include <zero/log.h>
 #include <csignal>
 #include <asm/api_hook.h>
 #include <z_syscall.h>
 
 int main() {
-    INIT_FILE_LOG(INFO, "go-probe");
+    INIT_FILE_LOG(zero::INFO, "go-probe");
 
     sigset_t mask = {};
     sigset_t origin_mask = {};
@@ -38,22 +38,17 @@ int main() {
         table.findByFuncName("errors.(*errorString).Error", (go::interface_item **)CAPIBase::errorInterface());
     }
 
-    if (!gWorkspace->init()) {
-        LOG_ERROR("workspace init failed");
-        return -1;
-    }
-
     gSmithProbe->start();
 
     for (const auto &api : GOLANG_API) {
-        for (unsigned long i = 0; i < gLineTable->mFuncNum; i++) {
-            CFunction func = {};
+        for (unsigned int i = 0; i < gLineTable->mFuncNum; i++) {
+            CFunc func = {};
 
             if (!gLineTable->getFunc(i, func))
                 break;
 
             const char *name = func.getName();
-            void *entry = func.getEntry();
+            void *entry = (void *)func.getEntry();
 
             if ((api.ignoreCase ? strcasecmp(api.name, name) : strcmp(api.name, name)) == 0) {
                 LOG_INFO("hook %s: %p", name, entry);
