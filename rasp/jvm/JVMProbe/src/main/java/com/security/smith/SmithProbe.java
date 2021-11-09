@@ -192,7 +192,7 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
                     Opcodes.ASM8,
                     classWriter,
                     smithClass.getId(),
-                    classType,
+                    classType.getClassName(),
                     smithClass.getMethods().stream().collect(Collectors.toMap(method -> method.getName() + method.getDesc(), method -> method))
             );
 

@@ -1,32 +1,37 @@
 package com.security.smith.asm;
 
 import com.security.smith.SmithProbe;
+import com.security.smith.process.*;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
-import org.objectweb.asm.commons.LocalVariablesSorter;
-import org.yaml.snakeyaml.Yaml;
+import org.objectweb.asm.commons.AdviceAdapter;
+import org.objectweb.asm.commons.Method;
 
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 
-public class SmithMethodVisitor extends LocalVariablesSorter {
-    protected static final Map<String, String> smithProcesses;
+public class SmithMethodVisitor extends AdviceAdapter {
+    private static final Map<String, Class<?>> smithProcesses = new HashMap<String, Class<?>>() {{
+        put("byte[]", ByteArrayProcess.class);
+        put("int[]", IntegerArrayProcess.class);
+        put("java.net.ProtocolFamily", ProtocolFamilyProcess.class);
+        put("java.io.FileDescriptor", FileDescriptorProcess.class);
+        put("java.net.URL[]", ObjectArrayProcess.class);
+        put("java.net.DatagramPacket", DatagramPacketProcess.class);
+        put("java.net.DatagramSocket", DatagramSocketProcess.class);
+        put("java.lang.String[]", ObjectArrayProcess.class);
+        put("java.lang.Process", ProcessProcess.class);
+        put("java.lang.UNIXProcess", ProcessProcess.class);
+        put("java.lang.ProcessImpl", ProcessProcess.class);
+        put("java.net.InetAddress[]", ObjectArrayProcess.class);
+    }};
 
-    static {
-        Yaml yaml = new Yaml();
-        InputStream inputStream = SmithMethodVisitor.class.getResourceAsStream("/process.yaml");
+    protected SmithMethodVisitor(int api, String className, int classID, int methodID, boolean canBlock, MethodVisitor methodVisitor, int access, String name, String descriptor) {
+        super(api, methodVisitor, access, name, descriptor);
 
-        smithProcesses = yaml.load(inputStream);
-    }
-
-    protected SmithMethodVisitor(int api, int access, Type classType, int classID, int methodID, boolean canBlock, String name, String descriptor, MethodVisitor methodVisitor) {
-        super(api, access, descriptor, methodVisitor);
-
+        this.className = className;
         this.classID = classID;
         this.methodID = methodID;
         this.canBlock = canBlock;
@@ -38,322 +43,134 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
         argumentsVariable = newLocal(Type.getType(Object[].class));
         returnVariable = newLocal(Type.getType(Object.class));
 
-        returnType = Type.getReturnType(descriptor);
-        argumentTypes = new ArrayList<>(Arrays.asList(Type.getArgumentTypes(descriptor)));
+        isConstructor = name.equals("<init>");
+        isStatic = (access & Opcodes.ACC_STATIC) != 0;
+    }
 
-        if (name.equals("<init>")) {
-            skip = 1;
+    @Override
+    public void loadArgArray() {
+        int reserved = isStatic || isConstructor ? 0 : 1;
+        Type[] argumentTypes = Type.getArgumentTypes(methodDesc);
+
+        push(argumentTypes.length + reserved);
+        newArray(Type.getType(Object.class));
+
+        if (reserved > 0) {
+            dup();
+            push(0);
+            loadThis();
+            processObject(className);
+            arrayStore(Type.getType(Object.class));
         }
 
-        if ((access & Opcodes.ACC_STATIC) == 0) {
-            argumentTypes.add(0, classType);
+        for (int i = 0; i < argumentTypes.length; i++) {
+            dup();
+            push(i + reserved);
+            loadArg(i);
+            box(argumentTypes[i]);
+            processObject(argumentTypes[i].getClassName());
+            arrayStore(Type.getType(Object.class));
         }
     }
 
     @Override
-    public void visitInsn(int opcode) {
-        if (opcode == Opcodes.RETURN || opcode == Opcodes.IRETURN || opcode == Opcodes.FRETURN || opcode == Opcodes.ARETURN || opcode == Opcodes.LRETURN || opcode == Opcodes.DRETURN) {
-            if (opcode != Opcodes.RETURN)
-                visitInsn(returnType.getSize() == 2 ? Opcodes.DUP2 : Opcodes.DUP);
-
-            switch (returnType.getSort()) {
-                case Type.VOID:
-                    visitInsn(Opcodes.ACONST_NULL);
-                    break;
-
-                case Type.BOOLEAN:
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Boolean.class),
-                            "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Boolean.class), Type.BOOLEAN_TYPE),
-                            false
-                    );
-
-                    break;
-
-                case Type.CHAR:
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Character.class),
-                            "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Character.class), Type.CHAR_TYPE),
-                            false
-                    );
-
-                    break;
-
-                case Type.BYTE:
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Byte.class),
-                            "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Byte.class), Type.BYTE_TYPE),
-                            false
-                    );
-
-                    break;
-
-                case Type.SHORT:
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Short.class),
-                            "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Short.class), Type.SHORT_TYPE),
-                            false
-                    );
-
-                    break;
-
-                case Type.INT:
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Integer.class),
-                            "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Integer.class), Type.INT_TYPE),
-                            false
-                    );
-
-                    break;
-
-                case Type.FLOAT:
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Float.class),
-                            "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Float.class), Type.FLOAT_TYPE),
-                            false
-                    );
-
-                    break;
-
-                case Type.LONG:
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Long.class),
-                            "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Long.class), Type.LONG_TYPE),
-                            false
-                    );
-
-                    break;
-
-                case Type.DOUBLE:
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Double.class),
-                            "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Double.class), Type.DOUBLE_TYPE),
-                            false
-                    );
-
-                    break;
-
-                case Type.ARRAY:
-                case Type.OBJECT:
-                    String process = smithProcesses.get(returnType.getClassName());
-
-                    if (process == null)
-                        break;
-
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            process,
-                            "transform",
-                            Type.getMethodDescriptor(Type.getType(Object.class), Type.getType(Object.class)),
-                            false
-                    );
-
-                    break;
-
-                default:
-                    throw new AssertionError();
-            }
-
-            mv.visitVarInsn(Opcodes.ASTORE, returnVariable);
-
-            visitMethodInsn(
-                    Opcodes.INVOKESTATIC,
-                    Type.getInternalName(SmithProbe.class),
-                    "getInstance",
-                    Type.getMethodDescriptor(Type.getType(SmithProbe.class)),
-                    false
-            );
-
-            visitIntInsn(Opcodes.SIPUSH, classID);
-            visitIntInsn(Opcodes.SIPUSH, methodID);
-            mv.visitVarInsn(Opcodes.ALOAD, argumentsVariable);
-            mv.visitVarInsn(Opcodes.ALOAD, returnVariable);
-
-            visitMethodInsn(
-                    Opcodes.INVOKEVIRTUAL,
-                    Type.getInternalName(SmithProbe.class),
-                    "trace",
-                    Type.getMethodDescriptor(Type.VOID_TYPE, Type.INT_TYPE, Type.INT_TYPE, Type.getType(Object[].class), Type.getType(Object.class)),
-                    false
-            );
-        }
-
-        super.visitInsn(opcode);
-    }
-
-    @Override
-    public void visitCode() {
-        super.visitCode();
-
-        int index = 0;
-        int variable = skip;
+    protected void onMethodEnter() {
+        super.onMethodEnter();
 
         visitTryCatchBlock(start, end, handler, Type.getInternalName(Exception.class));
 
-        visitIntInsn(Opcodes.BIPUSH, argumentTypes.size() - skip);
-        visitTypeInsn(Opcodes.ANEWARRAY, Type.getInternalName(Object.class));
+        loadArgArray();
+        storeLocal(argumentsVariable);
 
-        for (Type argumentType : argumentTypes.subList(skip, argumentTypes.size())) {
-            int size = argumentType.getSize();
-
-            visitInsn(size == 2 ? Opcodes.DUP2 : Opcodes.DUP);
-            visitIntInsn(Opcodes.BIPUSH, index++);
-            visitVarInsn(argumentType.getOpcode(Opcodes.ILOAD), variable);
-
-            switch (argumentType.getSort()) {
-                case Type.BOOLEAN:
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Boolean.class),
-                            "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Boolean.class), Type.BOOLEAN_TYPE),
-                            false
-                    );
-
-                    break;
-
-                case Type.CHAR:
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Character.class),
-                            "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Character.class), Type.CHAR_TYPE),
-                            false
-                    );
-
-                    break;
-
-                case Type.BYTE:
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Byte.class),
-                            "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Byte.class), Type.BYTE_TYPE),
-                            false
-                    );
-
-                    break;
-
-                case Type.SHORT:
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Short.class),
-                            "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Short.class), Type.SHORT_TYPE),
-                            false
-                    );
-
-                    break;
-
-                case Type.INT:
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Integer.class),
-                            "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Integer.class), Type.INT_TYPE),
-                            false
-                    );
-
-                    break;
-
-                case Type.FLOAT:
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Float.class),
-                            "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Float.class), Type.FLOAT_TYPE),
-                            false
-                    );
-
-                    break;
-
-                case Type.LONG:
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Long.class),
-                            "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Long.class), Type.LONG_TYPE),
-                            false
-                    );
-
-                    break;
-
-                case Type.DOUBLE:
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            Type.getInternalName(Double.class),
-                            "valueOf",
-                            Type.getMethodDescriptor(Type.getType(Double.class), Type.DOUBLE_TYPE),
-                            false
-                    );
-
-                    break;
-
-                case Type.ARRAY:
-                case Type.OBJECT:
-                    String process = smithProcesses.get(argumentType.getClassName());
-
-                    if (process == null)
-                        break;
-
-                    visitMethodInsn(
-                            Opcodes.INVOKESTATIC,
-                            process,
-                            "transform",
-                            Type.getMethodDescriptor(Type.getType(Object.class), Type.getType(Object.class)),
-                            false
-                    );
-
-                    break;
-
-                default:
-                    throw new AssertionError();
-            }
-
-            visitInsn(Opcodes.AASTORE);
-            variable += size;
-        }
-
-        mv.visitVarInsn(Opcodes.ASTORE, argumentsVariable);
-        visitLabel(start);
+        mark(start);
 
         if (!canBlock)
             return;
 
-        visitMethodInsn(
-                Opcodes.INVOKESTATIC,
-                Type.getInternalName(SmithProbe.class),
-                "getInstance",
-                Type.getMethodDescriptor(Type.getType(SmithProbe.class)),
-                false
+        invokeStatic(
+                Type.getType(SmithProbe.class),
+                new Method(
+                        "getInstance",
+                        Type.getType(SmithProbe.class),
+                        new Type[]{}
+                )
         );
 
-        visitIntInsn(Opcodes.SIPUSH, classID);
-        visitIntInsn(Opcodes.SIPUSH, methodID);
-        mv.visitVarInsn(Opcodes.ALOAD, argumentsVariable);
+        push(classID);
+        push(methodID);
+        loadLocal(argumentsVariable);
 
-        visitMethodInsn(
-                Opcodes.INVOKEVIRTUAL,
-                Type.getInternalName(SmithProbe.class),
-                "detect",
-                Type.getMethodDescriptor(Type.VOID_TYPE, Type.INT_TYPE, Type.INT_TYPE, Type.getType(Object[].class)),
-                false
+        invokeVirtual(
+                Type.getType(SmithProbe.class),
+                new Method(
+                        "detect",
+                        Type.VOID_TYPE,
+                        new Type[]{
+                                Type.INT_TYPE,
+                                Type.INT_TYPE,
+                                Type.getType(Object[].class)
+                        }
+                )
+        );
+    }
+
+    @Override
+    protected void onMethodExit(int opcode) {
+        super.onMethodExit(opcode);
+
+        if (opcode == ATHROW)
+            return;
+
+        Type returnType = Type.getReturnType(methodDesc);
+
+        if (opcode == RETURN) {
+            if (isConstructor) {
+                loadThis();
+                processObject(className);
+            } else {
+                visitInsn(ACONST_NULL);
+            }
+        } else if (opcode == ARETURN) {
+            dup();
+            processObject(returnType.getClassName());
+        } else {
+            if (opcode == LRETURN || opcode == DRETURN) {
+                dup2();
+            } else {
+                dup();
+            }
+
+            box(returnType);
+        }
+
+        storeLocal(returnVariable);
+
+        invokeStatic(
+                Type.getType(SmithProbe.class),
+                new Method(
+                        "getInstance",
+                        Type.getType(SmithProbe.class),
+                        new Type[]{}
+                )
+        );
+
+        push(classID);
+        push(methodID);
+        loadLocal(argumentsVariable);
+        loadLocal(returnVariable);
+
+        invokeVirtual(
+                Type.getType(SmithProbe.class),
+                new Method(
+                        "trace",
+                        Type.VOID_TYPE,
+                        new Type[]{
+                                Type.INT_TYPE,
+                                Type.INT_TYPE,
+                                Type.getType(Object[].class),
+                                Type.getType(Object.class)
+                        }
+                )
         );
     }
 
@@ -361,51 +178,68 @@ public class SmithMethodVisitor extends LocalVariablesSorter {
     public void visitEnd() {
         super.visitEnd();
 
-        visitLabel(end);
-        visitLabel(handler);
+        mark(end);
+        mark(handler);
 
-        /*
-        If you want to generate a class to be loaded from file, need to add stack map frame here cause by JVM verify class when loading.
-        In addition, the try block in constructor should start after superclass constructor called, because the first local variable before that was uninitializedThis instead of this.
-         */
-
-        mv.visitVarInsn(Opcodes.ASTORE, returnVariable + 1);
-
-        visitMethodInsn(
-                Opcodes.INVOKESTATIC,
-                Type.getInternalName(SmithProbe.class),
-                "getInstance",
-                Type.getMethodDescriptor(Type.getType(SmithProbe.class)),
-                false
+        invokeStatic(
+                Type.getType(SmithProbe.class),
+                new Method(
+                        "getInstance",
+                        Type.getType(SmithProbe.class),
+                        new Type[]{}
+                )
         );
 
-        visitIntInsn(Opcodes.SIPUSH, classID);
-        visitIntInsn(Opcodes.SIPUSH, methodID);
-        mv.visitVarInsn(Opcodes.ALOAD, argumentsVariable);
+        push(classID);
+        push(methodID);
+        loadLocal(argumentsVariable);
         visitInsn(Opcodes.ACONST_NULL);
 
-        visitMethodInsn(
-                Opcodes.INVOKEVIRTUAL,
-                Type.getInternalName(SmithProbe.class),
-                "trace",
-                Type.getMethodDescriptor(Type.VOID_TYPE, Type.INT_TYPE, Type.INT_TYPE, Type.getType(Object[].class), Type.getType(Object.class)),
-                false
+        invokeVirtual(
+                Type.getType(SmithProbe.class),
+                new Method(
+                        "trace",
+                        Type.VOID_TYPE,
+                        new Type[]{
+                                Type.INT_TYPE,
+                                Type.INT_TYPE,
+                                Type.getType(Object[].class),
+                                Type.getType(Object.class)
+                        }
+                )
         );
 
-        mv.visitVarInsn(Opcodes.ALOAD, returnVariable + 1);
-        visitInsn(Opcodes.ATHROW);
+        throwException();
+    }
+
+    void processObject(String name) {
+        Class<?> process = smithProcesses.get(name);
+
+        if (process == null)
+            return;
+
+        invokeStatic(
+                Type.getType(process),
+                new Method(
+                        "transform",
+                        Type.getType(Object.class),
+                        new Type[]{
+                                Type.getType(Object.class)
+                        }
+                )
+        );
     }
 
     private final int classID;
     private final int methodID;
+    private final String className;
     private final boolean canBlock;
+    private final boolean isStatic;
+    private final boolean isConstructor;
 
-    private int skip;
     private final int returnVariable;
     private final int argumentsVariable;
     private final Label start;
     private final Label end;
     private final Label handler;
-    private final Type returnType;
-    private final List<Type> argumentTypes;
 }
