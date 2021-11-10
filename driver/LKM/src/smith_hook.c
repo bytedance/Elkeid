@@ -316,7 +316,7 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
                     inet = (struct inet_sock *)sk;
                     switch (sk->sk_family) {
                         case AF_INET:
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
                             *dip4 = inet->inet_daddr;
 						    *sip4 = inet->inet_saddr;
 						    *sport = ntohs(inet->inet_sport);
@@ -332,14 +332,19 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
                             break;
 #if IS_ENABLED(CONFIG_IPV6)
                             case AF_INET6:
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(CENTOS_CHECK)
 						    memcpy(dip6, &(sk->sk_v6_daddr), sizeof(sk->sk_v6_daddr));
 						    memcpy(sip6, &(sk->sk_v6_rcv_saddr), sizeof(sk->sk_v6_rcv_saddr));
 						    *sport = ntohs(inet->inet_sport);
 						    *dport = ntohs(inet->inet_dport);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
+						    memcpy(dip6, &(inet->pinet6->daddr), sizeof(inet->pinet6->daddr));
+						    memcpy(sip6, &(inet->pinet6->saddr), sizeof(inet->pinet6->saddr));
+						    *sport = ntohs(inet->inet_sport);
+						    *dport = ntohs(inet->inet_dport);
 #else
 						    memcpy(dip6, &(inet->pinet6->daddr), sizeof(inet->pinet6->daddr));
-						    memcpy(sip6, &(inet->pinet6->daddr), sizeof(inet->pinet6->daddr));
+						    memcpy(sip6, &(inet->pinet6->saddr), sizeof(inet->pinet6->saddr));
 						    *sport = ntohs(inet->sport);
 						    *dport = ntohs(inet->dport);
 #endif
@@ -601,7 +606,7 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
             case AF_INET6:
 			    sk = socket->sk;
 			    inet = (struct inet_sock *)sk;
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(CENTOS_CHECK)
 			    if (inet->inet_dport) {
 				    //dip6 = &((struct sockaddr_in6 *)&tmp_dirp)->sin6_addr;
 				    dip6 = &(sk->sk_v6_daddr);
@@ -609,6 +614,17 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 				    sport = ntohs(inet->inet_sport);
 				    dport = ntohs(((struct sockaddr_in6 *)&tmp_dirp)->sin6_port);
 				    if(dport == 0)
+				        dport = ntohs(inet->inet_dport);
+				    flag = 1;
+			    }
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
+			    if (inet->inet_dport) {
+				    //dip6 = &((struct sockaddr_in6 *)&tmp_dirp)->sin6_addr;
+				    dip6 = &(inet->pinet6->daddr);
+				    sip6 = &(inet->pinet6->saddr);
+				    sport = ntohs(inet->inet_sport);
+				    dport = ntohs(((struct sockaddr_in6 *)&tmp_dirp)->sin6_port);
+				    if(dport)
 				        dport = ntohs(inet->inet_dport);
 				    flag = 1;
 			    }
@@ -710,23 +726,27 @@ int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
             break;
 #if IS_ENABLED(CONFIG_IPV6)
         case AF_INET6:
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(CENTOS_CHECK)
 		    if (inet->inet_dport) {
 			    dip6 = &(sk->sk_v6_daddr);
 			    sip6 = &(sk->sk_v6_rcv_saddr);
 			    sport = ntohs(inet->inet_sport);
 			    dport = ntohs(inet->inet_dport);
-			    flag = 1;
-		    }
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
+		    if (inet->inet_dport) {
+			    dip6 = &(inet->pinet6->daddr);
+			    sip6 = &(inet->pinet6->saddr);
+			    sport = ntohs(inet->inet_sport);
+			    dport = ntohs(inet->inet_dport);
 #else
 		    if (inet->dport) {
 			    dip6 = &(inet->pinet6->daddr);
 			    sip6 = &(inet->pinet6->saddr);
 			    sport = ntohs(inet->sport);
 			    dport = ntohs(inet->dport);
+#endif
 			    flag = 1;
 		    }
-#endif
 		break;
 #endif
         default:
@@ -735,14 +755,10 @@ int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 
     if (flag) {
         if (data->sa_family == AF_INET)
-            //connect4_print(data->type, dport, dip4, exe_path, sip4,
-            //               sport, retval);
             connect4_print(dport, dip4, exe_path, sip4, sport, retval);
 #if IS_ENABLED(CONFIG_IPV6)
         else
-			//connect6_print(data->type, dport, dip6, exe_path, sip6,
-			//	       sport, retval);
-			connect6_print(dport, dip6, exe_path, sip6, sport, retval);
+            connect6_print(dport, dip6, exe_path, sip6, sport, retval);
 #endif
     }
 
@@ -1795,41 +1811,50 @@ int udpv6_recvmsg_entry_handler(struct kretprobe_instance *ri,
 	if (inet->dport == 13568 || inet->dport == 59668)
 #endif
 	{
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(CENTOS_CHECK)
 		if (inet->inet_dport) {
 			data->dip6 = &(sk->sk_v6_daddr);
 			data->sip6 = &(sk->sk_v6_rcv_saddr);
 			data->sport = ntohs(inet->inet_sport);
 			data->dport = ntohs(inet->inet_dport);
-		}
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
+		if (inet->inet_dport) {
+			data->dip6 = &(inet->pinet6->daddr);
+			data->sip6 = &(inet->pinet6->saddr);
+			data->sport = ntohs(inet->inet_sport);
+			data->dport = ntohs(inet->inet_dport);
 #else
 		if (inet->dport) {
 			data->dip6 = &(inet->pinet6->daddr);
 			data->sip6 = &(inet->pinet6->saddr);
 			data->sport = ntohs(inet->sport);
 			data->dport = ntohs(inet->dport);
-		}
 #endif
+		}
         udp_msg_parser(msg, data);
 		if (data->iov_len > 0)
 			goto do_kretprobe;
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0)
 	} else if (inet->inet_dport == 0) {
         data->msg = msg;
 	    data->dport = 0;
 		data->sip6 = &(sk->sk_v6_rcv_saddr);
 		data->sport = ntohs(inet->inet_sport);
-	    goto do_kretprobe;
-	}
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
+	} else if (inet->inet_dport == 0) {
+        data->msg = msg;
+        data->dport = 0;
+        data->sip6 = &(inet->pinet6->saddr);
+        data->sport = ntohs(inet->inet_sport);
 #else
 	} else if (inet->dport == 0) {
         data->msg = msg;
         data->dport = 0;
     	data->sip6 = &(inet->pinet6->saddr);
 		data->sport = ntohs(inet->sport);
+#endif
         goto do_kretprobe;
     }
-#endif
 
 	return -EINVAL;
 
