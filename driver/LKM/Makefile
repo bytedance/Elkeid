@@ -26,7 +26,7 @@ ifeq ($(TRACE_EVENTS_HEADER_CHECK),$(TRACE_EVENTS_HEADER))
 ccflags-y += -D SMITH_TRACE_EVENTS
 endif
 
-ifeq ($(RINGBUFFER_STRUCT_CHECK),struct ring_buffer;)
+ifneq ($(RINGBUFFER_STRUCT_CHECK),)
 ccflags-y += -D SMITH_RINGBUFFER_STRUCT
 endif
 else
