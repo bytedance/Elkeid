@@ -169,6 +169,10 @@ centos|7.X,8.X|3.10.0~5.4.X |el7,el8| half
 ------------------------------------------------
 ```
 
+数据来源：`connect syscall`
+
+触发方式举例：`ls`
+
 Note: Connect_type 在默认情况下为 -1
 
 
@@ -183,7 +187,9 @@ Note: Connect_type 在默认情况下为 -1
 -------------------------
 ```
 
+数据来源：`bind syscall`
 
+触发方式举例：`nc -lvvp 2333`
 
 ### Execve Data
 
@@ -201,6 +207,9 @@ Note:
 
 * **ssh/ld_preload** 来自于进程的环境变量信息
 
+数据来源：`execve/execveat/compat_execve syscall`
+
+触发方式举例：`/bin/ls`
 
 
 ### Create File data
@@ -213,7 +222,9 @@ Note:
 ----------------------------------------------------
 ```
 
+数据来源：`security_inode_create`
 
+触发方式举例：`touch /tmp/test_file_elkeid`
 
 ### Ptrace
 
@@ -225,7 +236,14 @@ Note:
 ----------------------------------------------
 ```
 
+数据来源：`ptrace syscall`
 
+触发方式举例：
+```shell
+gdb /bin/ls
+catch syscall
+run
+```
 
 ### Dns Query Data
 
@@ -237,7 +255,9 @@ Note:
 -----------------------------------------------------
 ```
 
+数据来源：`udp_recvmsg`
 
+触发方式举例：`curl www.bytedance.com`
 
 ### Init Kernel Module Data
 
@@ -249,6 +269,9 @@ Note:
 ----------------------------
 ```
 
+数据来源：`do_init_module` 
+
+触发方式举例：`rmmod floppy;modprobe floppy;lsmod | grep floppy`
 
 
 ### Update Cred Data
@@ -261,7 +284,9 @@ Note:
 ----------------------
 ```
 
+数据来源：`commit_creds`
 
+触发方式举例：`从非root用户sudo到root`
 
 ### Rename Data
 
@@ -273,6 +298,9 @@ Note:
 ----------------------------
 ```
 
+数据来源：`security_inode_rename`
+
+触发方式举例：`touch /tmp/123;mv /tmp/123 /tmp/321; rm -rf /tmp/321`
 
 
 ### Link Data
@@ -285,13 +313,17 @@ Note:
 ----------------------------
 ```
 
+数据来源：`security_inode_link`
 
+触发方式举例：`touch /tmp/123;ln -f /tmp/123 /tmp/321; rm -rf /tmp/321`
 
 ### Setsid Data
 
 该数据没有私有数据，仅有公共数据
 
+数据来源：`setsid syscall`
 
+触发方式举例：`setsid /bin/ls`
 
 ### Prctl Data
 
@@ -303,6 +335,17 @@ _________________
 -----------------
 ```
 
+数据来源：`prct syscall`
+
+触发方式举例：
+```c
+#include <sys/prctl.h>
+void main()
+{
+	prctl(PR_SET_NAME, "test1");
+	prctl(PR_SET_NAME, "test2");
+}
+```
 
 ### memfd_create Data
 
@@ -314,6 +357,9 @@ ______________
 --------------
 ```
 
+数据来源：`memfd_create syscall`
+
+触发方式举例：`http://manpages.ubuntu.com/manpages/bionic/man2/memfd_create.2.html#example`
 
 ### Open Data
 
@@ -325,7 +371,9 @@ ______________
 ---------------------
 ````
 
+数据来源：`open syscall`
 
+触发方式举例：`touch /tmp/123;cat /tmp/123;rm -rf /tmp/123`
 
 ### Mprotect data
 
@@ -337,7 +385,7 @@ ______________
 -----------------------------------------------------
 ```
 
-
+数据来源：`mprotect syscall`
 
 ### Nanosleep Data
 
@@ -349,7 +397,9 @@ ______________
 ----------
 ```
 
+数据来源：`nanosleep syscall`
 
+触发方式举例：`sleep 1`
 
 ### Kill Data
 
@@ -361,6 +411,7 @@ ______________
 ----------------
 ```
 
+数据来源：`kill syscall`
 
 
 ### Tkill data
@@ -372,20 +423,19 @@ ______________
 |target_pid|sig|
 ----------------
 ```
-
-
+数据来源：`tkill syscall`
 
 ### Process Exit Data
 
 该数据没有私有数据，仅有公共数据
 
-
+数据来源：`exit syscall`
 
 ### Exit Group Data
 
 该数据没有私有数据，仅有公共数据
 
-
+数据来源：`exit_group syscall`
 
 ### Rmdir Data
 
@@ -397,7 +447,9 @@ ______________
 ------
 ```
 
+数据来源：`security_path_rmdir`
 
+触发方式举例：`mkdir -p /tmp/test;touch /tmp/test/123;rm -rf /tmp/test`
 
 ### Unlink Data
 
@@ -408,6 +460,10 @@ ______________
 |file|
 ------
 ```
+
+数据来源：`security_path_unlink`
+
+触发方式举例：`touch /tmp/123;rm -rf /tmp/123`
 
 
 ### call_usermodehelper_exec Data
@@ -420,6 +476,9 @@ ______________
 -----------------------------
 ```
 
+数据来源：`call_usermodehelper_exec`
+
+触发方式举例：`可以参考：https://developer.ibm.com/articles/l-user-space-apps/ 编写，需要自行build kernel module并insert to kernel`
 
 ### Interrupt Table Hook Data
 
