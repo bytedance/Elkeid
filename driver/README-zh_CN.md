@@ -171,7 +171,7 @@ centos|7.X,8.X|3.10.0~5.4.X |el7,el8| half
 
 数据来源：`connect syscall`
 
-触发方式举例：`ls`
+触发方式举例：`curl www.bytedance.com`
 
 Note: Connect_type 在默认情况下为 -1
 
