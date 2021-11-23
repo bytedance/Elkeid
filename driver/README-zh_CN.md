@@ -359,7 +359,7 @@ ______________
 
 数据来源：`memfd_create syscall`
 
-触发方式举例：`http://manpages.ubuntu.com/manpages/bionic/man2/memfd_create.2.html#example`
+触发方式举例：`http://manpages.ubuntu.com/manpages/bionic/man2/memfd_create.2.html#example`,需要注意的是该syscall在kernel >= 3.17 后才存在。
 
 ### Open Data
 
