@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: GPL-2.0
 /*
  * util.c
  *
@@ -6,19 +6,15 @@
 #include "../include/util.h"
 #include <linux/version.h>
 #include <linux/kallsyms.h>
+
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0) || LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
+
 #include <linux/kprobes.h>
-/* kernel version after 5.8 should use api in linux/mmap_lock.h
-   ref: https://lkml.org/lkml/2020/6/4/28
-*/
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
-#include <linux/mmap_lock.h>
-#endif
-
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
 
 static unsigned long (*kallsyms_lookup_name_sym)(const char *name);
-static int dummy_kprobe_handler(struct kprobe *p, struct pt_regs *regs)
+
+static int _kallsyms_lookup_kprobe(struct kprobe *p, struct pt_regs *regs)
 {
         return 0;
 }
@@ -30,7 +26,7 @@ unsigned long get_kallsyms_func(void)
         unsigned long addr;
 
         memset(&probe, 0, sizeof(probe));
-        probe.pre_handler = dummy_kprobe_handler;
+        probe.pre_handler = _kallsyms_lookup_kprobe;
         probe.symbol_name = "kallsyms_lookup_name";
         ret = register_kprobe(&probe);
         if (ret)
@@ -39,7 +35,6 @@ unsigned long get_kallsyms_func(void)
         unregister_kprobe(&probe);
         return addr;
 }
-
 
 unsigned long smith_kallsyms_lookup_name(const char *name)
 {
@@ -57,30 +52,6 @@ unsigned long smith_kallsyms_lookup_name(const char *name)
 unsigned long smith_kallsyms_lookup_name(const char *name)
 {
     return kallsyms_lookup_name(name);
-}
-
-#endif
-
-#ifdef CONFIG_X86
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 7, 0)
-u64 GET_PPIN(void)
-{
-	int err;
-	u64 res;
-	res = paravirt_read_msr_safe(0x4f, &err);
-	return res;
-}
-#else
-u64 GET_PPIN(void)
-{
-	return 0;
-}
-#endif
-#else
-
-u64 GET_PPIN(void)
-{
-    return 0;
 }
 
 #endif
@@ -130,4 +101,18 @@ char *__dentry_path(struct dentry *dentry, char *buf, int buflen)
     return retval;
 Elong:
     return ERR_PTR(-ENAMETOOLONG);
+}
+
+u8 *smith_query_sb_uuid(struct super_block *sb)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+    /* uuid_t s_uuid; */
+    return (u8 *)&sb->s_uuid;
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
+    /* s_uuid not defined, using fixed zone of this sb */
+    return (u8 *)&sb->s_dev;
+#else
+    /* u8 s_uuid[16]; */
+    return (u8 *)&sb->s_uuid[0];
+#endif
 }

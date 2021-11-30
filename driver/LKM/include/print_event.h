@@ -16,6 +16,8 @@
 #undef __field_struct
 #undef __string
 #undef __get_str
+#undef __get_stl
+#undef __get_ent
 #undef __assign_str
 
 #define PE_PROTO(args...)			args
@@ -28,8 +30,6 @@
 #define __array(type, item, len)
 #define __field_struct(type, item)
 #define __string(item, src)			u32	item;
-#define __get_str(item)
-#define __assign_str(item, src)
 
 #undef PRINT_EVENT_DEFINE
 #define PRINT_EVENT_DEFINE(name, proto, args, tstruct, assign, print)	\
@@ -51,6 +51,8 @@
 #undef __field_struct
 #undef __string
 #undef __get_str
+#undef __get_stl
+#undef __get_ent
 #undef __assign_str
 
 #define PE_PROTO(args...)			args
@@ -69,7 +71,9 @@
 		__data_size += len;					\
 	} while (0);
 
-#define __get_str(item)
+#define __get_str(x, y)
+#define __get_stl(x, y, len)
+#define __get_ent(x, y)
 #define __assign_str(item, src)
 
 #undef PRINT_EVENT_DEFINE
@@ -100,6 +104,8 @@
 #undef __field_struct
 #undef __string
 #undef __get_str
+#undef __get_stl
+#undef __get_ent
 #undef __assign_str
 
 #define PE_PROTO(args...)			args
@@ -113,12 +119,15 @@
 #define __field_struct(type, item)		type	item;
 #define __string(item, src)			u32	__data_loc_##item;
 
-#define __get_str(item)							\
+#define __get_str(item, y)						\
 	(__entry->__data + __entry->__data_loc_##item)
+#define __get_stl(x, y, len)	__entry->x
+#define __get_ent(x, y)			__entry->x
+
 
 #define __assign_str(item, src)	do {					\
 		__entry->__data_loc_##item = __data_offsets.item;	\
-		strcpy(__get_str(item),					\
+		strcpy(__get_str(item, item),					\
 		       (src) ? (const char *)(src) : "(null)");		\
 	} while (0)
 
@@ -161,20 +170,20 @@
 	{								\
 		int __data_size;					\
 		struct print_event_entry_##name *__entry;		\
-		struct ring_buffer_event *event;			\
+		struct tb_event *event;			\
 		struct print_event_data_offsets_##name __data_offsets;	\
 									\
 		__data_size = print_event_get_offsets_##name(&__data_offsets,\
 							     args);	\
-		event = ring_buffer_lock_reserve(__class->buffer,	\
+		event = tb_lock_reserve(__class->trace,	\
 				sizeof(*__entry) + __data_size);	\
 		if (!event)						\
 			return;						\
 									\
-		__entry = ring_buffer_event_data(event);		\
+		__entry = tb_event_data(event);		\
 		__entry->head.id = __class->id;				\
 		{ assign; }						\
-		ring_buffer_unlock_commit(__class->buffer, event);	\
+		tb_unlock_commit(__class->trace, event);	\
 	}								\
 									\
 	static notrace void name##_print(proto)				\
