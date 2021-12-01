@@ -56,6 +56,9 @@ type ProcMetadata struct {
 func GetDirSize(path string, except string) uint64 {
 	var dirSize uint64 = 0
 	readSize := func(path string, file os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
 		if !file.IsDir() {
 			dirSize += uint64(file.Size())
 		} else {
