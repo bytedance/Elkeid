@@ -1169,11 +1169,11 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 			for (i = 0; i < argv_len; i++) {
 				native = get_user_arg_ptr(argv_ptr, i);
 				if (IS_ERR(native))
-					break;
+					continue;
 
 				len = smith_strnlen_user(native, MAX_ARG_STRLEN);
-				if (!len || len > MAX_ARG_STRLEN)
-					break;
+				if (!len)
+					continue;
 
 				if (offset + len > argv_res_len) {
 				    res = argv_res_len - offset;
@@ -1181,13 +1181,16 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 				    break;
 				}
 
-				if (smith_copy_from_user(argv_res + offset, native, len))
-				    break;
-
-				offset += len;
-                *(argv_res + offset - 1) = ' ';
+				res = smith_copy_from_user(argv_res + offset, native, len);
+				offset += len - res;
+				if (res)
+					continue;
+				*(argv_res + offset - 1) = ' ';
 			}
-			*(argv_res + offset) = '\0';
+			if (offset > 0)
+				*(argv_res + offset) = '\0';
+			else
+				strcpy(argv_res, "<FAIL>");
 		}
 	}
 
@@ -1374,11 +1377,11 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
             free_argv = 1;
             for (i = 0; i < argv_len; i++) {
                 if (smith_get_user(native, argv + i))
-                    break;
+                    continue;
 
                 len = smith_strnlen_user(native, MAX_ARG_STRLEN);
-                if (!len || len > MAX_ARG_STRLEN)
-                    break;
+                if (!len)
+                    continue;
 
                 if (offset + len > argv_res_len) {
                     res = argv_res_len - offset;
@@ -1386,13 +1389,16 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
                     break;
                 }
 
-                if (smith_copy_from_user(argv_res + offset, native, len))
-                    break;
-
-                offset += len;
+                res = smith_copy_from_user(argv_res + offset, native, len);
+                offset += len - res;
+                if (res)
+                    continue;
                 *(argv_res + offset - 1) = ' ';
             }
-            *(argv_res + offset) = '\0';
+            if (offset > 0)
+                *(argv_res + offset) = '\0';
+            else
+                strcpy(argv_res, "<FAIL>");
         }
     }
 
