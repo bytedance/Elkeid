@@ -89,7 +89,7 @@ char security_path_rmdir_kprobe_state = 0x0;
 char security_path_unlink_kprobe_state = 0x0;
 char call_usermodehelper_exec_kprobe_state = 0x0;
 char file_permission_kprobe_state = 0x0;
-char inode_permission_kprobe_state = 0x0;
+//char inode_permission_kprobe_state = 0x0;
 char write_kprobe_state = 0x0;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
@@ -2695,114 +2695,114 @@ int file_permission_handler(struct kprobe *p, struct pt_regs *regs)
     return 0;
 }
 
-int inode_permission_handler(struct kprobe *p, struct pt_regs *regs)
-{
-    int mask;
-    char *pname_buf = NULL;
-    char *buffer = NULL;
-    char *file_path = DEFAULT_RET_STR;
-    char *exe_path = DEFAULT_RET_STR;
-    struct dentry* tmp_dentry = NULL;
-    struct inode *inode = NULL;
-    struct dentry *parent = NULL;
-
-    if (!current->mm || irq_count())
-        return 0;
-
-    inode = (struct inode *)p_regs_get_arg1(regs);
-    if (IS_ERR_OR_NULL(inode))
-        return 0;
-
-    if (S_ISDIR(inode->i_mode))
-        return 0;
-
-    mask = (int)p_regs_get_arg2(regs);
-    if(mask & WRITE || mask & MAY_WRITE)
-        mask = 2;
-    else if (mask & READ || mask & MAY_READ)
-        mask = 4;
-    else
-        return 0;
-
-/*
- * d_alias could be a member of dentry or dentry.d_u after v3.2
- * existing kernels are always updated to latest, so here we're
- * using dentry.d_u.d_alias instead of dentry.d_alias
- *
- * possible option (assuming hardlinks are rare things):
- *     don't enum all entries, just grab one with d_find_alias
- */
-
-#ifdef CENTOS_CHECK
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
-    if (!hlist_empty(&inode->i_dentry)) {
-        hlist_for_each_entry(tmp_dentry, &inode->i_dentry, d_u.d_alias)
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-    if (!hlist_empty(&inode->i_dentry)) {
-        hlist_for_each_entry(tmp_dentry, &inode->i_dentry, d_alias)
-#else
-    if (!list_empty(&inode->i_dentry)) {
-        list_for_each_entry(tmp_dentry, &inode->i_dentry, d_alias)
-#endif
-#else
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)
-    if (!hlist_empty(&inode->i_dentry)) {
-//#if LINUX_VERSION_CODE == KERNEL_VERSION(3, 13, 0) || LINUX_VERSION_CODE == KERNEL_VERSION(3, 16, 0)
-#ifdef D_ALIAS_CHECK
-        hlist_for_each_entry(tmp_dentry, &inode->i_dentry, d_alias)
-#else
-        hlist_for_each_entry(tmp_dentry, &inode->i_dentry, d_u.d_alias)
-#endif
+//int inode_permission_handler(struct kprobe *p, struct pt_regs *regs)
+//{
+//    int mask;
+//    char *pname_buf = NULL;
+//    char *buffer = NULL;
+//    char *file_path = DEFAULT_RET_STR;
+//    char *exe_path = DEFAULT_RET_STR;
+//    struct dentry* tmp_dentry = NULL;
+//    struct inode *inode = NULL;
+//    struct dentry *parent = NULL;
+//
+//    if (!current->mm || irq_count())
+//        return 0;
+//
+//    inode = (struct inode *)p_regs_get_arg1(regs);
+//    if (IS_ERR_OR_NULL(inode))
+//        return 0;
+//
+//    if (S_ISDIR(inode->i_mode))
+//        return 0;
+//
+//    mask = (int)p_regs_get_arg2(regs);
+//    if(mask & WRITE || mask & MAY_WRITE)
+//        mask = 2;
+//    else if (mask & READ || mask & MAY_READ)
+//        mask = 4;
+//    else
+//        return 0;
+//
+///*
+// * d_alias could be a member of dentry or dentry.d_u after v3.2
+// * existing kernels are always updated to latest, so here we're
+// * using dentry.d_u.d_alias instead of dentry.d_alias
+// *
+// * possible option (assuming hardlinks are rare things):
+// *     don't enum all entries, just grab one with d_find_alias
+// */
+//
+//#ifdef CENTOS_CHECK
+//#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
+//    if (!hlist_empty(&inode->i_dentry)) {
+//        hlist_for_each_entry(tmp_dentry, &inode->i_dentry, d_u.d_alias)
+//#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
+//    if (!hlist_empty(&inode->i_dentry)) {
+//        hlist_for_each_entry(tmp_dentry, &inode->i_dentry, d_alias)
+//#else
+//    if (!list_empty(&inode->i_dentry)) {
+//        list_for_each_entry(tmp_dentry, &inode->i_dentry, d_alias)
+//#endif
+//#else
+//#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)
+//    if (!hlist_empty(&inode->i_dentry)) {
+////#if LINUX_VERSION_CODE == KERNEL_VERSION(3, 13, 0) || LINUX_VERSION_CODE == KERNEL_VERSION(3, 16, 0)
+//#ifdef D_ALIAS_CHECK
+//        hlist_for_each_entry(tmp_dentry, &inode->i_dentry, d_alias)
 //#else
 //        hlist_for_each_entry(tmp_dentry, &inode->i_dentry, d_u.d_alias)
 //#endif
-#else
-    if (!list_empty(&inode->i_dentry)) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 66)
-        list_for_each_entry(tmp_dentry, &inode->i_dentry, d_u.d_alias)
-#else
-        list_for_each_entry(tmp_dentry, &inode->i_dentry, d_alias)
-#endif
-#endif
-#endif
-        {
-            parent = tmp_dentry->d_parent;
-            if(!parent)
-                continue;
-
-            if (file_notify_check(smith_query_sb_uuid(tmp_dentry->d_sb), parent->d_inode->i_ino, "*", 1, mask) ||
-                file_notify_check(smith_query_sb_uuid(tmp_dentry->d_sb), parent->d_inode->i_ino, tmp_dentry->d_name.name, tmp_dentry->d_name.len, mask)) {
-                buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-                exe_path = smith_get_exe_file(buffer, PATH_MAX);
-
-                pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-                if(pname_buf) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
-                    file_path = dentry_path_raw(tmp_dentry, pname_buf, PATH_MAX);
-#else
-                    file_path = __dentry_path(tmp_dentry, pname_buf, PATH_MAX);
-#endif
-                }
-
-                if(IS_ERR(file_path))
-                    file_path = DEFAULT_RET_STR;
-
-                if (mask == 2)
-                    file_permission_write_print(exe_path, file_path, inode->i_sb->s_id);
-                else
-                    file_permission_read_print(exe_path, file_path, inode->i_sb->s_id);
-            }
-        }
-    }
-
-    if (buffer)
-        smith_kfree(buffer);
-
-    if (pname_buf)
-        smith_kfree(pname_buf);
-
-    return 0;
-}
+////#else
+////        hlist_for_each_entry(tmp_dentry, &inode->i_dentry, d_u.d_alias)
+////#endif
+//#else
+//    if (!list_empty(&inode->i_dentry)) {
+//#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 66)
+//        list_for_each_entry(tmp_dentry, &inode->i_dentry, d_u.d_alias)
+//#else
+//        list_for_each_entry(tmp_dentry, &inode->i_dentry, d_alias)
+//#endif
+//#endif
+//#endif
+//        {
+//            parent = tmp_dentry->d_parent;
+//            if(!parent)
+//                continue;
+//
+//            if (file_notify_check(smith_query_sb_uuid(tmp_dentry->d_sb), parent->d_inode->i_ino, "*", 1, mask) ||
+//                file_notify_check(smith_query_sb_uuid(tmp_dentry->d_sb), parent->d_inode->i_ino, tmp_dentry->d_name.name, tmp_dentry->d_name.len, mask)) {
+//                buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
+//                exe_path = smith_get_exe_file(buffer, PATH_MAX);
+//
+//                pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
+//                if(pname_buf) {
+//#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
+//                    file_path = dentry_path_raw(tmp_dentry, pname_buf, PATH_MAX);
+//#else
+//                    file_path = __dentry_path(tmp_dentry, pname_buf, PATH_MAX);
+//#endif
+//                }
+//
+//                if(IS_ERR(file_path))
+//                    file_path = DEFAULT_RET_STR;
+//
+//                if (mask == 2)
+//                    file_permission_write_print(exe_path, file_path, inode->i_sb->s_id);
+//                else
+//                    file_permission_read_print(exe_path, file_path, inode->i_sb->s_id);
+//            }
+//        }
+//    }
+//
+//    if (buffer)
+//        smith_kfree(buffer);
+//
+//    if (pname_buf)
+//        smith_kfree(pname_buf);
+//
+//    return 0;
+//}
 
 int mount_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
@@ -3405,10 +3405,10 @@ struct kprobe file_permission_kprobe = {
         .pre_handler = file_permission_handler,
 };
 
-struct kprobe inode_permission_kprobe = {
-        .symbol_name = "security_inode_permission",
-        .pre_handler = inode_permission_handler,
-};
+//struct kprobe inode_permission_kprobe = {
+//        .symbol_name = "security_inode_permission",
+//        .pre_handler = inode_permission_handler,
+//};
 
 struct kprobe kill_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(kill),
@@ -3957,20 +3957,20 @@ void unregister_file_permission_kprobe(void)
     unregister_kprobe(&file_permission_kprobe);
 }
 
-int register_inode_permission_kprobe(void)
-{
-    int ret;
-    ret = register_kprobe(&inode_permission_kprobe);
-    if (ret == 0)
-        inode_permission_kprobe_state = 0x1;
-
-    return ret;
-}
-
-void unregister_inode_permission_kprobe(void)
-{
-    unregister_kprobe(&inode_permission_kprobe);
-}
+//int register_inode_permission_kprobe(void)
+//{
+//    int ret;
+//    ret = register_kprobe(&inode_permission_kprobe);
+//    if (ret == 0)
+//        inode_permission_kprobe_state = 0x1;
+//
+//    return ret;
+//}
+//
+//void unregister_inode_permission_kprobe(void)
+//{
+//    unregister_kprobe(&inode_permission_kprobe);
+//}
 
 int register_nanosleep_kprobe(void)
 {
@@ -4153,8 +4153,8 @@ void uninstall_kprobe(void)
     if (file_permission_kprobe_state == 0x1)
         unregister_file_permission_kprobe();
 
-    if (inode_permission_kprobe_state == 0x1)
-        unregister_inode_permission_kprobe();
+//    if (inode_permission_kprobe_state == 0x1)
+//        unregister_inode_permission_kprobe();
 
     if (nanosleep_kprobe_state == 0x1)
         unregister_nanosleep_kprobe();
