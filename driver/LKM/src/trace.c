@@ -121,45 +121,59 @@ static struct print_event_entry *peek_next_entry(struct print_event_iterator *it
     return NULL;
 }
 
+static inline int __cpumask_next_wrap(int n, const struct cpumask *mask, int start, bool wrap)
+{
+	int next;
+
+again:
+	next = cpumask_next(n, mask);
+
+	if (wrap && n < start && next >= start) {
+		return nr_cpumask_bits;
+
+	} else if (next >= nr_cpumask_bits) {
+		wrap = true;
+		n = -1;
+		goto again;
+	}
+
+	return next;
+}
+
 static struct print_event_entry *__find_next_entry(struct print_event_iterator *iter,
                                                    int *ent_cpu, unsigned long *me,
-                                                   u64 * ent_ts)
+                                                   u64 *ent_ts)
 {
     struct tb_ring *ring = iter->ring;
-    struct print_event_entry *ent, *next = NULL;
-    unsigned long lost_events = 0, next_lost = 0;
-    u64 next_ts = 0, ts;
-    int next_cpu = -1;
-    int cpu;
+    struct print_event_entry *ent = NULL;
+    u64 ts;
+    unsigned long lost_events = 0;
+    int cpu, start = 0;
 
-    for_each_possible_cpu(cpu) {
+    if (ent_cpu && *ent_cpu < nr_cpumask_bits)
+        start = *ent_cpu;
+
+    cpu = __cpumask_next_wrap(start - 1, cpu_possible_mask, start, 0);
+    while (cpu < nr_cpumask_bits) {
 
         if (tb_empty_cpu(ring, cpu))
-            continue;
+            goto next_cpu;
 
         ent = peek_next_entry(iter, cpu, &ts, &lost_events);
-
-        /*
-         * Pick the entry with the smallest timestamp:
-         */
-        if (ent && (!next || ts < next_ts)) {
-            next = ent;
-            next_cpu = cpu;
-            next_ts = ts;
-            next_lost = lost_events;
+        if (ent) {
+           if (ent_cpu)
+               *ent_cpu = cpu;
+           if (ent_ts)
+               *ent_ts = ts;
+           if (me)
+               *me = lost_events;
+            break;
         }
+next_cpu:
+        cpu = __cpumask_next_wrap(cpu, cpu_possible_mask, start, 1);
     }
 
-    if (ent_cpu)
-        *ent_cpu = next_cpu;
-
-    if (ent_ts)
-        *ent_ts = next_ts;
-
-    if (me)
-        *me = next_lost;
-
-    return next;
+    return ent;
 }
 
 /* Find the next real entry, and increment the iterator to the next entry */
