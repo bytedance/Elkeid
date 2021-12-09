@@ -37,7 +37,7 @@ pub struct DetectOneTaskEvent<'a> {
     exe_hash: &'a str,  // sha256
     data: &'a str,      // script content
     create_at: &'a str, // file create time / birthtime
-    motify_at: &'a str, // file last modified time / mtime
+    modify_at: &'a str, // file last modified time / mtime
     error: &'a str,     // error
     token: &'a str,     // task token
 }
@@ -55,7 +55,7 @@ impl ToAgentRecord for DetectOneTaskEvent<'_> {
         hmp.insert("exe_hash".to_string(), self.exe_hash.to_string());
         hmp.insert("data".to_string(), self.data.to_string());
         hmp.insert("create_at".to_string(), self.create_at.to_string());
-        hmp.insert("motify_at".to_string(), self.motify_at.to_string());
+        hmp.insert("modify_at".to_string(), self.modify_at.to_string());
         hmp.insert("error".to_string(), self.error.to_string());
         hmp.insert("token".to_string(), self.token.to_string());
 
@@ -74,7 +74,7 @@ pub struct DetectFileEvent<'a> {
     exe_size: &'a str,  // file_size
     exe_hash: &'a str,  // sha256
     create_at: &'a str, // file create time / birthtime
-    motify_at: &'a str, // file last modified time / mtime
+    modify_at: &'a str, // file last modified time / mtime
     data: &'a str,      // script content
 }
 
@@ -91,7 +91,7 @@ impl ToAgentRecord for DetectFileEvent<'_> {
         hmp.insert("exe_hash".to_string(), self.exe_hash.to_string());
         hmp.insert("data".to_string(), self.data.to_string());
         hmp.insert("create_at".to_string(), self.create_at.to_string());
-        hmp.insert("motify_at".to_string(), self.motify_at.to_string());
+        hmp.insert("modify_at".to_string(), self.modify_at.to_string());
 
         pld.set_fields(hmp);
         r.set_data(pld);
@@ -110,7 +110,7 @@ pub struct DetectFanoEvent<'a> {
     exe: &'a str,       // file path
     data: &'a str,      // script content
     create_at: &'a str, // file create time = btime = birth_time
-    motify_at: &'a str, // file last modified time / mtime
+    modify_at: &'a str, // file last modified time / mtime
 }
 
 impl ToAgentRecord for DetectFanoEvent<'_> {
@@ -126,7 +126,7 @@ impl ToAgentRecord for DetectFanoEvent<'_> {
         hmp.insert("exe_hash".to_string(), self.exe_hash.to_string());
         hmp.insert("data".to_string(), self.data.to_string());
         hmp.insert("create_at".to_string(), self.create_at.to_string());
-        hmp.insert("motify_at".to_string(), self.motify_at.to_string());
+        hmp.insert("modify_at".to_string(), self.modify_at.to_string());
         hmp.insert("pid".to_string(), self.pid.to_string());
         pld.set_fields(hmp);
         r.set_data(pld);
@@ -146,7 +146,7 @@ pub struct DetectProcEvent {
     exe: String,       // file path
     data: String,      // script content
     create_at: String, // file create time = btime = birth_time
-    motify_at: String, // file last modified time / mtime
+    modify_at: String, // file last modified time / mtime
     ppid: String,      // status|stat - PID of parent process.
     pgid: String,      // stat - The process group ID
     tgid: String,      // status - Thread group ID
@@ -170,7 +170,7 @@ impl ToAgentRecord for DetectProcEvent {
         hmp.insert("exe_hash".to_string(), self.exe_hash.to_string());
         hmp.insert("data".to_string(), self.data.to_string());
         hmp.insert("create_at".to_string(), self.create_at.to_string());
-        hmp.insert("motify_at".to_string(), self.motify_at.to_string());
+        hmp.insert("modify_at".to_string(), self.modify_at.to_string());
         hmp.insert("pid".to_string(), self.pid.to_string());
         pld.set_fields(hmp);
         r.set_data(pld);
@@ -190,7 +190,7 @@ impl DetectProcEvent {
         data: &str,
         data_type: String,
         create_at: u64,
-        motify_at: u64,
+        modify_at: u64,
     ) -> Result<Self> {
         let p = procfs::process::Process::new(pid)?;
         let mut pf = Self::default();
@@ -202,7 +202,7 @@ impl DetectProcEvent {
         pf.exe_size = size.to_string();
         pf.data = data.to_string();
         pf.create_at = create_at.to_string();
-        pf.motify_at = motify_at.to_string();
+        pf.modify_at = modify_at.to_string();
         if let Ok(ps) = p.status() {
             pf.comm = ps.name.to_owned();
             pf.ppid = ps.ppid.to_string();
@@ -426,7 +426,7 @@ impl Detector {
                                         exe_size: &task.size.to_string(),
                                         data: rawc,
                                         create_at:&task.btime.to_string(),
-                                        motify_at:&task.mtime.to_string(),
+                                        modify_at:&task.mtime.to_string(),
                                         exe_hash: &sha256sum,
                                     };
                                     if let Err(e) = self.client.send_record(&t.to_record()) {
@@ -516,7 +516,7 @@ impl Detector {
                                         exe_hash: "",
                                         data: "",
                                         create_at:"",
-                                        motify_at:"",
+                                        modify_at:"",
                                         error: &format!("{:?}",e),
                                         token: &task.token,
                                     };
@@ -541,7 +541,7 @@ impl Detector {
                                         exe_hash: "",
                                         data: "",
                                         create_at:&btime.0.to_string(),
-                                        motify_at:&btime.1.to_string(),
+                                        modify_at:&btime.1.to_string(),
 
                                         error: &format!("err open file {:?}",e),
                                         token: &task.token,
@@ -569,7 +569,7 @@ impl Detector {
                                             exe_hash: "",
                                             data: "",
                                             create_at:&btime.0.to_string(),
-                                            motify_at:&btime.1.to_string(),
+                                            modify_at:&btime.1.to_string(),
                                             error: &format!("Error read_to_end_file:{:?}",e),
                                             token: &task.token,
                                         };
@@ -605,7 +605,7 @@ impl Detector {
                                         exe_hash: &sha256sum,
                                         data: &rawc,
                                         create_at:&btime.0.to_string(),
-                                        motify_at:&btime.1.to_string(),
+                                        modify_at:&btime.1.to_string(),
                                         error: "",
                                         token: &task.token,
                                     };
@@ -623,7 +623,7 @@ impl Detector {
                                         exe_hash: &sha256sum,
                                         data: "",
                                         create_at:&btime.0.to_string(),
-                                        motify_at:&btime.1.to_string(),
+                                        modify_at:&btime.1.to_string(),
                                         error: "",
                                         token: &task.token,
                                     };
@@ -688,7 +688,7 @@ impl Detector {
                                         exe_size:&fsize.to_string(),
                                         data:&rawc,
                                         create_at:&ctime.to_string(),
-                                        motify_at:&mtime.to_string(),
+                                        modify_at:&mtime.to_string(),
                                     };
                                     if let Err(e) = self.client.send_record(&t.to_record()) {
                                         warn!("send err, should exit : {:?}",e);
