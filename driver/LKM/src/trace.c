@@ -258,7 +258,7 @@ waitagain:
     mutex_lock(&access_lock);
     while (trace_next_entry_inc(iter) != NULL) {
         enum print_line_t ret;
-#ifdef SMITH_TRACE_EVENTS
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
         int save_len = iter->seq.seq.len;
 #else
         int save_len = iter->seq.len;
@@ -266,7 +266,7 @@ waitagain:
         ret = print_trace_fmt_line(iter);
         if (ret == TRACE_TYPE_PARTIAL_LINE) {
             /* don't print partial lines */
-#ifdef SMITH_TRACE_EVENTS
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
             iter->seq.seq.len = save_len;
 #else
             iter->seq.len = save_len;
@@ -292,7 +292,7 @@ waitagain:
 
 /* Now copy what we have to the user */
     sret = trace_seq_to_user_sym(&iter->seq, ubuf, cnt);
-#ifdef SMITH_TRACE_EVENTS
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
     if (iter->seq.seq.readpos >= __trace_seq_used(&iter->seq))
 #else
     if (iter->seq.readpos >= __trace_seq_used(&iter->seq))

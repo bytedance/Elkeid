@@ -31,7 +31,7 @@
 #define PDE_DATA(i)  PDE(i)->data
 #endif
 
-#ifdef SMITH_TRACE_EVENTS
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
 static inline int __trace_seq_used(struct trace_seq *s)
 {
 	return trace_seq_used(s);
