@@ -1,10 +1,11 @@
 package infra
 
 import (
+	"os"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/mongo"
-	"os"
 )
 
 const (
@@ -13,6 +14,17 @@ const (
 	AgentHeartBeatCollection = "agent_heartbeat"
 	AgentTaskCollection      = "agent_task"
 	AgentSubTaskCollection   = "agent_subtask"
+
+	AgentConfigTemplate      = "agent_config_template"
+	HubAlarmCollectionV1     = "hub_alarm_v1"
+	HubAssetCollectionV1     = "hub_asset_v1"
+	HubWhiteListCollectionV1 = "hub_whitelist_v1"
+	AgentVulnInfo            = "agent_vuln_info"
+	VulnInfoCollection       = "vuln_info"
+	CpeInfoCollection        = "cpe_info"
+
+	HIDSTraceRawDataV1 = "hids_trace_rawdata"
+	HIDSTraceTaskV1    = "hids_trace_task"
 )
 
 var (
@@ -24,6 +36,9 @@ var (
 	Grds          redis.UniversalClient
 	MongoClient   *mongo.Client
 	MongoDatabase string
+
+	AccessKey string
+	SecretKey string
 
 	HttpPort  int
 	ApiAuth   bool

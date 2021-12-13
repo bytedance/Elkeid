@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/bytedance/Elkeid/server/manager/biz/common"
 	"github.com/bytedance/Elkeid/server/manager/biz/midware"
 	"github.com/bytedance/Elkeid/server/manager/distribute/job"
@@ -18,14 +20,13 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"time"
 )
 
-type ConfigRequest struct {
+/*type ConfigRequest struct {
 	AgentCtrl int              `json:"agent_ctrl,omitempty"`
 	Task      AgentTaskMsg     `json:"task,omitempty"`
 	Config    []AgentConfigMsg `json:"config,omitempty"`
-}
+}*/
 
 type AgentDelRequest struct {
 	Tag    string   `json:"tag" bson:"tag"`
