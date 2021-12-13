@@ -969,14 +969,13 @@ func ControlAgentTaskByNum(c *gin.Context) {
 		dbTask.DistributedCount = dbTask.DistributedCount + len(todoList)
 
 		//Create the jod and distribute.
-		jobParm := AgentJobParam{ConfigTask: &dbTask, TODOList: todoList, TaskID: dbTask.TaskID}
 		jID, err := job.NewJob(dbTask.TaskType, request.Concurrence, AgentJobTimeOut, true)
 		if err != nil {
 			common.CreateResponse(c, common.UnknownErrorCode, err.Error())
 			infra.DistributedUnLock(request.TaskID)
 			return
 		}
-
+		jobParm := AgentJobParam{ConfigTask: &dbTask, TODOList: todoList, TaskID: dbTask.TaskID, JobID: jID}
 		//异步分发
 		go func() {
 			job.DistributeJob(jID, dbTask.TaskType, jobParm)
