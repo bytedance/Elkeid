@@ -308,7 +308,7 @@ func ControlPlugin(c *gin.Context) {
 	agentConfigTask.TaskUser = operateUser.(string)
 
 	// 下发任务
-	tID, count, err := v1.CreateTaskV6(agentConfigTask, "Agent_Config")
+	tID, count, err := v1.CreateTask(agentConfigTask, "Agent_Config")
 	if err != nil {
 		common.CreateResponse(c, common.UnknownErrorCode, err.Error())
 		return
@@ -385,7 +385,7 @@ func ControlAgent(c *gin.Context) {
 	agentConfigTask.TaskUser = operateUser.(string)
 
 	// 下发任务
-	tID, count, err := v1.CreateTaskV6(agentConfigTask, tType)
+	tID, count, err := v1.CreateTask(agentConfigTask, tType)
 	if err != nil {
 		common.CreateResponse(c, common.UnknownErrorCode, err.Error())
 		return

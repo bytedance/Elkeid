@@ -82,9 +82,12 @@ func RegisterRouter(r *gin.Engine) {
 
 			agentRouter.POST("/controlTask", v1.ControlAgentTask)
 
+			agentRouter.POST("/quickTask/task", v1.QuickTaskTask)
+			agentRouter.POST("/getTask/filter", v1.GetTaskByFilter)
 			agentRouter.GET("/getTask/:id", v1.GetTaskByID)
 			agentRouter.GET("/getJob/:id", v1.GetJobByID)
 
+			//update subTask /subTask/filter
 			agentRouter.POST("/updateSubTask", v1.UpdateSubTask)          //数据对账
 			agentRouter.POST("/getSubTask/filter", v1.GetSubTaskByFilter) //任务查询
 			agentRouter.GET("/getSubTask/:id", v1.GetSubTaskByID)         //任务查询
@@ -121,12 +124,12 @@ func RegisterRouter(r *gin.Engine) {
 		agentRouter := apiv6Group.Group("/agent")
 		{
 			agentRouter.GET("/getTask/:id", v1.GetTaskByID)
-			// agentRouter.POST("/controlTask", v1.ControlAgentTaskByNum)
-			// agentRouter.POST("/createAgentTask", v6.ControlAgent)
-			// agentRouter.POST("/createPluTask", v6.ControlPlugin)
-			// agentRouter.POST("/getTaskList", v6.GetTaskList)
-			// agentRouter.POST("/getSubTaskList", v6.GetSubTaskList)
-			// agentRouter.POST("/GetErrorHostNum", v6.GetErrorHostNum)
+			agentRouter.POST("/controlTask", v1.ControlAgentTaskByNum)
+			agentRouter.POST("/createAgentTask", v6.ControlAgent)
+			agentRouter.POST("/createPluTask", v6.ControlPlugin)
+			agentRouter.POST("/getTaskList", v6.GetTaskList)
+			agentRouter.POST("/getSubTaskList", v6.GetSubTaskList)
+			agentRouter.POST("/GetErrorHostNum", v6.GetErrorHostNum)
 		}
 		assetCenter := apiv6Group.Group("/asset-center")
 		{

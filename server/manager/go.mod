@@ -6,6 +6,7 @@ require (
 	github.com/gin-gonic/gin v1.7.0
 	github.com/go-redis/redis/v8 v8.8.0
 	github.com/golang-jwt/jwt v3.2.1+incompatible
+	github.com/json-iterator/go v1.1.9
 	github.com/levigross/grequests v0.0.0-20190908174114-253788527a1a
 	github.com/onsi/ginkgo v1.15.1 // indirect
 	github.com/onsi/gomega v1.11.0 // indirect; indi

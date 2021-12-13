@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const sendTimeWeightSec = 5
+
 type subTaskUpdateWriter struct {
 	queue chan interface{}
 }
@@ -20,10 +22,11 @@ func (w *subTaskUpdateWriter) Init() {
 
 func (w *subTaskUpdateWriter) Run() {
 	var (
-		timer  = time.NewTicker(time.Second * time.Duration(SendTimeWeightSec))
+		timer  = time.NewTicker(time.Second * time.Duration(sendTimeWeightSec))
 		item   map[string]interface{}
 		count  = 0
 		writes []mongo.WriteModel
+		filter bson.M
 	)
 
 	ylog.Infof("subTaskUpdateWriter", "Run")
@@ -33,12 +36,21 @@ func (w *subTaskUpdateWriter) Run() {
 	for {
 		select {
 		case tmp := <-w.queue:
+			//filter first task_id+agent_id, then token
 			item = tmp.(map[string]interface{})
-			token, ok := item["token"]
-			if !ok {
+			taskID, ok1 := item["task_id"]
+			agentID, ok2 := item["agent_id"]
+			token, ok3 := item["token"]
+			if ok1 && ok2 {
+				//filter set task_id+agent_id
+				filter = bson.M{"task_id": taskID, "agent_id": agentID}
+			} else if ok3 {
+				//filter set token
+				filter = bson.M{"token": token}
+			} else {
 				continue
 			}
-			filter := bson.M{"token": token}
+
 			item["update_time"] = time.Now().Unix()
 			updates := bson.M{"$set": item}
 			model := mongo.NewUpdateOneModel().
