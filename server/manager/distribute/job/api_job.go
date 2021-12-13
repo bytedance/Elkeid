@@ -5,6 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/bytedance/Elkeid/server/manager/biz/midware"
 	"github.com/bytedance/Elkeid/server/manager/infra"
 	. "github.com/bytedance/Elkeid/server/manager/infra/def"
@@ -13,9 +17,6 @@ import (
 	"github.com/bytedance/Elkeid/server/manager/task"
 	"github.com/go-redis/redis/v8"
 	"github.com/levigross/grequests"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (
