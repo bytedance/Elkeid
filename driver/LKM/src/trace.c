@@ -150,8 +150,18 @@ static struct print_event_entry *__find_next_entry(struct print_event_iterator *
     unsigned long lost_events = 0;
     int cpu, start = 0;
 
-    if (ent_cpu && *ent_cpu < nr_cpumask_bits)
-        start = *ent_cpu;
+    if (ent_cpu) {
+        /*
+         * always loop from next of last-read cpu (specified by user)
+         * to avoid possible starving on other cores, that is, reading
+         * one message for 'cpu', then moving onto 'cpu' + 1
+         */
+        start = *ent_cpu + 1;
+        if (start >= nr_cpumask_bits)
+            start = 0;
+        else if (start < 0)
+            start = 0;
+    }
 
     cpu = __cpumask_next_wrap(start - 1, cpu_possible_mask, start, 0);
     while (cpu < nr_cpumask_bits) {
