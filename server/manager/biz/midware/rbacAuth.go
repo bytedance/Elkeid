@@ -43,7 +43,7 @@ func init() {
 
 	go func() {
 		for {
-			time.Sleep(60 * time.Second)
+			time.Sleep(3 * time.Second)
 
 			table := loadUserFromDB()
 			if table != nil {
