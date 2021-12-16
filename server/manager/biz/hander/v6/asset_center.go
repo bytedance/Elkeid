@@ -1714,7 +1714,7 @@ func DescribeLast7DaysAlarmStatistics(ctx *gin.Context) {
 					"date": bson.M{"$toDate": bson.M{
 						"$multiply": bson.A{"$__insert_time", 1000},
 					}},
-					"risk": "$risk",
+					"risk": "$SMITH_ALETR_DATA.RULE_INFO.HarmLevel",
 				}},
 			bson.M{"$group": bson.M{
 				"_id": bson.M{
@@ -1743,14 +1743,14 @@ func DescribeLast7DaysAlarmStatistics(ctx *gin.Context) {
 		flag := false
 		for index, v := range resp {
 			if v.Date == date {
-				switch group.Lookup("risk").AsInt64() {
-				case 1:
+				switch group.Lookup("risk").StringValue() {
+				case "low":
 					v.Low = cursor.Current.Lookup("count").AsInt64()
-				case 2:
+				case "medium":
 					v.Medium = cursor.Current.Lookup("count").AsInt64()
-				case 3:
+				case "high":
 					v.High = cursor.Current.Lookup("count").AsInt64()
-				case 4:
+				case "critical":
 					v.Critical = cursor.Current.Lookup("count").AsInt64()
 				}
 				resp[index] = v
@@ -1762,14 +1762,14 @@ func DescribeLast7DaysAlarmStatistics(ctx *gin.Context) {
 			v := DescribeLast7DaysAlarmStatisticsResp{
 				Date: date,
 			}
-			switch group.Lookup("risk").AsInt64() {
-			case 1:
+			switch group.Lookup("risk").StringValue() {
+			case "low":
 				v.Low = cursor.Current.Lookup("count").AsInt64()
-			case 2:
+			case "medium":
 				v.Medium = cursor.Current.Lookup("count").AsInt64()
-			case 3:
+			case "high":
 				v.High = cursor.Current.Lookup("count").AsInt64()
-			case 4:
+			case "critical":
 				v.Critical = cursor.Current.Lookup("count").AsInt64()
 			}
 			resp = append(resp, v)
@@ -1796,7 +1796,14 @@ func DescribeLast7DaysVulnStatistics(ctx *gin.Context) {
 	cursor, err := c.Aggregate(ctx,
 		bson.A{
 			bson.M{
-				"$match": bson.M{"create_time": bson.M{"$gt": time.Now().AddDate(0, 0, -6).Truncate(time.Hour * 24).Add(-time.Duration(offset) * time.Second).Unix()}},
+				"$match": bson.M{
+					"create_time": bson.M{
+						"$gt": time.Now().
+							AddDate(0, 0, -6).
+							Truncate(time.Hour * 24).
+							Add(-time.Duration(offset) * time.Second).
+							Unix(),
+					}},
 			},
 			bson.M{
 				"$project": bson.M{
@@ -1836,13 +1843,13 @@ func DescribeLast7DaysVulnStatistics(ctx *gin.Context) {
 				count, ok2 := cursor.Current.Lookup("count").AsInt64OK()
 				if ok1 && ok2 {
 					switch risk {
-					case "danger_level":
+					case DangerLevel:
 						v.Critical = count
-					case "high_level":
+					case HighLevel:
 						v.High = count
-					case "mid_level":
+					case MidLevel:
 						v.Medium = count
-					case "low_level":
+					case LowLevel:
 						v.Low = count
 					}
 				}
@@ -1892,16 +1899,14 @@ func DescribeLast7DaysOperationStatistics(ctx *gin.Context) {
 		bson.A{
 			bson.M{
 				"$match": bson.M{
-					"update_time": bson.M{"$gt": time.Now().AddDate(0, 0, -6).Truncate(time.Hour * 24).Add(-time.Duration(offset) * time.Second).Unix()},
-					"status":      "processed",
-					"__hit_wl":    false,
-					"__checked":   true,
+					"control_time": bson.M{"$gt": time.Now().AddDate(0, 0, -6).Truncate(time.Hour * 24).Add(-time.Duration(offset) * time.Second).Unix()},
+					"status":       bson.M{"$ne": "unprocessed"},
 				},
 			},
 			bson.M{
 				"$project": bson.M{
 					"date": bson.M{"$toDate": bson.M{
-						"$multiply": bson.A{"$update_time", 1000},
+						"$multiply": bson.A{"$control_time", 1000},
 					}},
 				}},
 			bson.M{"$group": bson.M{
@@ -1952,8 +1957,17 @@ func DescribeLast7DaysOperationStatistics(ctx *gin.Context) {
 	cursor, err = c.Aggregate(ctx,
 		bson.A{
 			bson.M{
-				"$match": bson.M{"__update_time": bson.M{"$gt": time.Now().AddDate(0, 0, -6).Truncate(time.Hour * 24).Add(-time.Duration(offset) * time.Second).Unix()},
-					"__alarm_status": bson.M{"$ne": 0}},
+				"$match": bson.M{
+					"__update_time": bson.M{
+						"$gt": time.Now().
+							AddDate(0, 0, -6).
+							Truncate(time.Hour * 24).
+							Add(-time.Duration(offset) * time.Second).
+							Unix()},
+					"__alarm_status": bson.M{"$ne": 0},
+					"__hit_wl":       false,
+					"__checked":      true,
+				},
 			},
 			bson.M{
 				"$project": bson.M{
