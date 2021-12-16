@@ -7,6 +7,7 @@ import (
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/bytedance/Elkeid/server/agent_center/httptrans/client"
 	"github.com/patrickmn/go-cache"
+	"math/rand"
 	"sync"
 	"time"
 )
@@ -24,6 +25,11 @@ type GRPCPool struct {
 	//taskChan is the chan Use to Post the task to manager, which used for data reconciliation
 	taskChan chan map[string]string
 	taskList []map[string]string
+
+	//psm and tags
+	extraInfoChan  chan string
+	extraInfoLock  sync.RWMutex
+	extraInfoCache map[string]client.AgentExtraInfo
 
 	conf *Config
 }
@@ -100,12 +106,14 @@ type Command struct {
 // -- maxConnTokenCount: Maximum number of concurrent connections
 func NewGRPCPool(config *Config) *GRPCPool {
 	g := &GRPCPool{
-		connPool:  cache.New(-1, -1), //Never expire
-		tokenChan: make(chan bool, config.PoolLength),
-		confChan:  make(chan string, config.ConfigChanLen),
-		taskChan:  make(chan map[string]string, config.TaskChanLen),
-		taskList:  make([]map[string]string, 0, config.TaskChanLen),
-		conf:      config,
+		connPool:       cache.New(-1, -1), //Never expire
+		tokenChan:      make(chan bool, config.PoolLength),
+		confChan:       make(chan string, config.ChanLen),
+		taskChan:       make(chan map[string]string, config.ChanLen),
+		taskList:       make([]map[string]string, 0, config.ChanLen),
+		extraInfoChan:  make(chan string, config.ChanLen),
+		extraInfoCache: make(map[string]client.AgentExtraInfo),
+		conf:           config,
 	}
 
 	for i := 0; i < config.PoolLength; i++ {
@@ -114,6 +122,10 @@ func NewGRPCPool(config *Config) *GRPCPool {
 
 	go g.checkConfig()
 	go g.checkTask()
+
+	//Tags
+	go g.loadExtraInfoWorker()
+	go g.refreshExtraInfo(config.Interval)
 	return g
 }
 
@@ -202,6 +214,13 @@ func (g *GRPCPool) Add(agentID string, conn *Connection) error {
 		return errors.New("agentID conflict")
 	}
 	g.connPool.Set(agentID, conn, -1)
+
+	//异步load tag
+	select {
+	case g.extraInfoChan <- agentID:
+	default:
+		ylog.Errorf("Add", "newTagsChan is full, agentID %s is skipped, tags will be missing!", agentID)
+	}
 	return nil
 }
 
@@ -282,4 +301,48 @@ func (g *GRPCPool) PushTask2Manager(task map[string]string) error {
 		return errors.New("taskChan is full, please try later")
 	}
 	return nil
+}
+
+func (g *GRPCPool) GetExtraInfoByID(agentID string) *client.AgentExtraInfo {
+	g.extraInfoLock.RLock()
+	tmp, ok := g.extraInfoCache[agentID]
+	g.extraInfoLock.RUnlock()
+	if !ok {
+		ylog.Debugf("GetExtraInfoByID", "the agentID is not in the connection pool of this server %s", agentID)
+		return nil
+	}
+	return &tmp
+}
+
+func (g *GRPCPool) refreshExtraInfo(interval time.Duration) {
+	for {
+		connMap := g.connPool.Items()
+		agentIDList := make([]string, 0)
+		for k, _ := range connMap {
+			agentIDList = append(agentIDList, k)
+		}
+
+		//load from leader
+		newCache, err := client.GetExtraInfoFromRemote(agentIDList)
+		if err == nil {
+			g.extraInfoLock.Lock()
+			g.extraInfoCache = newCache
+			g.extraInfoLock.Unlock()
+		}
+		time.Sleep(interval + time.Duration(rand.Intn(30))*time.Second)
+	}
+}
+
+func (g *GRPCPool) loadExtraInfoWorker() {
+	for {
+		select {
+		case agentID := <-g.extraInfoChan:
+			tmp, err := client.GetExtraInfoFromRemote([]string{agentID})
+			if err == nil {
+				g.extraInfoLock.Lock()
+				g.extraInfoCache[agentID] = tmp[agentID]
+				g.extraInfoLock.Unlock()
+			}
+		}
+	}
 }

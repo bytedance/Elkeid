@@ -18,6 +18,7 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 	var inIpv6 = strings.Join(req.IntranetIPv6, ",")
 	var exIpv6 = strings.Join(req.ExtranetIPv6, ",")
 	var SvrTime = time.Now().Unix()
+	var extraInfo = GlobalGRPCPool.GetExtraInfoByID(req.AgentID)
 
 	for k, v := range req.GetData() {
 		ylog.Debugf("handleRawData", "Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
@@ -36,6 +37,13 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 		mqMsg.Version = req.Version
 		mqMsg.Product = req.Product
 		mqMsg.SvrTime = SvrTime
+		mqMsg.PSMName = ""
+		mqMsg.PSMPath = ""
+		if extraInfo != nil {
+			mqMsg.Tags = extraInfo.Tags
+		} else {
+			mqMsg.Tags = ""
+		}
 
 		switch mqMsg.DataType {
 		case 1000:

@@ -91,6 +91,9 @@ func RegisterRouter(r *gin.Engine) {
 			agentRouter.POST("/updateSubTask", v1.UpdateSubTask)          //数据对账
 			agentRouter.POST("/getSubTask/filter", v1.GetSubTaskByFilter) //任务查询
 			agentRouter.GET("/getSubTask/:id", v1.GetSubTaskByID)         //任务查询
+
+			//
+			agentRouter.POST("/queryInfo", v1.QueryInfo) //server used
 		}
 
 		//The tag api is used to manage the agent as a group

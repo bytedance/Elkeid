@@ -47,7 +47,7 @@ func getDefaultConfig() []AgentConfigMsg {
 	var config DefaultConfig
 	filter := bson.M{"type": DefaultAgentConfig, "version": DefaultConfigVersion}
 	err := collection.FindOne(context.Background(), filter).Decode(&config)
-	if err != nil && err != mongo.ErrNoDocuments {
+	if err != nil {
 		ylog.Infof("GetDefaultConfig", "default config is not set, now use empty config, error is :", err.Error())
 		return []AgentConfigMsg{}
 	}

@@ -15,7 +15,8 @@ import (
 )
 
 var whiteUrlList = []string{"/api/v1/user/login",
-	"/api/v1/agent/subTask/updateSubTask"}
+	"/api/v1/agent/subTask/updateSubTask",
+	"/api/v1/agent/queryInfo"}
 
 type AuthClaims struct {
 	Username string `json:"username"`

@@ -72,6 +72,9 @@ message MQData{
 
   //Fields completed on the server
   int64  SvrTime = 12;
+  string PSMName = 13;    //Used to identify business
+  string PSMPath = 14;    //Used to identify business
+  string Tags = 15;        //Used to identify agent group
 }
 
 //bmq --> Rule engine
@@ -91,6 +94,9 @@ message MQRawData{
 
   //Fields completed on the server
   int64  SvrTime = 12;
+  string PSMName = 13;    //Used to identify business
+  string PSMPath = 14;    //Used to identify business
+  string Tags = 15;        //Used to identify agent group
 }
 
 service Transfer {
