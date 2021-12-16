@@ -3,6 +3,7 @@ package v6
 import (
 	"encoding/json"
 	"strconv"
+	"time"
 
 	"github.com/bytedance/Elkeid/server/manager/biz/common"
 	"github.com/bytedance/Elkeid/server/manager/infra"
@@ -40,6 +41,7 @@ type AgentVulnInfo struct {
 	PackageVersion string   `json:"package_version" bson:"package_version"`
 	CreateTime     int64    `json:"create_time" bson:"create_time"`
 	UpdateTime     int64    `json:"update_time" bson:"update_time"`
+	ControlTime    int64    `json:"control_time" bson:"control_time"`
 }
 
 type VulnInfo struct {
@@ -222,9 +224,9 @@ func GetVulnList(c *gin.Context) {
 	if len(vulnRequest.Level) != 0 {
 		agentVulnInfoFilter["level"] = MongoInside{Inside: vulnRequest.Level}
 	}
-	if len(vulnRequest.Status) != 0 {
-		agentVulnInfoFilter["status"] = MongoInside{Inside: vulnRequest.Status}
-	}
+	//if len(vulnRequest.Status) != 0{
+	//	agentVulnInfoFilter["status"] = MongoInside{Inside: vulnRequest.Status}
+	//}
 
 	// 拼接mongo查询语句(vuln_info)
 	vulnInfoFilter := make(map[string]interface{})
@@ -289,6 +291,9 @@ func GetVulnList(c *gin.Context) {
 		statusList = append(statusList, VulnStatusIgnored)
 	}
 
+	aggregateSearchList = append(aggregateSearchList, bson.M{"$match": bson.M{
+		"status": MongoInside{Inside: vulnRequest.Status},
+	}})
 	if len(statusList) != 0 {
 
 		aggregateSearchList = append(aggregateSearchList, bson.M{"$match": bson.M{
@@ -303,6 +308,7 @@ func GetVulnList(c *gin.Context) {
 		aggregateSearchList,
 		pageSearch,
 		func(cursor *mongo.Cursor) error {
+
 			v := struct {
 				VulnId        int64      `json:"vuln_id" bson:"vuln_id"`
 				Status        []string   `json:"status" bson:"status"`
@@ -396,13 +402,14 @@ func VulnHostList(c *gin.Context) {
 
 	// 返回的主机数据
 	type responseStruct struct {
-		HostName   string `json:"host_name" bson:"hostname"`
-		IntranetIp string `json:"intranet_ip" bson:"intranet_ip"`
-		ExtranetIp string `json:"extranet_ip" bson:"extranet_ip"`
-		UpdateTime int64  `json:"update_time" bson:"update_time"`
-		CreateTime int64  `json:"create_time" bson:"create_time"`
-		Status     string `json:"status" bson:"status"`
-		AgentId    string `json:"agent_id" bson:"agent_id"`
+		HostName    string `json:"host_name" bson:"hostname"`
+		IntranetIp  string `json:"intranet_ip" bson:"intranet_ip"`
+		ExtranetIp  string `json:"extranet_ip" bson:"extranet_ip"`
+		UpdateTime  int64  `json:"update_time" bson:"update_time"`
+		CreateTime  int64  `json:"create_time" bson:"create_time"`
+		ControlTime int64  `json:"control_time" bson:"control_time"`
+		Status      string `json:"status" bson:"status"`
+		AgentId     string `json:"agent_id" bson:"agent_id"`
 	}
 
 	// 绑定分页数据
@@ -537,7 +544,7 @@ func VulnIpControl(c *gin.Context) {
 		}
 		agentId := request.AgentIdList[0]
 		searchFilter["agent_id"] = agentId
-		updateRes, err := collection.UpdateMany(c, searchFilter, bson.M{"$set": bson.M{"status": request.AfterStatus}})
+		updateRes, err := collection.UpdateMany(c, searchFilter, bson.M{"$set": bson.M{"status": request.AfterStatus, "control_time": time.Now().Unix()}})
 		if err != nil && err != mongo.ErrNoDocuments {
 			common.CreateResponse(c, common.DBOperateErrorCode, err.Error())
 			return
@@ -596,7 +603,7 @@ func VulnIpControl(c *gin.Context) {
 		}
 
 		// 更新漏洞
-		_, err = collection.UpdateMany(c, searchFilter, bson.M{"$set": bson.M{"status": request.AfterStatus}})
+		_, err = collection.UpdateMany(c, searchFilter, bson.M{"$set": bson.M{"status": request.AfterStatus, "control_time": time.Now().Unix()}})
 		if err != nil && err != mongo.ErrNoDocuments {
 			common.CreateResponse(c, common.DBOperateErrorCode, err.Error())
 			return
@@ -615,6 +622,72 @@ func VulnIpControl(c *gin.Context) {
 		ahCol := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.AgentHeartBeatCollection)
 		ahCol.UpdateMany(c, searchFilter, updateQuery)
 	}
+
+	common.CreateResponse(c, common.SuccessCode, "ok")
+}
+
+// 处理单个主机漏洞
+func OneIpVulnControl(c *gin.Context) {
+
+	// 绑定筛选条件
+	request := struct {
+		AgentId      string  `json:"agent_id" bson:"agent_id"`
+		VulnIdList   []int64 `json:"vuln_id_list,omitempty" bson:"vuln_id_list"`
+		IfAll        bool    `json:"if_all,omitempty" bson:"if_all"`
+		BeforeStatus string  `json:"before_status,omitempty" bson:"before_status"`
+		AfterStatus  string  `json:"after_status,omitempty" bson:"after_status"`
+	}{}
+
+	err := c.BindJSON(&request)
+	if err != nil {
+		common.CreateResponse(c, common.ParamInvalidErrorCode, nil)
+		return
+	}
+
+	collection := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.AgentVulnInfo)
+
+	// 获取该IP当前未处理个数
+	searchFilter := make(map[string]interface{})
+	searchFilter["agent_id"] = request.AgentId
+	searchFilter["status"] = VulnStatusUnProcessed
+	unprocessCount, err := collection.CountDocuments(c, searchFilter)
+	if err != nil {
+		unprocessCount = 0
+	}
+
+	// 拼接mongo查询语句
+	searchFilter = make(map[string]interface{})
+	if !request.IfAll {
+		if len(request.VulnIdList) != 0 {
+			searchFilter["vuln_id"] = MongoInside{Inside: request.VulnIdList}
+		}
+	}
+	searchFilter["agent_id"] = request.AgentId
+	searchFilter["status"] = request.BeforeStatus
+
+	updateRes, err := collection.UpdateMany(c, searchFilter, bson.M{"$set": bson.M{"status": request.AfterStatus, "control_time": time.Now().Unix()}})
+	if err != nil && err != mongo.ErrNoDocuments {
+		common.CreateResponse(c, common.DBOperateErrorCode, err.Error())
+		return
+	}
+
+	// 计算漏洞总数，并更新到主机心跳包中
+	var newUnprocessCount int64
+	if request.BeforeStatus == VulnStatusUnProcessed {
+		newUnprocessCount = unprocessCount - updateRes.ModifiedCount
+	}
+	if request.AfterStatus == VulnStatusUnProcessed {
+		newUnprocessCount = unprocessCount + updateRes.ModifiedCount
+	}
+
+	collection = infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.AgentVulnInfo)
+
+	filterQuery := bson.M{"agent_id": request.AgentId}
+	strInt64 := strconv.FormatInt(newUnprocessCount, 10)
+	id16, _ := strconv.Atoi(strInt64)
+	updateQuery := bson.M{"$set": bson.M{"risk.vuln": id16}}
+	ahCol := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.AgentHeartBeatCollection)
+	ahCol.UpdateOne(c, filterQuery, updateQuery)
 
 	common.CreateResponse(c, common.SuccessCode, "ok")
 }

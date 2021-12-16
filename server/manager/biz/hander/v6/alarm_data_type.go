@@ -86,6 +86,7 @@ type AlarmDbData struct {
 	ExeHash         string       `json:"exe_hash" bson:"exe_hash"`
 	CreateTime      string       `json:"create_at" bson:"create_at"`
 	ModifyTime      string       `json:"modify_at" bson:"modify_at"`
+	TopPatternName  string       `json:"top_pattern_name"`
 }
 
 type AlarmDetailData struct {
@@ -195,12 +196,13 @@ type AlarmDataType4000 struct {
 }
 
 type AlarmKillChain struct {
-	TopChain     string `json:"top_chain"`
-	TopRuleChain string `json:"top_rule_chain"`
-	Graph        string `json:"graph"`
-	ExtConns     string `json:"external_conns"`
-	InDocker     string `json:"docker"`
-	TimeStamp    string `json:"timestamp"`
+	TopChain       string `json:"top_chain"`
+	TopRuleChain   string `json:"top_rule_chain"`
+	Graph          string `json:"graph"`
+	ExtConns       string `json:"external_conns"`
+	InDocker       string `json:"docker"`
+	TimeStamp      string `json:"timestamp"`
+	TopPatternName string `json:"top_pattern_name"`
 }
 
 type AlarmDataType6001 struct {
@@ -232,6 +234,7 @@ func CopyDataTypeKC(dst *AlarmDetailData, src *AlarmDbData) {
 	dst.PlusKC.Graph = src.Graph
 	dst.PlusKC.InDocker = src.InDocker
 	dst.PlusKC.TimeStamp = src.TimeStamp
+	dst.PlusKC.TopPatternName = src.TopPatternName
 }
 
 func CopyDataType6001(dst *AlarmDetailData, src *AlarmDbData) {
