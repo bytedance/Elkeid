@@ -3,7 +3,7 @@ use crate::{
     detector::{get_file_bmtime, DetectTask},
     filter::Filter,
 };
-use anyhow::*;
+use anyhow::Result;
 use coarsetime::Clock;
 use log::*;
 use std::{

@@ -1,5 +1,5 @@
 use crate::{config::LOAD_MMAP_MAX_SIZE, ToAgentRecord};
-use anyhow::*;
+use anyhow::Result;
 use coarsetime::Clock;
 use crossbeam_channel::{after, bounded, select, tick};
 use log::*;
