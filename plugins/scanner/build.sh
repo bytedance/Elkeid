@@ -1,6 +1,6 @@
 #!/bin/bash
 
-RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_64-unknown-linux-gnu
+cargo build --release --target x86_64-unknown-linux-musl
 
 if [ $? -ne 0 ]; then
     echo "Elkeid plugin build failed"
