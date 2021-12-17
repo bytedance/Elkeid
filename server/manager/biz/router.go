@@ -136,6 +136,7 @@ func RegisterRouter(r *gin.Engine) {
 		}
 		assetCenter := apiv6Group.Group("/asset-center")
 		{
+			assetCenter.POST("/add", v1.NewAsset)
 			assetCenter.POST("/DescribeHosts", v6.DescribeHosts)
 			assetCenter.GET("/DescribeHostDetail", v6.DescribeHostDetail)
 			assetCenter.POST("/AddTags", v6.AddTags)
@@ -206,6 +207,13 @@ func RegisterRouter(r *gin.Engine) {
 			alarmWhiteRouter.POST("/list", v6.GetWhiteList)
 			alarmWhiteRouter.POST("/add", v6.WhiteListAddMulti)
 			alarmWhiteRouter.POST("/del", v6.WhiteListDelMulti)
+		}
+
+		// 系统告警
+		systemRouter := apiv6Group.Group("/systemRouter")
+		{
+			systemRouter.POST("/InsertAlert", v6.InsertAlert)
+			systemRouter.GET("/DescribeAlerts", v6.DescribeAlerts)
 		}
 	}
 }

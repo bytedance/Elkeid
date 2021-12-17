@@ -18,6 +18,7 @@ const (
 	KeyHubAlarmUpdate     = "key_hub_alarm"
 	KeyTraceRawDataUpdate = "key_trace_rawdata"
 	KeyHubAssetUpdate     = "key_hub_asset"
+	KeySystemAlertUpdate  = "key_system_alert"
 	KeyLeaderVulnUpdate   = "key_leader_vuln"
 )
 
@@ -33,6 +34,7 @@ var (
 	HubAlarmOnce           sync.Once
 	TraceRawDataOnce       sync.Once
 	HubAssetOnce           sync.Once
+	SystemAlertOnce        sync.Once
 	LeaderVulnOnce         sync.Once
 )
 
@@ -115,6 +117,14 @@ func HubAssetAsyncWrite(value interface{}) {
 	})
 
 	asyncWrite(KeyHubAssetUpdate, value)
+}
+
+func HubSystemAlertAsyncWrite(value interface{}) {
+	SystemAlertOnce.Do(func() {
+		registerWriter(KeySystemAlertUpdate, &sysAlertWriter{})
+	})
+
+	asyncWrite(KeySystemAlertUpdate, value)
 }
 
 func LeaderVulnAsyncWrite(value interface{}) {
