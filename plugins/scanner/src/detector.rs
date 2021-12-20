@@ -128,6 +128,15 @@ impl ToAgentRecord for DetectFanoEvent<'_> {
         hmp.insert("create_at".to_string(), self.create_at.to_string());
         hmp.insert("modify_at".to_string(), self.modify_at.to_string());
         hmp.insert("pid".to_string(), self.pid.to_string());
+        hmp.insert("ppid".to_string(), self.ppid.to_string());
+        hmp.insert("pgid".to_string(), self.pgid.to_string());
+        hmp.insert("tgid".to_string(), self.tgid.to_string());
+        hmp.insert("argv".to_string(), self.argv.to_string());
+        hmp.insert("comm".to_string(), self.comm.to_string());
+        hmp.insert("sessionid".to_string(), self.sessionid.to_string());
+        hmp.insert("uid".to_string(), self.uid.to_string());
+        hmp.insert("pns".to_string(), self.pns.to_string());
+
         pld.set_fields(hmp);
         r.set_data(pld);
 
