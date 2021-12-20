@@ -1,6 +1,7 @@
 package grpc_handler
 
 import (
+	"encoding/json"
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/kafka"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
@@ -57,13 +58,24 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 			//Task asynchronously pushed to the remote end for reconciliation.
 			item, err := parseRecord(req.GetData()[k])
 			if err != nil {
-				return
+				continue
 			}
 
 			err = GlobalGRPCPool.PushTask2Manager(item)
 			if err != nil {
 				ylog.Errorf("handleRawData", "PushTask2Manager error %s", err.Error())
 			}
+		case 1010, 1011:
+			//agent or plugin error log
+			item, err := parseRecord(req.GetData()[k])
+			if err != nil {
+				continue
+			}
+			b, err := json.Marshal(item)
+			if err != nil {
+				continue
+			}
+			ylog.Infof("AgentErrorLog", "%s", string(b))
 		}
 
 		common.KafkaProducer.SendPBWithKey(req.AgentID, mqMsg)
