@@ -50,7 +50,7 @@ func RegisterRouter(r *gin.Engine) {
 	apiv1Group = r.Group("/api/v1")
 	{
 		apiv1Group.Use(midware.TokenAuth())
-		apiv6Group.Use(midware.RBACAuth())
+		apiv1Group.Use(midware.RBACAuth())
 
 		userRouter := apiv1Group.Group("/user")
 		{
