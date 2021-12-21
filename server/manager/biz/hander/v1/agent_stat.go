@@ -145,9 +145,9 @@ func QueryInfo(c *gin.Context) {
 	}
 
 	res := map[string]AgentExtraInfoResp{}
-	var heartbeat AgentHBInfo
 	defer cursor.Close(context.Background())
 	for cursor.Next(context.Background()) {
+		var heartbeat AgentHBInfo
 		err := cursor.Decode(&heartbeat)
 		if err != nil {
 			ylog.Errorf("GetTagsByID", err.Error())
