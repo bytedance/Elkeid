@@ -148,7 +148,7 @@ PRINT_EVENT_DEFINE(security_inode_create_nosocket,
                    ),
 
 
-                   PE_printk("602" RS "%d" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%u" RS "%u" RS "%s" RS "-1" RS "-1" RS "-1" RS "-1" RS "-1" RS "-1" RS "-1" RS "%s",
+                   PE_printk("602" RS "%d" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%u" RS "%u" RS "%s" RS "-1" RS "-1" RS "-1" RS "-1" RS "-1" RS "-1" RS "%s",
                            __get_ent(uid, __get_current_uid()),
                            __get_str(exe_path, exe_path),
                            __get_ent(pid, current->pid),
