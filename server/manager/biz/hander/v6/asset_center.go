@@ -512,7 +512,7 @@ func DescribeHostDetail(ctx *gin.Context) {
 			},
 			bson.M{
 				"$group": bson.M{
-					"_id": "$risk",
+					"_id": "$SMITH_ALETR_DATA.RULE_INFO.HarmLevel",
 					"count": bson.M{
 						"$sum": 1,
 					},
@@ -525,17 +525,17 @@ func DescribeHostDetail(ctx *gin.Context) {
 			return
 		}
 		for cursor.Next(ctx) {
-			level, ok1 := cursor.Current.Lookup("_id").AsInt64OK()
+			level, ok1 := cursor.Current.Lookup("_id").StringValueOK()
 			count, ok2 := cursor.Current.Lookup("count").AsInt64OK()
 			if ok1 && ok2 {
 				switch level {
-				case 4:
+				case "critical":
 					hd.Alarm.Critical = count
-				case 3:
+				case "high":
 					hd.Alarm.High = count
-				case 2:
+				case "medium":
 					hd.Alarm.Medium = count
-				case 1:
+				case "low":
 					hd.Alarm.Low = count
 				}
 			}
