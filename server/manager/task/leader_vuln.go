@@ -350,8 +350,12 @@ func DealPkgList(agentPkgList AgentPkgList) []mongo.WriteModel {
 	var writes []mongo.WriteModel
 	c := context.Background()
 
+	// 获取当前未处理漏洞总数，用于计算
+	collection := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.AgentVulnInfo)
+	unProcessedCount, _ := collection.CountDocuments(c, bson.M{"agent_id": agentPkgList.AgentId, "status": VulnStatusUnProcessed})
+
 	// 匹配cpe，获取新漏洞列表
-	collection := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.CpeInfoCollection)
+	collection = infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.CpeInfoCollection)
 	newVulnInfoMap := make(map[int64]AgentVulnInfo)
 	newVulnInfoMap = GetVulnList(agentPkgList)
 
@@ -372,6 +376,7 @@ func DealPkgList(agentPkgList AgentPkgList) []mongo.WriteModel {
 		if _, ok := newVulnInfoMap[vulnId]; !ok {
 			if vulnInfo.Status != VulnStatusProcessed {
 				delVulnList = append(delVulnList, vulnId)
+				unProcessedCount--
 			}
 		}
 	}
@@ -404,7 +409,6 @@ func DealPkgList(agentPkgList AgentPkgList) []mongo.WriteModel {
 	}
 
 	// 更新，插入漏洞(只关心未处理漏洞)
-	unProcessedCount := 0
 	levelMap := map[string]string{
 		"1": "low",
 		"2": "low",
@@ -417,18 +421,18 @@ func DealPkgList(agentPkgList AgentPkgList) []mongo.WriteModel {
 
 		if oldVulnInfo, ok := oldVulnInfoMap[vulnId]; !ok {
 			// 生成新漏洞
+			unProcessedCount++
 			vulnInfo.CreateTime = time.Now().Unix()
 			vulnInfo.ControlTime = time.Now().Unix()
 			vulnInfo.Status = VulnStatusUnProcessed
-			unProcessedCount++
 		} else if oldVulnInfo.Status == VulnStatusUnProcessed {
 			vulnInfo.CreateTime = oldVulnInfo.CreateTime
 			vulnInfo.Status = oldVulnInfo.Status
-			unProcessedCount++
 		} else {
 			continue
 		}
 		vulnInfo.AgentId = agentPkgList.AgentId
+		vulnInfo.DataType = agentPkgList.DataType
 		vulnInfo.VulnId = vulnId
 		vulnInfo.PackageName = newVulnInfo.PackageName
 		vulnInfo.PackageVersion = newVulnInfo.PackageVersion
@@ -443,9 +447,7 @@ func DealPkgList(agentPkgList AgentPkgList) []mongo.WriteModel {
 		writes = append(writes, model)
 	}
 
-	// 计算漏洞总数，并更新到主机心跳包中
-	collection = infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.AgentVulnInfo)
-
+	// 更新漏洞总数到主机心跳包中
 	filterQuery := bson.M{"agent_id": agentPkgList.AgentId}
 	updateQuery := bson.M{"$set": bson.M{"risk.vuln": unProcessedCount}}
 	ahCol := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.AgentHeartBeatCollection)

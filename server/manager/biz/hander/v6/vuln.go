@@ -100,14 +100,6 @@ func GetAgentPkgList(c *gin.Context) {
 		}
 	}
 
-	// 发送baseline_info用于测试
-	collection := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.BaseLineInfoColl)
-	_, err = collection.InsertOne(c, newAsset)
-	if err != nil {
-		common.CreateResponse(c, common.DBOperateErrorCode, err.Error())
-		return
-	}
-
 	// 绑定软件包列表
 	var agentPkgList AgentPkgList
 	agentPkgList.AgentId = newAsset["agent_id"].(string)

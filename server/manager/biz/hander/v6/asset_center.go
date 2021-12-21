@@ -24,6 +24,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/gridfs"
 )
 
+var UTC_OFFSET = "+0800"
+
+func init() {
+	UTC_OFFSET = strings.Fields(time.Now().String())[2]
+}
+
 const DEFAULT_OFFLINE_DURATION = 30 * 60
 
 type HostBasicInfo struct {
@@ -1703,8 +1709,8 @@ type DescribeLast7DaysAlarmStatisticsResp struct {
 }
 
 func DescribeLast7DaysAlarmStatistics(ctx *gin.Context) {
-	c := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.HubAlarmCollectionV1)
 	_, offset := time.Now().Zone()
+	c := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.HubAlarmCollectionV1)
 	cursor, err := c.Aggregate(ctx,
 		bson.A{
 			bson.M{
@@ -1728,9 +1734,9 @@ func DescribeLast7DaysAlarmStatistics(ctx *gin.Context) {
 				}},
 			bson.M{"$group": bson.M{
 				"_id": bson.M{
-					"month": bson.M{"$month": "$date"},
-					"day":   bson.M{"$dayOfMonth": "$date"},
-					"year":  bson.M{"$year": "$date"},
+					"month": bson.M{"$month": bson.M{"date": "$date", "timezone": UTC_OFFSET}},
+					"day":   bson.M{"$dayOfMonth": bson.M{"date": "$date", "timezone": UTC_OFFSET}},
+					"year":  bson.M{"$year": bson.M{"date": "$date", "timezone": UTC_OFFSET}},
 					"risk":  "$risk",
 				},
 				"count": bson.M{
@@ -1824,9 +1830,9 @@ func DescribeLast7DaysVulnStatistics(ctx *gin.Context) {
 				}},
 			bson.M{"$group": bson.M{
 				"_id": bson.M{
-					"month": bson.M{"$month": "$date"},
-					"day":   bson.M{"$dayOfMonth": "$date"},
-					"year":  bson.M{"$year": "$date"},
+					"month": bson.M{"$month": bson.M{"date": "$date", "timezone": UTC_OFFSET}},
+					"day":   bson.M{"$dayOfMonth": bson.M{"date": "$date", "timezone": UTC_OFFSET}},
+					"year":  bson.M{"$year": bson.M{"date": "$date", "timezone": UTC_OFFSET}},
 					"risk":  "$risk",
 				},
 				"count": bson.M{
@@ -1921,9 +1927,9 @@ func DescribeLast7DaysOperationStatistics(ctx *gin.Context) {
 				}},
 			bson.M{"$group": bson.M{
 				"_id": bson.M{
-					"month": bson.M{"$month": "$date"},
-					"day":   bson.M{"$dayOfMonth": "$date"},
-					"year":  bson.M{"$year": "$date"},
+					"month": bson.M{"$month": bson.M{"date": "$date", "timezone": UTC_OFFSET}},
+					"day":   bson.M{"$dayOfMonth": bson.M{"date": "$date", "timezone": UTC_OFFSET}},
+					"year":  bson.M{"$year": bson.M{"date": "$date", "timezone": UTC_OFFSET}},
 				},
 				"count": bson.M{
 					"$sum": 1,
