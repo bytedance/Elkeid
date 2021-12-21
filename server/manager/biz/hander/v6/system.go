@@ -6,6 +6,7 @@ import (
 	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	dbtask "github.com/bytedance/Elkeid/server/manager/task"
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"time"
 )
@@ -35,6 +36,8 @@ func DescribeAlerts(ctx *gin.Context) {
 	preq := PageSearch{
 		Page:     TernaryInt64(pq.Page == 0, DefaultPage, pq.Page),
 		PageSize: TernaryInt64(pq.PageSize == 0, DefaultPageSize, pq.PageSize),
+		Filter:   bson.M{},
+		Sorter:   nil,
 	}
 
 	data := make([]map[string]interface{}, 0, pq.PageSize)

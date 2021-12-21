@@ -11,7 +11,7 @@ import (
 
 const (
 	ConfigUrl = `http://%s/api/v1/agent/getConfig/%s`
-	TagsUrl   = `%s/api/v1/agent/queryInfo`
+	TagsUrl   = `http://%s/api/v1/agent/queryInfo`
 )
 
 type ResAgentConf struct {
