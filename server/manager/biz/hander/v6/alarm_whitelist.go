@@ -1,6 +1,7 @@
 package v6
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -94,9 +95,76 @@ var WHITELIST_KEY_TYPE map[string]string = map[string]string{
 	"ld_preload":  "ld_preload",
 	"ko_file":     "ko_file",
 	"module_name": "module_name",
+	"exe_hash":    "exe_hash",
+}
+
+type AlarmDbDataForWhite struct {
+	Id      string `json:"_id" bson:"_id"`
+	AgentId string `json:"agent_id" bson:"agent_id"`
+	Status  int    `json:"__alarm_status" bson:"__alarm_status"`
+	HitWl   bool   `json:"__hit_wl" bson:"__hit_wl"`
 }
 
 // ############################### Function ###############################
+func init() {
+	go AdjustAgentAlarmNum()
+}
+
+func AdjustAgentAlarmNum() {
+	ticker := time.NewTicker(3 * time.Second)
+	alarmCol := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.HubAlarmCollectionV1)
+	hbCol := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.AgentHeartBeatCollection)
+	var lastIndex int64 = 0
+	ylog.Infof("Start the AdjustAgentAlarmNum", "lastIndex %d", lastIndex)
+	for {
+		select {
+		case <-ticker.C:
+			// select all new udpate alarm
+			runCtx := context.Background()
+			nowIndex := time.Now().Unix() - 1
+			query := bson.M{"__checked": true, "__update_time": bson.M{"$lt": nowIndex, "$gte": lastIndex}}
+			cur, err := alarmCol.Find(runCtx, query)
+			if err != nil {
+				ylog.Errorf("AdjustAgentAlarmNum find alarm error", "%s", err.Error())
+				continue
+			}
+
+			//
+			var agentList map[string]int = make(map[string]int)
+			for cur.Next(runCtx) {
+				var data AlarmDbDataForWhite
+				err = cur.Decode(&data)
+				if err != nil {
+					ylog.Errorf("AdjustAgentAlarmNum Decode alarm for white error", "%s", err.Error())
+					continue
+				}
+				agentList[data.AgentId] = 0
+			}
+
+			cur.Close(runCtx)
+
+			// update agent alarm num one by one
+			for one := range agentList {
+				numQuery := bson.M{"agent_id": one, "__checked": true, "__hit_wl": false, "__alarm_status": 0}
+				addQuery := bson.M{"agent_id": one}
+				// get total num first
+				totalNum, err := alarmCol.CountDocuments(runCtx, numQuery)
+				if err != nil {
+					ylog.Errorf("AddOneAlarmToAgentHb for white on get alarm count", "error %s", err.Error())
+				}
+				// update alarm num
+				addOpt := bson.M{"$set": bson.M{"risk.alarm": totalNum}}
+				_, err = hbCol.UpdateOne(runCtx, addQuery, addOpt)
+				if err != nil {
+					ylog.Errorf("AddOneAlarmToAgentHb for white on update alarm num", "error %s", err.Error())
+				}
+			}
+			ylog.Debugf("AdjustAgentAlarmNum end ", "last %d nowd %d", lastIndex, nowIndex)
+			lastIndex = nowIndex
+		}
+	}
+}
+
 func GetWhiteList(c *gin.Context) {
 	var pageRequest PageRequest
 	err := c.BindQuery(&pageRequest)

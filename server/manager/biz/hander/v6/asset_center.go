@@ -24,6 +24,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/gridfs"
 )
 
+var UTC_OFFSET = "+0800"
+
+func init() {
+	UTC_OFFSET = strings.Fields(time.Now().String())[2]
+}
+
 const DEFAULT_OFFLINE_DURATION = 30 * 60
 
 type HostBasicInfo struct {
@@ -446,15 +452,21 @@ func DescribeHostDetail(ctx *gin.Context) {
 		hd.Normalize()
 		current := time.Now().Unix()
 		for index, p := range hd.Plugins {
-			for _, c := range hd.Config {
-				if p.Name == c.Name {
-					hd.Plugins[index].Type = TernaryString(c.Type == "", "exec", c.Type)
-				}
-				if current-p.LastHeartbeatTime > DEFAULT_OFFLINE_DURATION {
-					hd.Plugins[index].Status = "exited"
-				} else {
-					hd.Plugins[index].Status = "running"
-				}
+			// for _, c := range hd.Config {
+			// 	if p.Name == c.Name {
+			// 		hd.Plugins[index].Type = TernaryString(c.Type == "", "exec", c.Type)
+			// 	}
+			// 	if current-p.LastHeartbeatTime > DEFAULT_OFFLINE_DURATION {
+			// 		hd.Plugins[index].Status = "exited"
+			// 	} else {
+			// 		hd.Plugins[index].Status = "running"
+			// 	}
+			// }
+			hd.Plugins[index].Type = "exec"
+			if current-p.LastHeartbeatTime > DEFAULT_OFFLINE_DURATION {
+				hd.Plugins[index].Status = "exited"
+			} else {
+				hd.Plugins[index].Status = "running"
 			}
 		}
 		c = infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.HubAssetCollectionV1)
@@ -479,7 +491,7 @@ func DescribeHostDetail(ctx *gin.Context) {
 							hd.AssetFingerprint.User = int64(len(data))
 						case "5003":
 							hd.AssetFingerprint.Cron = int64(len(data))
-						case "5004", "5005", "5006":
+						case "5004", "5005", "5006", "5011":
 							hd.AssetFingerprint.Software += int64(len(data))
 						case "5010":
 							hd.AssetFingerprint.Service = int64(len(data))
@@ -1262,7 +1274,7 @@ type DescribeHostSoftwareReq struct {
 	AgentID string `json:"agent_id" binding:"required"`
 	Name    string `json:"name" bson:"name"`
 	Version string `json:"version" bson:"version"`
-	Type    string `json:"type" binding:"omitempty,oneof=pypi dpkg rpm"`
+	Type    string `json:"type" binding:"omitempty,oneof=pypi dpkg rpm jar"`
 }
 
 func (r *DescribeHostSoftwareReq) GenerateFilter() (bson.M, bson.M) {
@@ -1276,8 +1288,10 @@ func (r *DescribeHostSoftwareReq) GenerateFilter() (bson.M, bson.M) {
 		bm["data_type"] = "5005"
 	case "pypi":
 		bm["data_type"] = "5006"
+	case "jar":
+		bm["data_type"] = "5011"
 	default:
-		bm["data_type"] = bson.M{"$in": bson.A{"5004", "5005", "5006"}}
+		bm["data_type"] = bson.M{"$in": bson.A{"5004", "5005", "5006", "5011"}}
 	}
 	dm := bson.M{}
 	if r.Name != "" {
@@ -1341,6 +1355,8 @@ func DescribeHostSoftware(ctx *gin.Context) {
 					item.Type = "rpm"
 				} else if dt == "5006" {
 					item.Type = "pypi"
+				} else if dt == "5011" {
+					item.Type = "jar"
 				}
 			}
 			if updateTime, ok := c.Current.Lookup("leader_time").Int64OK(); ok {
@@ -1693,8 +1709,8 @@ type DescribeLast7DaysAlarmStatisticsResp struct {
 }
 
 func DescribeLast7DaysAlarmStatistics(ctx *gin.Context) {
-	c := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.HubAlarmCollectionV1)
 	_, offset := time.Now().Zone()
+	c := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.HubAlarmCollectionV1)
 	cursor, err := c.Aggregate(ctx,
 		bson.A{
 			bson.M{
@@ -1718,9 +1734,9 @@ func DescribeLast7DaysAlarmStatistics(ctx *gin.Context) {
 				}},
 			bson.M{"$group": bson.M{
 				"_id": bson.M{
-					"month": bson.M{"$month": "$date"},
-					"day":   bson.M{"$dayOfMonth": "$date"},
-					"year":  bson.M{"$year": "$date"},
+					"month": bson.M{"$month": bson.M{"date": "$date", "timezone": UTC_OFFSET}},
+					"day":   bson.M{"$dayOfMonth": bson.M{"date": "$date", "timezone": UTC_OFFSET}},
+					"year":  bson.M{"$year": bson.M{"date": "$date", "timezone": UTC_OFFSET}},
 					"risk":  "$risk",
 				},
 				"count": bson.M{
@@ -1814,9 +1830,9 @@ func DescribeLast7DaysVulnStatistics(ctx *gin.Context) {
 				}},
 			bson.M{"$group": bson.M{
 				"_id": bson.M{
-					"month": bson.M{"$month": "$date"},
-					"day":   bson.M{"$dayOfMonth": "$date"},
-					"year":  bson.M{"$year": "$date"},
+					"month": bson.M{"$month": bson.M{"date": "$date", "timezone": UTC_OFFSET}},
+					"day":   bson.M{"$dayOfMonth": bson.M{"date": "$date", "timezone": UTC_OFFSET}},
+					"year":  bson.M{"$year": bson.M{"date": "$date", "timezone": UTC_OFFSET}},
 					"risk":  "$risk",
 				},
 				"count": bson.M{
@@ -1911,9 +1927,9 @@ func DescribeLast7DaysOperationStatistics(ctx *gin.Context) {
 				}},
 			bson.M{"$group": bson.M{
 				"_id": bson.M{
-					"month": bson.M{"$month": "$date"},
-					"day":   bson.M{"$dayOfMonth": "$date"},
-					"year":  bson.M{"$year": "$date"},
+					"month": bson.M{"$month": bson.M{"date": "$date", "timezone": UTC_OFFSET}},
+					"day":   bson.M{"$dayOfMonth": bson.M{"date": "$date", "timezone": UTC_OFFSET}},
+					"year":  bson.M{"$year": bson.M{"date": "$date", "timezone": UTC_OFFSET}},
 				},
 				"count": bson.M{
 					"$sum": 1,

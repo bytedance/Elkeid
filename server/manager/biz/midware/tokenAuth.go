@@ -4,19 +4,21 @@ import (
 	"crypto/sha1"
 	"errors"
 	"fmt"
-	"github.com/bytedance/Elkeid/server/manager/infra"
-	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/bytedance/Elkeid/server/manager/infra"
+	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
 )
 
 var whiteUrlList = []string{"/api/v1/user/login",
 	"/api/v1/agent/subTask/updateSubTask",
-	"/api/v1/agent/queryInfo"}
+	"/api/v1/agent/queryInfo",
+	"/api/v6/systemRouter/InsertAlert"}
 
 type AuthClaims struct {
 	Username string `json:"username"`

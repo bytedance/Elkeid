@@ -22,11 +22,11 @@
     "path_pre": [],
     "path_regex": [],
     "path_equal": [
-      "/api/v1/user/createUser",
+      "/api/v1/user/new",
       "/api/v1/user/del",
       "/api/v1/user/update",
       "/api/v6/user/DelList",
-      "/api/v6/user/List"
+      "/api/v6/user/new"
     ],
     "authorized_roles": [
       0
@@ -52,7 +52,9 @@
       "/api/v1/agent/getSubTask/",
       "/api/v1/agent/statistic/",
       "/api/v1/agent/getTask/",
-      "/api/v1/agent/getJob/"
+      "/api/v1/agent/getJob/",
+      "/api/v6/asset-center/Describe",
+      "/api/v6/asset-center/Export"
     ],
     "path_regex": [],
     "authorized_roles": [
@@ -76,9 +78,24 @@
       "/api/v1/rasp/updateConfig",
       "/api/v1/addTags",
       "/api/v1/addTags/filter",
-      "/api/v1/delTags"
+      "/api/v1/delTags",
+      "/api/v6/agent/controlTask",
+      "/api/v6/agent/createAgentTask",
+      "/api/v6/agent/createPluTask",
+      "/api/v6/module/CreateModule",
+      "/api/v6/moudle/DeleteMoudle",
+      "/api/v6/agent/UpdateMoudle",
+      "/api/v6/vuln/VulnIpControl",
+      "/api/v6/vuln/VulnControl",
+      "/api/v6/alarm/update",
+      "/api/v6/whitelist/del",
+      "/api/v6/whitelist/add"
     ],
-    "path_pre": [],
+    "path_pre": [
+      "/api/v6/asset-center/Delete",
+      "/api/v6/asset-center/Add",
+      "/api/v6/asset-center/Update"
+    ],
     "path_regex": [],
     "authorized_roles": [
       0,
@@ -110,15 +127,23 @@
     "path_equal": [
       "/api/v1/agent/queryInfo",
       "/api/v1/event/push",
+      "/api/v1/rasp/getConfig",
+      "/api/v1/hub/sync/operationid",
       "/api/v1/user/login",
-      "/api/v1/agent/updateSubTask",
+      "/api/v1/user/sso_url",
+      "/api/v1/user/sso_logout",
+      "/api/v1/user/sso_token",
+      "/api/v1/agent/subTask/update",
       "/api/v1/tags/query",
       "/api/v1/hub/sync/config",
-      "/api/v1/hub/sync/config"
+      "/api/v1/hub/sync/config",
+      "/api/v6/systemRouter/InsertAlert"
     ],
     "path_pre": [
       "/api/v1/hub/download/",
-      "/api/v1/agent/config/"
+      "/api/v1/agent/config/",
+      "/api/v1/agent/getConfig2/",
+      "/api/v5/getTrace/"
     ],
     "path_regex": [],
     "authorized_roles": [],
@@ -126,3 +151,11 @@
     "desc": "部分接口不需要鉴权"
   }
 ]
+
+
+
+
+
+
+
+

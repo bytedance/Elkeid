@@ -57,6 +57,7 @@ type AlarmDetailDataBaseAlarm struct {
 	UpdateTime int64  `json:"update_time"`
 	Desc       string `json:"desc"`
 	Suggest    string `json:"suggest"`
+	Docker     string `json:"docker"`
 }
 
 type AlarmNewStatus struct {
@@ -81,7 +82,7 @@ type AgentStatisticsReq struct {
 type AgentHbInfo struct {
 	Platform        string   `json:"platform" bson:"platform"`
 	PlatformFamily  string   `json:"platform_family" bson:"platform_family"`
-	PlatformVersion float64  `json:"platform_version" bson:"platform_version"`
+	PlatformVersion string   `json:"platform_version" bson:"platform_version"`
 	InnerIPv4       []string `json:"intranet_ipv4" bson:"intranet_ipv4"`
 	OuterIPv4       []string `json:"extranet_ipv4" bson:"extranet_ipv4"`
 }
@@ -103,6 +104,7 @@ var AlarmTypeCnToEn map[string]string = map[string]string{
 	"变形木马": "evasion",
 	"恶意破坏": "purpose",
 	"静态检测": "static_scan",
+	"杀伤链":  "killchain",
 }
 
 // ############################### Variable ###############################
@@ -330,7 +332,7 @@ func GetAlarmList(c *gin.Context) {
 
 func UpdateAlarmStatus(c *gin.Context) {
 	var upReq AlarmStatusUpdateRequest
-	var agList []string = []string{}
+	// var agList []string = []string{}
 	err := c.BindJSON(&upReq)
 	if err != nil {
 		CreateResponse(c, common.ParamInvalidErrorCode, err.Error())
@@ -362,15 +364,16 @@ func UpdateAlarmStatus(c *gin.Context) {
 			writes = append(writes, model)
 
 			// get agent id from alarm
-			var rawData AlarmDbData
-			queryJs := bson.M{"_id": objId}
-			oneRes := col.FindOne(c, queryJs)
-			err = oneRes.Decode(&rawData)
-			if err == nil {
-				agList = append(agList, rawData.AgentId)
-			} else {
-				ylog.Errorf("Get agent id from alarm table error", err.Error())
-			}
+			/*
+				var rawData AlarmDbData
+				queryJs := bson.M{"_id": objId}
+				oneRes := col.FindOne(c, queryJs)
+				err = oneRes.Decode(&rawData)
+				if err == nil {
+					agList = append(agList, rawData.AgentId)
+				} else {
+					ylog.Errorf("Get agent id from alarm table error", err.Error())
+				}*/
 		}
 
 		res = append(res, tmp)
@@ -384,9 +387,10 @@ func UpdateAlarmStatus(c *gin.Context) {
 	}
 
 	// update asset info
-	for _, a := range agList {
-		DelOneAlarmForAgentHb(c, a)
-	}
+	/*
+		for _, a := range agList {
+			DelOneAlarmForAgentHb(c, a)
+		}*/
 
 	CreateResponse(c, common.SuccessCode, res)
 }
@@ -420,9 +424,11 @@ func MakeAlarmDetail(src *AlarmDbData, dst *AlarmDetailData) {
 	dst.BaseAlarm.AlarmLevel = src.Info.RuleInfo.HarmLevel
 	dst.BaseAlarm.AlarmType = src.AlertTypeUs
 	dst.BaseAlarm.Status = src.Status
-	dst.BaseAlarm.UpdateTime = src.UpdateTime
+	// dst.BaseAlarm.UpdateTime = src.UpdateTime
+	dst.BaseAlarm.UpdateTime = src.InsertTime
 	dst.BaseAlarm.Desc = src.Info.RuleInfo.Desc
 	dst.BaseAlarm.Suggest = src.Suggestion
+	dst.BaseAlarm.Docker = src.InDocker
 
 	// comm alarm
 	switch src.DataType {
@@ -468,14 +474,22 @@ func MakeAlarmDetail(src *AlarmDbData, dst *AlarmDetailData) {
 		dst.Plus59.Ssh = src.Ssh
 		dst.Plus59.SshInfo = src.SshInfo
 		dst.Plus59.Uid = src.Uid
-		dst.Plus59.SshInfo = fmt.Sprintf("%s:%s -> %s:%s",
-			src.Sip, src.Sport, src.Dip, src.Dport)
+		if src.ConnInfo != "" {
+			dst.Plus59.SshInfo = src.ConnInfo
+		} else {
+			dst.Plus59.SshInfo = fmt.Sprintf("%s:%s -> %s:%s",
+				src.Sip, src.Sport, src.Dip, src.Dport)
+		}
 	}
 
 	if src.DataType == ALARM_DATA_TYPE_42 {
 		dst.Plus42.PidTree = src.PidTree
-		dst.Plus42.SshInfo = fmt.Sprintf("%s:%s -> %s:%s",
-			src.Sip, src.Sport, src.Dip, src.Dport)
+		if src.ConnInfo != "" {
+			dst.Plus42.SshInfo = src.ConnInfo
+		} else {
+			dst.Plus42.SshInfo = fmt.Sprintf("%s:%s -> %s:%s",
+				src.Sip, src.Sport, src.Dip, src.Dport)
+		}
 	}
 
 	if src.DataType == ALARM_DATA_TYPE_49 {
@@ -559,7 +573,7 @@ func GetAgentOsVer(c *gin.Context, aid string) string {
 			ylog.Errorf("GetAgentOsVer", "get hb error %s", err.Error())
 		}
 	} else {
-		retStr = fmt.Sprintf("%s %g", oneHb.PlatformFamily, oneHb.PlatformVersion)
+		retStr = fmt.Sprintf("%s %s", oneHb.PlatformFamily, oneHb.PlatformVersion)
 	}
 
 	return retStr
@@ -594,7 +608,11 @@ func GetOneAlarm(c *gin.Context) {
 	MakeAlarmDetail(&oneAlarm, &rsp)
 
 	// get os version
-	rsp.BaseAgent.Os = GetAgentOsVer(c, oneAlarm.AgentId)
+	if rsp.DataType == "" {
+		GetAgentDetail(c, oneAlarm.AgentId, &rsp.BaseAgent)
+	} else {
+		rsp.BaseAgent.Os = GetAgentOsVer(c, oneAlarm.AgentId)
+	}
 
 	CreateResponse(c, common.SuccessCode, rsp)
 }
@@ -719,10 +737,10 @@ func AddOneAlarm(c *gin.Context) {
 	dbtask.HubAlarmAsyncWrite(newAlarm)
 
 	// update agent alarm count
-	agid, aok := newAlarm["agent_id"].(string)
+	/*agid, aok := newAlarm["agent_id"].(string)
 	if aok {
 		AddOneAlarmForAgentHb(c, agid)
-	}
+	}*/
 
 	// send response
 	common.CreateResponse(c, common.SuccessCode, "ok")
@@ -746,4 +764,61 @@ func DelOneAlarmForAgentHb(c *gin.Context, agent_id string) {
 	if err != nil {
 		ylog.Errorf("AddOneAlarmForAgentHb", "error %s", err.Error())
 	}
+}
+
+func GetAgentDetail(c *gin.Context, aid string, dst *AlarmDetailDataBaseAgent) error {
+	var oneHb AgentHbInfo = AgentHbInfo{}
+	if aid == "" {
+		return nil
+	}
+
+	hbCol := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.AgentHeartBeatCollection)
+	queryJs := bson.M{"agent_id": aid}
+	err := hbCol.FindOne(c, queryJs).Decode(&oneHb)
+	if err != nil {
+		if err != mongo.ErrNoDocuments {
+			ylog.Errorf("GetAgentOsVer", "get hb error %s", err.Error())
+			return err
+		}
+	}
+
+	// update detail
+	dst.Os = fmt.Sprintf("%s %s", oneHb.PlatformFamily, oneHb.PlatformVersion)
+	dst.InnerIPs = make([]string, len(oneHb.InnerIPv4))
+	dst.OuterIPs = make([]string, len(oneHb.OuterIPv4))
+	copy(dst.InnerIPs, oneHb.InnerIPv4)
+	copy(dst.OuterIPs, oneHb.OuterIPv4)
+
+	return nil
+}
+
+func GetOneAlarmRaw(c *gin.Context) {
+	var rsp AlarmRawData
+	alarmId := c.Param("aid")
+	if alarmId == "" {
+		qErr := errors.New("alarm_id is empty")
+		CreateResponse(c, common.ParamInvalidErrorCode, qErr.Error())
+		return
+	}
+
+	oid, oErr := primitive.ObjectIDFromHex(alarmId)
+	if oErr != nil {
+		CreateResponse(c, common.ParamInvalidErrorCode, oErr.Error())
+		return
+	}
+
+	// query data
+	var raw map[string]interface{}
+	col := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.HubAlarmCollectionV1)
+	queryJS := bson.M{"_id": bson.M{"$eq": oid}}
+	err := col.FindOne(c, queryJS).Decode(&raw)
+	if err != nil {
+		CreateResponse(c, common.DBOperateErrorCode, err.Error())
+		return
+	}
+
+	// get os version
+	rsp.RawData = raw
+
+	CreateResponse(c, common.SuccessCode, rsp)
 }

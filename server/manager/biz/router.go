@@ -55,8 +55,11 @@ func RegisterRouter(r *gin.Engine) {
 		{
 			userRouter.POST("/login", v1.UserLogin)
 			userRouter.GET("/logout", v1.UserLoginout)
-			userRouter.POST("/createUser", v1.CreateUser)
+			// userRouter.POST("/createUser", v1.CreateUser)
 			userRouter.GET("/info", v1.UserInfo)
+			userRouter.POST("/update", v1.UpdateUser)
+			userRouter.POST("/resetPassword", v1.ResetPassword)
+			userRouter.POST("/checkUser", v1.CheckPassword)
 		}
 
 		agentRouter := apiv1Group.Group("/agent")
@@ -188,7 +191,9 @@ func RegisterRouter(r *gin.Engine) {
 			vulnRouter.GET("/GetVulnInfo", v6.GetVulnInfo)
 			vulnRouter.POST("/VulnHostList", v6.VulnHostList)
 			vulnRouter.POST("/VulnIpControl", v6.VulnIpControl)
+			vulnRouter.POST("/OneIpVulnControl", v6.OneIpVulnControl)
 			vulnRouter.POST("/VulnControl", v6.VulnControl)
+			vulnRouter.POST("/FlushCpeCache", v6.FlushCpeCache)
 		}
 
 		// 告警新接口
@@ -198,6 +203,7 @@ func RegisterRouter(r *gin.Engine) {
 			alarmRouter.POST("/list", v6.GetAlarmList)
 			alarmRouter.GET("/statistics", v6.GetAlarmStat)
 			alarmRouter.GET("/get/:aid", v6.GetOneAlarm)
+			alarmRouter.GET("/raw/:aid", v6.GetOneAlarmRaw)
 			alarmRouter.POST("/add", v6.AddOneAlarm)
 		}
 

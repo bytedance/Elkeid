@@ -239,7 +239,7 @@ func GetModuleList(c *gin.Context) {
 	}
 
 	// mongo查询并迭代处理
-	var dataResponse []Module
+	dataResponse := make([]Module, 0)
 	pageResponse, err := DBSearchPaginate(
 		collection,
 		pageSearch,
@@ -256,7 +256,7 @@ func GetModuleList(c *gin.Context) {
 	)
 	if err != nil {
 		ylog.Errorf("GetTaskList", err.Error())
-		common.CreateResponse(c, common.DBOperateErrorCode, err.Error())
+		CreatePageResponse(c, common.DBOperateErrorCode, dataResponse, *pageResponse)
 		return
 	}
 
