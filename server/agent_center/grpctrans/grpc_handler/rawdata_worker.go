@@ -93,6 +93,12 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 	//存储心跳数据到connect
 	detail := make(map[string]interface{}, len(hb)+9)
 	for k, v := range hb {
+		//部分字段不需要修改
+		if k == "platform_version" {
+			detail[k] = v
+			continue
+		}
+
 		fv, err = strconv.ParseFloat(v, 64)
 		if err == nil {
 			detail[k] = fv
@@ -148,6 +154,12 @@ func parsePluginHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connect
 
 	detail := make(map[string]interface{}, len(data)+8)
 	for k, v := range data {
+		//部分字段不需要修改
+		if k == "pversion" {
+			detail[k] = v
+			continue
+		}
+
 		fv, err = strconv.ParseFloat(v, 64)
 		if err == nil {
 			detail[k] = fv
