@@ -86,7 +86,8 @@ type AlarmDbData struct {
 	ExeHash         string       `json:"exe_hash" bson:"exe_hash"`
 	CreateTime      string       `json:"create_at" bson:"create_at"`
 	ModifyTime      string       `json:"modify_at" bson:"modify_at"`
-	TopPatternName  string       `json:"top_pattern_name"`
+	PidSet          string       `json:"pid_set" bson:"pid_set"`
+	ConnInfo        string       `json:"connect_info" bson:"connect_info"`
 }
 
 type AlarmDetailData struct {
@@ -111,6 +112,10 @@ type AlarmDetailData struct {
 	Plus4000  AlarmDataType4000        `json:"plus_alarm_info_4000"`
 	Plus6001  AlarmDataType6001        `json:"plus_alarm_info_6001"`
 	Plus6002  AlarmDataType6002        `json:"plus_alarm_info_6002"`
+}
+
+type AlarmRawData struct {
+	RawData map[string]interface{} `json:"rawdata"`
 }
 
 type AlarmDetailDataCommAlarm struct {
@@ -196,13 +201,14 @@ type AlarmDataType4000 struct {
 }
 
 type AlarmKillChain struct {
-	TopChain       string `json:"top_chain"`
-	TopRuleChain   string `json:"top_rule_chain"`
-	Graph          string `json:"graph"`
-	ExtConns       string `json:"external_conns"`
-	InDocker       string `json:"docker"`
-	TimeStamp      string `json:"timestamp"`
-	TopPatternName string `json:"top_pattern_name"`
+	TopChain     string `json:"top_chain"`
+	TopRuleChain string `json:"top_rule_chain"`
+	Graph        string `json:"graph"`
+	ExtConns     string `json:"external_conns"`
+	InDocker     string `json:"docker"`
+	TimeStamp    string `json:"timestamp"`
+	PidSet       string `json:"pid_set"`
+	Ssh          string `json:"ssh"`
 }
 
 type AlarmDataType6001 struct {
@@ -234,7 +240,8 @@ func CopyDataTypeKC(dst *AlarmDetailData, src *AlarmDbData) {
 	dst.PlusKC.Graph = src.Graph
 	dst.PlusKC.InDocker = src.InDocker
 	dst.PlusKC.TimeStamp = src.TimeStamp
-	dst.PlusKC.TopPatternName = src.TopPatternName
+	dst.PlusKC.PidSet = src.PidSet
+	dst.PlusKC.Ssh = src.Ssh
 }
 
 func CopyDataType6001(dst *AlarmDetailData, src *AlarmDbData) {

@@ -26,6 +26,7 @@ const (
 	HIDSTraceRawDataV1      = "hids_trace_rawdata"
 	HIDSTraceTaskV1         = "hids_trace_task"
 	SystemAlertCollectionV1 = "system_alert_v1"
+	BaseLineInfoColl        = "baseline_info"
 )
 
 var (

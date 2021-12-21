@@ -56,6 +56,9 @@ type VulnInfo struct {
 	ReferUrls  string `json:"refer_urls" bson:"vuln_references"`
 	Cwe        string `json:"cwe" bson:"vuln_type_cn"`
 	VulnId     int64  `json:"vuln_id" bson:"id"`
+	VulnNameEn string `json:"vuln_name_en" bson:"title_en"`
+	DescriptEn string `json:"descript_en" bson:"description_en"`
+	SuggestEn  string `json:"suggest_en" bson:"solution_en"`
 }
 
 type CpeInfo struct {
@@ -78,7 +81,6 @@ const (
 
 // 获取agent软件包信息(hub调用)
 func GetAgentPkgList(c *gin.Context) {
-
 	var newAsset map[string]interface{}
 	err := c.BindJSON(&newAsset)
 	if err != nil {
@@ -98,6 +100,14 @@ func GetAgentPkgList(c *gin.Context) {
 		}
 	}
 
+	// 发送baseline_info用于测试
+	collection := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.BaseLineInfoColl)
+	_, err = collection.InsertOne(c, newAsset)
+	if err != nil {
+		common.CreateResponse(c, common.DBOperateErrorCode, err.Error())
+		return
+	}
+
 	// 绑定软件包列表
 	var agentPkgList AgentPkgList
 	agentPkgList.AgentId = newAsset["agent_id"].(string)
@@ -107,6 +117,11 @@ func GetAgentPkgList(c *gin.Context) {
 	dbtask.LeaderVulnAsyncWrite(agentPkgList)
 	common.CreateResponse(c, common.SuccessCode, "ok")
 	return
+}
+
+// 清空CPE缓存
+func FlushCpeCache(c *gin.Context) {
+	dbtask.CpeCache.Flush()
 }
 
 // 获取漏洞统计信息
@@ -224,9 +239,6 @@ func GetVulnList(c *gin.Context) {
 	if len(vulnRequest.Level) != 0 {
 		agentVulnInfoFilter["level"] = MongoInside{Inside: vulnRequest.Level}
 	}
-	//if len(vulnRequest.Status) != 0{
-	//	agentVulnInfoFilter["status"] = MongoInside{Inside: vulnRequest.Status}
-	//}
 
 	// 拼接mongo查询语句(vuln_info)
 	vulnInfoFilter := make(map[string]interface{})
@@ -331,7 +343,11 @@ func GetVulnList(c *gin.Context) {
 				}
 			}
 			vulnInfo := v.InventoryDocs[0]
-			agentVulnInfo.VulnName = vulnInfo.VulnName
+			if len(vulnInfo.VulnName) > 0 {
+				agentVulnInfo.VulnName = vulnInfo.VulnName
+			} else {
+				agentVulnInfo.VulnName = vulnInfo.VulnNameEn
+			}
 			agentVulnInfo.CveId = vulnInfo.CveId
 			agentVulnInfo.Level = levelMap[vulnInfo.Level]
 
@@ -393,6 +409,12 @@ func GetVulnInfo(c *gin.Context) {
 		"5": "danger",
 	}
 	vulnInfo.Level = levelMap[vulnInfo.Level]
+
+	// 如果中文信息不完善，展示英文
+	if len(vulnInfo.VulnName) == 0 {
+		vulnInfo.Descript = vulnInfo.DescriptEn
+		vulnInfo.Suggest = vulnInfo.SuggestEn
+	}
 
 	common.CreateResponse(c, common.SuccessCode, vulnInfo)
 }

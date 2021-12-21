@@ -446,15 +446,21 @@ func DescribeHostDetail(ctx *gin.Context) {
 		hd.Normalize()
 		current := time.Now().Unix()
 		for index, p := range hd.Plugins {
-			for _, c := range hd.Config {
-				if p.Name == c.Name {
-					hd.Plugins[index].Type = TernaryString(c.Type == "", "exec", c.Type)
-				}
-				if current-p.LastHeartbeatTime > DEFAULT_OFFLINE_DURATION {
-					hd.Plugins[index].Status = "exited"
-				} else {
-					hd.Plugins[index].Status = "running"
-				}
+			// for _, c := range hd.Config {
+			// 	if p.Name == c.Name {
+			// 		hd.Plugins[index].Type = TernaryString(c.Type == "", "exec", c.Type)
+			// 	}
+			// 	if current-p.LastHeartbeatTime > DEFAULT_OFFLINE_DURATION {
+			// 		hd.Plugins[index].Status = "exited"
+			// 	} else {
+			// 		hd.Plugins[index].Status = "running"
+			// 	}
+			// }
+			hd.Plugins[index].Type = "exec"
+			if current-p.LastHeartbeatTime > DEFAULT_OFFLINE_DURATION {
+				hd.Plugins[index].Status = "exited"
+			} else {
+				hd.Plugins[index].Status = "running"
 			}
 		}
 		c = infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.HubAssetCollectionV1)
@@ -479,7 +485,7 @@ func DescribeHostDetail(ctx *gin.Context) {
 							hd.AssetFingerprint.User = int64(len(data))
 						case "5003":
 							hd.AssetFingerprint.Cron = int64(len(data))
-						case "5004", "5005", "5006":
+						case "5004", "5005", "5006", "5011":
 							hd.AssetFingerprint.Software += int64(len(data))
 						case "5010":
 							hd.AssetFingerprint.Service = int64(len(data))
@@ -1262,7 +1268,7 @@ type DescribeHostSoftwareReq struct {
 	AgentID string `json:"agent_id" binding:"required"`
 	Name    string `json:"name" bson:"name"`
 	Version string `json:"version" bson:"version"`
-	Type    string `json:"type" binding:"omitempty,oneof=pypi dpkg rpm"`
+	Type    string `json:"type" binding:"omitempty,oneof=pypi dpkg rpm jar"`
 }
 
 func (r *DescribeHostSoftwareReq) GenerateFilter() (bson.M, bson.M) {
@@ -1276,8 +1282,10 @@ func (r *DescribeHostSoftwareReq) GenerateFilter() (bson.M, bson.M) {
 		bm["data_type"] = "5005"
 	case "pypi":
 		bm["data_type"] = "5006"
+	case "jar":
+		bm["data_type"] = "5011"
 	default:
-		bm["data_type"] = bson.M{"$in": bson.A{"5004", "5005", "5006"}}
+		bm["data_type"] = bson.M{"$in": bson.A{"5004", "5005", "5006", "5011"}}
 	}
 	dm := bson.M{}
 	if r.Name != "" {
@@ -1341,6 +1349,8 @@ func DescribeHostSoftware(ctx *gin.Context) {
 					item.Type = "rpm"
 				} else if dt == "5006" {
 					item.Type = "pypi"
+				} else if dt == "5011" {
+					item.Type = "jar"
 				}
 			}
 			if updateTime, ok := c.Current.Lookup("leader_time").Int64OK(); ok {
