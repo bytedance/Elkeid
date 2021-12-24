@@ -23,13 +23,19 @@ import java.security.ProtectionDomain;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class SmithProbe implements ClassFileTransformer, ProbeNotify {
     private static final SmithProbe ourInstance = new SmithProbe();
-    private static final int DEFAULT_QUEUE_SIZE = 1000;
+    private static final int TRACE_QUEUE_SIZE = 1000;
+    private static final int CLASS_MAX_ID = 30;
+    private static final int METHOD_MAX_ID = 20;
+    private static final int DEFAULT_QUOTA = 12000;
 
     public static SmithProbe getInstance() {
         return ourInstance;
@@ -42,8 +48,10 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
         smithClasses = new HashMap<>();
         smithFilters = new ConcurrentHashMap<>();
         smithBlocks = new ConcurrentHashMap<>();
+        smithLimits = new ConcurrentHashMap<>();
         probeClient = new ProbeClient(this);
-        traceQueue = new ArrayBlockingQueue<>(DEFAULT_QUEUE_SIZE);
+        traceQueue = new ArrayBlockingQueue<>(TRACE_QUEUE_SIZE);
+        smithQuotas = Stream.generate(() -> new AtomicIntegerArray(METHOD_MAX_ID)).limit(CLASS_MAX_ID).toArray(AtomicIntegerArray[]::new);
     }
 
     public void setInst(Instrumentation inst) {
@@ -75,6 +83,17 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
 
         traceThread.setDaemon(true);
         traceThread.start();
+
+        new Timer(true).schedule(
+                new TimerTask() {
+                    @Override
+                    public void run() {
+                        resetQuotas();
+                    }
+                },
+                0,
+                TimeUnit.MINUTES.toMillis(1)
+        );
     }
 
     private void reloadClasses() {
@@ -82,21 +101,13 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
     }
 
     private void reloadClasses(Collection<String> classes) {
-        List<Class<?>> cls = new ArrayList<>();
+        Class<?>[] loadedClasses = inst.getAllLoadedClasses();
+        Class<?>[] cls = Arrays.stream(loadedClasses).filter(c -> classes.contains(c.getName())).toArray(Class<?>[]::new);
 
-        for (String className : classes) {
-            try {
-                Class<?> cl = Class.forName(className, true, ClassLoader.getSystemClassLoader());
-                cls.add(cl);
-            } catch (ClassNotFoundException e) {
-                SmithLogger.logger.info("class not found: " + className);
-            }
-        }
-
-        SmithLogger.logger.info("reload: " + cls);
+        SmithLogger.logger.info("reload: " + Arrays.toString(cls));
 
         try {
-            inst.retransformClasses(cls.toArray(new Class<?>[0]));
+            inst.retransformClasses(cls);
         } catch (UnmodifiableClassException e) {
             SmithLogger.exception(e);
         }
@@ -121,6 +132,19 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
     public void trace(int classID, int methodID, Object[] args, Object ret) {
         if (!clientConnected)
             return;
+
+        if (classID >= CLASS_MAX_ID || methodID >= METHOD_MAX_ID)
+            return;
+
+        while (true) {
+            int quota = smithQuotas[classID].get(methodID);
+
+            if (quota <= 0)
+                return;
+
+            if (smithQuotas[classID].compareAndSet(methodID, quota, quota - 1))
+                break;
+        }
 
         SmithTrace smithTrace = new SmithTrace();
 
@@ -171,18 +195,33 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
         }
     }
 
+    private void resetQuotas() {
+        for (int i = 0; i < CLASS_MAX_ID; i++) {
+            for (int j = 0; j < METHOD_MAX_ID; j++) {
+                Integer quota = smithLimits.get(new ImmutablePair<>(i, j));
+
+                if (quota == null) {
+                    smithQuotas[i].set(j, DEFAULT_QUOTA);
+                    continue;
+                }
+
+                smithQuotas[i].set(j, quota);
+            }
+        }
+    }
+
     @Override
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) {
         if (disable)
             return null;
 
-        Type classType = Type.getType(classBeingRedefined);
+        Type classType = Type.getObjectType(className);
         SmithClass smithClass = smithClasses.get(classType.getClassName());
 
         if (smithClass == null)
             return null;
 
-        SmithLogger.logger.info("transform: " + className);
+        SmithLogger.logger.info("transform: " + classType.getClassName());
 
         try {
             ClassReader classReader = new ClassReader(classfileBuffer);
@@ -192,7 +231,7 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
                     Opcodes.ASM8,
                     classWriter,
                     smithClass.getId(),
-                    classType.getClassName(),
+                    classType,
                     smithClass.getMethods().stream().collect(Collectors.toMap(method -> method.getName() + method.getDesc(), method -> method))
             );
 
@@ -299,6 +338,18 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
         }
     }
 
+    @Override
+    public void onLimit(SmithLimit[] limits) {
+        smithLimits.clear();
+
+        for (SmithLimit limit : limits) {
+            smithLimits.put(
+                    new ImmutablePair<>(limit.getClassID(), limit.getMethodID()),
+                    limit.getQuota()
+            );
+        }
+    }
+
     enum emControlAction {
         stopAction,
         startAction,
@@ -312,4 +363,6 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
     private final Map<String, SmithClass> smithClasses;
     private final Map<Pair<Integer, Integer>, SmithFilter> smithFilters;
     private final Map<Pair<Integer, Integer>, SmithBlock> smithBlocks;
+    private final Map<Pair<Integer, Integer>, Integer> smithLimits;
+    private final AtomicIntegerArray[] smithQuotas;
 }

@@ -8,5 +8,6 @@ public enum Operate {
     controlOperate,
     detectOperate,
     filterOperate,
-    blockOperate
+    blockOperate,
+    limitOperate
 }

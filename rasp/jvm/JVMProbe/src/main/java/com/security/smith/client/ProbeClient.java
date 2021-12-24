@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.security.smith.log.SmithLogger;
 import com.security.smith.type.SmithBlock;
 import com.security.smith.type.SmithFilter;
+import com.security.smith.type.SmithLimit;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.epoll.EpollDomainSocketChannel;
@@ -162,6 +163,26 @@ public class ProbeClient implements ProbeClientHandlerNotify {
                             objectMapper.treeToValue(
                                     protocolBuffer.getData().get("blocks"),
                                     SmithBlock[].class
+                            )
+                    );
+                } catch (JsonProcessingException e) {
+                    e.printStackTrace();
+                }
+
+                break;
+            }
+
+            case limitOperate: {
+                SmithLogger.logger.info("limit");
+
+                ObjectMapper objectMapper = new ObjectMapper()
+                        .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+
+                try {
+                    probeNotify.onLimit(
+                            objectMapper.treeToValue(
+                                    protocolBuffer.getData().get("limits"),
+                                    SmithLimit[].class
                             )
                     );
                 } catch (JsonProcessingException e) {
