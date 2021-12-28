@@ -2039,3 +2039,13 @@ func DescribeLast7DaysOperationStatistics(ctx *gin.Context) {
 	})
 	common.CreateResponse(ctx, common.SuccessCode, resp)
 }
+
+func DescribeKernelVersion(ctx *gin.Context) {
+	c := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.AgentHeartBeatCollection)
+	res, err := c.Distinct(ctx, "kernel_version", bson.M{"kernel_version": bson.M{"$exists": true}})
+	if err != nil {
+		common.CreateResponse(ctx, common.DBOperateErrorCode, "")
+	} else {
+		common.CreateResponse(ctx, common.SuccessCode, res)
+	}
+}

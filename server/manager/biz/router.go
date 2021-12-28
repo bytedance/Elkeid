@@ -149,6 +149,7 @@ func RegisterRouter(r *gin.Engine) {
 			assetCenter.GET("/DescribeTags", v6.DescribeTags)
 			assetCenter.GET("/DescribePlatform", v6.DescribePlatform)
 			assetCenter.GET("/DescribeIDC", v6.DescribeIDC)
+			assetCenter.GET("/DescribeKernelVersion", v6.DescribeKernelVersion)
 			assetCenter.GET("/DescribeHostStatistics", v6.DescribeHostStatistics)
 			assetCenter.POST("/DescribeHostPort", v6.DescribeHostPort)
 			assetCenter.POST("/DescribeHostProcess", v6.DescribeHostProcess)
