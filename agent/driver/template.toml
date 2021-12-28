@@ -35,7 +35,8 @@ tty = { index = 12, type = "kernel" }
 socket_pid = { index = 13, type = "kernel" }
 ssh = { index = 14, type = "kernel" }
 ld_preload = { index = 15, type = "kernel" }
-res = { index = 16, type = "kernel" }
+ld_library_path = { index = 16, type = "kernel" }
+res = { index = 17, type = "kernel" }
 
 [structures.connect]
 common_fields = true

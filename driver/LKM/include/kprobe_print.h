@@ -341,13 +341,13 @@ PRINT_EVENT_DEFINE(execve,
                             char * tmp_stdin, char * tmp_stdout,
                             __be32 dip, int dport, __be32 sip, int sport,
                            char * pid_tree, char * tty_name, pid_t socket_pid, char * socket_pname,
-                           char * ssh_connection, char * ld_preload, int retval),
+                           char * ssh_connection, char * ld_preload, char * ld_library_path,int retval),
 
                    PE_ARGS(pname, exe_path, pgid_exe_path, argv,
                            tmp_stdin, tmp_stdout,
                            dip, dport, sip, sport,
                            pid_tree, tty_name, socket_pid, socket_pname,
-                           ssh_connection, ld_preload, retval),
+                           ssh_connection, ld_preload, ld_library_path, retval),
 
                    PE_STRUCT__entry(
                            __field(int, uid)
@@ -377,6 +377,7 @@ PRINT_EVENT_DEFINE(execve,
                            __string(socket_pname, socket_pname)
                            __string(ssh_connection, ssh_connection)
                            __string(ld_preload, ld_preload)
+                           __string(ld_library_path, ld_library_path)
                            __field(int, retval)
                    ),
 
@@ -408,6 +409,7 @@ PRINT_EVENT_DEFINE(execve,
                            __assign_str(socket_pname, socket_pname);
                            __assign_str(ssh_connection, ssh_connection);
                            __assign_str(ld_preload, ld_preload);
+                           __assign_str(ld_library_path, ld_library_path);
                            __entry->retval = retval;
                    ),
 
@@ -420,19 +422,19 @@ PRINT_EVENT_DEFINE(execve,
                            __get_str(tmp_stdin), __get_str(tmp_stdout), NIPQUAD(__entry->dip),
                            __entry->dport, NIPQUAD(__entry->sip), __entry->sport, __get_str(pid_tree),
                            __get_str(tty_name), __entry->socket_pid,
-                           __get_str(ssh_connection), __get_str(ld_preload), __entry->retval)
+                           __get_str(ssh_connection), __get_str(ld_preload), __get_str(ld_library_path), __entry->retval)
 );
 
 PRINT_EVENT_DEFINE(execve_nosocket,
 
                    PE_PROTO(char * pname, char * exe_path, char * pgid_exe_path, char * argv,
                             char * tmp_stdin, char * tmp_stdout, char * pid_tree,
-                            char * tty_name, char * ssh_connection, char * ld_preload, int retval),
+                            char * tty_name, char * ssh_connection, char * ld_preload, char * ld_library_path, int retval),
 
                    PE_ARGS(pname, exe_path, pgid_exe_path, argv,
                            tmp_stdin, tmp_stdout,
                            pid_tree, tty_name,
-                           ssh_connection, ld_preload,
+                           ssh_connection, ld_preload, ld_library_path,
                            retval),
 
                    PE_STRUCT__entry(
@@ -457,6 +459,7 @@ PRINT_EVENT_DEFINE(execve_nosocket,
                            __string(tty_name, tty_name)
                            __string(ssh_connection, ssh_connection)
                            __string(ld_preload, ld_preload)
+                           __string(ld_library_path, ld_library_path)
                            __field(int, retval)
                    ),
 
@@ -482,6 +485,7 @@ PRINT_EVENT_DEFINE(execve_nosocket,
                            __assign_str(tty_name, tty_name);
                            __assign_str(ssh_connection, ssh_connection);
                            __assign_str(ld_preload, ld_preload);
+                           __assign_str(ld_library_path, ld_library_path);
                            __entry->retval = retval;
                    ),
 
@@ -493,7 +497,7 @@ PRINT_EVENT_DEFINE(execve_nosocket,
                            __entry->root_pid_inum, __get_str(argv), __get_str(pname),
                            __get_str(pgid_exe_path), __get_str(tmp_stdin), __get_str(tmp_stdout),
                            __get_str(pid_tree), __get_str(tty_name), __get_str(ssh_connection),
-                           __get_str(ld_preload), __entry->retval)
+                           __get_str(ld_preload), __get_str(ld_library_path), __entry->retval)
 );
 
 #if IS_ENABLED(CONFIG_IPV6)
@@ -503,13 +507,13 @@ PRINT_EVENT_DEFINE(execve6,
                             char * tmp_stdin, char * tmp_stdout,
                             struct in6_addr *dip, int dport, struct in6_addr *sip, int sport,
                            char * pid_tree, char * tty_name, pid_t socket_pid, char * socket_pname,
-                           char * ssh_connection, char * ld_preload, int retval),
+                           char * ssh_connection, char * ld_preload, char *ld_library_path, int retval),
 
                    PE_ARGS(pname, exe_path, pgid_exe_path, argv,
                            tmp_stdin, tmp_stdout,
                            dip, dport, sip, sport,
                            pid_tree, tty_name, socket_pid, socket_pname,
-                           ssh_connection, ld_preload, retval),
+                           ssh_connection, ld_preload, ld_library_path, retval),
 
                    PE_STRUCT__entry(
                            __field(int, uid)
@@ -539,6 +543,7 @@ PRINT_EVENT_DEFINE(execve6,
                            __string(socket_pname, socket_pname)
                            __string(ssh_connection, ssh_connection)
                            __string(ld_preload, ld_preload)
+                           __string(ld_library_path, ld_library_path)
                            __field(int, retval)
                    ),
 
@@ -570,6 +575,7 @@ PRINT_EVENT_DEFINE(execve6,
                            __assign_str(socket_pname, socket_pname);
                            __assign_str(ssh_connection, ssh_connection);
                            __assign_str(ld_preload, ld_preload);
+                           __assign_str(ld_library_path, ld_library_path);
                            __entry->retval = retval;
                    ),
 
@@ -582,7 +588,7 @@ PRINT_EVENT_DEFINE(execve6,
                            __get_str(pgid_exe_path), __get_str(tmp_stdin), __get_str(tmp_stdout),
                            NIP6(__entry->dip), __entry->dport, NIP6(__entry->sip),
                            __entry->sport, __get_str(pid_tree), __get_str(tty_name), __entry->socket_pid,
-                           __get_str(ssh_connection), __get_str(ld_preload), __entry->retval)
+                           __get_str(ssh_connection), __get_str(ld_preload), __get_str(ld_library_path), __entry->retval)
 );
 #endif
 

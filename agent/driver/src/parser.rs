@@ -229,6 +229,7 @@ struct SyscallHook<'a> {
 struct Execve<'a> {
     dip: &'a str,
     ld_preload: &'a str,
+    ld_library_path: &'a str,
     sip: &'a str,
     socket_argv: &'a str,
     stdin: &'a str,
@@ -970,6 +971,7 @@ impl Parser {
                 self.sender.send(&Execve {
                     dip: fields[19],
                     ld_preload: fields[28],
+                    ld_library_path: fields[29],
                     sip: fields[21],
                     socket_argv: &socket_argv,
                     stdin: fields[17],
@@ -981,7 +983,7 @@ impl Parser {
                     ssh: fields[27],
                     pid_tree: fields[24],
                     pgid_argv: &pgid_argv,
-                    res: fields[29],
+                    res: fields[30],
                     sessionid: fields[10],
                     sa_family: fields[23],
                     ppid: fields[4],

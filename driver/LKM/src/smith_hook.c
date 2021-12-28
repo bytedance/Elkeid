@@ -422,10 +422,12 @@ struct execve_data {
     char *argv;
     char *ssh_connection;
     char *ld_preload;
+    char *ld_library_path;
 
     int free_argv;
     int free_ssh_connection;
     int free_ld_preload;
+    int free_ld_library_path;
 };
 
 struct update_cred_data {
@@ -917,7 +919,7 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
                      tmp_stdin, tmp_stdout,
                      dip4, dport, sip4, sport,
                      pid_tree, tty_name, socket_pid, socket_pname,
-                     data->ssh_connection, data->ld_preload,
+                     data->ssh_connection, data->ld_preload, data->ld_library_path,
                      regs_return_value(regs));
     }
 #if IS_ENABLED(CONFIG_IPV6)
@@ -927,7 +929,7 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 			      tmp_stdin, tmp_stdout,
 			      &dip6, dport, &sip6, sport,
 			      pid_tree, tty_name, socket_pid, socket_pname,
-			      data->ssh_connection, data->ld_preload,
+			      data->ssh_connection, data->ld_preload, data->ld_library_path,
 			      regs_return_value(regs));
 	}
 #endif
@@ -936,7 +938,7 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
                               exe_path, pgid_exe_path, data->argv,
                               tmp_stdin, tmp_stdout,
                               pid_tree, tty_name,
-                              data->ssh_connection, data->ld_preload,
+                              data->ssh_connection, data->ld_preload, data->ld_library_path,
                               regs_return_value(regs));
     }
 
@@ -965,6 +967,9 @@ out:
     if (data->free_ssh_connection)
         kfree(data->ssh_connection);
 
+    if (data->free_ld_library_path)
+        kfree(data->ld_library_path);
+
     if(tty)
         tty_kref_put(tty);
 
@@ -972,18 +977,19 @@ out:
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)
-//get execve syscall argv/LD_PRELOAD && SSH_CONNECTION env info
+//get execve syscall argv/LD_PRELOAD && SSH_CONNECTION && LD_LIBRARY_PATH env info
 void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 		     struct execve_data *data)
 {
 	int argv_len = 0, argv_res_len = 0, i = 0, len = 0, offset = 0;
 	int env_len = 0, free_argv = 0, res = 0;
-	int ssh_connection_flag = 0, ld_preload_flag = 0;
-	int free_ld_preload = 1, free_ssh_connection = 1;
+	int ssh_connection_flag = 0, ld_preload_flag = 0, ld_library_path_flag = 0;
+	int free_ld_preload = 1, free_ssh_connection = 1, free_ld_library_path = 1;
 
 	char *argv_res = NULL;
 	char *ssh_connection = NULL;
 	char *ld_preload = NULL;
+    char *ld_library_path = NULL;
 	const char __user *native;
 
 	env_len = count(env_ptr, MAX_ARG_STRINGS);
@@ -1023,6 +1029,7 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 
 	ssh_connection = kmalloc(255, GFP_ATOMIC);
 	ld_preload = kmalloc(255, GFP_ATOMIC);
+    ld_library_path = kmalloc(255, GFP_ATOMIC);
 
 	if (!ssh_connection)
 		free_ssh_connection = 0;
@@ -1030,11 +1037,14 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 	if (!ld_preload)
 		free_ld_preload = 0;
 
-	//get SSH_CONNECTION and LD_PRELOAD env info
+    if (!ld_library_path)
+        free_ld_library_path = 0;
+
+	//get SSH_CONNECTION and LD_PRELOAD and LD_LIBRARY_PATH env info
 	if (env_len > 0) {
 		char buf[256];
 		for (i = 0; i < env_len; i++) {
-			if (ld_preload_flag == 1 && ssh_connection_flag == 1)
+			if (ld_preload_flag == 1 && ssh_connection_flag == 1 && ld_library_path_flag == 1)
 				break;
 
 			native = get_user_arg_ptr(env_ptr, i);
@@ -1061,7 +1071,14 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 						} else {
 							ld_preload = "-1";
 						}
-					}
+					} else if (strncmp("LD_LIBRARY_PATH=", buf, 11) == 0) {
+                        ld_library_path_flag = 1;
+                        if (free_ld_library_path == 1) {
+                            strcpy(ld_library_path, buf + 16);
+                        } else {
+                            ld_library_path = "-1";
+                        }
+                    } 
 				}
 			}
 		}
@@ -1084,6 +1101,15 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 	}
 	data->ld_preload = ld_preload;
 	data->free_ld_preload = free_ld_preload;
+
+    if (ld_library_path_flag == 0) {
+        if (free_ld_library_path == 0)
+            ld_library_path = "-1";
+        else
+            strcpy(ld_library_path, "-1");
+    }
+    data->ld_library_path = ld_library_path;
+    data->free_ld_library_path = free_ld_library_path;
 
 	data->argv = argv_res;
 	data->free_argv = free_argv;
@@ -1162,12 +1188,13 @@ int execve_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 void get_execve_data(char **argv, char **env, struct execve_data *data)
 {
     int argv_len = 0, argv_res_len = 0, i = 0, len = 0, offset = 0, res = 0;
-    int env_len = 0, free_argv = 0, ssh_connection_flag = 0, ld_preload_flag = 0;
-    int free_ssh_connection = 1, free_ld_preload = 1;
+    int env_len = 0, free_argv = 0, ssh_connection_flag = 0, ld_preload_flag = 0, ld_library_path_flag = 0;
+    int free_ssh_connection = 1, free_ld_preload = 1; free_ld_library_path = 1;
 
     char *argv_res = NULL;
     char *ssh_connection = NULL;
     char *ld_preload = NULL;
+    char *ld_library_path = NULL;
     const char __user * native;
 
     env_len = execve_count(env, MAX_ARG_STRINGS);
@@ -1207,6 +1234,7 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
 
     ssh_connection = kmalloc(255, GFP_ATOMIC);
     ld_preload = kmalloc(255, GFP_ATOMIC);
+    ld_library_path = kmalloc(255, GFP_ATOMIC);
 
     if (!ssh_connection)
         free_ssh_connection = 0;
@@ -1214,11 +1242,14 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
     if (!ld_preload)
         free_ld_preload = 0;
 
-    //get SSH_CONNECTION and LD_PRELOAD env info
+    if (!ld_library_path)
+        free_ld_library_path = 0;
+
+    //get SSH_CONNECTION and LD_PRELOAD and LD_LIBRARY_PATH env info
     if (env_len > 0) {
         char buf[256];
         for (i = 0; i < argv_len; i++) {
-            if (ld_preload_flag == 1 && ssh_connection_flag == 1)
+            if (ld_preload_flag == 1 && ssh_connection_flag == 1 && ld_library_path_flag == 1)
                 break;
 
             if (smith_get_user(native, env + i))
@@ -1246,6 +1277,12 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
                         } else {
                             ld_preload = "-1";
                         }
+                    } else if (strncmp("LD_LIBRARY_PATH=", buf, 11) == 0) {
+                        ld_library_path_flag = 1;
+                        if (free_ld_library_path == 1) {
+                            strcpy(ld_library_path, buf + 16);
+                        } else {
+                            ld_library_path = "-1";
                     }
                 }
             }
@@ -1269,6 +1306,15 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
     }
     data->ld_preload = ld_preload;
     data->free_ld_preload = free_ld_preload;
+
+    if (ld_library_path_flag == 0) {
+        if (free_ld_library_path == 0)
+            ld_library_path = "-1";
+        else
+            strcpy(ld_library_path, "-1");
+    }
+    data->ld_library_path = ld_library_path;
+    data->free_ld_library_path = free_ld_library_path;
 
     data->argv = argv_res;
     data->free_argv = free_argv;
