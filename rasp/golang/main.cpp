@@ -7,6 +7,23 @@
 #include <asm/api_hook.h>
 #include <z_syscall.h>
 
+void quit(int status) {
+    uintptr_t address = 0;
+    char *env = getenv("QUIT");
+
+    if (!env) {
+        LOG_WARNING("can't found quit env variable");
+        z_exit_group(-1);
+    }
+
+    if (!zero::strings::toNumber(env, address, 16) || !address) {
+        LOG_ERROR("invalid quit function address");
+        z_exit_group(-1);
+    }
+
+    ((decltype(quit) *)address)(status);
+}
+
 int main() {
     INIT_FILE_LOG(zero::INFO, "go-probe");
 
@@ -17,12 +34,12 @@ int main() {
 
     if (pthread_sigmask(SIG_SETMASK, &mask, &origin_mask) != 0) {
         LOG_ERROR("set signal mask failed");
-        return -1;
+        quit(-1);
     }
 
     if (!gLineTable->load()) {
         LOG_ERROR("line table load failed");
-        return -1;
+        quit(-1);
     }
 
     if (gBuildInfo->load()) {
@@ -32,7 +49,7 @@ int main() {
 
         if (!table.load()) {
             LOG_ERROR("interface table load failed");
-            return -1;
+            quit(-1);
         }
 
         table.findByFuncName("errors.(*errorString).Error", (go::interface_item **)CAPIBase::errorInterface());
@@ -64,7 +81,7 @@ int main() {
     }
 
     pthread_sigmask(SIG_SETMASK, &origin_mask, nullptr);
-    z_exit(0);
+    quit(0);
 
     return 0;
 }

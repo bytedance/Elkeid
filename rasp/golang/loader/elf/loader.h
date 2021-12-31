@@ -1,4 +1,4 @@
- #ifndef GO_PROBE_LOADER_H
+#ifndef GO_PROBE_LOADER_H
 #define GO_PROBE_LOADER_H
 
 #include <string>

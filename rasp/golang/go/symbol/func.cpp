@@ -24,12 +24,26 @@ CFuncTablePtr &CFuncTablePtr::operator++() {
     return *this;
 }
 
+CFuncTablePtr &CFuncTablePtr::operator--() {
+    mTable -= 2 * mSize;
+    return *this;
+}
+
+CFuncTablePtr &CFuncTablePtr::operator+=(std::ptrdiff_t offset) {
+    mTable += offset * 2 * mSize;
+    return *this;
+}
+
 CFuncTablePtr CFuncTablePtr::operator+(unsigned int offset) {
     return CFuncTablePtr(mTable + offset * 2 * mSize, mSize);
 }
 
 CFuncTablePtr CFuncTablePtr::operator-(unsigned int offset) {
     return CFuncTablePtr(mTable - offset * 2 * mSize, mSize);
+}
+
+std::ptrdiff_t CFuncTablePtr::operator-(const CFuncTablePtr &ptr) {
+    return (mTable - ptr.mTable) / (2 * mSize);
 }
 
 const CFuncEntry &CFuncTablePtr::operator*() {

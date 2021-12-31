@@ -3,7 +3,7 @@
 #include <sys/un.h>
 #include <zero/log.h>
 
-constexpr auto CLIENT_TIMER = 60;
+constexpr auto RECONNECT_DELAY = timeval {60, 0};
 
 constexpr auto PROTOCOL_HEADER_SIZE = 4;
 constexpr auto PROTOCOL_MAX_SIZE = 10240;
@@ -16,9 +16,22 @@ CSmithClient::CSmithClient(ISmithNotify *notify) {
 
     mNotify = notify;
     mEventBase = event_base_new();
+
+    struct stub {
+        static void onEvent(evutil_socket_t fd, short what, void *arg) {
+            static_cast<CSmithClient *>(arg)->reconnect();
+        }
+    };
+
+    mTimer = evtimer_new(mEventBase, stub::onEvent, this);
 }
 
 CSmithClient::~CSmithClient() {
+    if (mTimer) {
+        evtimer_del(mTimer);
+        mTimer = nullptr;
+    }
+
     if (mEventBase) {
         event_base_free(mEventBase);
         mEventBase = nullptr;
@@ -34,8 +47,6 @@ bool CSmithClient::start() {
     }
 
     connect();
-    setTimer();
-
     mThread.start(&CSmithClient::loopThread);
 
     return true;
@@ -43,9 +54,8 @@ bool CSmithClient::start() {
 
 bool CSmithClient::stop() {
     event_base_loopbreak(mEventBase);
-    mThread.stop();
 
-    cancelTimer();
+    mThread.stop();
     disconnect();
 
     return true;
@@ -65,6 +75,7 @@ void CSmithClient::onBufferRead(bufferevent *bev) {
         if (length > PROTOCOL_MAX_SIZE) {
             LOG_ERROR("message max size limit: %u", length);
             disconnect();
+            evtimer_add(mTimer, &RECONNECT_DELAY);
             break;
         }
 
@@ -76,10 +87,18 @@ void CSmithClient::onBufferRead(bufferevent *bev) {
         if (evbuffer_drain(input, PROTOCOL_HEADER_SIZE) != 0 || evbuffer_remove(input, buffer.get(), length) != length) {
             LOG_ERROR("read buffer failed: %s", evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
             disconnect();
+            evtimer_add(mTimer, &RECONNECT_DELAY);
             break;
         }
 
-        mNotify->onMessage(nlohmann::json::parse(buffer.get()).get<CSmithMessage>());
+        try {
+            mNotify->onMessage(nlohmann::json::parse(buffer.get()).get<CSmithMessage>());
+        } catch (const nlohmann::json::exception &e) {
+            LOG_ERROR("exception: %s", e.what());
+            disconnect();
+            evtimer_add(mTimer, &RECONNECT_DELAY);
+            break;
+        }
     }
 }
 
@@ -91,9 +110,11 @@ void CSmithClient::onBufferEvent(bufferevent *bev, short what) {
     if (what & BEV_EVENT_EOF) {
         LOG_INFO("buffer event EOF");
         disconnect();
+        evtimer_add(mTimer, &RECONNECT_DELAY);
     } else if (what & BEV_EVENT_ERROR) {
         LOG_ERROR("buffer event error: %s", evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
         disconnect();
+        evtimer_add(mTimer, &RECONNECT_DELAY);
     }
 }
 
@@ -130,10 +151,11 @@ bool CSmithClient::connect() {
             mEventBase,
             -1,
             BEV_OPT_CLOSE_ON_FREE | BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS
-            );
+    );
 
     if (!mBev) {
         LOG_ERROR("new buffer event failed");
+        evtimer_add(mTimer, &RECONNECT_DELAY);
         return false;
     }
 
@@ -142,6 +164,8 @@ bool CSmithClient::connect() {
 
         bufferevent_free(mBev);
         mBev = nullptr;
+
+        evtimer_add(mTimer, &RECONNECT_DELAY);
 
         return false;
     }
@@ -178,36 +202,9 @@ void CSmithClient::disconnect() {
     }
 }
 
-void CSmithClient::setTimer() {
-    struct stub {
-        static void onEvent(evutil_socket_t fd, short what, void *arg) {
-            static_cast<CSmithClient *>(arg)->onTimer();
-        }
-    };
-
-    mTimer = event_new(mEventBase, -1, EV_PERSIST, stub::onEvent, this);
-
-    timeval timeOutVal = {CLIENT_TIMER, 0};
-    evtimer_add(mTimer, &timeOutVal);
-}
-
-void CSmithClient::cancelTimer() {
-    if (mTimer) {
-        evtimer_del(mTimer);
-        event_free(mTimer);
-
-        mTimer = nullptr;
-    }
-}
-
-void CSmithClient::onTimer() {
-    if (mBev) {
-        LOG_INFO("heartbeat");
-        write({HEARTBEAT, nlohmann::json::object()});
-    } else {
-        LOG_INFO("reconnect");
-        connect();
-    }
+void CSmithClient::reconnect() {
+    LOG_INFO("reconnect");
+    connect();
 }
 
 void CSmithClient::loopThread() {

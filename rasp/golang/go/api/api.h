@@ -26,6 +26,7 @@ struct CAPIMetadata {
     int methodID;
     void (*entry)();
     void **origin;
+    int *quota;
     z_rwlock_t *lock;
     CAPIBlockRuleList *rules;
 };
@@ -160,6 +161,9 @@ public:
 
 private:
     static bool handler(void *sp) {
+        if (!surplus())
+            return true;
+
         unsigned long SFP = FLOAT_REGISTER * sizeof(double _Complex);
         unsigned long SI = INTEGER_REGISTER * sizeof(unsigned long);
 
@@ -190,6 +194,17 @@ private:
         return true;
     }
 
+    static bool surplus() {
+        int n = __atomic_load_n(&quota, __ATOMIC_SEQ_CST);
+
+        do {
+            if (n <= 0)
+                return false;
+        } while (!__atomic_compare_exchange_n(&quota, &n, n - 1, true, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));
+
+        return true;
+    }
+
     static bool block(const CSmithTrace &smithTrace)  {
         z_rwlock_read_lock(&lock);
 
@@ -209,17 +224,21 @@ private:
 
 public:
     static constexpr CAPIMetadata metadata() {
-        return {ClassID, MethodID, entry, &origin, &lock, &rules};
+        return {ClassID, MethodID, entry, &origin, &quota, &lock, &rules};
     }
 
 private:
     static void *origin;
+    static int quota;
     static z_rwlock_t lock;
     static CAPIBlockRuleList rules;
 };
 
 template<int ClassID, int MethodID, int ErrorIndex, typename Tamper, typename Tracer>
 void *CAPIEntry<ClassID, MethodID, ErrorIndex, Tamper, Tracer>::origin = nullptr;
+
+template<int ClassID, int MethodID, int ErrorIndex, typename Tamper, typename Tracer>
+int CAPIEntry<ClassID, MethodID, ErrorIndex, Tamper, Tracer>::quota = 0;
 
 template<int ClassID, int MethodID, int ErrorIndex, typename Tamper, typename Tracer>
 z_rwlock_t CAPIEntry<ClassID, MethodID, ErrorIndex, Tamper, Tracer>::lock = {};

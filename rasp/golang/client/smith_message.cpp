@@ -87,3 +87,9 @@ void from_json(const nlohmann::json &j, CBlock &b) {
     j.at("method_id").get_to(b.methodID);
     j.at("rules").get_to(b.rules);
 }
+
+void from_json(const nlohmann::json &j, CLimit &l) {
+    j.at("class_id").get_to(l.classId);
+    j.at("method_id").get_to(l.methodID);
+    j.at("quota").get_to(l.quota);
+}
