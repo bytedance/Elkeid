@@ -13,7 +13,8 @@ enum emOperate {
     CONTROL,
     DETECT,
     FILTER,
-    BLOCK
+    BLOCK,
+    LIMIT
 };
 
 struct CSmithMessage {
@@ -39,6 +40,12 @@ struct CBlock {
     std::list<CMatchRule> rules;
 };
 
+struct CLimit {
+    int classId;
+    int methodID;
+    int quota;
+};
+
 void to_json(nlohmann::json &j, const CSmithMessage &m);
 void from_json(const nlohmann::json &j, CSmithMessage &m);
 
@@ -49,5 +56,6 @@ void to_json(nlohmann::json &j, const CModuleInfo &i);
 void from_json(const nlohmann::json &j, CMatchRule &r);
 void from_json(const nlohmann::json &j, CFilter &f);
 void from_json(const nlohmann::json &j, CBlock &b);
+void from_json(const nlohmann::json &j, CLimit &l);
 
 #endif //GO_PROBE_SMITH_MESSAGE_H

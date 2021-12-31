@@ -16,9 +16,6 @@
 [submodule "rasp/python/python-client/cmake"]
 	path = rasp/python/python-client/cmake
 	url = https://github.com/Hackerl/cmake-3rd
-[submodule "rasp/golang/cmake"]
-	path = rasp/golang/cmake
-	url = https://github.com/Hackerl/cmake-3rd
 [submodule "rasp/jvm/jattach"]
 	path = rasp/jvm/jattach
 	url = https://github.com/apangin/jattach.git

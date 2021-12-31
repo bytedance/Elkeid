@@ -21,19 +21,13 @@ public:
     bool start();
     bool stop();
 
-private:
-    void setTimer();
-    void cancelTimer();
-
 public:
     void loopThread();
-
-public:
-    void onTimer();
 
 private:
     bool connect();
     void disconnect();
+    void reconnect();
 
 public:
     void onBufferRead(bufferevent *bev);
