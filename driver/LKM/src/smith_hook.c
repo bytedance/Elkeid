@@ -1052,7 +1052,7 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 				continue;
 
 			len = smith_strnlen_user(native, MAX_ARG_STRLEN);
-			if (len > 14 && len < 256) {
+			if (len > 10 && len < 256) {
 				memset(buf, 0, 256);
 				if (smith_copy_from_user(buf, native, len))
 					break;
@@ -1258,7 +1258,7 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
             len = smith_strnlen_user(native, MAX_ARG_STRLEN);
             if (!len || len > MAX_ARG_STRLEN)
                 break;
-            else if (len > 14 && len < 256) {
+            else if (len > 10 && len < 256) {
                 memset(buf, 0, 256);
                 if (smith_copy_from_user(buf, native, len))
                     break;
