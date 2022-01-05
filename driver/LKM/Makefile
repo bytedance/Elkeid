@@ -20,6 +20,8 @@ endif
 
 ifeq ($(CENTOS_CHECK),NAME="CentOS Linux")
 ccflags-y += -D CENTOS_CHECK
+else ifeq ($(CENTOS_CHECK),NAME="EulerOS")
+ccflags-y += -D CENTOS_CHECK
 endif
 
 ifeq ($(D_ALIAS_CHECK),1)
