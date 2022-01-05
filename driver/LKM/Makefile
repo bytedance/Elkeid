@@ -17,6 +17,8 @@ endif
 CENTOS_CHECK := $(shell bash $(MODULE_DIR)/centos_check.sh)
 ifeq ($(CENTOS_CHECK),NAME="CentOS Linux")
 ccflags-y += -D CENTOS_CHECK
+else ifeq ($(CENTOS_CHECK),NAME="EulerOS")
+ccflags-y += -D CENTOS_CHECK
 endif
 
 TRACE_EVENTS_HEADER		:=  /lib/modules/$(KERNEL_HEAD)/build/include/linux/trace_events.h
