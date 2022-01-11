@@ -1,39 +1,26 @@
 #include "api_hook.h"
 #include <zero/log.h>
+#include <trap/trap.h>
+#include <Zydis/Zydis.h>
 
 constexpr auto MAX_OFFSET = 100;
 
-bool CAPIHook::hook(void *address, void *replace, void **backup) {
-    void *exactAddress = getExactAddress(address);
+int hookAPI(void *address, void *replace, void **backup) {
+    ZydisDecoder decoder = {};
 
-    if (!exactAddress) {
-        LOG_ERROR("get exact address failed");
-        return false;
+    if (!ZYAN_SUCCESS(ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64))) {
+        LOG_ERROR("init decoder failed");
+        return -1;
     }
 
-    return CInlineHook::hook(exactAddress, replace, backup);
-}
-
-bool CAPIHook::unhook(void *address, void *backup) {
-    void *exactAddress = getExactAddress(address);
-
-    if (!exactAddress) {
-        LOG_ERROR("get exact address failed");
-        return false;
-    }
-
-    return CInlineHook::unhook(exactAddress, backup);
-}
-
-void *CAPIHook::getExactAddress(void *address) {
     ZydisDecodedInstruction instruction = {};
 
-    unsigned long offset = 0;
+    int offset = 0;
 
     while (true) {
-        if (!ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&mDecoder, (char *)address + offset, ZYDIS_MAX_INSTRUCTION_LENGTH, &instruction))) {
+        if (!ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, (char *)address + offset, ZYDIS_MAX_INSTRUCTION_LENGTH, &instruction))) {
             LOG_ERROR("decode failed");
-            return nullptr;
+            return -1;
         }
 
         if ((instruction.mnemonic == ZYDIS_MNEMONIC_SUB || instruction.mnemonic == ZYDIS_MNEMONIC_ADD) && instruction.operands[0].reg.value == ZYDIS_REGISTER_RSP)
@@ -43,9 +30,9 @@ void *CAPIHook::getExactAddress(void *address) {
 
         if (offset > MAX_OFFSET) {
             LOG_ERROR("max offset limit");
-            return nullptr;
+            return -1;
         }
     }
 
-    return (char *)address + offset;
+    return hook((char *)address + offset, replace, backup);
 }
