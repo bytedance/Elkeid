@@ -19,52 +19,52 @@ set(EVENT__DISABLE_BENCHMARK ON CACHE BOOL "disable event benchmark")
 
 set(JSON_BuildTests OFF CACHE BOOL "disable json library tests")
 
-set(ZYDIS_BUILD_TOOLS OFF CACHE BOOL "disable disassembler tools")
-set(ZYDIS_BUILD_EXAMPLES OFF CACHE BOOL "disable disassembler examples")
-
 include(FetchContent)
 
 FetchContent_Declare(
         ELFIO
-        GIT_REPOSITORY    https://github.com/serge1/ELFIO
-        GIT_TAG           Release_3.8
+        GIT_REPOSITORY https://github.com/serge1/ELFIO
+        GIT_TAG Release_3.9
 )
 
 FetchContent_MakeAvailable(ELFIO)
 
 FetchContent_Declare(
-        zydis
-        GIT_REPOSITORY    https://github.com/zyantific/zydis
-        GIT_TAG           v3.1.0
-)
-
-FetchContent_MakeAvailable(zydis)
-
-FetchContent_Declare(
         json
-        GIT_REPOSITORY    https://github.com/nlohmann/json
-        GIT_TAG           v3.9.1
+        GIT_REPOSITORY https://github.com/nlohmann/json
+        GIT_TAG v3.9.1
 )
 
 FetchContent_MakeAvailable(json)
 
 FetchContent_Declare(
         libevent
-        GIT_REPOSITORY    https://github.com/libevent/libevent
-        GIT_TAG           release-2.1.12-stable
+        GIT_REPOSITORY https://github.com/libevent/libevent
+        GIT_TAG release-2.1.12-stable
 )
 
 FetchContent_MakeAvailable(libevent)
 
-add_subdirectory(zero)
-add_subdirectory(c-runtime)
-add_subdirectory(sample/go)
+FetchContent_Declare(
+        trap
+        GIT_REPOSITORY https://github.com/Hackerl/trap
+        GIT_TAG master
+)
+
+FetchContent_MakeAvailable(trap)
+
+FetchContent_Declare(
+        c-runtime
+        GIT_REPOSITORY https://github.com/Hackerl/c-runtime
+        GIT_TAG master
+)
+
+FetchContent_MakeAvailable(c-runtime)
 
 add_library(
         go_base
         STATIC
         asm/api_hook.cpp
-        asm/inline_hook.cpp
         client/smith_client.cpp
         client/smith_message.cpp
         go/symbol/func.cpp
@@ -75,11 +75,9 @@ add_library(
         tiny-regex-c/re.c
 )
 
-add_executable(go_sample sample/main.cpp client/smith_probe.cpp go/api/api.cpp heap/memory.cpp)
 add_executable(go_loader loader/main.cpp loader/elf/loader.cpp client/smith_probe.cpp go/api/api.cpp heap/memory.cpp)
 add_executable(go_probe main.cpp client/smith_probe.cpp go/api/api.cpp heap/memory.cpp)
 
-target_link_libraries(go_sample go_base ${CMAKE_DL_LIBS})
 target_link_libraries(go_loader go_base $<$<BOOL:${STATIC_BUILD}>:-static-pie>)
 target_link_libraries(go_probe go_base $<$<BOOL:${STATIC_BUILD}>:-static-pie>)
-target_link_libraries(go_base zero c_runtime elfio Zydis nlohmann_json event_core_static event_pthreads_static)
+target_link_libraries(go_base trap c_runtime elfio nlohmann_json event_core_static event_pthreads_static)

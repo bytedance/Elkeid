@@ -36,7 +36,7 @@ public:
     bool load(const std::string& file, unsigned long base);
 
 private:
-    bool readModuleInfo(const go::string *info);
+    bool readModuleInfo(const go::string &info);
 
 public:
     go::endian mEndian;

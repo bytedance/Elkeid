@@ -25,12 +25,6 @@
 [submodule "rasp/python/python-inject/caller/c-runtime"]
 	path = rasp/python/python-inject/caller/c-runtime
 	url = https://github.com/Hackerl/c-runtime
-[submodule "rasp/golang/c-runtime"]
-	path = rasp/golang/c-runtime
-	url = https://github.com/Hackerl/c-runtime
 [submodule "rasp/golang/tiny-regex-c"]
 	path = rasp/golang/tiny-regex-c
 	url = https://github.com/Hackerl/tiny-regex-c
-[submodule "rasp/golang/zero"]
-	path = rasp/golang/zero
-	url = https://github.com/Hackerl/zero

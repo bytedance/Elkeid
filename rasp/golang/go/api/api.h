@@ -46,6 +46,7 @@ class CAPIEntry : public CAPIBase {
 public:
     static void __attribute__ ((naked)) entry() {
         asm volatile(
+        "mov $1, %%r12;"
         "mov %%rsp, %%r13;"
         "add $8, %%r13;"
         "and $15, %%r13;"
