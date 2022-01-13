@@ -116,9 +116,9 @@ centos|6.x,7.X,8.X|2.6.32~5.4.X |el6,el7,el8| yes
 | unlink             | 605      |                                         | OFF     |
 | rmdir              | 606      |                                         | OFF     |
 | call_usermodehelper_exec     | 607      |                               | ON     |
-| file_write         | 608      |                                          | OFF     |
-| file_read          | 610      |                                          | OFF     |
+| file_read          | 609      |                                          | OFF     |
 | usb_device_event   | 610      |                                          | ON     |
+| privilege_escalation   | 611      |                                          | ON     |
 
 
 
@@ -233,11 +233,11 @@ A record contains **Common Data** and ***Private Data***, with the exception of 
 ### Execve Data (59)
 
 ```
--------------------------------------------------------------------------------------------------------------------------
-|14        |15  |16      |17      |18   |19    |20 |21   |22 |23   |24       |25      |26 |27        |28 |29        |30 |
--------------------------------------------------------------------------------------------------------------------------
-|socket_exe|argv|run_path|pgid_exe|stdin|stdout|dip|dport|sip|sport|sa_family|pid_tree|tty|socket_pid|ssh|ld_preload|res|
--------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------
+|14  |15      |16   |17    |18 |19   |20 |21   |22       |23      |24 |25        |26 |27        |28 |
+-----------------------------------------------------------------------------------------------------
+|argv|run_path|stdin|stdout|dip|dport|sip|sport|sa_family|pid_tree|tty|socket_pid|ssh|ld_preload|res|
+-----------------------------------------------------------------------------------------------------
 ```
 
 Note:
@@ -464,6 +464,18 @@ action = 1 is USB_DEVICE_ADD
 action = 2 is USB_DEVICE_REMOVE
 ```
 
+### Privilege Escalation (611)
+
+```
+------------------------------
+|14   |15      |16    |17    |
+------------------------------
+|p_pid|pid_tree|p_cred|c_cred|
+------------------------------
+p_cred = uid|euid|suid|fsuid|gid|egid|sgid|fsgid
+c_cred = uid|euid|suid|fsuid|gid|egid|sgid|fsgid
+```
+
 ### Proc File Hook (700)
 
 ```
@@ -497,11 +509,11 @@ action = 2 is USB_DEVICE_REMOVE
 ### Interrupt Table Hook Data (703)
 
 ```
-----------------------------
-|1        |2               |
-----------------------------
-|data_type|interrupt_number|
-----------------------------
+----------------------------------------
+|1        |2          |3               |
+----------------------------------------
+|data_type|module_name|interrupt_number|
+----------------------------------------
 ```
 
 
