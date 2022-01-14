@@ -48,13 +48,13 @@ rmmod hids_driver
 If all urls failed, please build elkeid kernel module yourself.
 
 ```bash
-wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
+wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
 # or
-curl -O "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
+curl -O "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
 # other cdn
-## "http://lf3-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
-## "http://lf6-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
-## "http://lf9-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
+## "http://lf3-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
+## "http://lf6-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
+## "http://lf9-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
 ```
 
 
@@ -68,7 +68,7 @@ Distro|Version|x64 kernel|Suffix | On our production env
 :- | :- | -: | -| -:
 debian|8,9,10|3.16~5.4.X |-| yes
 ubuntu|14.04,16.04,18.04,20.04|3.12~5.4.X |generic| yes 
-centos|6.x,7.X,8.X|2.6.32~5.4.X |el6,el7,el8| yes 
+centos|6.x,7.X,8.X|2.6.32~5.4.X |el6,el7,el8| yes
 
 ## About ARM64 (AArch64) Support
 

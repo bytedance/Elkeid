@@ -51,15 +51,14 @@ rmmod hids_driver
 如果所有链接都获取失败，则说明 [预编译的 Ko](./ko_list.md) 中，不包含当前系统的内核版本所需的 Ko，需要自行编译
 
 ```bash
-wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
+wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
 # or
-curl -O "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
-# 其他地址
-## "http://lf3-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
-## "http://lf6-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
-## "http://lf9-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.0_$(uname -r).ko"
+curl -O "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
+# other cdn
+## "http://lf3-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
+## "http://lf6-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
+## "http://lf9-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
 ```
-
 ### 内核模块的测试方法
 
 可以通过 [LTP](https://linux-test-project.github.io/) 或者 [Kasan](https://www.kernel.org/doc/html/latest/dev-tools/kasan.html)这两个方法对内核模块进行测试.
