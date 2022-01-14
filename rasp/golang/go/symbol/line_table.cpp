@@ -1,4 +1,4 @@
- #include "line_table.h"
+#include "line_table.h"
 #include <zero/log.h>
 #include <zero/proc/process.h>
 #include <zero/filesystem/path.h>
@@ -94,6 +94,8 @@ bool CLineTable::load(const char *table) {
             mPCTable = &table[peek(&table[8 + 6 * mPtrSize])];
             mFuncData = &table[peek(&table[8 + 7 * mPtrSize])];
             mFuncTable = &table[peek(&table[8 + 7 * mPtrSize])];
+
+            break;
         }
 
         default:
@@ -165,12 +167,13 @@ bool CLineTable::findFunc(uintptr_t address, CFunc &func) {
     auto begin = getFuncTable();
     auto back = begin + mFuncNum;
     auto end = back + 1;
+    auto base = mVersion >= VERSION118 ? mTextStart : 0;
 
-    if (address < begin->entry || address >= back->entry)
+    if (address < begin->entry + base || address >= back->entry + base)
         return false;
 
     auto it = std::upper_bound(begin, end, address, [&](auto value, const auto& i) {
-        return value < i.entry + (mVersion >= VERSION118 ? mTextStart : 0);
+        return value < i.entry + base;
     });
 
     if (it == end)

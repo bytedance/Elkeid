@@ -20,6 +20,9 @@ public:
     void traceThread();
 
 public:
+    void resetQuotas();
+
+public:
     void onMessage(const CSmithMessage &message) override;
 
 private:
@@ -29,7 +32,9 @@ private:
     bool mExit{false};
 
 private:
-    std::mutex mMutex;
+    std::mutex mLimitMutex;
+    std::mutex mFilterMutex;
+    std::map<std::tuple<int, int>, int> mLimits;
     std::map<std::tuple<int, int>, CFilter> mFilters;
 
 private:
@@ -37,6 +42,7 @@ private:
     CSmithClient mClient{this};
 
 private:
+    zero::Thread<CSmithProbe> mTimer{this};
     zero::Thread<CSmithProbe> mThread{this};
     zero::atomic::CircularBuffer<CSmithTrace, TRACE_BUFFER_SIZE> mTraces;
 };

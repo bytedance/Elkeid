@@ -1,12 +1,18 @@
 #include "smith_probe.h"
 #include <zero/log.h>
 #include <go/api/api.h>
+#include <unistd.h>
+
+constexpr auto DEFAULT_QUOTAS = 12000;
+constexpr auto RESET_QUOTAS_INTERVAL = 60;
 
 constexpr auto WAIT_TIMEOUT = timespec {30, 0};
 
 void CSmithProbe::start() {
     mClient.start();
+
     mThread.start(&CSmithProbe::traceThread);
+    mTimer.start(&CSmithProbe::resetQuotas);
 }
 
 void CSmithProbe::stop() {
@@ -15,6 +21,8 @@ void CSmithProbe::stop() {
     z_cond_signal(&mCond);
 
     mThread.stop();
+    mTimer.stop();
+
     mClient.stop();
 }
 
@@ -50,6 +58,27 @@ void CSmithProbe::traceThread() {
     }
 }
 
+void CSmithProbe::resetQuotas() {
+    while (!mExit) {
+        {
+            std::lock_guard<std::mutex> _0_(mLimitMutex);
+
+            for (const auto &api : GOLANG_API) {
+                auto it = mLimits.find({api.metadata.classID, api.metadata.methodID});
+
+                if (it == mLimits.end()) {
+                    __atomic_store_n(api.metadata.quota, DEFAULT_QUOTAS, __ATOMIC_SEQ_CST);
+                    continue;
+                }
+
+                __atomic_store_n(api.metadata.quota, it->second, __ATOMIC_SEQ_CST);
+            }
+        }
+
+        sleep(RESET_QUOTAS_INTERVAL);
+    }
+}
+
 void CSmithProbe::onMessage(const CSmithMessage &message) {
     switch (message.operate) {
         case HEARTBEAT:
@@ -68,7 +97,7 @@ void CSmithProbe::onMessage(const CSmithMessage &message) {
                 break;
 
             std::list<CFilter> filters = message.data.at("filters").get<std::list<CFilter>>();
-            std::lock_guard<std::mutex> _0_(mMutex);
+            std::lock_guard<std::mutex> _0_(mFilterMutex);
 
             mFilters.clear();
 
@@ -120,6 +149,26 @@ void CSmithProbe::onMessage(const CSmithMessage &message) {
 
                 z_rwlock_write_unlock(it->metadata.lock);
             }
+
+            break;
+        }
+
+        case LIMIT: {
+            LOG_INFO("limit message");
+
+            if (!message.data.contains("limits"))
+                break;
+
+            std::list<CLimit> limits = message.data.at("limits").get<std::list<CLimit>>();
+            std::lock_guard<std::mutex> _0_(mLimitMutex);
+
+            mLimits.clear();
+
+            for (const auto &l : limits) {
+                mLimits.insert({{l.classId, l.methodID}, l.quota});
+            }
+
+            break;
         }
 
         default:
@@ -128,7 +177,7 @@ void CSmithProbe::onMessage(const CSmithMessage &message) {
 }
 
 bool CSmithProbe::filter(const CSmithTrace &smithTrace) {
-    std::lock_guard<std::mutex> _0_(mMutex);
+    std::lock_guard<std::mutex> _0_(mFilterMutex);
 
     auto it = mFilters.find({smithTrace.classID, smithTrace.methodID});
 

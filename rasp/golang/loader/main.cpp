@@ -63,7 +63,7 @@ int main(int argc, char **argv, char **env) {
             if ((api.ignoreCase ? strcasecmp(api.name, name) : strcmp(api.name, name)) == 0) {
                 LOG_INFO("hook %s: %p", name, entry);
 
-                if (!gAPIHook->hook(entry, (void *)api.metadata.entry, api.metadata.origin)) {
+                if (hookAPI(entry, (void *)api.metadata.entry, api.metadata.origin) < 0) {
                     LOG_WARNING("hook %s failed", name);
                     break;
                 }

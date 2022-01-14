@@ -2,6 +2,7 @@ package com.security.smith.asm;
 
 import com.security.smith.SmithProbe;
 import com.security.smith.process.*;
+import org.apache.commons.lang3.ArrayUtils;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -9,6 +10,7 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.AdviceAdapter;
 import org.objectweb.asm.commons.Method;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,10 +30,10 @@ public class SmithMethodVisitor extends AdviceAdapter {
         put("java.net.InetAddress[]", ObjectArrayProcess.class);
     }};
 
-    protected SmithMethodVisitor(int api, String className, int classID, int methodID, boolean canBlock, MethodVisitor methodVisitor, int access, String name, String descriptor) {
+    protected SmithMethodVisitor(int api, Type classType, int classID, int methodID, boolean canBlock, MethodVisitor methodVisitor, int access, String name, String descriptor) {
         super(api, methodVisitor, access, name, descriptor);
 
-        this.className = className;
+        this.classType = classType;
         this.classID = classID;
         this.methodID = methodID;
         this.canBlock = canBlock;
@@ -59,7 +61,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
             dup();
             push(0);
             loadThis();
-            processObject(className);
+            processObject(classType.getClassName());
             arrayStore(Type.getType(Object.class));
         }
 
@@ -81,6 +83,9 @@ public class SmithMethodVisitor extends AdviceAdapter {
 
         loadArgArray();
         storeLocal(argumentsVariable);
+
+        visitInsn(ACONST_NULL);
+        storeLocal(returnVariable);
 
         mark(start);
 
@@ -126,7 +131,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
         if (opcode == RETURN) {
             if (isConstructor) {
                 loadThis();
-                processObject(className);
+                processObject(classType.getClassName());
             } else {
                 visitInsn(ACONST_NULL);
             }
@@ -181,6 +186,44 @@ public class SmithMethodVisitor extends AdviceAdapter {
         mark(end);
         mark(handler);
 
+        Type[] types = Type.getArgumentTypes(methodDesc);
+
+        if (!isStatic) {
+            types = ArrayUtils.addFirst(types, classType);
+        }
+
+        Object[] local = Arrays.stream(types).map(t -> {
+            switch (t.getSort()) {
+                case Type.BOOLEAN:
+                case Type.CHAR:
+                case Type.BYTE:
+                case Type.SHORT:
+                case Type.INT:
+                    return Opcodes.INTEGER;
+                case Type.FLOAT:
+                    return Opcodes.FLOAT;
+                case Type.ARRAY:
+                case Type.OBJECT:
+                    return t.getInternalName();
+                case Type.LONG:
+                    return Opcodes.LONG;
+                case Type.DOUBLE:
+                    return Opcodes.DOUBLE;
+                default:
+                    throw new AssertionError();
+            }
+        }).toArray();
+
+        visitFrame(
+                Opcodes.F_NEW,
+                local.length,
+                local,
+                1,
+                new Object[]{Type.getInternalName(Exception.class)}
+        );
+
+        storeLocal(returnVariable + 1, Type.getType(Exception.class));
+
         invokeStatic(
                 Type.getType(SmithProbe.class),
                 new Method(
@@ -209,6 +252,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
                 )
         );
 
+        loadLocal(returnVariable + 1);
         throwException();
     }
 
@@ -232,7 +276,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
 
     private final int classID;
     private final int methodID;
-    private final String className;
+    private final Type classType;
     private final boolean canBlock;
     private final boolean isStatic;
     private final boolean isConstructor;

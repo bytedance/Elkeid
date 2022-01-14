@@ -15,15 +15,18 @@ public:
     using value_type = CFuncEntry;
     using pointer = value_type*;
     using reference = value_type&;
-    using iterator_category = std::input_iterator_tag;
+    using iterator_category = std::random_access_iterator_tag;
 
 public:
     explicit CFuncTablePtr(const char *table, unsigned int size);
 
 public:
     CFuncTablePtr &operator++();
+    CFuncTablePtr &operator--();
+    CFuncTablePtr &operator+=(std::ptrdiff_t offset);
     CFuncTablePtr operator+(unsigned int offset);
     CFuncTablePtr operator-(unsigned int offset);
+    std::ptrdiff_t operator-(const CFuncTablePtr &ptr);
 
 public:
     const CFuncEntry &operator*();
