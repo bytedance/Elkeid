@@ -64,11 +64,13 @@ You can test the kernel module with [LTP](https://linux-test-project.github.io/)
 
 ## About the compatibility with Linux distributions
 
-Distro|Version|x64 kernel|Suffix | On our production env
-:- | :- | -: | -| -:
-debian|8,9,10|3.16~5.4.X |-| yes
-ubuntu|14.04,16.04,18.04,20.04|3.12~5.4.X |generic| yes 
-centos|6.x,7.X,8.X|2.6.32~5.4.X |el6,el7,el8| yes
+Distro|Version|x64 kernel|Suffix
+:- | :- | -: | -:
+debian|8,9,10|3.16~5.4.X |-
+ubuntu|14.04,16.04,18.04,20.04|3.12~5.4.X |generic
+centos|6.x,7.X,8.X|2.6.32~5.4.X |el6,el7,el8
+amazon|2|4.9.X~4.14.X|amzn2
+EulerOS|V2.0|3.10.X|-
 
 ## About ARM64 (AArch64) Support
 

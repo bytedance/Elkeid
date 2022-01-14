@@ -68,11 +68,13 @@ curl -O "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0
 
 ## 关于Linux发行版的兼容性
 
-发行版|版本号|x64 架构内核|内核后缀 |生产网大范围使用
-:- | :- | -: | -| -:
-debian|8,9,10|3.16~5.4.X |-| yes
-ubuntu|14.04,16.04,18.04,20.04|3.12~5.4.X |generic| yes 
-centos|6.X,7.X,8.X|2.6.32.0~5.4.X |el6,el7,el8| yes 
+发行版|版本号|x64 架构内核|内核后缀
+:- | :- | -: | -:
+debian|8,9,10|3.16~5.4.X |-
+ubuntu|14.04,16.04,18.04,20.04|3.12~5.4.X |generic
+centos|6.X,7.X,8.X|2.6.32.0~5.4.X |el6,el7,el8
+amazon|2|4.9.X~4.14.X|amzn2
+EulerOS|V2.0|3.10.X|-
 
 
 
