@@ -414,7 +414,7 @@ PRINT_EVENT_DEFINE(execve,
                    ),
 
                    PE_printk(
-                           "%d" RS "59" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%u" RS "%u" RS "%s" RS "%s" RS "%s" RS "%s" RS "%s" RS "%s" RS "%d.%d.%d.%d" RS "%d" RS "%d.%d.%d.%d" RS "%d" RS "2" RS "%s" RS "%s" RS "%d" RS "%s" RS "%s" RS "%d",
+                           "%d" RS "59" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%u" RS "%u" RS "%s" RS "%s" RS "%s" RS "%s" RS "%s" RS "%s" RS "%d.%d.%d.%d" RS "%d" RS "%d.%d.%d.%d" RS "%d" RS "2" RS "%s" RS "%s" RS "%d" RS "%s" RS "%s" RS "%s" RS "%d",
                            __entry->uid, __get_str(exe_path), __entry->pid,
                            __entry->ppid, __entry->pgid, __entry->tgid, __entry->sid, __entry->comm,
                            __get_str(nodename), __entry->sessionid, __entry->pid_inum, __entry->root_pid_inum,
@@ -490,7 +490,7 @@ PRINT_EVENT_DEFINE(execve_nosocket,
                    ),
 
                    PE_printk(
-                           "%d" RS "59" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d"  RS "%s" RS "%s" RS "%u" RS "%u" RS "%u" RS "-1" RS "%s" RS "%s" RS "%s" RS "%s" RS "%s" RS "-1" RS "-1" RS "-1" RS "-1" RS "-1" RS "%s" RS "%s" RS "-1" RS "%s" RS "%s" RS "%d",
+                           "%d" RS "59" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d"  RS "%s" RS "%s" RS "%u" RS "%u" RS "%u" RS "-1" RS "%s" RS "%s" RS "%s" RS "%s" RS "%s" RS "-1" RS "-1" RS "-1" RS "-1" RS "-1" RS "%s" RS "%s" RS "-1" RS "%s" RS "%s" RS "%s" RS "%d",
                            __entry->uid, __get_str(exe_path), __entry->pid,
                            __entry->ppid, __entry->pgid, __entry->tgid, __entry->sid, __entry->comm,
                            __get_str(nodename), __entry->sessionid, __entry->pid_inum,
@@ -580,7 +580,7 @@ PRINT_EVENT_DEFINE(execve6,
                    ),
 
                    PE_printk(
-                           "%d" RS "59" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%u" RS "%u" RS "%s" RS "%s" RS "%s" RS "%s" RS "%s" RS "%s" RS "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x" RS "%d" RS "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x" RS "%d" RS "10" RS "%s" RS "%s" RS "%d" RS "%s" RS "%s" RS "%d",
+                           "%d" RS "59" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%u" RS "%u" RS "%s" RS "%s" RS "%s" RS "%s" RS "%s" RS "%s" RS "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x" RS "%d" RS "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x" RS "%d" RS "10" RS "%s" RS "%s" RS "%d" RS "%s" RS "%s" RS "%s" RS "%d",
                            __entry->uid, __get_str(exe_path), __entry->pid,
                            __entry->ppid, __entry->pgid, __entry->tgid, __entry->sid, __entry->comm,
                            __get_str(nodename), __entry->sessionid, __entry->pid_inum, __entry->root_pid_inum,
