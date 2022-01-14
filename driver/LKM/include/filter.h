@@ -13,6 +13,7 @@
 #include <linux/spinlock.h>
 #include <linux/string.h>
 #include <linux/rbtree.h>
+#include <linux/namei.h>
 
 #define FILTER_DEVICE_NAME "hids_driver_allowlist"
 #define FILTER_CLASS_NAME "hids_driver_allowlist"
@@ -24,6 +25,8 @@ int filter_init(void);
 void filter_cleanup(void);
 
 int execve_exe_check(char *data);
+
+int file_notify_check(u8 *uuid, unsigned long inode, const char *name, int nlen, int mask);
 
 int execve_argv_check(char *data);
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: GPL-2.0
 /*
  * trace.c
  *
@@ -13,22 +13,14 @@
 #include "../include/kprobe.h"
 #include "../include/util.h"
 
-#define PROC_NAME	"hids_driver"
+#define PROC_ENDPOINT	"elkeid-endpoint"
 
 #define PRINT_EVENT_ID_MAX	\
 	((1 << (sizeof(((struct print_event_entry *)0)->id) * 8)) - 1)
 
 struct print_event_iterator {
     struct mutex mutex;
-    /* 
-       From version 5.6, the "ring_buffer" has been deconfused, using perf_buffer and trace_buffer instead
-       ref: https://lore.kernel.org/bpf/20200110020509.983809718@goodmis.org/T/
-    */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
-    struct trace_buffer *buffer;
-#else
-    struct ring_buffer *buffer;
-#endif
+    struct tb_ring *ring;
 
     /* The below is zeroed out in pipe_read */
     struct trace_seq seq;
@@ -39,42 +31,11 @@ struct print_event_iterator {
     /* All new field here will be zeroed out in pipe_read */
 };
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
-static struct trace_buffer *ring_buffer;
-#else
-static struct ring_buffer *ring_buffer;
-#endif
+static struct tb_ring *trace_ring;
 
 /* Defined in linker script */
 extern struct print_event_class *const __start_print_event_class[];
 extern struct print_event_class *const __stop_print_event_class[];
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 5, 0)
-static int (*ring_buffer_wait_sym) (struct ring_buffer * buffer, int cpu);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
-static int (*ring_buffer_wait_sym) (struct trace_buffer * buffer,
-                                    int cpu, bool full);
-#else
-static int (*ring_buffer_wait_sym) (struct ring_buffer * buffer,
-                                    int cpu, bool full);
-#endif
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
-static __poll_t(*ring_buffer_poll_wait_sym) (struct trace_buffer * buffer,
-					     int cpu, struct file * filp,
-					     poll_table * poll_table);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
-static __poll_t(*ring_buffer_poll_wait_sym) (struct ring_buffer * buffer,
-					     int cpu, struct file * filp,
-					     poll_table * poll_table);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 5, 0)
-static unsigned int (*ring_buffer_poll_wait_sym) (struct ring_buffer * buffer,
-						  int cpu, struct file * filp);
-#else
-static unsigned int (*ring_buffer_poll_wait_sym) (struct ring_buffer * buffer,
-                                                  int cpu, struct file * filp,
-                                                  poll_table * poll_table);
-#endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0)
 static ssize_t(*trace_seq_to_user_sym) (struct trace_seq * s,
@@ -83,34 +44,13 @@ static ssize_t(*trace_seq_to_user_sym) (struct trace_seq * s,
 #define trace_seq_to_user_sym trace_seq_to_user
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
-static int (*ring_buffer_record_is_on_sym) (struct trace_buffer * buffer);
-#else
-static int (*ring_buffer_record_is_on_sym) (struct ring_buffer * buffer);
-#endif
-
 static int kallsyms_lookup_symbols(void)
 {
-    void *ptr = (void *)smith_kallsyms_lookup_name("ring_buffer_wait");
-    if (!ptr)
-        return -ENODEV;
-    ring_buffer_wait_sym = ptr;
-
-    ptr = (void *)smith_kallsyms_lookup_name("ring_buffer_poll_wait");
-    if (!ptr)
-        return -ENODEV;
-    ring_buffer_poll_wait_sym = ptr;
-
-    ptr = (void *)smith_kallsyms_lookup_name("ring_buffer_record_is_on");
-    if (!ptr)
-        return -ENODEV;
-    ring_buffer_record_is_on_sym = ptr;
-
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0)
-    ptr = (void *)smith_kallsyms_lookup_name("trace_seq_to_user");
-	if (!ptr)
-		return -ENODEV;
-	trace_seq_to_user_sym = ptr;
+    void *ptr = (void *)smith_kallsyms_lookup_name("trace_seq_to_user");
+    if (!ptr)
+        return -ENODEV;
+    trace_seq_to_user_sym = ptr;
 #endif
 
     return 0;
@@ -126,29 +66,12 @@ static int trace_open_pipe(struct inode *inode, struct file *filp)
 
     trace_seq_init(&iter->seq);
     mutex_init(&iter->mutex);
-    iter->buffer = PDE_DATA(inode);
+    iter->ring = PDE_DATA(inode);
     filp->private_data = iter;
     nonseekable_open(inode, filp);
+    __module_get(THIS_MODULE);
 
     return 0;
-}
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
-static __poll_t trace_poll_pipe(struct file *filp, poll_table * poll_table)
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 5, 0)
-static unsigned int trace_poll_pipe(struct file *filp)
-#else
-static unsigned int trace_poll_pipe(struct file *filp, poll_table * poll_table)
-#endif
-{
-    struct print_event_iterator *iter = filp->private_data;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 5, 0)
-    return ring_buffer_poll_wait_sym(iter->buffer, RING_BUFFER_ALL_CPUS,
-					 filp);
-#else
-    return ring_buffer_poll_wait_sym(iter->buffer, RING_BUFFER_ALL_CPUS,
-                                     filp, poll_table);
-#endif
 }
 
 static int is_trace_empty(struct print_event_iterator *iter)
@@ -156,7 +79,7 @@ static int is_trace_empty(struct print_event_iterator *iter)
     int cpu;
 
     for_each_possible_cpu(cpu) {
-        if (!ring_buffer_empty_cpu(iter->buffer, cpu))
+        if (!tb_empty_cpu(iter->ring, cpu))
             return 0;
     }
 
@@ -175,12 +98,7 @@ static int trace_wait_pipe(struct file *filp)
             return -EAGAIN;
 
         mutex_unlock(&iter->mutex);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 5, 0)
-        ret = ring_buffer_wait_sym(iter->buffer, RING_BUFFER_ALL_CPUS);
-#else
-        ret = ring_buffer_wait_sym(iter->buffer, RING_BUFFER_ALL_CPUS,
-                                   false);
-#endif
+        ret = tb_wait(iter->ring, TB_RING_ALL_CPUS, 0);
         mutex_lock(&iter->mutex);
 
         if (ret)
@@ -190,68 +108,82 @@ static int trace_wait_pipe(struct file *filp)
     return 1;
 }
 
-static struct print_event_entry *peek_next_entry(struct print_event_iterator
-                                                 *iter, int cpu, u64 * ts,
+static struct print_event_entry *peek_next_entry(struct print_event_iterator *iter,
+                                                 int cpu, u64 * ts,
                                                  unsigned long *lost_events)
 {
-    struct ring_buffer_event *event;
+    struct tb_event *event;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 5, 0)
-    event = ring_buffer_peek(iter->buffer, cpu, ts);
-#else
-    event = ring_buffer_peek(iter->buffer, cpu, ts, lost_events);
-#endif
-
+    event = tb_peek(iter->ring, cpu, ts, lost_events);
     if (event)
-        return ring_buffer_event_data(event);
+        return tb_event_data(event);
 
     return NULL;
 }
 
-static struct print_event_entry *__find_next_entry(struct print_event_iterator
-                                                   *iter, int *ent_cpu, unsigned long
-                                                   *missing_events,
-                                                   u64 * ent_ts)
+static inline int __cpumask_next_wrap(int n, const struct cpumask *mask, int start, bool wrap)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
-    struct trace_buffer *buffer = iter->buffer;
-#else
-    struct ring_buffer *buffer = iter->buffer;
-#endif
-    struct print_event_entry *ent, *next = NULL;
-    unsigned long lost_events = 0, next_lost = 0;
-    u64 next_ts = 0, ts;
-    int next_cpu = -1;
-    int cpu;
+	int next;
 
-    for_each_possible_cpu(cpu) {
+again:
+	next = cpumask_next(n, mask);
 
-        if (ring_buffer_empty_cpu(buffer, cpu))
-            continue;
+	if (wrap && n < start && next >= start) {
+		return nr_cpumask_bits;
 
-        ent = peek_next_entry(iter, cpu, &ts, &lost_events);
+	} else if (next >= nr_cpumask_bits) {
+		wrap = true;
+		n = -1;
+		goto again;
+	}
 
+	return next;
+}
+
+static struct print_event_entry *__find_next_entry(struct print_event_iterator *iter,
+                                                   int *ent_cpu, unsigned long *me,
+                                                   u64 *ent_ts)
+{
+    struct tb_ring *ring = iter->ring;
+    struct print_event_entry *ent = NULL;
+    u64 ts;
+    unsigned long lost_events = 0;
+    int cpu, start = 0;
+
+    if (ent_cpu) {
         /*
-         * Pick the entry with the smallest timestamp:
+         * always loop from next of last-read cpu (specified by user)
+         * to avoid possible starving on other cores, that is, reading
+         * one message for 'cpu', then moving onto 'cpu' + 1
          */
-        if (ent && (!next || ts < next_ts)) {
-            next = ent;
-            next_cpu = cpu;
-            next_ts = ts;
-            next_lost = lost_events;
-        }
+        start = *ent_cpu + 1;
+        if (start >= nr_cpumask_bits)
+            start = 0;
+        else if (start < 0)
+            start = 0;
     }
 
-    if (ent_cpu)
-        *ent_cpu = next_cpu;
+    cpu = __cpumask_next_wrap(start - 1, cpu_possible_mask, start, 0);
+    while (cpu < nr_cpumask_bits) {
 
-    if (ent_ts)
-        *ent_ts = next_ts;
+        if (tb_empty_cpu(ring, cpu))
+            goto next_cpu;
 
-    if (missing_events)
-        *missing_events = next_lost;
+        ent = peek_next_entry(iter, cpu, &ts, &lost_events);
+        if (ent) {
+           if (ent_cpu)
+               *ent_cpu = cpu;
+           if (ent_ts)
+               *ent_ts = ts;
+           if (me)
+               *me = lost_events;
+            break;
+        }
+next_cpu:
+        cpu = __cpumask_next_wrap(cpu, cpu_possible_mask, start, 1);
+    }
 
-    return next;
+    return ent;
 }
 
 /* Find the next real entry, and increment the iterator to the next entry */
@@ -315,7 +247,7 @@ waitagain:
     if(fatal_signal_pending(current))
         goto out;
 
-    if(!ring_buffer_record_is_on_sym(ring_buffer))
+    if(!tb_record_is_on(trace_ring))
         goto out;
 
     sret = trace_wait_pipe(filp);
@@ -336,30 +268,27 @@ waitagain:
     mutex_lock(&access_lock);
     while (trace_next_entry_inc(iter) != NULL) {
         enum print_line_t ret;
-#ifdef SMITH_TRACE_EVENTS
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
         int save_len = iter->seq.seq.len;
 #else
         int save_len = iter->seq.len;
 #endif
         ret = print_trace_fmt_line(iter);
-            if (ret == TRACE_TYPE_PARTIAL_LINE) {
+        if (ret == TRACE_TYPE_PARTIAL_LINE) {
             /* don't print partial lines */
-#ifdef SMITH_TRACE_EVENTS
-                iter->seq.seq.len = save_len;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
+            iter->seq.seq.len = save_len;
 #else
-                iter->seq.len = save_len;
+            iter->seq.len = save_len;
 #endif
-                break;
-            }
+            break;
+        }
+
         if (ret != TRACE_TYPE_NO_CONSUME)
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 5, 0)
-        ring_buffer_consume(iter->buffer, iter->cpu, &iter->ts);
-#else
-        ring_buffer_consume(iter->buffer, iter->cpu, &iter->ts, &iter->lost_events);
-#endif
+            tb_consume(iter->ring, iter->cpu, &iter->ts, &iter->lost_events);
+
         if (__trace_seq_used(&iter->seq) >= cnt)
             break;
-
     /*
     * Setting the full flag means we reached the trace_seq buffer
     * size and we should leave by partial output condition above.
@@ -373,7 +302,7 @@ waitagain:
 
 /* Now copy what we have to the user */
     sret = trace_seq_to_user_sym(&iter->seq, ubuf, cnt);
-#ifdef SMITH_TRACE_EVENTS
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
     if (iter->seq.seq.readpos >= __trace_seq_used(&iter->seq))
 #else
     if (iter->seq.readpos >= __trace_seq_used(&iter->seq))
@@ -399,30 +328,46 @@ static int trace_release_pipe(struct inode *inode, struct file *file)
 
     mutex_destroy(&iter->mutex);
     kfree(iter);
+    module_put(THIS_MODULE);
 
     return 0;
 }
 
-/* version 5.6 has modified the API "proc_create_data", changed file_operations to proc_ops
-   ref: https://github.com/openzfs/zfs/issues/9956
-*/
+long trace_ioctl_pipe(struct file *filp, unsigned int cmd, unsigned long __user arg)
+{
+    struct print_event_iterator *iter = filp->private_data;
+    long rc = -EINVAL;
+
+    mutex_lock(&iter->mutex);
+    if (cmd == TRACE_IOCTL_STAT) {
+        struct tb_stat stat = {0};
+        tb_stat(iter->ring, &stat);
+        if (copy_to_user((void *)arg, &stat, sizeof(stat)))
+            rc = -EFAULT;
+        else
+            rc = sizeof(stat);
+    }
+    mutex_unlock(&iter->mutex);
+
+    return rc;
+}
+
+/* 
+ * v5.6: proc_create_data API changed (file_operations to proc_ops)
+ */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
 static const struct file_operations trace_pipe_fops = {
-        .owner = THIS_MODULE,
         .open = trace_open_pipe,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
-        .poll = trace_poll_pipe,
-#endif
         .read = trace_read_pipe,
+        .unlocked_ioctl = trace_ioctl_pipe,
         .release = trace_release_pipe,
-        .llseek = no_llseek,
 };
 #else
 static const struct proc_ops trace_pipe_fops = {
     .proc_open = trace_open_pipe,
     .proc_read = trace_read_pipe,
+    .proc_ioctl = trace_ioctl_pipe,
     .proc_release = trace_release_pipe,
-    .proc_poll = trace_poll_pipe,
 };
 #endif
 
@@ -436,7 +381,6 @@ static int __init print_event_init(void)
     int id = 0;
     int num_class = num_print_event_class();
     struct print_event_class *const *class_ptr;
-    struct proc_dir_entry *parent_dir;
 
     if (num_class == 0)
         return 0;
@@ -447,47 +391,38 @@ static int __init print_event_init(void)
     if (kallsyms_lookup_symbols())
         return -ENODEV;
 
-    ring_buffer = ring_buffer_alloc(RB_BUFFER_SIZE, RB_FL_OVERWRITE);
-    if (!ring_buffer)
+    trace_ring = tb_alloc(RB_BUFFER_SIZE, TB_FL_OVERWRITE);
+    if (!trace_ring)
         return -ENOMEM;
 
-    parent_dir = proc_mkdir(PROC_NAME, NULL);
-    if (!parent_dir)
-        goto free;
-
-    if (!proc_create_data("1", S_IRUSR, parent_dir,
-                          &trace_pipe_fops, ring_buffer))
-        goto remove_proc;
+    if (!proc_create_data(PROC_ENDPOINT, S_IRUSR, NULL,
+                          &trace_pipe_fops, trace_ring))
+        goto errorout;
 
     for (class_ptr = __start_print_event_class;
          class_ptr < __stop_print_event_class; class_ptr++) {
         struct print_event_class *class = *class_ptr;
 
         class->id = id++;
-        class->buffer = ring_buffer;
+        class->trace = trace_ring;
     }
     pr_info("create %d print event class\n", num_class);
 
     return 0;
 
-    remove_proc:
-    remove_proc_subtree(PROC_NAME, NULL);
-free:
-    kfree(ring_buffer);
+errorout:
+    tb_free(trace_ring);
 
     return -ENOMEM;
 }
 
 static void print_event_exit(void)
 {
-    int num_class = num_print_event_class();
+    remove_proc_entry(PROC_ENDPOINT, NULL);
+    if (trace_ring)
+        tb_free(trace_ring);
 
-    if (num_class == 0)
-        return;
-    remove_proc_subtree(PROC_NAME, NULL);
-    ring_buffer_free(ring_buffer);
-
-    pr_info("destroy %d print event class\n", num_class);
+    pr_info("destroy %d print event class\n", num_print_event_class());
 }
 
 KPROBE_INITCALL(print_event_init, print_event_exit);

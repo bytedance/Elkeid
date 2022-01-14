@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-3.0 */
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef UTIL_H
 #define UTIL_H
 
@@ -15,13 +15,11 @@
 #include <linux/nsproxy.h>
 #include <linux/pid_namespace.h>
 #include <linux/ctype.h>
-#include <linux/delay.h>
+#include <linux/cred.h>
 
-#ifdef CONFIG_X86
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 7, 0)
-#include <asm/paravirt.h>
-#endif
-#endif
+/*
+ * constants & globals
+ */
 
 #define DEFAULT_RET_STR "-2"
 #define NAME_TOO_LONG "-4"
@@ -29,83 +27,112 @@
 
 static unsigned int ROOT_PID_NS_INUM;
 
+/*
+ * wrapper of kernel memory allocation routines
+ */
+
+#define smith_kmalloc(size, flags)  kmalloc(size, (flags) | __GFP_NOWARN)
+#define smith_kzalloc(size, flags)  kmalloc(size, (flags) | __GFP_NOWARN | __GFP_ZERO)
+#define smith_kfree(ptr)            do { void * _ptr = (ptr); if (_ptr) kfree(_ptr);} while(0)
+
+/*
+ * common routines
+ */
 extern unsigned long smith_kallsyms_lookup_name(const char *);
 
 extern char *__dentry_path(struct dentry *dentry, char *buf, int buflen);
 
-extern u64 GET_PPIN(void);
+extern u8 *smith_query_sb_uuid(struct super_block *sb);
 
-static __always_inline char *smith_get_pid_tree(int limit)
+#define smith_get_task_struct(tsk) get_task_struct(tsk)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
+extern void (*__smith_put_task_struct)(struct task_struct *t);
+static inline void smith_put_task_struct(struct task_struct *t)
 {
-    int real_data_len = PID_TREE_MATEDATA_LEN;
-    int limit_index = 0;
-    char *tmp_data = NULL;
-    char pid[24];
-    struct task_struct *task;
-    struct task_struct *old_task;
+	if (atomic_dec_and_test(&t->usage))
+		__smith_put_task_struct(t);
+}
+#else
+#define smith_put_task_struct(tsk)  put_task_struct(tsk)
+#endif
 
-    task = current;
-    get_task_struct(task);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 5, 0)
+# ifndef GLOBAL_ROOT_UID
+# define GLOBAL_ROOT_UID (0)
+# endif
+# ifndef GLOBAL_ROOT_GID
+# define GLOBAL_ROOT_GID (0)
+# endif
+# ifndef uid_eq
+# define uid_eq(o, n) ((o) == (n))
+# endif
+# ifndef gid_eq
+# define gid_eq(o, n) ((o) == (n))
+# endif
+# define _XID_VALUE(x)  (x)
+#else
+# define _XID_VALUE(x)  (x).val
+#endif
 
-    snprintf(pid, 24, "%d", task->tgid);
-    tmp_data = kzalloc(1024, GFP_ATOMIC);
-
-    if (!tmp_data) {
-        put_task_struct(task);
-        return tmp_data;
-    }
-
-    strcat(tmp_data, pid);
-    strcat(tmp_data, ".");
-    strcat(tmp_data, current->comm);
-
-    while (1) {
-        limit_index = limit_index + 1;
-        if (limit_index >= limit) {
-            put_task_struct(task);
-            break;
-        }
-
-        old_task = task;
-        rcu_read_lock();
-        task = rcu_dereference(task->real_parent);
-        put_task_struct(old_task);
-        if (!task || task->pid == 0) {
-            rcu_read_unlock();
-            break;
-        }
-
-        get_task_struct(task);
-        rcu_read_unlock();
-
-        real_data_len = real_data_len + PID_TREE_MATEDATA_LEN;
-        if (real_data_len > 1024) {
-            put_task_struct(task);
-            break;
-        }
-
-        snprintf(pid, 24, "%d", task->tgid);
-        strcat(tmp_data, "<");
-        strcat(tmp_data, pid);
-        strcat(tmp_data, ".");
-        strcat(tmp_data, task->comm);
-    }
-
-    return tmp_data;
+static __always_inline int check_cred(const struct cred *current_cred, const struct cred *parent_cred)
+{
+    if (uid_eq(current_cred->uid, GLOBAL_ROOT_UID) ||
+        uid_eq(current_cred->euid, GLOBAL_ROOT_UID) ||
+        uid_eq(current_cred->suid, GLOBAL_ROOT_UID) ||
+        uid_eq(current_cred->fsuid, GLOBAL_ROOT_UID) ||
+        gid_eq(current_cred->gid, GLOBAL_ROOT_GID) ||
+        gid_eq(current_cred->sgid, GLOBAL_ROOT_GID) ||
+        gid_eq(current_cred->egid, GLOBAL_ROOT_GID) ||
+        gid_eq(current_cred->fsgid, GLOBAL_ROOT_GID))
+        if(!uid_eq(current_cred->uid,  parent_cred->uid)  ||
+            !uid_eq(current_cred->euid,  parent_cred->euid) ||
+            !uid_eq(current_cred->suid,  parent_cred->suid) ||
+            !uid_eq(current_cred->fsuid, parent_cred->fsuid) ||
+            !gid_eq(current_cred->gid, parent_cred->gid) ||
+            !gid_eq(current_cred->sgid, parent_cred->sgid) ||
+            !gid_eq(current_cred->egid, parent_cred->egid) ||
+            !gid_eq(current_cred->fsgid, parent_cred->fsgid))
+            if(!(uid_eq(parent_cred->uid, GLOBAL_ROOT_UID) &&
+                uid_eq(parent_cred->euid, GLOBAL_ROOT_UID) &&
+                uid_eq(parent_cred->suid, GLOBAL_ROOT_UID) &&
+                uid_eq(parent_cred->fsuid, GLOBAL_ROOT_UID) &&
+                gid_eq(parent_cred->gid, GLOBAL_ROOT_GID) &&
+                gid_eq(parent_cred->sgid, GLOBAL_ROOT_GID) &&
+                gid_eq(parent_cred->egid, GLOBAL_ROOT_GID) &&
+                gid_eq(parent_cred->fsgid, GLOBAL_ROOT_GID)))
+                return 1;
+    return 0;
 }
 
+static __always_inline void save_cred_info(unsigned int p_cred_info[], const struct cred *parent_cred)
+{
+    p_cred_info[0] = _XID_VALUE(parent_cred->uid);
+    p_cred_info[1] = _XID_VALUE(parent_cred->euid);
+    p_cred_info[2] = _XID_VALUE(parent_cred->suid);
+    p_cred_info[3] = _XID_VALUE(parent_cred->fsuid);
+
+    p_cred_info[4] = _XID_VALUE(parent_cred->gid);
+    p_cred_info[5] = _XID_VALUE(parent_cred->egid);
+    p_cred_info[6] = _XID_VALUE(parent_cred->sgid);
+    p_cred_info[7] = _XID_VALUE(parent_cred->fsgid);
+}
+
+/*
+ * WARNING:
+ *     s must be null-terminated
+ */
 static inline char *smith_strim(char *s)
 {
-	size_t size = strlen(s);
-	char *end, *first = s;
+    size_t size = strlen(s);
+    char *end, *first = s;
 
-	if (!size)
-		return s;
+    if (!size)
+        return s;
 
-	end = s + size - 1;
-	while (end >= s && isspace(*end))
-		end--;
-	*(end + 1) = '\0';
+    end = s + size - 1;
+    while (end >= s && isspace(*end))
+        end--;
+    *(++end) = '\0';
 
     while (isspace(*first))
         first++;
@@ -196,34 +223,64 @@ static __always_inline char *smith_d_path(const struct path *path, char *buf, in
     return name;
 }
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 8, 0)
-#include <linux/mmap_lock.h>
-#elif !defined(_LINUX_MMAP_LOCK_H)
-static inline bool mmap_read_trylock(struct mm_struct *mm)
+/*
+ * query task's executable image file, with mmap lock avoided, just because
+ * mmput() could lead resched() (since it's calling might_sleep() interally)
+ *
+ * there could be races on mm->exe_file, but we could assure we can always
+ * get a valid filp or NULL
+ */
+static inline struct file *smith_get_task_exe_file(struct task_struct *task)
 {
-    return down_read_trylock(&mm->mmap_sem) != 0;
-}
-static inline void mmap_read_unlock(struct mm_struct *mm)
-{
-    up_read(&mm->mmap_sem);
-}
-#endif
+    struct file *exe = NULL;
 
-//get task exe file full path && only current can use it
+    /*
+     * get_task_mm/mmput must be avoided here
+     *
+     * mmput would put current task to sleep, which violates kprobe. or
+     * use mmput_async instead, but it's only available for after 4.7.0
+     * (and CONFIG_MMU is enabled)
+     */
+    task_lock(task);
+    if (task->mm && task->mm->exe_file) {
+        exe = task->mm->exe_file;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0)
+        if (!get_file_rcu(exe))
+            exe = NULL;
+#else
+        /* only inc f_count when it's not 0 to avoid races upon exe_file */
+        if (!atomic_long_inc_not_zero(&exe->f_count))
+            exe = NULL;
+#endif
+    }
+    task_unlock(task);
+
+    return exe;
+}
+
+// get full path of current task's executable image
 static __always_inline char *smith_get_exe_file(char *buffer, int size)
 {
     char *exe_file_str = DEFAULT_RET_STR;
+    struct file *exe;
 
     if (!buffer || !current->mm)
         return exe_file_str;
 
-    if (mmap_read_trylock(current->mm)) {
-        if (current->mm->exe_file) {
-            exe_file_str =
-                    smith_d_path(&current->mm->exe_file->f_path, buffer,
-                                 size);
-        }
-        mmap_read_unlock(current->mm);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0)
+    /*
+     * 1) performance improvement for kernels >=4.1: use get_mm_exe_file instead
+     *    get_mm_exe_file internally uses rcu lock (with semaphore locks killed)
+     * 2) it's safe to directly access current->mm under current's own context
+     * 3) get_mm_exe_file() is no longer exported after kernel 5.15
+     */
+    exe = get_mm_exe_file(current->mm);
+#else
+    exe = smith_get_task_exe_file(current);
+#endif
+    if (exe) {
+        exe_file_str = smith_d_path(&exe->f_path, buffer, size);
+        fput(exe);
     }
 
     return exe_file_str;
@@ -295,26 +352,40 @@ static inline void __init_root_pid_ns_inum(void) {
     pid_struct = find_get_pid(1);
     task = pid_task(pid_struct,PIDTYPE_PID);
 
-    get_task_struct(task);
+    smith_get_task_struct(task);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
     ROOT_PID_NS_INUM = task->nsproxy->pid_ns_for_children->ns.inum;
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
     ROOT_PID_NS_INUM = task->nsproxy->pid_ns_for_children->proc_inum;
-#else
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
     ROOT_PID_NS_INUM = task->nsproxy->pid_ns->proc_inum;
+#else
+    /*
+     * For kernels < 3.8.0, id for pid namespaces isn't defined.
+     * So here we are using fixed values, no emulating any more,
+     * previously we were using image file's inode number.
+     */
+    ROOT_PID_NS_INUM = 0xEFFFFFFCU /* PROC_PID_INIT_INO */;
 #endif
-    put_task_struct(task);
+    smith_put_task_struct(task);
     put_pid(pid_struct);
 }
 
 static inline unsigned int __get_pid_ns_inum(void) {
-    unsigned int inum = 0;
+    unsigned int inum;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
     inum = current->nsproxy->pid_ns_for_children->ns.inum;
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
     inum = current->nsproxy->pid_ns_for_children->proc_inum;
-#else
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
     inum = current->nsproxy->pid_ns->proc_inum;
+#else
+    /*
+     * For kernels < 3.8.0, id for pid namespaces isn't defined.
+     * So here we are using fixed values, no emulating any more,
+     * previously we were using image file's inode number.
+     */
+    inum = 0xEFFFFFFCU /* PROC_PID_INIT_INO */;
 #endif
     return inum;
 }

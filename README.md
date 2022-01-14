@@ -26,9 +26,13 @@ Elkeid is a support cloud-native and base linux host security(Intrusion detectio
 
 The above components can provide these data:
 
-<img src="./data_index.png"/>
-<img src="./data.png"/>
+<img width="40%" src="./data_index.png"/>
 
+Driver Data
+<img src="./data1.png"/>
+
+Other Data
+<img src="./data2.png"/>
 
 
 ## [Elkeid Backend Ability](https://github.com/bytedance/Elkeid/tree/main/server)

@@ -11,8 +11,6 @@ Elkeid Driver 主要通过 Kprobe Hook Kernel Funcion 来提供丰富而准确�
 
 凭借其出色的数据收集能力，Elkeid Driver还可以支持沙盒，蜜罐和审计等需求。
 
-当前版本的 Elkeid 内核模块代码已经在公司内生产网的 debian 机器上运行了很长的时间，内核模块出错的可能性极低，但是，这并不保证该内核模块在其他版本的内核中能够完美运行。例如，在小于3.10 和 大于 5.4 的内核版本，内核驱动尚未适配；以及 ubuntu 的部分版本机器中，因为定制内核的关系，Linux发行版本众多，很多情况并未经过充分测试。因此，千万不要在未经充分测试的情况下，在生产环境的机器中直接 insmod 使用 Elkeid 内核模块。
-
 如果发现 Bug 欢迎提 Issue 或 加入飞书公开群参与讨论。
 
 ## 快速尝试
@@ -20,12 +18,20 @@ Elkeid Driver 主要通过 Kprobe Hook Kernel Funcion 来提供丰富而准确�
 首先需要安装Linux Headers，Linux Headers 的版本必须等于 uname -r
 
 ```shell script
+# clone and build
 git clone https://github.com/bytedance/Elkeid.git
 cd Elkeid/driver/LKM/
 make clean && make
+< CentOS only: run build script instead >
+sh ./centos_build_ko.sh
+
+# load and test (should run as root)
 insmod hids_driver.ko
-dmesg
-cat /proc/hids_driver/1
+dmesg | tail -n 20
+test/rst -q
+< "CTRL + C" to quit >
+
+# unload
 rmmod hids_driver
 ```
 
@@ -33,10 +39,9 @@ rmmod hids_driver
 
 我们提供了一些预编译好的 Elkeid 内核模块，这些 Ko 包括了 debian,centos,ubuntu 等发行版的不同内核版本。
 
-### 描述
-当前版本的 Elkeid 内核模块代码已经在公司内生产网的 debian 机器上运行了很长的时间，内核模块出错的可能性极低，但是，这并不保证该内核模块在其他版本的内核中能够完美运行。例如，在小于3.10 和 大于 5.4 的内核版本，该内核驱动尚未适配，以及 ubuntu 的部分版本机器中，因为定制内核的关系，Linux发行版本众多，很多情况并未经过充分测试。因此，千万不要在未经测试的情况下，在生产环境的机器中直接 insmod 使用 Elkeid 内核模块。
 
-### 预编译好的 [Ko 文件列表](./ko_list.md)
+### 预编译好的 Ko 文件
+[Ko 文件列表](./ko_list.md)
 若不再列表内，或下载失败，请自行编译 ko
 
 
@@ -46,15 +51,14 @@ rmmod hids_driver
 如果所有链接都获取失败，则说明 [预编译的 Ko](./ko_list.md) 中，不包含当前系统的内核版本所需的 Ko，需要自行编译
 
 ```bash
-wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
+wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
 # or
-curl -O "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
-# 其他地址
-## "http://lf3-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
-## "http://lf6-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
-## "http://lf9-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0.0_$(uname -r).ko"
+curl -O "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
+# other cdn
+## "http://lf3-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
+## "http://lf6-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
+## "http://lf9-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
 ```
-
 ### 内核模块的测试方法
 
 可以通过 [LTP](https://linux-test-project.github.io/) 或者 [Kasan](https://www.kernel.org/doc/html/latest/dev-tools/kasan.html)这两个方法对内核模块进行测试.
@@ -67,21 +71,21 @@ curl -O "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.6.0
 发行版|版本号|x64 架构内核|内核后缀 |生产网大范围使用
 :- | :- | -: | -| -:
 debian|8,9,10|3.16~5.4.X |-| yes
-ubuntu|14.04,16.04,18.04,20.04|3.12~5.4.X |generic| no 
-centos|7.X,8.X|3.10.0~5.4.X |el7,el8| half 
+ubuntu|14.04,16.04,18.04,20.04|3.12~5.4.X |generic| yes 
+centos|6.X,7.X,8.X|2.6.32.0~5.4.X |el6,el7,el8| yes 
 
 
 
-## 关于ARM兼容性
+## 关于ARM64 (AArch64)支持
 
-* 部分能力支持
+* 支持
 
 
 
 
 ## 关于Linux Kernel Version兼容性
 
-* Linux Kernel Version >= 3.10 && <= 5.4.X
+* Linux Kernel Version >= 2.6.32 && <= 5.14.X
 
 
 
@@ -98,30 +102,37 @@ centos|7.X,8.X|3.10.0~5.4.X |el7,el8| half
 ## Hook List
 
 | Hook               | DataType | Note                                    | Default |
-| ------------------ | -------- | --------------------------------------- | ------- |
-| connect            | 42       |                                         | ON      |
-| bind               | 49       |                                         | ON      |
-| execve             | 59       |                                         | ON      |
-| create file        | 602      |                                         | ON      |
-| ptrace             | 101      | only PTRACE_POKETEXT or PTRACE_POKEDATA | ON      |
-| dns queny          | 601      |                                         | OFF      |
-| init kernel module | 603      |                                         | ON      |
-| update cred        | 604      | only old uid ≠0 && new uid == 0         | ON      |
-| rename             | 82       |                                         | ON     |
-| link               | 86       |                                         | ON     |
-| setsid             | 112      |                                         | ON     |
-| prctl              | 157      | only PR_SET_NAME                        | ON     |
-| memfd_create       | 356      |                                                 | ON     |
+| ------------------ |----------| --------------------------------------- | ------- |
+| write              | 1        |                                         | OFF     |
 | open               | 2        |                                         | OFF     |
 | mprotect           | 10       | only PROT_EXEC                          | OFF     |
 | nanosleep          | 35       |                                         | OFF     |
-| kill               | 62       |                                         | OFF     |
-| tkill              | 200      |                                         | OFF     |
+| connect            | 42       |                                         | ON      |
+| accept             | 43       |                                         | OFF     |
+| bind               | 49       |                                         | ON      |
+| execve             | 59       |                                         | ON      |
 | process exit       | 60       |                                         | OFF     |
-| exit group         | 231      |                                         | OFF     |
-| rmdir              | 606      |                                         | OFF     |
+| kill               | 62       |                                         | OFF     |
+| rename             | 82       |                                         | ON     |
+| link               | 86       |                                         | ON     |
+| ptrace             | 101      | only PTRACE_POKETEXT or PTRACE_POKEDATA | ON      |
+| setsid             | 112      |                                         | ON     |
+| prctl              | 157      | only PR_SET_NAME                        | ON     |
+| mount              | 165      |                                         | ON     |
+| tkill              | 200      |                                         | OFF     |
+| exit_group         | 231      |                                         | OFF     |
+| memfd_create       | 356      |                                         | ON     |
+| dns queny          | 601      |                                         | ON     |
+| create_file        | 602      |                                         | ON      |
+| load_module        | 603      |                                         | ON      |
+| update_cred        | 604      | only old uid ≠0 && new uid == 0         | ON      |
 | unlink             | 605      |                                         | OFF     |
-| call_usermodehelper_exec             | 607      |                                         | OFF     |
+| rmdir              | 606      |                                         | OFF     |
+| call_usermodehelper_exec     | 607      |                               | ON     |
+| file_write         | 608      |                                          | OFF     |
+| file_read          | 609      |                                          | OFF     |
+| usb_device_event   | 610      |                                          | ON     |
+| privilege_escalation   | 611      |                                          | ON     |
 
 
 ## Anti Rootkit List
@@ -139,229 +150,28 @@ centos|7.X,8.X|3.10.0~5.4.X |el7,el8| half
 
 ### 驱动数据协议
 
-字段间使用'**\x1e**'作为间隔符
-
-数据间使用'**\x17**'作为间隔符
-
-
-
-数据通常是**公共数据**和**私有数据**组合而成，值得注意的是Anti-rootkit数据不具有**公共数据**。
+上述Hook点每命中一次均会生成一条日志记录，每条日志包含多个数据项，数据项之间使用'**\x17**'作为间隔符。数据部分通常由**公共数据**和**私有数据**组合而成，值得注意的是Anti-rootkit没有**公共数据**。
 
 ### 公共数据
-
 ```
 -------------------------------------------------------------------------------
-|1  |2        |3  |4  |5   |6   |7   |8  |9   |10      |11       |12 |13      |
+|1        |2  |3  |4  |5   |6   |7   |8  |9   |10      |11       |12 |13      |
 -------------------------------------------------------------------------------
-|uid|data_type|exe|pid|ppid|pgid|tgid|sid|comm|nodename|sessionid|pns|root_pns|
+|data_type|uid|exe|pid|ppid|pgid|tgid|sid|comm|nodename|sessionid|pns|root_pns|
 -------------------------------------------------------------------------------
 ```
 
+### Write Data (1)
 
+````
+-----------
+|14   |15 | 
+-----------
+|file||buf|
+-----------
+````
 
-### Connect Data 
-
-```
-------------------------------------------------
-|14          |15       |16 |17   |18 |19   |20 |
-------------------------------------------------
-|connect_type|sa_family|dip|dport|sip|sport|res|
-------------------------------------------------
-```
-
-数据来源：`connect syscall`
-
-触发方式举例：`curl www.bytedance.com`
-
-Note: Connect_type 在默认情况下为 -1
-
-
-
-### Bind Data
-
-```
--------------------------
-|14       |15 |16   |17 |
--------------------------
-|sa_family|sip|sport|res|
--------------------------
-```
-
-数据来源：`bind syscall`
-
-触发方式举例：`nc -lvvp 2333`
-
-### Execve Data
-
-```
--------------------------------------------------------------------------------------------------------------------------
-|14        |15  |16      |17      |18   |19    |20 |21   |22 |23   |24       |25      |26 |27        |28 |29        |30 |
--------------------------------------------------------------------------------------------------------------------------
-|socket_exe|argv|run_path|pgid_exe|stdin|stdout|dip|dport|sip|sport|sa_family|pid_tree|tty|socket_pid|ssh|ld_preload|res|
--------------------------------------------------------------------------------------------------------------------------
-```
-
-Note:
-
-* **socket_exe/dip/dport/sip/sport/sa_family** 来自于进程所持fd信息
-
-* **ssh/ld_preload** 来自于进程的环境变量信息
-
-数据来源：`execve/execveat/compat_execve syscall`
-
-触发方式举例：`/bin/ls`
-
-
-### Create File data
-
-```
-----------------------------------------------------
-|14 	  |15 |16   |17 |18   |19       |20        |
-----------------------------------------------------
-|file_path|dip|dport|sip|sport|sa_family|socket_pid|
-----------------------------------------------------
-```
-
-数据来源：`security_inode_create`
-
-触发方式举例：`touch /tmp/test_file_elkeid`
-
-### Ptrace
-
-```
-----------------------------------------------
-|14            |15        |16  |17  |18      |
-----------------------------------------------
-|ptrace_request|target_pid|addr|data|pid_tree|
-----------------------------------------------
-```
-
-数据来源：`ptrace syscall`
-
-触发方式举例：
-```shell
-gdb /bin/ls
-catch syscall
-run
-```
-
-### Dns Query Data
-
-```
------------------------------------------------------
-|14   |15       |16 |17   |18 |19   |20|21    |22   |
------------------------------------------------------
-|query|sa_family|dip|dport|sip|sport|qr|opcode|rcode|
------------------------------------------------------
-```
-
-数据来源：`udp_recvmsg`
-
-触发方式举例：`curl www.bytedance.com`
-
-### Init Kernel Module Data
-
-```
-----------------------------
-|14      |15      |16      | 
-----------------------------
-|mod_info|pid_tree|run_path|
-----------------------------
-```
-
-数据来源：`do_init_module` 
-
-触发方式举例：`rmmod floppy;modprobe floppy;lsmod | grep floppy`
-
-
-### Update Cred Data
-
-```
-----------------------
-|14      |15     |16 | 
-----------------------
-|pid_tree|old_uid|res|
-----------------------
-```
-
-数据来源：`commit_creds`
-
-触发方式举例：`从非root用户sudo到root`
-
-### Rename Data
-
-```
-----------------------------
-|14      |15      |16      | 
-----------------------------
-|run_path|old_name|new_name|
-----------------------------
-```
-
-数据来源：`security_inode_rename`
-
-触发方式举例：`touch /tmp/123;mv /tmp/123 /tmp/321; rm -rf /tmp/321`
-
-
-### Link Data
-
-```
-----------------------------
-|14      |15      |16      | 
-----------------------------
-|run_path|old_name|new_name|
-----------------------------
-```
-
-数据来源：`security_inode_link`
-
-触发方式举例：`touch /tmp/123;ln -f /tmp/123 /tmp/321; rm -rf /tmp/321`
-
-### Setsid Data
-
-该数据没有私有数据，仅有公共数据
-
-数据来源：`setsid syscall`
-
-触发方式举例：`setsid /bin/ls`
-
-### Prctl Data
-
-```
-_________________
-|14    |15      | 
------------------
-|option|new_name|
------------------
-```
-
-数据来源：`prct syscall`
-
-触发方式举例：
-```c
-#include <sys/prctl.h>
-void main()
-{
-	prctl(PR_SET_NAME, "test1");
-	prctl(PR_SET_NAME, "test2");
-}
-```
-
-### memfd_create Data
-
-```
-______________
-|14    |15   | 
---------------
-|fdname|flags|
---------------
-```
-
-数据来源：`memfd_create syscall`
-
-触发方式举例：`http://manpages.ubuntu.com/manpages/bionic/man2/memfd_create.2.html#example`,需要注意的是该syscall在kernel >= 3.17 后才存在。
-
-### Open Data
+### Open Data (2)
 
 ````
 ---------------------
@@ -371,11 +181,9 @@ ______________
 ---------------------
 ````
 
-数据来源：`open syscall`
 
-触发方式举例：`touch /tmp/123;cat /tmp/123;rm -rf /tmp/123`
 
-### Mprotect data
+### Mprotect Data (10)
 
 ```
 -----------------------------------------------------
@@ -385,9 +193,9 @@ ______________
 -----------------------------------------------------
 ```
 
-数据来源：`mprotect syscall`
 
-### Nanosleep Data
+
+### Nanosleep Data (35)
 
 ```
 ----------
@@ -397,11 +205,65 @@ ______________
 ----------
 ```
 
-数据来源：`nanosleep syscall`
 
-触发方式举例：`sleep 1`
 
-### Kill Data
+### Connect Data (42)
+
+```
+-----------------------------------
+|14       |15 |16   |17 |18   |19 |
+-----------------------------------
+|sa_family|dip|dport|sip|sport|res|
+-----------------------------------
+```
+
+### Accept Data (43)
+
+```
+-----------------------------------
+|14       |15 |16   |17 |18   |19 |
+-----------------------------------
+|sa_family|dip|dport|sip|sport|res|
+-----------------------------------
+```
+
+### Bind Data (49)
+
+```
+-------------------------
+|14       |15 |16   |17 |
+-------------------------
+|sa_family|sip|sport|res|
+-------------------------
+```
+
+
+
+
+### Execve Data (59)
+
+```
+-----------------------------------------------------------------------------------------------------
+|14  |15      |16   |17    |18 |19   |20 |21   |22       |23      |24 |25        |26 |27        |28 |
+-----------------------------------------------------------------------------------------------------
+|argv|run_path|stdin|stdout|dip|dport|sip|sport|sa_family|pid_tree|tty|socket_pid|ssh|ld_preload|res|
+-----------------------------------------------------------------------------------------------------
+```
+
+Note:
+
+* **socket_exe/dip/dport/sip/sport/sa_family** 来自于进程所持fd信息
+
+* **ssh/ld_preload** 来自于进程的环境变量信息
+
+
+### Process Exit Data (60)
+
+该数据没有私有数据，仅有公共数据
+
+
+
+### Kill Data (62)
 
 ```
 ----------------
@@ -411,10 +273,70 @@ ______________
 ----------------
 ```
 
-数据来源：`kill syscall`
 
 
-### Tkill data
+### Rename Data (82)
+
+```
+--------------------------
+|14      |15      |16    | 
+--------------------------
+|old_name|new_name|sb_id|
+-------------------------
+```
+
+
+
+### Link Data (86)
+
+```
+--------------------------
+|14      |15      |16    | 
+--------------------------
+|old_name|new_name|sb_id|
+-------------------------
+```
+
+
+### Ptrace Data (101)
+
+```
+----------------------------------------------
+|14            |15        |16  |17  |18      |
+----------------------------------------------
+|ptrace_request|target_pid|addr|data|pid_tree|
+----------------------------------------------
+```
+
+
+### Setsid Data (112)
+
+该数据没有私有数据，仅有公共数据
+
+
+
+### Prctl Data (157)
+
+```
+_________________
+|14    |15      | 
+-----------------
+|option|new_name|
+-----------------
+```
+
+### Mount Data (165)
+
+```
+_____________________________________
+|14      |15 |16       |17    |18   | 
+-------------------------------------
+|pid_tree|dev|file_path|fstype|flags|
+-------------------------------------
+```
+
+
+### Tkill Data (200)
 
 ```
 ----------------
@@ -423,21 +345,74 @@ ______________
 |target_pid|sig|
 ----------------
 ```
-数据来源：`tkill syscall`
 
-### Process Exit Data
-
-该数据没有私有数据，仅有公共数据
-
-数据来源：`exit syscall`
-
-### Exit Group Data
+### Exit Group Data (231)
 
 该数据没有私有数据，仅有公共数据
 
-数据来源：`exit_group syscall`
+### memfd_create Data (356)
 
-### Rmdir Data
+```
+______________
+|14    |15   | 
+--------------
+|fdname|flags|
+--------------
+```
+
+
+
+
+
+### Dns Query Data (601)
+
+```
+--------------------------------------------------
+|14   |15       |16 |17   |18 |19   |20    |21   |
+--------------------------------------------------
+|query|sa_family|dip|dport|sip|sport|opcode|rcode|
+--------------------------------------------------
+```
+
+
+
+### Create File data (602)
+
+```
+----------------------------------------------------------
+|14 	  |15 |16   |17 |18   |19       |20        |21   |
+----------------------------------------------------------
+|file_path|dip|dport|sip|sport|sa_family|socket_pid|sb_id|
+---------------------------------------------------------
+```
+
+
+
+### Load Module Data (603)
+
+```
+----------------------------
+|14      |15      |16      | 
+----------------------------
+|ko_file|pid_tree|run_path|
+----------------------------
+```
+
+
+
+### Update Cred Data (604)
+
+```
+----------------------
+|14      |15     |16 | 
+----------------------
+|pid_tree|old_uid|res|
+----------------------
+```
+
+
+
+### Unlink Data (605)
 
 ```
 ------
@@ -447,11 +422,9 @@ ______________
 ------
 ```
 
-数据来源：`security_path_rmdir`
 
-触发方式举例：`mkdir -p /tmp/test;touch /tmp/test/123;rm -rf /tmp/test`
 
-### Unlink Data
+### Rmdir Data (606)
 
 ```
 ------
@@ -461,82 +434,105 @@ ______________
 ------
 ```
 
-数据来源：`security_path_unlink`
 
-触发方式举例：`touch /tmp/123;rm -rf /tmp/123`
-
-
-### call_usermodehelper_exec Data
+### call_usermodehelper_exec Data (607)
 
 ```
------------------------------
-|1  |2        |3  |4   |5   |
------------------------------
-|uid|data_type|exe|argv|wait|
------------------------------
+-------------------------
+|1        |2  |3   |4   |
+-------------------------
+|data_type|exe|argv|wait|
+-------------------------
 ```
 
-数据来源：`call_usermodehelper_exec`
-
-触发方式举例：`可以参考：https://developer.ibm.com/articles/l-user-space-apps/ 编写，需要自行build kernel module并insert to kernel`
-
-### Interrupt Table Hook Data
+### File Write Data (608)
 
 ```
----------------------------------------------------
-|1  |2        |3          |4     |5               |
----------------------------------------------------
-|uid|data_type|module_name|hidden|interrupt_number|
----------------------------------------------------
+------------
+|14  |15   |
+------------
+|file|sb_id|
+------------
+需要通过 Diver Filter 加入待观察列表，详情见 "关于 Driver Filter" 部分
 ```
 
-Note:  ***uid*** 为 -1
-
-
-
- ### Syscall Table Hook Data
+### File Read Data (609)
 
 ```
--------------------------------------------------
-|1  |2        |3          |4     |5             |
--------------------------------------------------
-|uid|data_type|module_name|hidden|syscall_number|
--------------------------------------------------
+------------
+|14  |15   |
+------------
+|file|sb_id|
+------------
+需要通过 Diver Filter 加入待观察列表，详情见 "关于 Driver Filter" 部分
 ```
 
-Note: ***uid*** 为 -1
-
-
-
-### Proc File Hook
+### USB Device Event Data (610)
 
 ```
-----------------------------------
-|1  |2        |3          |4     |
-----------------------------------
-|uid|data_type|module_name|hidden|
-----------------------------------
+-----------------------------------------
+|14          |15          |16    |17    |
+-----------------------------------------
+|product_info|manufacturer|serial|action|
+-----------------------------------------
+action = 1 is USB_DEVICE_ADD
+action = 2 is USB_DEVICE_REMOVE
 ```
 
-Note:  ***uid*** 为 -1
+### Privilege Escalation (611)
 
+```
+------------------------------
+|14   |15      |16    |17    |
+------------------------------
+|p_pid|pid_tree|p_cred|c_cred|
+------------------------------
+p_cred = uid|euid|suid|fsuid|gid|egid|sgid|fsgid
+c_cred = uid|euid|suid|fsuid|gid|egid|sgid|fsgid
+```
 
+### Proc File Hook (700)
 
-### Hidden Kernel Module Data
+```
+-----------------------
+|1        |2          |
+-----------------------
+|data_type|module_name|
+-----------------------
+```
+
+ ### Syscall Table Hook Data (701)
+
+```
+--------------------------------------
+|1        |2          |3             |
+--------------------------------------
+|data_type|module_name|syscall_number|
+--------------------------------------
+```
+
+### Hidden Kernel Module Data (702)
 
 ````
-----------------------------------
-|1  |2        |3          |4     |
-----------------------------------
-|uid|data_type|module_name|hidden|
-----------------------------------
+-----------------------
+|1        |2          |
+-----------------------
+|data_type|module_name|
+-----------------------
 ````
 
-Note:  ***uid*** 为 -1
+### Interrupt Table Hook Data (703)
+
+```
+----------------------------------------
+|1        |2          |3               |
+----------------------------------------
+|data_type|module_name|interrupt_number|
+----------------------------------------
+```
 
 
-
-## 关于Driver Filter
+## 关于 Driver Filter
 
 Elkeid驱动程序支持白名单以过滤出不需要的数据。 我们提供两种类型的白名单，**'exe'**白名单和**'argv'**白名单。
 **'exe'**白名单作用于**execve /create filte/ dns query/connect hook**，而**'argv'**白名单仅作用于**execve hook**  。
@@ -555,19 +551,29 @@ Elkeid驱动程序支持白名单以过滤出不需要的数据。 我们提供�
 | DEL_ALL_EXECVE_ARGV_SHITELIST | u(117) | `echo u/del_all > /dev/someone_allowlist`            |
 | EXECVE_ARGV_CHECK             | z(122) | `echo z/bin/ls -l > /dev/someone_allowlist && dmesg` |
 | PRINT_ALL_ALLOWLIST           | .(46)  | `echo ./print_all > /dev/someone_allowlist && dmesg` |
+| ADD_WRITE_NOTIFI           | W(87)  | `echo W/etc/passwd > /dev/someone_allowlist` or `echo W/etc/ssh/ > /dev/someone_allowlist` support dir  |
+| DEL_WRITE_NOTIFI           | v(120)  | `echo v/etc/passwd > /dev/someone_allowlist` |
+| ADD_READ_NOTIFI           | R(82)  | `echo W/etc/passwd > /dev/someone_allowlist` or `echo W/etc/ssh/ > /dev/someone_allowlist` support dir  |
+| DEL_READ_NOTIFI           | s(115)  | `echo v/etc/passwd > /dev/someone_allowlist` |
+| DEL_ALL_NOTIFI           | A(65)  | `echo A/del_all_file_notift > /dev/someone_allowlist` |
 
 Filter define is:
-
 ```c
-#define ADD_EXECVE_EXE_SHITELIST 89
-#define DEL_EXECVE_EXE_SHITELIST 70
-#define DEL_ALL_EXECVE_EXE_SHITELIST 119
-#define EXECVE_EXE_CHECK 121
-#define PRINT_ALL_ALLOWLIST 46
-#define ADD_EXECVE_ARGV_SHITELIST 109
-#define DEL_EXECVE_ARGV_SHITELIST 74
-#define DEL_ALL_EXECVE_ARGV_SHITELIST 117
-#define EXECVE_ARGV_CHECK 122
+#define ADD_EXECVE_EXE_SHITELIST 89         /* Y */
+#define DEL_EXECVE_EXE_SHITELIST 70         /* F */
+#define DEL_ALL_EXECVE_EXE_SHITELIST 119    /* w */
+#define EXECVE_EXE_CHECK 121                /* y */
+#define PRINT_ALL_ALLOWLIST 46              /* . */
+#define ADD_EXECVE_ARGV_SHITELIST 109       /* m */
+#define DEL_EXECVE_ARGV_SHITELIST 74        /* J */
+#define DEL_ALL_EXECVE_ARGV_SHITELIST 117   /* u */
+#define EXECVE_ARGV_CHECK 122               /* z */
+
+#define ADD_WRITE_NOTIFI 87                 /* W */
+#define DEL_WRITE_NOTIFI 120                /* v */
+#define ADD_READ_NOTIFI 82                  /* R */
+#define DEL_READ_NOTIFI 115                 /* s */
+#define DEL_ALL_NOTIFI 65                   /* A */
 ```
 
 
@@ -627,10 +633,6 @@ Testing Load:
 在一些老版本的 ubuntu/centos 内核中出现，dmesg 会有如下输出:<br>
 do_init_module register_kprobe failed, returned -2.<br>
 内核模块仍然可以使用，但没有 do_init_module 数据
-
-* 内核版本 > 5.4.X 或者 < 3.10.X
-<br>
-编译失败 : 这些内核版本尚未适配
 
 
 ## License
