@@ -1052,12 +1052,14 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 				continue;
 
 			len = smith_strnlen_user(native, MAX_ARG_STRLEN);
-			if (len > 10 && len < 256) {
+			if (len > 11) {
+                if (len > 255)
+                    len = 255; 
 				memset(buf, 0, 256);
 				if (smith_copy_from_user(buf, native, len))
 					break;
 				else {
-					if (strncmp("SSH_CONNECTION=", buf, 11) == 0) {
+					if (strncmp("SSH_CONNECTION=", buf, 15) == 0) {
 					    ssh_connection_flag = 1;
 						if (free_ssh_connection == 1) {
 							strcpy(ssh_connection, buf + 15);
@@ -1071,7 +1073,7 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 						} else {
 							ld_preload = "-1";
 						}
-					} else if (strncmp("LD_LIBRARY_PATH=", buf, 11) == 0) {
+					} else if (strncmp("LD_LIBRARY_PATH=", buf, 16) == 0) {
                         ld_library_path_flag = 1;
                         if (free_ld_library_path == 1) {
                             strcpy(ld_library_path, buf + 16);
