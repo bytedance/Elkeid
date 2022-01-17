@@ -12,7 +12,7 @@ codegen = "0.1"
 heck = "0.3"
 
 [dependencies]
-anyhow = "1.0"
+anyhow = "1.0.50"
 hex = "0.4.2"
 ipnet = "2.3.0"
 iprange = "0.6.3"
