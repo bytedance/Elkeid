@@ -14,7 +14,7 @@ fn main() {
     let pid = std::process::id();
     println!("scanner pid : {:?}", pid);
 
-    let mut client = Client::new(true);
+    let client = Client::new(true);
     // set logger
     let logger = Logger::new(Config {
         max_size: 1024 * 1024 * 5,
@@ -32,7 +32,7 @@ fn main() {
         }
     };
 
-    let mut client_c = client.clone();
+    let client_c = client.clone();
     info!("Elkeid-scanner Init success!!!");
 
     let (s, r) = bounded(20);
