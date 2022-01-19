@@ -8,6 +8,7 @@ use std::fs::File;
 
 use crate::process::ProcessInfo;
 use crate::runtime::{ProbeState, ProbeStateInspect};
+use crate::settings::{RASP_GOLANG_BIN, RASP_PANGOLIN_BIN};
 
 pub struct GolangProbeState{}
 
@@ -38,8 +39,8 @@ impl ProbeStateInspect for GolangProbeState {
 
 pub fn golang_attach(pid: i32) -> Result<bool> {
     debug!("golang attach: {}", pid);
-    let golang_probe = "/etc/elkeid/plugin/RASP/rasp/go_probe";
-    let pangolin = "/etc/elkeid/plugin/RASP/rasp/pangolin";
+    let golang_probe = RASP_GOLANG_BIN;
+    let pangolin = RASP_PANGOLIN_BIN;
     let dash_c = "-c";
     let dash_p = "-p";
     let daemon = "--daemon";
