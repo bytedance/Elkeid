@@ -32,7 +32,7 @@ rand = "0.8.3"
 # timestamp
 coarsetime = "0.1"
 # Elkeid Agent Plugin SDK
-plugins = { git = "https://github.com/bytedance/Elkeid.git", branch = 'main', path = "plugins/lib/rust"}
+plugins = { path = "../../plugins/lib/rust"}
 # cgroup
 cgroups-rs = "0.2.6"
 # lock
