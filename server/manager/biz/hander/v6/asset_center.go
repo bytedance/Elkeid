@@ -31,6 +31,10 @@ func init() {
 }
 
 const DEFAULT_OFFLINE_DURATION = 30 * 60
+const DangerLevel = "danger"
+const HighLevel = "high"
+const MidLevel = "medium"
+const LowLevel = "low"
 
 type HostBasicInfo struct {
 	AgentID           string   `json:"agent_id" bson:"agent_id"`
