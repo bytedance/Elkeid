@@ -82,8 +82,6 @@
       "/api/v6/module/CreateModule",
       "/api/v6/moudle/DeleteMoudle",
       "/api/v6/agent/UpdateMoudle",
-      "/api/v6/vuln/VulnIpControl",
-      "/api/v6/vuln/VulnControl",
       "/api/v6/alarm/update",
       "/api/v6/whitelist/del",
       "/api/v6/whitelist/add"
