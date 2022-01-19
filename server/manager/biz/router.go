@@ -184,20 +184,6 @@ func RegisterRouter(r *gin.Engine) {
 			moduleRouter.POST("/GetModuleId", v6.GetModuleId)
 		}
 
-		// 漏洞相关接口
-		vulnRouter := apiv6Group.Group("/vuln")
-		{
-			vulnRouter.POST("/SendPkgList", v6.GetAgentPkgList)
-			vulnRouter.POST("/Statistics", v6.GetVulnStatistics)
-			vulnRouter.POST("/GetVulnList", v6.GetVulnList)
-			vulnRouter.GET("/GetVulnInfo", v6.GetVulnInfo)
-			vulnRouter.POST("/VulnHostList", v6.VulnHostList)
-			vulnRouter.POST("/VulnIpControl", v6.VulnIpControl)
-			vulnRouter.POST("/OneIpVulnControl", v6.OneIpVulnControl)
-			vulnRouter.POST("/VulnControl", v6.VulnControl)
-			vulnRouter.POST("/FlushCpeCache", v6.FlushCpeCache)
-		}
-
 		// 告警新接口
 		alarmRouter := apiv6Group.Group("/alarm")
 		{

@@ -19,7 +19,6 @@ const (
 	KeyTraceRawDataUpdate = "key_trace_rawdata"
 	KeyHubAssetUpdate     = "key_hub_asset"
 	KeySystemAlertUpdate  = "key_system_alert"
-	KeyLeaderVulnUpdate   = "key_leader_vuln"
 )
 
 var (
@@ -35,7 +34,6 @@ var (
 	TraceRawDataOnce       sync.Once
 	HubAssetOnce           sync.Once
 	SystemAlertOnce        sync.Once
-	LeaderVulnOnce         sync.Once
 )
 
 type DBWriter interface {
@@ -125,12 +123,4 @@ func HubSystemAlertAsyncWrite(value interface{}) {
 	})
 
 	asyncWrite(KeySystemAlertUpdate, value)
-}
-
-func LeaderVulnAsyncWrite(value interface{}) {
-	LeaderVulnOnce.Do(func() {
-		registerWriter(KeyLeaderVulnUpdate, &leaderVulnWriter{})
-	})
-
-	asyncWrite(KeyLeaderVulnUpdate, value)
 }
