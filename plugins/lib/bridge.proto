@@ -1,0 +1,16 @@
+syntax = "proto3";
+package bridge;
+option go_package = "plugins";
+message Record {
+  int32 data_type = 1;
+  int64 timestamp = 2;
+  Payload data = 3;
+}
+
+message Payload { map<string, string> fields = 1; }
+message Task {
+  int32 data_type = 1;
+  string object_name = 2;
+  string data = 3;
+  string token = 4;
+}
