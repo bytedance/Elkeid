@@ -303,7 +303,8 @@ static char *smith_get_pid_tree(int limit)
     const struct cred *current_cred = NULL;
     const struct cred *parent_cred = NULL;
 
-    task = smith_get_task_struct(current);
+    task = current;
+    get_task_struct(task);
 
     snprintf(pid, 24, "%d", task->tgid);
     tmp_data = smith_kzalloc(1024, GFP_ATOMIC);
@@ -322,17 +323,15 @@ static char *smith_get_pid_tree(int limit)
     while (1) {
         limit_index = limit_index + 1;
 
-        if (limit_index >= limit) {
-            smith_put_task_struct(task);
+        if (limit_index >= limit)
             break;
-        }
 
         old_task = task;
         rcu_read_lock();
         task = smith_get_task_struct(rcu_dereference(task->real_parent));
+        rcu_read_unlock();
         smith_put_task_struct(old_task);
         if (!task || task->pid == 0) {
-            rcu_read_unlock();
             break;
         }
 
@@ -345,13 +344,9 @@ static char *smith_get_pid_tree(int limit)
             put_cred(parent_cred);
         }
 
-        rcu_read_unlock();
-
         real_data_len = real_data_len + PID_TREE_MATEDATA_LEN;
-        if (real_data_len > 1024) {
-            smith_put_task_struct(task);
+        if (real_data_len > 1024)
             break;
-        }
 
         snprintf(pid, 24, "%d", task->tgid);
         strcat(tmp_data, "<");
@@ -359,6 +354,9 @@ static char *smith_get_pid_tree(int limit)
         strcat(tmp_data, ".");
         strcat(tmp_data, task->comm);
     }
+
+    if (task)
+        smith_put_task_struct(task);
 
     if (cred_check_res)
         to_print_privilege_escalation(current_cred, p_cred_info, tmp_data, cred_detected_task_pid);
@@ -383,7 +381,8 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
     struct inet_sock *inet;
     struct socket *socket;
 
-    task = smith_get_task_struct(current);
+    task = current;
+    get_task_struct(task);
 
     while (task && task->pid != 1 && it++ < EXECVE_GET_SOCK_PID_LIMIT) {
         struct files_struct *files;
