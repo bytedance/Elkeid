@@ -47,11 +47,11 @@ extern u8 *smith_query_sb_uuid(struct super_block *sb);
 static struct task_struct *smith_get_task_struct(struct task_struct *tsk)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
-	if (tsk && refcount_inc_not_zero(&tsk->usage))
+    if (tsk && refcount_inc_not_zero(&tsk->usage))
 #else
-	if (tsk && atomic_inc_not_zero(&tsk->usage))
+    if (tsk && atomic_inc_not_zero(&tsk->usage))
 #endif
-		return tsk;
+        return tsk;
     return NULL;
 }
 
