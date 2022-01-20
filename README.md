@@ -17,11 +17,11 @@ Elkeid is a support cloud-native and base linux host security(Intrusion detectio
 * **[Elkeid Driver](https://github.com/bytedance/Elkeid/tree/main/driver)** Driver can collect data on Linux Kernel, support container environment, communication with Elkeid Driver Plugin.
 * **[Elkeid RASP](https://github.com/bytedance/Elkeid/tree/main/rasp)** Support CPython、Golang、JVM、NodeJS runtime data probe, supports dynamic injection into the runtime.
 * **Elkeid Agent Plugin List**
-    * [Driver Plugin](https://github.com/bytedance/Elkeid/tree/main/agent/driver): Responsible for managing **Elkeid Driver**, and process the driver data.
-    * [Collector Plugin](https://github.com/bytedance/Elkeid/tree/main/agent/collector): Responsible for the collection of assets/log information on the Linux System, such as user list, crontab, package information, etc.
-    * [Journal Watcher](https://github.com/bytedance/Elkeid/tree/main/agent/journal_watcher): Responsible for monitoring systemd logs, currently supports ssh related log collection and reporting.
-    * [Scanner Plugin](https://github.com/bytedance/Elkeid/tree/main/agent/scanner): Responsible for static detection of malicious files on the host, currently supports yara.
-    * RASP Plugin: Responsible for managing RASP components and processing data collected from RASP, not open source yet.
+    * [Driver Plugin](https://github.com/bytedance/Elkeid/tree/main/plugins/driver): Responsible for managing **Elkeid Driver**, and process the driver data.
+    * [Collector Plugin](https://github.com/bytedance/Elkeid/tree/main/plugins/collector): Responsible for the collection of assets/log information on the Linux System, such as user list, crontab, package information, etc.
+    * [Journal Watcher](https://github.com/bytedance/Elkeid/tree/main/plugins/journal_watcher): Responsible for monitoring systemd logs, currently supports ssh related log collection and reporting.
+    * [Scanner Plugin](https://github.com/bytedance/Elkeid/tree/main/plugins/scanner): Responsible for static detection of malicious files on the host, currently supports yara.
+    * [RASP Plugin](https://github.com/bytedance/Elkeid/tree/main/rasp/plugin): Responsible for managing RASP components and processing data collected from RASP, not open source yet.
 
 
 The above components can provide these data:
@@ -39,7 +39,7 @@ Other Data
 * **[Elkeid AgentCenter](https://github.com/bytedance/Elkeid/tree/main/server/agent_center)** Responsible for communicating with the Agent, collecting Agent data and simply processing it and then summing it into the MQ, is also responsible for the management of the Agent, including Agent upgrade, configuration modification, task distribution, etc.
 * **[Elkeid ServiceDiscovery](https://github.com/bytedance/Elkeid/tree/main/server/service_discovery)** Each component in the background needs to register and synchronize service information with the component regularly, so as to ensure that the instances in each service module are visible to each other and facilitate direct communication.
 * **[Elkeid Manager](https://github.com/bytedance/Elkeid/tree/main/server/manager)** Responsible for the management of the entire backend, and provide related query and management API.
-
+* **[Elkeid HUB](https://github.com/bytedance/Elkeid-HUB)** Elkeid HIDS RuleEngine
 
 ## Elkeid Advantage
 The current open source module lacks a rule engine and detection rule, and cannot provide intrusion detection capabilities. However, the current open source part can be easily integrated with other HIDS/NIDS/XDR solutions, or you can perform data processing on the collected data to meet your own needs. Elkeid has the following main advantages:

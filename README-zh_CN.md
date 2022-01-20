@@ -17,11 +17,11 @@ Elkeid是一个云原生的基于主机的安全(入侵检测与风险识别)解
 * **[Elkeid Driver](https://github.com/bytedance/Elkeid/blob/main/driver/README-zh_CN.md)** 在 Linux Kernel 层采集数据的组件，兼容容器环境，并能够提供Rootkit检测能力。与Elkeid Agent管理的Driver插件通讯
 * **[Elkeid RASP](https://github.com/bytedance/Elkeid/tree/main/rasp)** 支持 CPython、Golang、JVM、NodeJS 的运行时数据采集探针，支持动态注入到运行时。
 * **Elkeid Agent Plugin List**
-  * [Driver Plugin](https://github.com/bytedance/Elkeid/blob/main/agent/driver/README-zh_CN.md): 负责与**Elkeid Driver**通信，处理其传递的数据等
-  * [Collector Plugin](https://github.com/bytedance/Elkeid/blob/main/agent/collector/README-zh_CN.md): 负责端上的资产/关键信息采集工作，如用户，定时任务，包信息等等
-  * [Journal Watcher](https://github.com/bytedance/Elkeid/blob/main/agent/journal_watcher/README-zh_CN.md): 负责监测systemd日志的插件，目前支持ssh相关日志采集与上报
-  * [Scanner Plugin](https://github.com/bytedance/Elkeid/blob/main/agent/scanner/README-zh_CN.md): 负责在端上进行静态检测恶意文件的插件，目前支持yara
-  * RASP Plugin: 负责管理RASP组件以及处理RASP采集的数据，还未开源
+  * [Driver Plugin](https://github.com/bytedance/Elkeid/tree/main/plugins/driver): 负责与**Elkeid Driver**通信，处理其传递的数据等
+  * [Collector Plugin](https://github.com/bytedance/Elkeid/tree/main/plugins/collector): 负责端上的资产/关键信息采集工作，如用户，定时任务，包信息等等
+  * [Journal Watcher](https://github.com/bytedance/Elkeid/tree/main/plugins/journal_watcher): 负责监测systemd日志的插件，目前支持ssh相关日志采集与上报
+  * [Scanner Plugin](https://github.com/bytedance/Elkeid/blob/main/plugins/scanner): 负责在端上进行静态检测恶意文件的插件，目前支持yara
+  * [RASP Plugin](https://github.com/bytedance/Elkeid/tree/main/rasp/plugin): 负责管理RASP组件以及处理RASP采集的数据，还未开源
   
 
 以上组件可以提供以下数据：
@@ -36,7 +36,7 @@ Other Data
 * **[Elkeid AgentCenter](https://github.com/bytedance/Elkeid/tree/main/server/agent_center)** 负责与Agent进行通信，采集Agent数据并简单处理后汇总到消息队列集群，同时也负责对Agent进行管理包括Agent的升级，配置修改，任务下发等
 * **[Elkeid ServiceDiscovery](https://github.com/bytedance/Elkeid/tree/main/server/service_discovery)** 后台中的各个服务模块都需要向该组件定时注册、同步服务信息，从而保证各个服务模块中的实例相互可见，便于直接通信
 * **[Elkeid Manager](https://github.com/bytedance/Elkeid/tree/main/server/manager)** 负责对整个后台进行管理，并提供相关的查询、管理接口
-
+* **[Elkeid HUB](https://github.com/bytedance/Elkeid-HUB)** Elkeid HIDS RuleEngine
 
 ## Elkeid Advantage
 当前开源模块缺少规则引擎和检测功能，还不能提供入侵检测的能力。 但是目前开源的部分可以轻松地与其他的HIDS/NIDS/XDR解决方案进行集成，或者自己对采集的数据进行数处理实现自己的需求，Elkeid 有以下主要优势：
