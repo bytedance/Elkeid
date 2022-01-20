@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-BUILD_VERSION="1.7.0.0"
+BUILD_VERSION="1.7.0.1"
 AGENT_PACKAGE="github.com/bytedance/Elkeid/agent/agent"
 
 WORKDIR=${PWD}
