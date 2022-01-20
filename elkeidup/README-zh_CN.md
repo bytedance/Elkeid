@@ -49,14 +49,20 @@ Automated deployment of Elkeid tools
 wget elkeidup
 wget package
 unzip package
-./elkeidup init
-vim elkeid_server.yaml
-./elkeidup deploy --package package/ --config ./elkeid_server.yaml
-./elkeidup status
-cat ~/.elkeidup/elkeid_passwd
-./elkeidup agent build --package package/ --config ./elkeid_will.yaml 
-```
 
+./elkeidup init
+#按需填写配置
+vim elkeid_server.yaml
+#后端组件自动化部署
+./elkeidup deploy --package package_community/ --config ./elkeid_server.yaml
+#检查状态
+./elkeidup status
+#查看组件地址与密码
+cat ~/.elkeidup/elkeid_passwd
+#自动化build agent与部分插件
+./elkeidup agent build --package package_community/
+#部署结束，根据前端引导进行agent部署
+```
 
 
 **必读事项**
@@ -74,7 +80,7 @@ cat ~/.elkeidup/elkeid_passwd
 
 
 
-### Example(1-30 Agents Test)
+### 1-30 Agent 测试环境配置参考
 
 Minimum 8C16G 200G server
 
@@ -84,7 +90,7 @@ Minimum 8C16G 200G server
 
 
 
-### Example(300-500 Agents Test)
+### 300-500 Agent 测试环境配置参考
 
 Minimum 8C16G 200G server
 
@@ -98,17 +104,15 @@ Minimum 8C16G 200G server
 
 
 
-### Example(10000 Agents Non-test)
+### 5000 Agent 生产环配置境参考
 
-| Server List | Component                      | Recommended Configuration |
-| ----------- | ------------------------------ | ------------------------- |
-| Server1     | RedisMongodb                   | 8C16G 500G                |
-| Server2     | RedisMongodb                   | 8C16G 500G                |
-| Server3     | RedisMongodb                   | 8C16G 500G                |
-| Server4/5/6 | Kafka                          | 8C32G 2T 10-Gigabit NIC   |
+| Server List | Component                  | Recommended Configuration |
+|-------------|----------------------------| ------------------------- |
+| Server1/2/3 | Redis<br />Mongodb               | 8C16G 500G                |
+| Server4/5/6 | Kafka                      | 8C32G 2T 10-Gigabit NIC   |
 | Server7/8   | Manager<br />Service Discovery | 8C16G                     |
-| Server9/10  | Agent Center                   | 16C32G  10-Gigabit NIC    |
-| Server13    | Nginx                          | 8C16G                     |
+| Server9/10  | Agent Center               | 16C32G  10-Gigabit NIC    |
+| Server13    | Nginx                      | 8C16G                     |
 
 A single HUB does not support 10,000 agents.
 

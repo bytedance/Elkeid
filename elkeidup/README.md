@@ -97,14 +97,12 @@ Minimum 8C16G 200G server
 
 ### Example(10000 Agents Non-test)
 
-| Server List | Component                      | Recommended Configuration |
-| ----------- | ------------------------------ | ------------------------- |
-| Server1     | RedisMongodb                   | 8C16G 500G                |
-| Server2     | RedisMongodb                   | 8C16G 500G                |
-| Server3     | RedisMongodb                   | 8C16G 500G                |
-| Server4/5/6 | Kafka                          | 8C32G 2T 10-Gigabit NIC   |
+| Server List | Component                  | Recommended Configuration |
+|-------------|----------------------------| ------------------------- |
+| Server1/2/3 | Redis<br />Mongodb               | 8C16G 500G                |
+| Server4/5/6 | Kafka                      | 8C32G 2T 10-Gigabit NIC   |
 | Server7/8   | Manager<br />Service Discovery | 8C16G                     |
-| Server9/10  | Agent Center                   | 16C32G  10-Gigabit NIC    |
-| Server13    | Nginx                          | 8C16G                     |
+| Server9/10  | Agent Center               | 16C32G  10-Gigabit NIC    |
+| Server13    | Nginx                      | 8C16G                     |
 
 A single HUB does not support 10,000 agents.
