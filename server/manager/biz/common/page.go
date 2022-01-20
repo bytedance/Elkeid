@@ -2,24 +2,28 @@ package common
 
 import (
 	"context"
+	"math"
+
 	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"math"
 )
 
 type PageFunc func(*mongo.Cursor) (interface{}, error)
 
 type PageRequest struct {
-	Page     int64 `form:"page,default=1" binding:"required,numeric,min=1"`
-	PageSize int64 `form:"page_size,default=100" binding:"required,numeric,min=1,max=1000"`
+	Page       int64  `form:"page,default=1" binding:"required,numeric,min=1"`
+	PageSize   int64  `form:"page_size,default=100" binding:"required,numeric,min=1,max=5000"`
+	OrderKey   string `form:"order_key"`
+	OrderValue int    `form:"order_value"`
 }
 
 type PageOption struct {
 	Page     int64
 	PageSize int64
 	Filter   interface{}
+	Sorter   interface{}
 }
 
 type ModelPage struct {
@@ -41,7 +45,9 @@ func DBModelPaginate(collection *mongo.Collection, pageOption PageOption, pageFu
 	}
 
 	findOption := options.Find()
-
+	if pageOption.Sorter != nil {
+		findOption.SetSort(pageOption.Sorter)
+	}
 	findOption.SetSkip((pageOption.Page - 1) * pageOption.PageSize)
 	findOption.SetLimit(pageOption.PageSize)
 

@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
+	"github.com/golang/protobuf/proto"
 	"io/ioutil"
 	"sync"
 	"time"
@@ -20,7 +21,7 @@ var (
 	defaultClientCrtFile1 = "../conf/client.crt"
 
 	tlsServerName1 = "elkeid.com"
-	ServerPort     = "10.227.2.103:6751"
+	ServerPort     = "10.63.84.5:30751"
 	AgentCount     = 1
 )
 
@@ -81,15 +82,30 @@ func Transfer(conn *grpc.ClientConn, agentID, ip, hostname string) {
 		wg.Done()
 	}()
 
-	datas := make([]*pb.Record, 0)
-	datas_hb := make([]*pb.Record, 0)
-	for i := 0; i <= 1; i++ {
-		tmp := &pb.Record{Message: map[string]string{"data_type": "1000", "cpu": "0.11", "version": "1.6.0.0", "memory": "24324432", "net_type": "boe", "io": "32.2", "slab": "324325435454"}}
-		datas_hb = append(datas_hb, tmp)
+	hbData := make([]*pb.Record, 0)
+	for i := 0; i <= 0; i++ {
+		item := &pb.Item{Fields: map[string]string{"data_type": "1000", "cpu": "0.11", "version": "1.7.0.0", "memory": "24324432", "net_type": "boe", "io": "32.2", "slab": "324325435454"}}
+		b, _ := proto.Marshal(item)
+		tmp := &pb.Record{Timestamp: time.Now().Unix(), DataType: 1000, Body: b}
+		hbData = append(hbData, tmp)
+
+		item = &pb.Item{Fields: map[string]string{"name": "driver", "cpu": "0.11", "version": "1.7.0.0", "memory": "24324432", "net_type": "boe", "io": "32.2", "slab": "324325435454"}}
+		b, _ = proto.Marshal(item)
+		tmp = &pb.Record{Timestamp: time.Now().Unix(), DataType: 1001, Body: b}
+		hbData = append(hbData, tmp)
+
+		item = &pb.Item{Fields: map[string]string{"name": "collector", "cpu": "0.11", "version": "1.7.0.0", "memory": "24324432", "net_type": "boe", "io": "32.2", "slab": "324325435454"}}
+		b, _ = proto.Marshal(item)
+		tmp = &pb.Record{Timestamp: time.Now().Unix(), DataType: 1001, Body: b}
+		hbData = append(hbData, tmp)
 	}
-	for i := 0; i <= 1000; i++ {
-		tmp := &pb.Record{Message: map[string]string{"data_type": "5000", "cpu": "0.11", "version": "1.6.0.0", "memory": "24324432", "net_type": "boe", "io": "32.2", "slab": "324325435454"}}
-		datas = append(datas, tmp)
+
+	driverData := make([]*pb.Record, 0)
+	for i := 0; i <= 100; i++ {
+		item := &pb.Item{Fields: map[string]string{"argv": "docker-untar / /data00/dockere/docker/overlay2/0d452e185fc8d39c47bf04084079e16337e0c25ced3dd65ab4571cd4b932f2/diff", "comm": "exe", "dip": "-1", "dport": "-1", "exe": "/usr/bin/dockerd", "exe_hash": "-3", "file_path": "/docker_workplace/docker/overlay2/0d452e185fbac8d39c47bf04084079e16337e0c25ced3dd65ab41cd4b932f2/diff/usr/src/linux-headers-4.15.0-30-generic/include/config/usb/r8a66597.h", "nodename": "n225-085-027", "pgid": "4110146", "pgid_argv": "/usr/bin/dockerd", "pid": "3855481", "pid_tree": "3855481.exe<4110146.dockerd<1.systemd", "pns": "4026531836", "pod_name": "", "ppid": "4110146", "ppid_argv": "/usr/bin/dockerd", "psm": "", "root_pns": "4026531836", "sa_family": "-1", "sessionid": "4294967295", "sid": "4110146", "sip": "-1", "socket_argv": "-3", "socket_pid": "-1", "sport": "-1", "tgid": "3855481", "uid": "0", "username": "root"}}
+		b, _ := proto.Marshal(item)
+		tmp := &pb.Record{Timestamp: time.Now().Unix(), DataType: 59, Body: b}
+		driverData = append(driverData, tmp)
 	}
 
 	go func() {
@@ -104,9 +120,9 @@ func Transfer(conn *grpc.ClientConn, agentID, ip, hostname string) {
 					ExtranetIPv6: []string{},
 					Hostname:     hostname,
 					AgentID:      agentID,
-					Timestamp:    time.Now().Unix(),
 					Version:      "1",
-					Pkg:          datas_hb,
+					Data:         hbData,
+					Product:      "",
 				}
 				err := client.Send(&data)
 				if err != nil {
@@ -120,9 +136,9 @@ func Transfer(conn *grpc.ClientConn, agentID, ip, hostname string) {
 					ExtranetIPv6: []string{},
 					Hostname:     hostname,
 					AgentID:      agentID,
-					Timestamp:    time.Now().Unix(),
 					Version:      "1",
-					Pkg:          datas,
+					Data:         driverData,
+					Product:      "",
 				}
 				err := client.Send(&data)
 				if err != nil {
@@ -131,7 +147,7 @@ func Transfer(conn *grpc.ClientConn, agentID, ip, hostname string) {
 			}
 
 			fmt.Println("send data!")
-			time.Sleep(time.Millisecond * 500)
+			time.Sleep(time.Second * 1)
 		}
 		wg.Done()
 	}()

@@ -6,15 +6,21 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/bytedance/Elkeid/server/manager/biz/common"
-	"github.com/bytedance/Elkeid/server/manager/infra"
-	"github.com/gin-gonic/gin"
-	"github.com/levigross/grequests"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/bytedance/Elkeid/server/manager/biz/common"
+	"github.com/bytedance/Elkeid/server/manager/infra"
+	"github.com/gin-gonic/gin"
+	"github.com/levigross/grequests"
+)
+
+var (
+	AK = infra.AccessKey
+	SK = infra.SecretKey
 )
 
 func getSecKec(ak string) string {
@@ -44,12 +50,46 @@ func hmacSha256(data string, secret string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
+func beforeRequestFunc(req *http.Request) error {
+	var (
+		timestamp   = fmt.Sprintf(`%d`, time.Now().Unix())
+		err         error
+		requestBody []byte
+	)
+
+	if req.Body != nil {
+		requestBody, err = ioutil.ReadAll(req.Body)
+		if err != nil {
+			return err
+		}
+		//读取完重新设置回去
+		req.Body.Close()
+		req.Body = ioutil.NopCloser(bytes.NewBuffer(requestBody))
+	} else {
+		requestBody = []byte{}
+	}
+	sign := generateSign(req.Method, formatURLPath(req.URL.Path), req.URL.RawQuery, AK, timestamp, SK, requestBody)
+	req.Header.Add("AccessKey", AK)
+	req.Header.Add("Signature", sign)
+	req.Header.Add("TimeStamp", timestamp)
+	return nil
+}
+
 func formatURLPath(in string) string {
 	in = strings.TrimSpace(in)
 	if strings.HasSuffix(in, "/") {
 		return in[:len(in)-1]
 	}
 	return in
+}
+
+func AuthRequestOption() *grequests.RequestOptions {
+	option := &grequests.RequestOptions{
+		InsecureSkipVerify: true,
+		BeforeRequest:      beforeRequestFunc,
+		RequestTimeout:     5 * time.Second,
+	}
+	return option
 }
 
 func AKSKAuth() gin.HandlerFunc {

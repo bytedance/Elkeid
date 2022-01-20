@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
-	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/grpc_hander"
+	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/grpc_handler"
 	"github.com/bytedance/Elkeid/server/agent_center/httptrans/midware"
 	"github.com/levigross/grequests"
 	"math/rand"
@@ -71,7 +71,7 @@ func (s *ServerRegistry) renewRegistry() {
 			url := fmt.Sprintf("http://%s/registry/register", s.randomAddr())
 
 			//Update the current number of connections
-			s.Weight = grpc_hander.GlobalGRPCPool.GetCount()
+			s.Weight = grpc_handler.GlobalGRPCPool.GetCount()
 			option := midware.AuthRequestOption()
 			option.JSON = s
 			ylog.Infof("RenewRegistry", ">>>>register %s to FindYou %s", s.print(), url)

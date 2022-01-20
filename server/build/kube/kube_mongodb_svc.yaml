@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongodb-scripts
+  namespace: elkeid
+  labels:
+    app: mongodb
+data:
+  mongo-createuser.sh: |-
+    mongo <<EOF
+    use admin
+    db.auth('admin', 'q50stucaziKZw6DG')
+    use hids_server
+    db.createUser({
+        user:"hids",
+        pwd:"I7ILUz7WhOJUWygy",
+        roles:[{
+            role:"readWrite",
+            db:"hids_server"
+        }]
+    })
+    EOF
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-service
+  namespace: elkeid
+  labels:
+    app: mongodb
+spec:
+  ports:
+    - port: 27017
+      targetPort: 27017
+  selector:
+    app: mongodb
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+  namespace: elkeid
+  labels:
+    app: mongodb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+        - name: mongodb
+          image: docker.io/library/mongo:4.4.6-bionic
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 27017
+          env:
+            - name: MONGO_INITDB_DATABASE
+              value: admin
+            - name: MONGO_INITDB_ROOT_USERNAME
+              value: admin
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              value: q50stucaziKZw6DG
+          volumeMounts:
+            - name: mongodb-init
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+      volumes:
+        - name: mongodb-init
+          configMap:
+            name: mongodb-scripts
+            items:
+              - key: mongo-createuser.sh
+                path: mongo-createuser.sh

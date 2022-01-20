@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/bytedance/Elkeid/server/manager/biz/midware"
 	"github.com/bytedance/Elkeid/server/manager/infra"
 	"github.com/bytedance/Elkeid/server/manager/infra/discovery"
 	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	"github.com/levigross/grequests"
-	"sync"
-	"time"
 )
 
 const (

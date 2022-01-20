@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	p, err := kafka.NewConsumer([]string{"127.0.0.1:9092"}, "hids_svr")
+	p, err := kafka.NewConsumer([]string{"10.227.2.103:9092"}, "hids_svr")
 	if err != nil {
 		fmt.Printf("NewConsumer error: %v\n", err)
 		return

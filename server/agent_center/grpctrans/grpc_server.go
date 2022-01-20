@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
-	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/grpc_hander"
+	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/grpc_handler"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"google.golang.org/grpc"
 	"io/ioutil"
@@ -42,7 +42,7 @@ const (
 )
 
 func Run() {
-	grpc_hander.InitGlobalGRPCPool()
+	grpc_handler.InitGlobalGRPCPool()
 	runServer(true, common.GRPCPort, common.SSLCertFile, common.SSLKeyFile, common.SSLCaFile)
 }
 
@@ -106,7 +106,7 @@ func runServer(enableCA bool, port int, crtFile, keyFile, caFile string) {
 	}
 
 	server := grpc.NewServer(opts...)
-	pb.RegisterTransferServer(server, &grpc_hander.TransferHandler{})
+	pb.RegisterTransferServer(server, &grpc_handler.TransferHandler{})
 	reflection.Register(server)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))

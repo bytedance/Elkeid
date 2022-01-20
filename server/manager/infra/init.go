@@ -36,7 +36,7 @@ func initComponents() {
 	var err error
 
 	//connect redis
-	if Grds, err = redis.NewRedisClient(Conf.GetStringSlice("redis.addrs"), Conf.GetString("redis.passwd")); err != nil {
+	if Grds, err = redis.NewRedisClient(Conf.GetStringSlice("redis.addrs"), Conf.GetString("redis.mastername"), Conf.GetString("redis.passwd")); err != nil {
 		fmt.Println("NEW_REDIS_ERROR", err.Error())
 		os.Exit(-1)
 	}
