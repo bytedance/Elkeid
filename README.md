@@ -52,11 +52,11 @@ The current open source module lacks a rule engine and detection rule, and canno
 
 
 ## Front-end display
-* Host Detail
+* Host Details
   <img src="./console1.png" style="float:left;"/>
 * Asset Details
   <img src="./console2.png" style="float:left;"/>
-* Alarm details
+* Alarm Details
   <img src="./console3.png" style="float:left;"/>
 * Agent/Plugin Management
   <img src="./console4.png" style="float:left;"/>
