@@ -48,13 +48,13 @@ rmmod hids_driver
 If all urls failed, please build elkeid kernel module yourself.
 
 ```bash
-wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
+wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.4_$(uname -r).ko"
 # or
-curl -O "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
+curl -O "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.4_$(uname -r).ko"
 # other cdn
-## "http://lf3-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
-## "http://lf6-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
-## "http://lf9-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.3_$(uname -r).ko"
+## "http://lf3-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.4_$(uname -r).ko"
+## "http://lf6-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.4_$(uname -r).ko"
+## "http://lf9-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.4_$(uname -r).ko"
 ```
 
 
