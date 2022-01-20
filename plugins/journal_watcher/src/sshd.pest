@@ -1,0 +1,15 @@
+char = { ASCII_ALPHANUMERIC | "-" | "_" | "." | "@" }
+authenticated = { "Accepted" | "Failed" }
+method = @{ char+ }
+valid = @{ "invalid user "? }
+user = @{ char* }
+sip = @{ char+ }
+sport = @{ char+ }
+principal = @{ char+ }
+extra = @{ ANY* }
+ws = _{ " " }
+// https://github.com/openssh/openssh-portable/blob/master/auth.c#L342
+login = { authenticated ~ ws ~ method ~ ws ~ "for" ~ ws ~ valid ~ user ~ ws ~ "from" ~ ws ~ sip ~ ws ~ "port" ~ ws ~ sport ~ ws ~ "ssh2" ~ (":")? ~ ws? ~ extra  }
+// https://github.com/openssh/openssh-portable/blob/master/gss-serv-krb5.c#L103
+certify = { "Authorized to" ~ ws ~ user ~ ", krb5 principal" ~ ws ~ principal ~ ws ~ "(krb5_kuserok)" }
+event = { (login | certify) }
