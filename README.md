@@ -17,10 +17,10 @@ Elkeid is a support cloud-native and base linux host security(Intrusion detectio
 * **[Elkeid Driver](https://github.com/bytedance/Elkeid/tree/main/driver)** Driver can collect data on Linux Kernel, support container environment, communication with Elkeid Driver Plugin.
 * **[Elkeid RASP](https://github.com/bytedance/Elkeid/tree/main/rasp)** Support CPython、Golang、JVM、NodeJS runtime data probe, supports dynamic injection into the runtime.
 * **Elkeid Agent Plugin List**
-    * [Driver Plugin](https://github.com/bytedance/Elkeid/tree/main/agent/driver): Responsible for managing **Elkeid Driver**, and process the driver data.
-    * [Collector Plugin](https://github.com/bytedance/Elkeid/tree/main/agent/collector): Responsible for the collection of assets/log information on the Linux System, such as user list, crontab, package information, etc.
-    * [Journal Watcher](https://github.com/bytedance/Elkeid/tree/main/agent/journal_watcher): Responsible for monitoring systemd logs, currently supports ssh related log collection and reporting.
-    * [Scanner Plugin](https://github.com/bytedance/Elkeid/tree/main/agent/scanner): Responsible for static detection of malicious files on the host, currently supports yara.
+    * [Driver Plugin](https://github.com/bytedance/Elkeid/tree/main/plugins/driver): Responsible for managing **Elkeid Driver**, and process the driver data.
+    * [Collector Plugin](https://github.com/bytedance/Elkeid/tree/main/plugins/collector): Responsible for the collection of assets/log information on the Linux System, such as user list, crontab, package information, etc.
+    * [Journal Watcher](https://github.com/bytedance/Elkeid/tree/main/plugins/journal_watcher): Responsible for monitoring systemd logs, currently supports ssh related log collection and reporting.
+    * [Scanner Plugin](https://github.com/bytedance/Elkeid/tree/main/plugins/scanner): Responsible for static detection of malicious files on the host, currently supports yara.
     * RASP Plugin: Responsible for managing RASP components and processing data collected from RASP, not open source yet.
 
 

@@ -17,10 +17,10 @@ Elkeid是一个云原生的基于主机的安全(入侵检测与风险识别)解
 * **[Elkeid Driver](https://github.com/bytedance/Elkeid/blob/main/driver/README-zh_CN.md)** 在 Linux Kernel 层采集数据的组件，兼容容器环境，并能够提供Rootkit检测能力。与Elkeid Agent管理的Driver插件通讯
 * **[Elkeid RASP](https://github.com/bytedance/Elkeid/tree/main/rasp)** 支持 CPython、Golang、JVM、NodeJS 的运行时数据采集探针，支持动态注入到运行时。
 * **Elkeid Agent Plugin List**
-  * [Driver Plugin](https://github.com/bytedance/Elkeid/blob/main/agent/driver/README-zh_CN.md): 负责与**Elkeid Driver**通信，处理其传递的数据等
-  * [Collector Plugin](https://github.com/bytedance/Elkeid/blob/main/agent/collector/README-zh_CN.md): 负责端上的资产/关键信息采集工作，如用户，定时任务，包信息等等
-  * [Journal Watcher](https://github.com/bytedance/Elkeid/blob/main/agent/journal_watcher/README-zh_CN.md): 负责监测systemd日志的插件，目前支持ssh相关日志采集与上报
-  * [Scanner Plugin](https://github.com/bytedance/Elkeid/blob/main/agent/scanner/README-zh_CN.md): 负责在端上进行静态检测恶意文件的插件，目前支持yara
+  * [Driver Plugin](https://github.com/bytedance/Elkeid/tree/main/plugins/driver): 负责与**Elkeid Driver**通信，处理其传递的数据等
+  * [Collector Plugin](https://github.com/bytedance/Elkeid/tree/main/plugins/collector): 负责端上的资产/关键信息采集工作，如用户，定时任务，包信息等等
+  * [Journal Watcher](https://github.com/bytedance/Elkeid/tree/main/plugins/journal_watcher): 负责监测systemd日志的插件，目前支持ssh相关日志采集与上报
+  * [Scanner Plugin](https://github.com/bytedance/Elkeid/blob/main/plugins/scanner): 负责在端上进行静态检测恶意文件的插件，目前支持yara
   * RASP Plugin: 负责管理RASP组件以及处理RASP采集的数据，还未开源
   
 
