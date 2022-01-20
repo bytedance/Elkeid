@@ -44,7 +44,17 @@ extern char *__dentry_path(struct dentry *dentry, char *buf, int buflen);
 
 extern u8 *smith_query_sb_uuid(struct super_block *sb);
 
-#define smith_get_task_struct(tsk) get_task_struct(tsk)
+static struct task_struct *smith_get_task_struct(struct task_struct *tsk)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
+    if (tsk && refcount_inc_not_zero(&tsk->usage))
+#else
+    if (tsk && atomic_inc_not_zero(&tsk->usage))
+#endif
+        return tsk;
+    return NULL;
+}
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
 extern void (*__smith_put_task_struct)(struct task_struct *t);
 static inline void smith_put_task_struct(struct task_struct *t)
