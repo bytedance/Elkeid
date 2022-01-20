@@ -52,9 +52,11 @@ server:
 ############################# Redis Settings #############################
 # addrs: addr of redis.
 # passwd: password,which can be empty.
+# mastername：if a MasterName is passed a sentinel-backed FailoverClient will be returned
 redis:
   addrs: ["127.0.0.1:6379"]
   passwd:
+  mastername:
 
 
 ############################# Mongodb Settings #############################

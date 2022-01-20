@@ -1,23 +1,29 @@
 syntax = "proto3";
-option go_package = "pb";
-package proto;
+option go_package = "code.byted.org/hids/grpc";
+package grpc;
 
+//pb for rawdata
 //agent --> server
-message  RawData {
-  repeated string IntranetIPv4 = 1; // Intranet IPv4 list
-  repeated string ExtranetIPv4 = 2; // Extranet IPv4 list
-  repeated string IntranetIPv6 = 3; // Intranet IPv6 list
-  repeated string ExtranetIPv6 = 4; // Extranet IPv6 list
-
-  string Hostname = 5;
-  string AgentID = 6;  //Agent unique identification ID
-  int64 Timestamp =7;
-  string Version = 8;  //Agent version
-  repeated Record Pkg = 9;
+message RawData{
+  repeated Record Data = 1;
+  string AgentID = 2;
+  repeated string IntranetIPv4 = 3;
+  repeated string ExtranetIPv4 = 4;
+  repeated string IntranetIPv6 = 5;
+  repeated string ExtranetIPv6 = 6;
+  string Hostname = 7;
+  string Version = 8;
+  string Product = 9;
 }
 
-message Record {
-  map<string, string> message = 1;
+message Record{
+  int32 DataType = 1;
+  int64 Timestamp = 2;
+  bytes Body = 3;
+}
+
+message Item{
+  map<string,string> Fields = 1;
 }
 
 //server --> agent
@@ -28,17 +34,69 @@ message Command {
 }
 
 message PluginTask{
-  string Name = 1; // Plugin name, which used to uniquely identify different plugins
-  string Data = 2; // Data transparently transmitted to the plugin
-  string Token = 3; // The token is used for reconciliation
+  //DataType which used to uniquely identify different  format of Data
+  int32 DataType = 1;
+  // Plugin name, which used to uniquely identify different plugins
+  string Name = 2;
+  // Data transparently transmitted to the plugin
+  string Data = 3;
+  // The token is used for reconciliation
+  string Token = 4;
 }
 
 message ConfigItem{
   string Name = 1;
-  string Version = 2;
-  string SHA256 = 3;
-  repeated string DownloadURL = 4;
-  string Detail = 5; //
+  string Type = 2;
+  string Version = 3;
+  string SHA256 = 4;
+  string Signature = 5;
+  repeated string DownloadURL = 6;
+  string Detail = 7;
+}
+
+
+//server -> bmq
+message MQData{
+  int32 DataType = 1;
+  int64 AgentTime = 2;
+  bytes Body = 3;
+
+  string AgentID = 4;
+  string IntranetIPv4 = 5;
+  string ExtranetIPv4 = 6;
+  string IntranetIPv6 = 7;
+  string ExtranetIPv6 = 8;
+  string Hostname = 9;
+  string Version = 10;
+  string Product = 11;
+
+  //Fields completed on the server
+  int64  SvrTime = 12;
+  string PSMName = 13;    //Used to identify business
+  string PSMPath = 14;    //Used to identify business
+  string Tags = 15;        //Used to identify agent group
+}
+
+//bmq --> Rule engine
+message MQRawData{
+  int32 DataType = 1;
+  int64 AgentTime = 2;
+  Item Body = 3;
+
+  string AgentID = 4;
+  string IntranetIPv4 = 5;
+  string ExtranetIPv4 = 6;
+  string IntranetIPv6 = 7;
+  string ExtranetIPv6 = 8;
+  string Hostname = 9;
+  string Version = 10;
+  string Product = 11;
+
+  //Fields completed on the server
+  int64  SvrTime = 12;
+  string PSMName = 13;    //Used to identify business
+  string PSMPath = 14;    //Used to identify business
+  string Tags = 15;        //Used to identify agent group
 }
 
 service Transfer {

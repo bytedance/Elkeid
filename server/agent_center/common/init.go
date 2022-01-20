@@ -84,8 +84,11 @@ func initComponents() {
 	kafkaAddr := UserConfig.GetStringSlice("kafka.addrs")
 	kafkaTopic := UserConfig.GetString("kafka.topic")
 	kafkaLog := UserConfig.GetString("kafka.logpath")
+	kafkaEnable := UserConfig.GetBool("kafka.sasl.enable")
+	kafkaUser := UserConfig.GetString("kafka.sasl.username")
+	kafkaPassword := UserConfig.GetString("kafka.sasl.password")
 	ylog.Infof("InitComponents", "KAFKA Producer: %v - %v", kafkaAddr, kafkaTopic)
-	if KafkaProducer, err = kafka.NewProducerWithLog(kafkaAddr, kafkaTopic, fmt.Sprintf("sarama-%s", LocalIP), kafkaLog); err != nil {
+	if KafkaProducer, err = kafka.NewProducerWithLog(kafkaAddr, kafkaTopic, fmt.Sprintf("sarama-%s", LocalIP), kafkaLog, kafkaUser, kafkaPassword, kafkaEnable); err != nil {
 		fmt.Printf("#### %s %s CONNECT_KAFKA_ERROR: %v", kafkaAddr, kafkaTopic, err)
 		ylog.Fatalf("InitComponents", "%s %s CONNECT_KAFKA_ERROR: %v", kafkaAddr, kafkaTopic, err)
 	}

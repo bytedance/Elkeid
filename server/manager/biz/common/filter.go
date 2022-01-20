@@ -1,26 +1,27 @@
 package common
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"time"
 )
 
 type FilterRule struct {
-	Operator string      `json:"operator" binding:"required,oneof=$eq $gt $gte $in $lt $lte $ne $nin $regex $time"`
-	Value    interface{} `json:"value" binding:"required"`
+	Operator string      `json:"operator" binding:"required,oneof=$eq $gt $gte $in $lt $lte $ne $nin $regex $time" bson:"operator"`
+	Value    interface{} `json:"value" binding:"required" bson:"value"`
 }
 
 type FilterContent struct {
-	Key       string       `json:"key" binding:"required"`
-	Rules     []FilterRule `json:"rules" binding:"required,dive"`
-	Condition string       `json:"condition" binding:"required,oneof=$and $or $nor"`
+	Key       string       `json:"key" binding:"required" bson:"key"`
+	Rules     []FilterRule `json:"rules" binding:"required,dive" bson:"rules"`
+	Condition string       `json:"condition" binding:"required,oneof=$and $or $nor" bson:"condition"`
 }
 
 type FilterQuery struct {
-	Filter    []FilterContent `json:"filter" binding:"dive"`
-	Condition string          `json:"condition" binding:"oneof=$and $or $nor"`
+	Filter    []FilterContent `json:"filter" binding:"dive" bson:"filter"`
+	Condition string          `json:"condition" binding:"oneof=$and $or $nor" bson:"condition"`
 }
 
 func (f *FilterQuery) Transform() bson.M {

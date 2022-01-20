@@ -1,58 +1,71 @@
 syntax = "proto3";
-option go_package = "global";
-package proto;
+option go_package = "proto";
+package grpc;
 
-message  RawData {
-  repeated string IntranetIPv4 = 1; //内网IPv4列表
-  repeated string ExtranetIPv4 = 2; //外网IPv4列表
-  repeated string IntranetIPv6 = 3;
-  repeated string ExtranetIPv6 = 4;
-
-  string Hostname = 5;
-  string AgentID = 6;
-  int64 Timestamp =7;  //Agent数据上报时间
-  string Version = 8;  //Agent版本
-  repeated Record Pkg = 9;
+message PackagedData {
+  repeated EncodedRecord records = 1;
+  string agent_id = 2;
+  repeated string intranet_ipv4 = 3;
+  repeated string extranet_ipv4 = 4;
+  repeated string intranet_ipv6 = 5;
+  repeated string extranet_ipv6 = 6;
+  string hostname = 7;
+  string version = 8;
+  string product = 9;
 }
 
+message EncodedRecord {
+  int32 data_type = 1;
+  int64 timestamp = 2;
+  bytes data = 3;
+}
 message Record {
-  //map.data_type = 数据类型; map.req_token = token
-  //其中 map.req_token = token 用于与ModulesCtrlMessage token相对应 （Issues #1）
-  map<string, string> message = 1;
+  int32 data_type = 1;
+  int64 timestamp = 2;
+  Payload data = 3;
 }
 
+message Payload { map<string, string> fields = 1; }
 
 message Command {
-  int32 AgentCtrl = 1; // 控制指令
-  PluginTask Task = 2; // 功能模块指令
-  repeated ConfigItem Config = 3;
+  Task task = 2;
+  repeated Config configs = 3;
 }
 
-message PluginTask{
-  // 插件名字
-  string Name = 1;
-  // JSON
-  string Data = 2;
-  // 对账
-  string Token = 3;
+message Task {
+  int32 data_type = 1;
+  string object_name = 2;
+  string data = 3;
+  string token = 4;
 }
 
-message ConfigItem{
-  string Name = 1;
-  string Version = 2;
-  string SHA256 = 3;
-  repeated string DownloadURL = 4;
-  string Detail = 5;
-}
-
-message ModulesCtrlMessage {
-  map<string, string> message = 1;
-}
-
-message ConfMessage {
-  repeated string message = 1;
+message Config {
+  string name = 1;
+  string type = 2;
+  string version = 3;
+  string sha256 = 4;
+  string signature = 5;
+  repeated string download_urls = 6;
+  string detail = 7;
 }
 
 service Transfer {
-  rpc Transfer (stream RawData) returns (stream Command){}
+  rpc Transfer(stream PackagedData) returns (stream Command) {}
+}
+
+message FileUploadRequest {
+  string token = 1;
+  bytes data = 2;
+}
+
+message FileUploadResponse {
+  enum StatusCode {
+    SUCCESS = 0;
+    FAILED = 1;
+  }
+  StatusCode status = 1;
+}
+
+service FileExt {
+  rpc Upload(stream FileUploadRequest) returns (FileUploadResponse);
 }

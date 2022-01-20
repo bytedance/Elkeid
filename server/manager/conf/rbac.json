@@ -1,0 +1,144 @@
+[
+  {
+    "id": 0,
+    "path_equal": [],
+    "path_pre": [
+      "/"
+    ],
+    "path_regex": [],
+    "authorized_roles": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "allow_anyone": false,
+    "desc": "默认所有接口只要鉴权通过都可访问(0-->admin;1-->高级用户(agent读写+hub读写);2-->agent读写;3-->agent只读;4-->hub读写;5-->hub只读)"
+  },
+  {
+    "id": 1,
+    "path_pre": [],
+    "path_regex": [],
+    "path_equal": [
+      "/api/v1/user/del",
+      "/api/v1/user/update",
+      "/api/v6/user/DelList",
+      "/api/v6/user/List",
+      "/api/v6/user/new"
+    ],
+    "authorized_roles": [
+      0
+    ],
+    "allow_anyone": false,
+    "desc": "admin用户接口"
+  },
+  {
+    "id": 2,
+    "path_equal": [
+      "/api/v1/agent/stats",
+      "/api/v1/agent/count",
+      "/api/v1/agent/getDefaultConfig",
+      "/api/v1/getTags",
+      "/api/v1/user/list",
+      "/api/v1/agent/bmq/summary"
+    ],
+    "path_pre": [
+      "/api/v1/agent/stat/",
+      "/api/v1/agent/getSubTask/",
+      "/api/v1/agent/statistic/",
+      "/api/v1/agent/getTask/",
+      "/api/v1/agent/getJob/",
+      "/api/v6/asset-center/Describe",
+      "/api/v6/asset-center/Export"
+    ],
+    "path_regex": [],
+    "authorized_roles": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "allow_anyone": false,
+    "desc": "agent可读用户"
+  },
+  {
+    "id": 3,
+    "path_equal": [
+      "/api/v1/agent/createTask/ctrl",
+      "/api/v1/agent/createTask/config",
+      "/api/v1/agent/createTask/task",
+      "/api/v1/agent/createTask/delConfig",
+      "/api/v1/agent/controlTask",
+      "/api/v1/agent/updateDefaultConfig",
+      "/api/v1/rasp/updateConfig",
+      "/api/v1/addTags",
+      "/api/v1/addTags/filter",
+      "/api/v1/delTags",
+      "/api/v6/agent/controlTask",
+      "/api/v6/agent/createAgentTask",
+      "/api/v6/agent/createPluTask",
+      "/api/v6/module/CreateModule",
+      "/api/v6/moudle/DeleteMoudle",
+      "/api/v6/agent/UpdateMoudle",
+      "/api/v6/alarm/update",
+      "/api/v6/whitelist/del",
+      "/api/v6/whitelist/add"
+    ],
+    "path_pre": [
+      "/api/v6/asset-center/Delete",
+      "/api/v6/asset-center/Add",
+      "/api/v6/asset-center/Update"
+    ],
+    "path_regex": [],
+    "authorized_roles": [
+      0,
+      1,
+      2
+    ],
+    "allow_anyone": false,
+    "desc": "agent可写用户"
+  },
+  {
+    "id": 4,
+    "path_equal": [],
+    "path_pre": [
+      "/api/v1/agent/getJob/"
+    ],
+    "path_regex": [],
+    "authorized_roles": [
+      0,
+      1,
+      4
+    ],
+    "allow_anyone": false,
+    "desc": "hub读写用户"
+  },
+  {
+    "id": 5,
+    "path_equal": [
+      "/api/v1/agent/queryInfo",
+      "/api/v1/user/login",
+      "/api/v1/agent/updateSubTask",
+      "/api/v1/tags/query",
+      "/api/v6/systemRouter/InsertAlert"
+    ],
+    "path_pre": [
+      "/api/v1/agent/getConfig/",
+      "/api/v1/agent/getConfig2/"
+    ],
+    "path_regex": [],
+    "authorized_roles": [],
+    "allow_anyone": true,
+    "desc": "部分接口不需要鉴权"
+  }
+]
+
+
+
+
+
+
+
+

@@ -1,179 +1,228 @@
 package plugin
 
 import (
+	"bufio"
+	"context"
+	"encoding/binary"
 	"errors"
-	"net"
+	"io"
 	"os"
 	"os/exec"
-	"path"
-	"strconv"
-	"syscall"
+	"sync"
+	"sync/atomic"
 	"time"
 
-	"github.com/prometheus/procfs"
-	"github.com/tinylib/msgp/msgp"
-	"go.uber.org/atomic"
+	"github.com/bytedance/Elkeid/agent/agent"
+	"github.com/bytedance/Elkeid/agent/core"
+	"github.com/bytedance/Elkeid/agent/proto"
 	"go.uber.org/zap"
 )
 
-// The time to wait before forcing the plug-in to kill,
-// this is to leave the necessary time for the plugin to the clean environment normally
-const exitTimeout = 1 * time.Second
+var (
+	m      = &sync.Map{}
+	syncCh = make(chan map[string]*proto.Config, 1)
+)
 
-// Plugin contains the process, socket, metadata and other information of a plugin
+var (
+	ErrDuplicatePlugin = errors.New("multiple load the same plugin")
+)
+
 type Plugin struct {
-	name       string
-	version    string
-	checksum   string
-	cmd        *exec.Cmd
-	conn       net.Conn
-	runtimePID int
-	pgid       int
-	IO         uint64
-	CPU        float64
-	reader     *msgp.Reader
-	exited     atomic.Value
-	Counter    atomic.Uint64
+	Config proto.Config
+	mu     *sync.Mutex
+	cmd    *exec.Cmd
+	// 从agent视角看待的rx tx
+	rx         io.ReadCloser
+	updateTime time.Time
+	reader     *bufio.Reader
+	tx         io.WriteCloser
+	taskCh     chan proto.Task
+	done       chan struct{}
+	wg         *sync.WaitGroup
+	// 与上面的rx tx概念相反 是从plugin视角看待的
+	rxBytes uint64
+	txBytes uint64
+	rxCnt   uint64
+	txCnt   uint64
+	*zap.SugaredLogger
 }
 
-// Name func returns the name of the plugin
+func (p *Plugin) GetState() (RxSpeed, TxSpeed, RxTPS, TxTPS float64) {
+	now := time.Now()
+	instant := now.Sub(p.updateTime).Seconds()
+	if instant != 0 {
+		RxSpeed = float64(atomic.SwapUint64(&p.rxBytes, 0)) / float64(instant)
+		TxSpeed = float64(atomic.SwapUint64(&p.txBytes, 0)) / float64(instant)
+		RxTPS = float64(atomic.SwapUint64(&p.rxCnt, 0)) / float64(instant)
+		TxTPS = float64(atomic.SwapUint64(&p.txCnt, 0)) / float64(instant)
+	}
+	p.updateTime = now
+	return
+}
 func (p *Plugin) Name() string {
-	return p.name
+	return p.Config.Name
+}
+func (p *Plugin) Version() string { return p.Config.Version }
+func (p *Plugin) Pid() int {
+	return p.cmd.Process.Pid
+}
+func (p *Plugin) IsExited() bool {
+	return p.cmd.ProcessState != nil
 }
 
-// Version func returns the version of the plugin
-func (p *Plugin) Version() string {
-	return p.version
-}
-
-// Checksum func returns the checksum of the plugin
-func (p *Plugin) Checksum() string {
-	return p.checksum
-}
-
-// PID func returns the real run pid of the plugin
-func (p *Plugin) PID() int {
-	return p.runtimePID
-}
-
-// Close func is used to close this plugin,
-// when closing it will kill all processes under the same process group
-func (p *Plugin) Close(timeout bool) {
-	p.exited.Store(true)
-	if p.conn != nil {
-		p.conn.Close()
-	}
-	if timeout {
-		time.Sleep(exitTimeout)
-	}
-	if p.pgid != 0 {
-		syscall.Kill(-p.pgid, syscall.SIGKILL)
-	}
-	if p.cmd != nil && p.cmd.Process != nil {
-		p.cmd.Process.Kill()
-	}
-}
-
-// Receive func is used to read data from the socket connection of plugin
-func (p *Plugin) Receive() (*PluginData, error) {
-	data := &PluginData{}
-	err := data.DecodeMsg(p.reader)
-	p.Counter.Add(uint64(len(*data)))
-	return data, err
-}
-
-// Send func is used to send tasks to this plugin
-func (p *Plugin) Send(t Task) error {
-	w := msgp.NewWriter(p.conn)
-	err := t.EncodeMsg(w)
+func (p *Plugin) ReceiveData() (rec *proto.EncodedRecord, err error) {
+	var l uint32
+	err = binary.Read(p.reader, binary.LittleEndian, &l)
 	if err != nil {
-		return err
+		return
 	}
-	err = w.Flush()
-	return err
-}
+	_, err = p.reader.Discard(1)
+	if err != nil {
+		return
+	}
+	te := 1
 
-func (p *Plugin) Run() error {
-	if p.cmd == nil {
-		return errors.New("Plugin cmd is nil")
-	}
-	err := p.cmd.Start()
-	if err != nil {
-		return err
-	}
-	go p.cmd.Wait()
-	if p.cmd.Process == nil {
-		return errors.New("Plugin cmd process is nil")
-	}
-	pgid, err := syscall.Getpgid(p.cmd.Process.Pid)
-	if err != nil {
-		return err
-	}
-	p.pgid = pgid
-	return nil
-}
+	rec = core.Get()
+	var dt, ts, e int
 
-func (p *Plugin) Connected() bool {
-	return p.conn != nil
-}
+	dt, e, err = readVarint(p.reader)
+	if err != nil {
+		return
+	}
+	_, err = p.reader.Discard(1)
+	if err != nil {
+		return
+	}
+	te += e + 1
+	rec.DataType = int32(dt)
 
-// Connect func is used to verify the connection request,
-// if the pgid is inconsistent, an error will be returned
-// Note that it is necessary to call Server's Delete func to clean up after this func returns error
-func (p *Plugin) Connect(req RegistRequest, conn net.Conn) error {
-	if p.conn != nil {
-		return errors.New("The same plugin has been connected, it may be a malicious attack")
-	}
-	reqPgid, err := syscall.Getpgid(int(req.Pid))
+	ts, e, err = readVarint(p.reader)
 	if err != nil {
-		return errors.New("Cann't get req process which pid is " + strconv.FormatUint(uint64(req.Pid), 10))
+		return
 	}
-	cmdPgid, err := syscall.Getpgid(int(req.Pid))
+	_, err = p.reader.Discard(1)
 	if err != nil {
-		return errors.New("Cann't get cmd process which pid is " + strconv.FormatUint(uint64(p.cmd.Process.Pid), 10))
+		return
 	}
-	if reqPgid != cmdPgid {
-		return errors.New("Pgid does not match")
-	}
-	p.runtimePID = int(req.Pid)
-	proc, err := procfs.NewProc(p.runtimePID)
-	if err == nil {
-		procIO, err := proc.IO()
-		if err == nil {
-			p.IO = procIO.ReadBytes + procIO.WriteBytes
+	te += e + 1
+	rec.Timestamp = int64(ts)
+
+	if uint32(te) < l {
+		_, e, err = readVarint(p.reader)
+		if err != nil {
+			return
 		}
-		procStat, err := proc.Stat()
-		if err == nil {
-			p.CPU = procStat.CPUTime()
+		te += e
+		ne := int(l) - te
+		if cap(rec.Data) < ne {
+			rec.Data = make([]byte, ne)
+		} else {
+			rec.Data = rec.Data[:ne]
+		}
+		_, err = io.ReadFull(p.reader, rec.Data)
+		if err != nil {
+			return
 		}
 	}
-	p.conn = conn
-	p.version = req.Version
-	p.name = req.Name
-	p.reader = msgp.NewReaderSize(conn, 8*1024)
-
-	return nil
+	atomic.AddUint64(&p.txCnt, 1)
+	atomic.AddUint64(&p.txBytes, uint64(l))
+	return
 }
 
-// NewPlugin func creates a new plugin instance
-func NewPlugin(name, version, checksum, runPath string) (*Plugin, error) {
-	var err error
-	dir, file := path.Split(runPath)
-	zap.S().Infof("Plugin work directory: %s", dir)
-	c := exec.Command(runPath)
-	c.Dir = dir
-	c.Stderr, err = os.OpenFile(dir+file+".stderr", os.O_RDWR|os.O_CREATE, 0700)
-	if err != nil {
-		return nil, err
+func (p *Plugin) SendTask(task proto.Task) (err error) {
+	select {
+	case p.taskCh <- task:
+	default:
+		err = errors.New("plugin is processing task or context has been cancled")
 	}
-	c.Stdin = nil
-	c.Stdout, err = os.OpenFile(dir+file+".stdout", os.O_RDWR|os.O_CREATE, 0700)
-	if err != nil {
-		return nil, err
+	return
+}
+
+func (p *Plugin) GetWorkingDirectory() string {
+	return p.cmd.Dir
+}
+
+func Get(name string) (*Plugin, bool) {
+	plg, ok := m.Load(name)
+	if ok {
+		return plg.(*Plugin), ok
 	}
-	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pgid: 0}
-	exited := atomic.Value{}
-	exited.Store(false)
-	p := Plugin{cmd: c, name: name, version: version, checksum: checksum, exited: exited}
-	return &p, nil
+	return nil, ok
+}
+
+func GetAll() (plgs []*Plugin) {
+	m.Range(func(key, value interface{}) bool {
+		plg := value.(*Plugin)
+		plgs = append(plgs, plg)
+		return true
+	})
+	return
+}
+
+func Sync(cfgs map[string]*proto.Config) (err error) {
+	select {
+	case syncCh <- cfgs:
+	default:
+		err = errors.New("plugins are syncing or context has been cancled")
+	}
+	return
+}
+
+func Startup(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+	defer zap.S().Info("plugin daemon will exit")
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+	zap.S().Info("plugin daemon startup")
+	for {
+		select {
+		case <-ctx.Done():
+			zap.S().Info("context has been canceled, will shutdown all plugins")
+			subWg := &sync.WaitGroup{}
+			m.Range(func(key, value interface{}) bool {
+				subWg.Add(1)
+				plg := value.(*Plugin)
+				go func() {
+					defer subWg.Done()
+					plg.Shutdown()
+					plg.wg.Wait()
+				}()
+				return true
+			})
+			subWg.Wait()
+			zap.S().Info("shutdown all plugins done")
+			m = &sync.Map{}
+			return
+		case cfgs := <-syncCh:
+			zap.S().Infof("syncing plugins...")
+			// 加载插件
+			for _, cfg := range cfgs {
+				if cfg.Name != agent.Product {
+					plg, err := Load(ctx, *cfg)
+					// 相同版本的同名插件正在运行，无需操作
+					if err == ErrDuplicatePlugin {
+						continue
+					}
+					if err != nil {
+						zap.S().Errorf("when load plugin %v:%v, an error occurred: %v", cfg.Name, cfg.Version, err)
+					} else {
+						plg.Infof("plugin has been loaded")
+					}
+				}
+			}
+			// 移除插件
+			for _, plg := range GetAll() {
+				if _, ok := cfgs[plg.Config.Name]; !ok {
+					plg.Infof("when syncing, plugin will be shutdown")
+					plg.Shutdown()
+					plg.Infof("shutdown successfully")
+					m.Delete(plg.Config.Name)
+					if err := os.RemoveAll(plg.GetWorkingDirectory()); err != nil {
+						plg.Error("delete dir of plugin failed: ", err)
+					}
+				}
+			}
+			zap.S().Infof("sync done")
+		}
+	}
 }

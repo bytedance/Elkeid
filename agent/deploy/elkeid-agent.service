@@ -1,0 +1,19 @@
+[Unit]
+Description=elkeid-agent
+Wants=network-online.target
+After=network-online.target network.target syslog.target
+[Service]
+Type=simple
+ExecStart=/etc/elkeid/elkeid-agent
+WorkingDirectory=/etc/elkeid
+Restart=always
+RestartSec=45
+KillMode=control-group
+MemoryMax=250M
+MemoryLimit=250M
+CPUQuota=10%
+Delegate=yes
+WatchdogSec=900
+EnvironmentFile=-/etc/elkeid/specified_env
+[Install]
+WantedBy=multi-user.target

@@ -2,6 +2,8 @@ package v1
 
 import (
 	"context"
+	"time"
+
 	"github.com/bytedance/Elkeid/server/manager/biz/common"
 	"github.com/bytedance/Elkeid/server/manager/infra"
 	. "github.com/bytedance/Elkeid/server/manager/infra/def"
@@ -9,7 +11,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"time"
 )
 
 //GetConfigByID return agent config by agent_id.
@@ -46,7 +47,7 @@ func getDefaultConfig() []AgentConfigMsg {
 	var config DefaultConfig
 	filter := bson.M{"type": DefaultAgentConfig, "version": DefaultConfigVersion}
 	err := collection.FindOne(context.Background(), filter).Decode(&config)
-	if err != nil && err != mongo.ErrNoDocuments {
+	if err != nil {
 		ylog.Infof("GetDefaultConfig", "default config is not set, now use empty config, error is :", err.Error())
 		return []AgentConfigMsg{}
 	}
@@ -79,6 +80,50 @@ func UpdateDefaultConfig(c *gin.Context) {
 	_, err = collection.InsertOne(context.Background(), defaultConfigModel)
 	if err != nil {
 		ylog.Errorf("UpdateDefaultAgentConfig ERROR", err.Error())
+		common.CreateResponse(c, common.DBOperateErrorCode, err.Error())
+		return
+	}
+
+	common.CreateResponse(c, common.SuccessCode, defaultConfigModel)
+	return
+}
+
+func LoadDefaultConfigFromDB() []AgentConfigMsg {
+	collection := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.DefaultCollection)
+	var config DefaultConfig
+	filter := bson.M{"type": DefaultAgentConfig, "version": DefaultConfigVersion}
+	err := collection.FindOne(context.Background(), filter).Decode(&config)
+	if err != nil && err != mongo.ErrNoDocuments {
+		ylog.Errorf("GetDefaultConfig", err.Error())
+		return nil
+	}
+	return config.Config
+}
+
+// UpdateDefaultVersionConfig
+func UpdateDefaultVersionConfig(c *gin.Context) {
+	var defaultConfigModel DefaultVersionConfig
+
+	err := c.BindJSON(&defaultConfigModel)
+	if err != nil {
+		ylog.Errorf("UpdateDefaultConfig", err.Error())
+		common.CreateResponse(c, common.ParamInvalidErrorCode, err.Error())
+		return
+	}
+
+	defaultConfigModel.UpdateTime = time.Now().Unix()
+	defaultConfigModel.CreateTime = time.Now().Unix()
+
+	collection := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.DefaultCollection)
+	filter := bson.M{"version": defaultConfigModel.Version, "type": defaultConfigModel.Type}
+	_, err = collection.DeleteOne(context.Background(), filter)
+	if err != nil {
+		common.CreateResponse(c, common.DBOperateErrorCode, err.Error())
+		return
+	}
+
+	_, err = collection.InsertOne(context.Background(), defaultConfigModel)
+	if err != nil {
 		common.CreateResponse(c, common.DBOperateErrorCode, err.Error())
 		return
 	}

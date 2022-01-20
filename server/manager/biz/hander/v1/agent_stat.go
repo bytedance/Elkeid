@@ -4,10 +4,12 @@ import (
 	"context"
 	"github.com/bytedance/Elkeid/server/manager/biz/common"
 	"github.com/bytedance/Elkeid/server/manager/infra"
+	. "github.com/bytedance/Elkeid/server/manager/infra/def"
 	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"strings"
 )
 
 //GetStatusByID get agent status by agent_id
@@ -115,4 +117,45 @@ func GetStatusByFilter(c *gin.Context) {
 	}
 
 	common.CreateResponse(c, common.SuccessCode, modelPage)
+}
+
+type AgentExtraInfoResp struct {
+	Tags    string `json:"tags"`
+	PSMName string `json:"psm_name"`
+	PSMPath string `json:"psm_path"`
+}
+
+//QueryInfo query psm and tags by agent_id
+func QueryInfo(c *gin.Context) {
+	var tagRequest IDListReq
+	err := c.BindJSON(&tagRequest)
+	if err != nil {
+		ylog.Errorf("QueryInfo", err.Error())
+		common.CreateResponse(c, common.ParamInvalidErrorCode, err.Error())
+		return
+	}
+
+	agentCollection := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.AgentHeartBeatCollection)
+	cursor, err := agentCollection.Find(context.Background(),
+		bson.M{"agent_id": bson.M{"$in": tagRequest.IDList}})
+	if err != nil {
+		ylog.Errorf("QueryInfo", err.Error())
+		common.CreateResponse(c, common.DBOperateErrorCode, err.Error())
+		return
+	}
+
+	res := map[string]AgentExtraInfoResp{}
+	defer cursor.Close(context.Background())
+	for cursor.Next(context.Background()) {
+		var heartbeat AgentHBInfo
+		err := cursor.Decode(&heartbeat)
+		if err != nil {
+			ylog.Errorf("GetTagsByID", err.Error())
+			continue
+		}
+		res[heartbeat.AgentId] = AgentExtraInfoResp{
+			Tags: strings.Join(heartbeat.Tags, ","),
+		}
+	}
+	common.CreateResponse(c, common.SuccessCode, res)
 }
