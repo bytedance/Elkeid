@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/bytedance/Elkeid/server/manager/infra/discovery"
 	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	"github.com/go-redis/redis/v8"
 	"github.com/levigross/grequests"
-	"sync"
-	"time"
 )
 
 type DisJob func(k, v interface{}) (interface{}, error)

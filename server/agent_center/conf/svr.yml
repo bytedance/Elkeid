@@ -21,6 +21,10 @@ kafka:
   addrs:
     - 127.0.0.1:9092
   topic: hids_svr
+  sasl:
+    enable: true
+    username: user
+    password: password
   logpath: ./log/sarama.log
 
 

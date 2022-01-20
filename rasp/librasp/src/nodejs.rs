@@ -19,14 +19,14 @@ pub fn nodejs_attach(
     node_path: &str,
 ) -> Result<bool> {
     debug!("node attach: {}", pid);
-    let smith_module_path = "/etc/elkeid/plugin/RASP/rasp/node/smith";
+    let smith_module_path = settings::RASP_NODE_MODULE;
     nodejs_run(pid, node_path, smith_module_path)
 }
 
 pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &'static str) -> Result<bool> {
     let pid_string = pid.to_string();
     let nsenter = settings::RASP_NS_ENTER_BIN.to_string();
-    let inject_script_path = "/etc/elkeid/plugin/RASP/rasp/node/injector.js";
+    let inject_script_path = settings::RASP_NODE_INJECTOR;
     let nspid = match ProcessInfo::read_ns_pid(pid) {
         Ok(nspid_option) => {
             if let Some(nspid) = nspid_option {
