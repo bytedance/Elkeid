@@ -1,3 +1,6 @@
+//go:build product
+// +build product
+
 package connection
 
 import _ "embed"
@@ -12,7 +15,9 @@ var ClientCert []byte
 var CaCert []byte
 
 func init() {
-	sd["sd"] = "127.0.0.1:8088"
-	priLB["ac"] = "127.0.0.1:6751"
+	serviceDiscoveryHost["default"] = "127.0.0.1:8088"
+	privateHost["default"] = "127.0.0.1:6751"
 	setDialOptions(CaCert, ClientKey, ClientCert, "elkeid.com")
+	Region.Store("default")
+	IDC.Store("default")
 }

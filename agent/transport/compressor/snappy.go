@@ -1,92 +1,70 @@
-/*
- *
- * Copyright 2017 gRPC authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
-
-// Package compressor is a wrapper for using github.com/golang/snappy with gRPC.
 package compressor
-
-// This code is based upon the gzip wrapper in github.com/grpc/grpc-go:
-// https://github.com/grpc/grpc-go/blob/master/encoding/gzip/gzip.go
 
 import (
 	"io"
-	"io/ioutil"
 	"sync"
 
-	snappylib "github.com/golang/snappy"
+	"github.com/golang/snappy"
 	"google.golang.org/grpc/encoding"
 )
 
 const Name = "snappy"
 
 type compressor struct {
-	poolCompressor   sync.Pool
-	poolDecompressor sync.Pool
+	ws sync.Pool
+	rs sync.Pool
+}
+type writer struct {
+	*snappy.Writer
+	pool *sync.Pool
 }
 
-type writer struct {
-	*snappylib.Writer
-	pool *sync.Pool
+func (w *writer) Close() error {
+	defer w.pool.Put(w)
+	return w.Writer.Close()
 }
 
 type reader struct {
-	*snappylib.Reader
+	*snappy.Reader
 	pool *sync.Pool
 }
 
-func init() {
-	c := &compressor{}
-	c.poolCompressor.New = func() interface{} {
-		w := snappylib.NewWriter(ioutil.Discard)
-		return &writer{Writer: w, pool: &c.poolCompressor}
+func (r *reader) Read(p []byte) (n int, err error) {
+	n, err = r.Reader.Read(p)
+	if err == io.EOF {
+		r.pool.Put(r)
 	}
-	encoding.RegisterCompressor(c)
+	return n, err
 }
 
 func (c *compressor) Compress(w io.Writer) (io.WriteCloser, error) {
-	z := c.poolCompressor.Get().(*writer)
-	z.Writer.Reset(w)
-	return z, nil
+	wc := c.ws.Get().(*writer)
+	wc.Reset(w)
+	return wc, nil
 }
 
 func (c *compressor) Decompress(r io.Reader) (io.Reader, error) {
-	z, inPool := c.poolDecompressor.Get().(*reader)
-	if !inPool {
-		newR := snappylib.NewReader(r)
-		return &reader{Reader: newR, pool: &c.poolDecompressor}, nil
-	}
-	z.Reset(r)
-	return z, nil
+	rd := c.rs.Get().(*reader)
+	rd.Reset(r)
+	return rd, nil
 }
-
 func (c *compressor) Name() string {
 	return Name
 }
 
-func (z *writer) Close() error {
-	err := z.Writer.Close()
-	z.pool.Put(z)
-	return err
-}
-
-func (z *reader) Read(p []byte) (n int, err error) {
-	n, err = z.Reader.Read(p)
-	if err == io.EOF {
-		z.pool.Put(z)
+func init() {
+	c := &compressor{}
+	c.ws.New = func() interface{} {
+		return &writer{
+			Writer: snappy.NewBufferedWriter(io.Discard),
+			pool:   &c.ws,
+		}
 	}
-	return n, err
+	c.rs.New = func() interface{} {
+		return &reader{
+			Reader: snappy.NewReader(nil),
+			pool:   &c.rs,
+		}
+	}
+	encoding.RegisterCompressor(c)
 }
