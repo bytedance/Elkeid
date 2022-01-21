@@ -80,7 +80,7 @@ static void __exit kprobes_exit(void)
 module_init(kprobes_init);
 module_exit(kprobes_exit);
 
-MODULE_INFO(homepage, "https://github.com/bytedance/Elkeid/tree/main/driver");
+MODULE_INFO(homepage, "driver");
 MODULE_VERSION("1.7.0.4");
 
 MODULE_LICENSE("GPL");
