@@ -11,38 +11,38 @@ Elkeid is a support cloud-native and base linux host security(Intrusion detectio
 <img src="server/docs/server.png"/>
 
 ##  Elkeid Host Ability
-<img src="./Ability_1.png"/>
+<img src="png/Ability_1.png"/>
 
-* **[Elkeid Agent](https://github.com/bytedance/Elkeid/tree/main/agent)** Linux userspace agent，responsible for managing various plugin,communication with **Elkeid Server**.
-* **[Elkeid Driver](https://github.com/bytedance/Elkeid/tree/main/driver)** Driver can collect data on Linux Kernel, support container environment, communication with Elkeid Driver Plugin.
-* **[Elkeid RASP](https://github.com/bytedance/Elkeid/tree/main/rasp)** Support CPython、Golang、JVM、NodeJS runtime data probe, supports dynamic injection into the runtime.
+* **[Elkeid Agent](agent)** Linux userspace agent，responsible for managing various plugin,communication with **Elkeid Server**.
+* **[Elkeid Driver](driver)** Driver can collect data on Linux Kernel, support container environment, communication with Elkeid Driver Plugin.
+* **[Elkeid RASP](rasp)** Support CPython、Golang、JVM、NodeJS runtime data probe, supports dynamic injection into the runtime.
 * **Elkeid Agent Plugin List**
-    * [Driver Plugin](https://github.com/bytedance/Elkeid/tree/main/plugins/driver): Responsible for managing **Elkeid Driver**, and process the driver data.
-    * [Collector Plugin](https://github.com/bytedance/Elkeid/tree/main/plugins/collector): Responsible for the collection of assets/log information on the Linux System, such as user list, crontab, package information, etc.
-    * [Journal Watcher](https://github.com/bytedance/Elkeid/tree/main/plugins/journal_watcher): Responsible for monitoring systemd logs, currently supports ssh related log collection and reporting.
-    * [Scanner Plugin](https://github.com/bytedance/Elkeid/tree/main/plugins/scanner): Responsible for static detection of malicious files on the host, currently supports yara.
-    * [RASP Plugin](https://github.com/bytedance/Elkeid/tree/main/rasp/plugin): Responsible for managing RASP components and processing data collected from RASP, not open source yet.
+    * [Driver Plugin](plugins/driver): Responsible for managing **Elkeid Driver**, and process the driver data.
+    * [Collector Plugin](plugins/collector): Responsible for the collection of assets/log information on the Linux System, such as user list, crontab, package information, etc.
+    * [Journal Watcher](plugins/journal_watcher): Responsible for monitoring systemd logs, currently supports ssh related log collection and reporting.
+    * [Scanner Plugin](plugins/scanner): Responsible for static detection of malicious files on the host, currently supports yara.
+    * [RASP Plugin](rasp/plugin): Responsible for managing RASP components and processing data collected from RASP.
 
 
 The above components can provide these data:
 
-<img width="40%" src="./data_index.png"/>
+<img width="40%" src="png/data_index.png"/>
 
 Driver Data
-<img src="./data1.png"/>
+<img src="png/data1.png"/>
 
 Other Data
-<img src="./data2.png"/>
+<img src="png/data2.png"/>
 
 
-## [Elkeid Backend Ability](https://github.com/bytedance/Elkeid/tree/main/server)
-* **[Elkeid AgentCenter](https://github.com/bytedance/Elkeid/tree/main/server/agent_center)** Responsible for communicating with the Agent, collecting Agent data and simply processing it and then summing it into the MQ, is also responsible for the management of the Agent, including Agent upgrade, configuration modification, task distribution, etc.
-* **[Elkeid ServiceDiscovery](https://github.com/bytedance/Elkeid/tree/main/server/service_discovery)** Each component in the background needs to register and synchronize service information with the component regularly, so as to ensure that the instances in each service module are visible to each other and facilitate direct communication.
-* **[Elkeid Manager](https://github.com/bytedance/Elkeid/tree/main/server/manager)** Responsible for the management of the entire backend, and provide related query and management API.
+## Elkeid Backend Ability
+* **[Elkeid AgentCenter](server/agent_center)** Responsible for communicating with the Agent, collecting Agent data and simply processing it and then summing it into the MQ, is also responsible for the management of the Agent, including Agent upgrade, configuration modification, task distribution, etc.
+* **[Elkeid ServiceDiscovery](server/service_discovery)** Each component in the background needs to register and synchronize service information with the component regularly, so as to ensure that the instances in each service module are visible to each other and facilitate direct communication.
+* **[Elkeid Manager](server/manager)** Responsible for the management of the entire backend, and provide related query and management API.
+* **[Elkeid Console](server/web_console)** Elkeid Front-end
 * **[Elkeid HUB](https://github.com/bytedance/Elkeid-HUB)** Elkeid HIDS RuleEngine
 
 ## Elkeid Advantage
-The current open source module lacks a rule engine and detection rule, and cannot provide intrusion detection capabilities. However, the current open source part can be easily integrated with other HIDS/NIDS/XDR solutions, or you can perform data processing on the collected data to meet your own needs. Elkeid has the following main advantages:
 
 * **Excellent Performance**: With the help of Elkeid Driver and many custom developments, the end-to-end capability is excellent
 * **Born For Intrusion Detection**: Data collection is based on high-intensity confrontation, and targeted data collection is available for many advanced confrontation scenarios such as Kernel Rootkit, privilege escalation, and fileless attacks.
@@ -53,14 +53,17 @@ The current open source module lacks a rule engine and detection rule, and canno
 
 ## Front-end display
 * Host Details
-  <img src="./console1.png" style="float:left;"/>
+  <img src="png/console1.png" style="float:left;"/>
 * Asset Details
-  <img src="./console2.png" style="float:left;"/>
+  <img src="png/console2.png" style="float:left;"/>
 * Alarm Details
-  <img src="./console3.png" style="float:left;"/>
+  <img src="png/console3.png" style="float:left;"/>
+* Allow List Management
+  <img src="png/console6.png" style="float:left;"/>
 * Agent/Plugin Management
-  <img src="./console4.png" style="float:left;"/>
-
+  <img src="png/console4.png" style="float:left;"/>
+* User Management
+  <img src="png/console5.png" style="float:left;"/>
 
 ## Quick Start
 * **[Quick Start](server/docs/quick-start.md)**
@@ -70,7 +73,7 @@ The current open source module lacks a rule engine and detection rule, and canno
 
 ## Contact us && Cooperation
 
-<img src="./Lark.png" width="40%" style="float:left;"/>
+<img src="png/Lark.png" width="40%" style="float:left;"/>
 
 *Lark Group*
 
@@ -79,6 +82,7 @@ The current open source module lacks a rule engine and detection rule, and canno
 * Elkeid RASP: Apache-2.0
 * Elkeid Agent: Apache-2.0
 * Elkeid Server: Apache-2.0
+* Elkeid Console: [Elkeid License](server/web_console/LICENSE)
 
 ## 404StarLink 2.0 - Galaxy
 <img src="https://github.com/knownsec/404StarLink-Project/raw/master/logo.png" width="30%" style="float:left;"/>

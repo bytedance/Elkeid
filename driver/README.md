@@ -603,7 +603,7 @@ Testing Load:
 
 `udp_recvmsg_handler` will work only if the port is equal 53 or 5353
 
-Original Testing Data:[Benchmark Data](https://github.com/bytedance/Elkeid/tree/main/driver/benchmark_data/handler)
+Original Testing Data:[Benchmark Data](driver/benchmark_data/handler)
 
 
 ## About Deploy

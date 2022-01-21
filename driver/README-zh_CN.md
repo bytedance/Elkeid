@@ -616,7 +616,7 @@ Testing Load:
 
 `udp_recvmsg_handler` 仅工作在端口为 53 或 5353的情况
 
-测试原始数据:[Benchmark Data](https://github.com/bytedance/Elkeid/tree/main/driver/benchmark_data/handler)
+测试原始数据:[Benchmark Data](driver/benchmark_data/handler)
 
 
 ## 关于部署
