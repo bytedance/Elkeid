@@ -25,11 +25,11 @@ Elkeid是一个云原生的基于主机的安全(入侵检测与风险识别)解
   
 
 以上组件可以提供以下数据：
-<img src="./data_index.png"/>
+<img src="png/data_index.png"/>
 Driver Data
-<img src="./data1.png"/>
+<img src="png/data1.png"/>
 Other Data
-<img src="./data2.png"/>
+<img src="png/data2.png"/>
 
 
 ## Elkeid Backend Ability
