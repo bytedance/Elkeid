@@ -2,9 +2,7 @@
 
 [English](README.md) | 简体中文
 
-Automated deployment of Elkeid tools
-
-
+Elkeid 自动化部署工具
 
 ## Component List
 * Redis
@@ -23,7 +21,7 @@ Automated deployment of Elkeid tools
 | **Name**          | 测试环境部署建议      | 生产环境部署建议      | 端口                               |
 | ----------------- | --------------------- | --------------------- | ---------------------------------- |
 | Redis             | 单台                  | 三台 哨兵模式         | 6379<br />26379                    |
-| Mongodb           | 单台                  | 三台 副本模式         | 27017<br />9216                    |
+| Mongodb           | 单台                  | 三台 副本模式         | 27017                              |
 | Kafka/ZK          | 单台                  | 根据Agent数量计算     | 2181<br />9092                     |
 | Nginx             | 单台                  | 单台                  | 8080<br />8082<br />8089<br />8090 |
 | Service Discovery | 单台                  | 两台                  | 8088                               |
@@ -43,12 +41,14 @@ Automated deployment of Elkeid tools
 
 - 部署所用的后端服务器只能使用：Centos7 及以上；Ubuntu16 及以上；Debian9 及以上
 
-
+- 执行elkeidup的服务器需要能以root用户免密码ssh到所有的后端服务器上
 
 ```bash
-wget elkeidup
-wget package
-unzip package
+#下载&解压，请根据release替换download url
+wget {{release_bin_url}} -O elkeidup
+chmod a+x ./elkeidup
+wget {{release_package_url}} -O package.tar.gz
+tar -zxf package.tar.gz
 
 ./elkeidup init
 #按需填写配置
