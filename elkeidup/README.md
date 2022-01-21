@@ -49,6 +49,8 @@ chmod a+x ./elkeidup
 wget {{release_package_url}} -O package.tar.gz
 tar -zxf package.tar.gz
 
+# get elkeidup help
+./elkeidup --help
 # generate conf template
 ./elkeidup init
 # edit template，the point is all ip address

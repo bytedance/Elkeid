@@ -47,6 +47,9 @@ chmod a+x ./elkeidup
 wget {{release_package_url}} -O package.tar.gz
 tar -zxf package.tar.gz
 
+# get elkeidup help
+./elkeidup --help
+# 生成配置模版
 ./elkeidup init
 #按需填写配置
 vim elkeid_server.yaml
