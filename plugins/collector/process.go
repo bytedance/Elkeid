@@ -55,10 +55,10 @@ type Process struct {
 	Comm       string  `json:"name"`
 	Cmdline    string  `json:"cmdline"`
 	Exe        string  `json:"exe"`
-	Checksum   string  `json:"sha256"`
-	UID        int     `json:"uid,string"`
+	Checksum   string  `json:"checksum"`
+	UID        int     `json:"uid"`
 	Username   string  `json:"username"`
-	EUID       int     `json:"euid,string"`
+	EUID       int     `json:"euid"`
 	Eusername  string  `json:"eusername"`
 	Cwd        string  `json:"cwd"`
 	Session    int     `json:"session"`
