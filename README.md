@@ -63,10 +63,7 @@ Other Data
   <img src="png/console5.png" style="float:left;"/>
 
 ## Quick Start
-* **[Quick Start](server/docs/quick-start.md)**
-* **[k8s Deployment Document](server/docs/kubenates-install-zh_CN.md)**
-* **[Docker Test Deployment Document](server/docs/docker-install.md)**
-* **[Deploy Question and Answer](server/docs/qa.md)**
+* **[Deploy by Elkeidup](server/docs/quick-start.md)**
 
 ## Contact us && Cooperation
 
