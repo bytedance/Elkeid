@@ -33,13 +33,10 @@ Elkeid 自动化部署工具
 
 ## Instructions
 
-- 部署所用的后端服务器需要仅供Elkeid使用
-
-- 部署所用的后端服务器需要保证内网互通，也仅支持内网部署
-
-- 部署所用的后端服务器部署时需要有 root 用户权限
-
-- 部署所用的后端服务器只能使用：Centos7 及以上；Ubuntu16 及以上；Debian9 及以上
+* 部署所用的后端服务器需要仅供Elkeid使用
+* 部署所用的后端服务器需要保证内网互通，也仅支持内网部署
+* 部署所用的后端服务器部署时需要有 root 用户权限
+* 部署所用的后端服务器只能使用：Centos7 及以上；Ubuntu16 及以上；Debian9 及以上
 
 - 执行elkeidup的服务器需要能以root用户免密码ssh到所有的后端服务器上
 
@@ -69,11 +66,8 @@ cat ~/.elkeidup/elkeid_passwd
 
 * **安装后不要删除 `~/.elkeidup` 目录**
 * **除了Kafka其他的组件的 install 字段必须为true**
-
 * **不要修改任何组件的密码，包括Elkeid Console(Manager)初始默认用户**
-
-* **Kafka 默认链接配置如下:**
-
+* Kafka Topic 为 'hids_svr'，Kafka 默认链接配置如下:
 ```json
 {"sasl.mechanism":"PLAIN","sasl.password":"elkeid","sasl.username":"admin","security.protocol":"SASL_PLAINTEXT"}
 ```
@@ -114,5 +108,5 @@ Minimum 8C16G 200G server
 | Server9/10  | Agent Center               | 16C32G  10-Gigabit NIC    |
 | Server13    | Nginx                      | 8C16G                     |
 
-A single HUB does not support 10,000 agents.
+A single HUB does not support 5000 agents.
 

@@ -19,7 +19,6 @@ Automated deployment of Elkeid tools
 * Elkeid HUB Community Version
 
 
-
 | **Name**          | **Minimal deployment in test environment**        | **non-test environment**                          | **Components use ports**           |
 | ----------------- | ------------------------------------------------- | ------------------------------------------------- | ---------------------------------- |
 | Redis             | Single                                            | Three, Sentinel Mode                              | 6379<br />26379                    |
@@ -64,17 +63,12 @@ cat ~/.elkeidup/elkeid_passwd
 ./elkeidup agent build --package package/ --config ./elkeid_will.yaml 
 ```
 
-
-
 **Must-read notes**
 
 * **Don't remove `~/.elkeidup` dir**
 * **In addition to kafka other components install field must be true**
-
 * **Don't fix any components used user's password, Include the Console(Elkeid Manager)**
-
-* **Kafka Default Connect Conf:**
-
+* Kafka Topic is 'hids_svr', Kafka Default Connect Conf:
 ```json
 {"sasl.mechanism":"PLAIN","sasl.password":"elkeid","sasl.username":"admin","security.protocol":"SASL_PLAINTEXT"}
 ```
@@ -115,4 +109,4 @@ Minimum 8C16G 200G server
 | Server9/10  | Agent Center               | 16C32G  10-Gigabit NIC    |
 | Server13    | Nginx                      | 8C16G                     |
 
-A single HUB does not support 10,000 agents.
+A single HUB does not support 5000 agents.
