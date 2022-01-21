@@ -75,7 +75,7 @@ protoc -I=. --python_out=. ./MQData.proto
 会生成  MQData_pb2.py 文件，将这个文件放到您的项目中
 
 因为Elkeid PB 将主要数据放入 body.field 这个map中，因此需要对数据进行拍平，生成原生的一级数据结构。这里提供一个 decoder 供Kafka Serializer使用
-```json
+```python
 #!/usr/bin/python3
 
 # decoder of Elkeid PB, input string and will dump json for you.
@@ -108,7 +108,7 @@ aMQData.ParseFromString(value)
 ```
 
 然后创建 Kafka consumer，将上述的decoder作为 kafka 的 value_deserializer 传递进去。Elkeid的默认topic为 hids_svr
-```json
+```python
 #!/usr/bin/python3
 from kafka import KafkaConsumer
 import MQData_pb2 as MQData # 刚刚编译的那个class文件

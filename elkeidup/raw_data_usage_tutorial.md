@@ -75,7 +75,7 @@ protoc -I=. --python_out=. ./MQData.proto
 MQData_pb2.py file will be generated, put this file in your project
 
 Because Elkeid PB puts the main data into the body.field map, the data needs to be flattened to generate a native first-level data structure. Here is a decoder for Kafka Serializer to use
-```json
+```python
 #!/usr/bin/python3
 
 # decoder of Elkeid PB, input string and will dump json for you.
@@ -108,7 +108,7 @@ aMQData.ParseFromString(value)
 ```
 
 Then create a Kafka consumer and pass the above decoder as kafka's value_deserializer. Elkeid's default topic is hids_svr
-```json
+```python
 #!/usr/bin/python3
 from kafka import KafkaConsumer
 import MQData_pb2 as MQData # The class file you just compiled
