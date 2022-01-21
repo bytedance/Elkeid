@@ -68,12 +68,10 @@ cat ~/.elkeidup/elkeid_passwd
 * **Don't remove `~/.elkeidup` dir**
 * **In addition to kafka other components install field must be true**
 * **Don't fix any components used user's password, Include the Console(Elkeid Manager)**
-* Kafka Topic is 'hids_svr', Kafka Default Connect Conf:
-```json
-{"sasl.mechanism":"PLAIN","sasl.password":"elkeid","sasl.username":"admin","security.protocol":"SASL_PLAINTEXT"}
-```
 
 
+### Raw Data Usage Tutorial
+[Raw Data Usage Tutorial](raw_data_usage_tutorial.md)
 
 ### Example(1-30 Agents Test)
 

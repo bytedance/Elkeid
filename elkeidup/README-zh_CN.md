@@ -67,12 +67,9 @@ cat ~/.elkeidup/elkeid_passwd
 * **安装后不要删除 `~/.elkeidup` 目录**
 * **除了Kafka其他的组件的 install 字段必须为true**
 * **不要修改任何组件的密码，包括Elkeid Console(Manager)初始默认用户**
-* Kafka Topic 为 'hids_svr'，Kafka 默认链接配置如下:
-```json
-{"sasl.mechanism":"PLAIN","sasl.password":"elkeid","sasl.username":"admin","security.protocol":"SASL_PLAINTEXT"}
-```
 
-
+### Raw Data Usage Tutorial
+[Raw Data Usage Tutorial](raw_data_usage_tutorial-zh_CN.md)
 
 ### 1-30 Agent 测试环境配置参考
 
