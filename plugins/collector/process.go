@@ -52,7 +52,7 @@ func init() {
 type Process struct {
 	PID        int     `json:"pid"`
 	PPID       int     `json:"ppid"`
-	Comm       string  `json:"name"`
+	Comm       string  `json:"comm"`
 	Cmdline    string  `json:"cmdline"`
 	Exe        string  `json:"exe"`
 	Checksum   string  `json:"sha256"`
