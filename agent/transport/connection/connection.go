@@ -116,7 +116,8 @@ func GetConnection(ctx context.Context) (*grpc.ClientConn, error) {
 	var err error
 	host, ok := serviceDiscoveryHost[region]
 	if ok {
-		addrs, err := resolveServiceDiscovery(host, 10)
+		var addrs []string
+		addrs, err = resolveServiceDiscovery(host, 10)
 		if err == nil {
 			for _, addr := range addrs {
 				context, cancel := context.WithTimeout(ctx, time.Second*3)
