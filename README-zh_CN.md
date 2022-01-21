@@ -47,6 +47,20 @@ Other Data
 * **百万级生产环境验证**：整体经过内部百万级验证，从端到Server，稳定性与性能经过考验，Elkeid不仅仅是一个PoC，是生产级的；开源版本即内部Release Version
 * **二次开发友好**：Elkeid 方便二次开发与定制化需求增加
 
+
+
+## Front-end display
+* 主机详情
+<img src="./console1.png" style="float:left;"/>
+* 资产详情
+<img src="./console2.png" style="float:left;"/>
+* 告警详情
+<img src="./console3.png" style="float:left;"/>
+* Agent/Plugin 管理
+<img src="./console4.png" style="float:left;"/>
+
+
+
 ## Quick Start
 * **[快速部署文档](server/docs/quick-start-zh_CN.md)**
 * **[k8s部署文档](server/docs/kubenates-install-zh_CN.md)**

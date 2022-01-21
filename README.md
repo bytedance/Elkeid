@@ -50,6 +50,18 @@ The current open source module lacks a rule engine and detection rule, and canno
 * **One-million-level Production Environment Verification**: The whole has been internally verified at a million-level, and the stability and performance have been tested from end to server. Elkeid is not just a PoC, it is production-level; the open source version is the internal Release Version.
 * **Secondary Development Friendly**: Elkeid facilitates secondary development and increased demand for customization.
 
+
+## Front-end display
+* Host Details
+  <img src="./console1.png" style="float:left;"/>
+* Asset Details
+  <img src="./console2.png" style="float:left;"/>
+* Alarm Details
+  <img src="./console3.png" style="float:left;"/>
+* Agent/Plugin Management
+  <img src="./console4.png" style="float:left;"/>
+
+
 ## Quick Start
 * **[Quick Start](server/docs/quick-start.md)**
 * **[k8s Deployment Document](server/docs/kubenates-install-zh_CN.md)**
