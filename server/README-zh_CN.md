@@ -22,7 +22,7 @@ Elkeid 后台大体包含5个模块：
 - 部署简单，依赖少，便于维护
 
 ## 部署文档
-- [通过ElkeidUp部署](docs/quick-start-zh_CN.md)
+- [通过ElkeidUp部署](../elkeidup/README-zh_CN.md)
 
 ## API接口文档
 Manger API通过token做鉴权，所有接口调用前都需要先用 /api/v1/user/login 接口，获取到token。

@@ -64,7 +64,7 @@ Other Data
 
 
 ## Quick Start
-* **[通过Elkeidup部署](server/docs/quick-start-zh_CN.md)**
+* **[通过Elkeidup部署](elkeidup/README-zh_CN.md)**
 
 ## Contact us && Cooperation
 

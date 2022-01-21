@@ -63,7 +63,7 @@ Other Data
   <img src="png/console5.png" style="float:left;"/>
 
 ## Quick Start
-* **[Deploy by Elkeidup](server/docs/quick-start.md)**
+* **[Deploy by Elkeidup](elkeidup/README.md)**
 
 ## Contact us && Cooperation
 
