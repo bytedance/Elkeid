@@ -516,7 +516,7 @@ func DescribeHostDetail(ctx *gin.Context) {
 			},
 			bson.M{
 				"$group": bson.M{
-					"_id": "$SMITH_ALETR_DATA.RULE_INFO.HarmLevel",
+					"_id": "$SMITH_ALERT_DATA.RULE_INFO.HarmLevel",
 					"count": bson.M{
 						"$sum": 1,
 					},
@@ -1734,7 +1734,7 @@ func DescribeLast7DaysAlarmStatistics(ctx *gin.Context) {
 					"date": bson.M{"$toDate": bson.M{
 						"$multiply": bson.A{"$__insert_time", 1000},
 					}},
-					"risk": "$SMITH_ALETR_DATA.RULE_INFO.HarmLevel",
+					"risk": "$SMITH_ALERT_DATA.RULE_INFO.HarmLevel",
 				}},
 			bson.M{"$group": bson.M{
 				"_id": bson.M{

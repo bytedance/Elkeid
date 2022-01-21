@@ -157,7 +157,7 @@ func GetAlarmList(c *gin.Context) {
 
 	if listReq.Name != "" {
 		nid := common.FilterContent{
-			Key: "SMITH_ALETR_DATA.RULE_INFO.RuleName",
+			Key: "SMITH_ALERT_DATA.RULE_INFO.RuleName",
 			Rules: []common.FilterRule{
 				{
 					Operator: "$regex",
@@ -212,7 +212,7 @@ func GetAlarmList(c *gin.Context) {
 		}
 
 		lid := common.FilterContent{
-			Key: "SMITH_ALETR_DATA.RULE_INFO.HarmLevel",
+			Key: "SMITH_ALERT_DATA.RULE_INFO.HarmLevel",
 			Rules: []common.FilterRule{
 				{
 					Operator: "$in",
@@ -656,10 +656,10 @@ func GetAlarmStat(c *gin.Context) {
 	}
 
 	alarmGroupQuery := bson.D{primitive.E{Key: "$group", Value: bson.D{
-		primitive.E{Key: ALARM_STAT_AGGREGATE_GROUP_ID, Value: "$SMITH_ALETR_DATA.RULE_INFO.HarmLevel"},
+		primitive.E{Key: ALARM_STAT_AGGREGATE_GROUP_ID, Value: "$SMITH_ALERT_DATA.RULE_INFO.HarmLevel"},
 		primitive.E{Key: ALARM_STAT_AGGREGATE_GROUP_COUNT, Value: bson.D{primitive.E{Key: "$sum", Value: 1}}},
 	}}}
-	// alarmProjectQuery := bson.D{{"$project", bson.D{{"_id", 0}, {"SMITH_ALETR_DATA.RULE_INFO.HarmLevel", 1}}}}
+	// alarmProjectQuery := bson.D{{"$project", bson.D{{"_id", 0}, {"SMITH_ALERT_DATA.RULE_INFO.HarmLevel", 1}}}}
 	alarmCol := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.HubAlarmCollectionV1)
 	whiteCol := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.HubWhiteListCollectionV1)
 
