@@ -36,7 +36,7 @@ type AlarmDbData struct {
 	Id              string       `json:"_id" bson:"_id"`
 	AgentId         string       `json:"agent_id" bson:"agent_id"`
 	HostName        string       `json:"hostname" bson:"hostname"`
-	Info            HubAlarmInfo `json:"SMITH_ALETR_DATA" bson:"SMITH_ALETR_DATA"`
+	Info            HubAlarmInfo `json:"SMITH_ALERT_DATA" bson:"SMITH_ALERT_DATA"`
 	Status          int          `json:"__alarm_status" bson:"__alarm_status"`
 	DataType        string       `json:"data_type" bson:"data_type"`
 	InIpv4List      string       `json:"in_ipv4_list" bson:"in_ipv4_list"`
