@@ -53,7 +53,7 @@ func LookupRegion(r string) bool {
 }
 
 func resolveServiceDiscovery(host string, count int) ([]string, error) {
-	serviceDiscoveryURL := url.URL{Scheme: "http", Host: host, Path: "registry/fetch", RawQuery: "name=hids_svr_grpc&count=" + strconv.Itoa(count)}
+	serviceDiscoveryURL := url.URL{Scheme: "http", Host: host, Path: "registry/detail", RawQuery: "name=hids_svr_grpc&count=" + strconv.Itoa(count)}
 	resp, err := http.Get(serviceDiscoveryURL.String())
 	if err != nil {
 		return nil, err
