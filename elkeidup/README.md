@@ -19,11 +19,10 @@ Automated deployment of Elkeid tools
 * Elkeid HUB Community Version
 
 
-
 | **Name**          | **Minimal deployment in test environment**        | **non-test environment**                          | **Components use ports**           |
 | ----------------- | ------------------------------------------------- | ------------------------------------------------- | ---------------------------------- |
 | Redis             | Single                                            | Three, Sentinel Mode                              | 6379<br />26379                    |
-| Mongodb           | Single                                            | Three, Replicat Mode                              | 27017<br />9216                    |
+| Mongodb           | Single                                            | Three, Replicat Mode                              | 27017                              |
 | Kafka/ZK          | Single                                            | Calculated by agent amount                        | 2181<br />9092                     |
 | Nginx             | Single                                            | Single                                            | 8080<br />8082<br />8089<br />8090 |
 | Service Discovery | Single                                            | Two                                               | 8088                               |
@@ -39,32 +38,37 @@ Server Minimum requirements:
 * The back-end server used for deployment needs to ensure intranet interoperability
 * The backend server used for deployment requires root user privileges when deploying
 * The backend server used for deployment can only be used: Centos7 and above; Ubuntu16 and above; Debian9 and above
+* The server which execute elkeidup could execute ssh root@x.x.x.x without password to any backend server
 
 
 
 ```bash
-wget elkeidup
-wget package
-unzip package
+#download and unzip，replace download url when you execute
+wget {{release_bin_url}} -O elkeidup
+chmod a+x ./elkeidup
+wget {{release_package_url}} -O package.tar.gz
+tar -zxf package.tar.gz
+
+# generate conf template
 ./elkeidup init
+# edit template，the point is all ip address
 vim elkeid_server.yaml
+# deploy
 ./elkeidup deploy --package package/ --config ./elkeid_server.yaml
+# check status
 ./elkeidup status
+# view password and console url
 cat ~/.elkeidup/elkeid_passwd
+# build agent
 ./elkeidup agent build --package package/ --config ./elkeid_will.yaml 
 ```
-
-
 
 **Must-read notes**
 
 * **Don't remove `~/.elkeidup` dir**
 * **In addition to kafka other components install field must be true**
-
 * **Don't fix any components used user's password, Include the Console(Elkeid Manager)**
-
-* **Kafka Default Connect Conf:**
-
+* Kafka Topic is 'hids_svr', Kafka Default Connect Conf:
 ```json
 {"sasl.mechanism":"PLAIN","sasl.password":"elkeid","sasl.username":"admin","security.protocol":"SASL_PLAINTEXT"}
 ```
@@ -105,4 +109,4 @@ Minimum 8C16G 200G server
 | Server9/10  | Agent Center               | 16C32G  10-Gigabit NIC    |
 | Server13    | Nginx                      | 8C16G                     |
 
-A single HUB does not support 10,000 agents.
+A single HUB does not support 5000 agents.
