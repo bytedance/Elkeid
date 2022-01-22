@@ -44,9 +44,9 @@ Server Minimum requirements:
 
 ```bash
 #download and unzip，replace download url when you execute
-wget {{release_bin_url}} -O elkeidup
+wget https://github.com/bytedance/Elkeid/releases/download/v1.7/elkeidup
 chmod a+x ./elkeidup
-wget {{release_package_url}}
+wget https://github.com/bytedance/Elkeid/releases/download/v1.7/package_community.tar.gz
 tar -zxf package_community.tar.gz
 
 # get elkeidup help
