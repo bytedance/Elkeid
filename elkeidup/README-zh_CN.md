@@ -41,9 +41,9 @@ Elkeid 自动化部署工具
 
 ```bash
 #下载&解压，请根据release替换download url
-wget {{release_bin_url}} -O elkeidup
+wget https://github.com/bytedance/Elkeid/releases/download/v1.7/elkeidup
 chmod a+x ./elkeidup
-wget {{release_package_url}}
+wget https://github.com/bytedance/Elkeid/releases/download/v1.7/package_community.tar.gz
 tar -zxf package_community.tar.gz
 
 # get elkeidup help
