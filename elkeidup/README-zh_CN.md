@@ -43,8 +43,8 @@ Elkeid 自动化部署工具
 #下载&解压，请根据release替换download url
 wget {{release_bin_url}} -O elkeidup
 chmod a+x ./elkeidup
-wget {{release_package_url}} -O package.tar.gz
-tar -zxf package.tar.gz
+wget {{release_package_url}}
+tar -zxf package_community.tar.gz
 
 # get elkeidup help
 ./elkeidup --help
