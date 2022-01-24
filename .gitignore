@@ -36,4 +36,3 @@ output
 *.local.yml
 target
 Cargo.lock
-go.sum
