@@ -39,6 +39,7 @@ Server Minimum requirements:
 * The backend server used for deployment requires root user privileges when deploying
 * The backend server used for deployment can only be used: Centos7 and above; Ubuntu16 and above; Debian9 and above
 * The server which execute elkeidup could execute ssh root@x.x.x.x without password to any backend server
+* Deployment cannot be manually interrupted
 
 
 
