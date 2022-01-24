@@ -38,11 +38,11 @@ var setCmd = &cobra.Command{
 					}
 					viper.Set("service_type", f.Value)
 				case "id":
-					viper.Set("id", f.Value)
+					viper.Set("specified_id", f.Value)
 				case "idc":
-					viper.Set("idc", f.Value)
+					viper.Set("specified_idc", f.Value)
 				case "region":
-					viper.Set("region", f.Value)
+					viper.Set("specified_region", f.Value)
 				}
 				cobra.CheckErr(viper.WriteConfig())
 			},
