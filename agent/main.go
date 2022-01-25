@@ -62,7 +62,7 @@ func main() {
 	defer logger.Sync()
 	zap.ReplaceGlobals(logger)
 	if os.Getenv("service_type") == "sysvinit" {
-		l, _ := lockfile.New("/var/run/proxima.pid")
+		l, _ := lockfile.New("/var/run/elkeid-agent.pid")
 		if err := l.TryLock(); err != nil {
 			zap.S().Error(err)
 			return
