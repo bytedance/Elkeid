@@ -38,13 +38,14 @@ Elkeid 自动化部署工具
 * 部署所用的后端服务器部署时需要有 root 用户权限
 * 部署所用的后端服务器只能使用：Centos7 及以上；Ubuntu16 及以上；Debian9 及以上
 * 执行elkeidup的服务器需要能以root用户免密码ssh到所有的后端服务器上
+* 部署过程不可以手动打断
 
 ```bash
 #下载&解压，请根据release替换download url
-wget {{release_bin_url}} -O elkeidup
+wget https://github.com/bytedance/Elkeid/releases/download/v1.7/elkeidup
 chmod a+x ./elkeidup
-wget {{release_package_url}} -O package.tar.gz
-tar -zxf package.tar.gz
+wget https://github.com/bytedance/Elkeid/releases/download/v1.7/package_community.tar.gz
+tar -zxf package_community.tar.gz
 
 # get elkeidup help
 ./elkeidup --help

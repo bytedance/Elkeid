@@ -39,15 +39,16 @@ Server Minimum requirements:
 * The backend server used for deployment requires root user privileges when deploying
 * The backend server used for deployment can only be used: Centos7 and above; Ubuntu16 and above; Debian9 and above
 * The server which execute elkeidup could execute ssh root@x.x.x.x without password to any backend server
+* Deployment cannot be manually interrupted
 
 
 
 ```bash
 #download and unzip，replace download url when you execute
-wget {{release_bin_url}} -O elkeidup
+wget https://github.com/bytedance/Elkeid/releases/download/v1.7/elkeidup
 chmod a+x ./elkeidup
-wget {{release_package_url}} -O package.tar.gz
-tar -zxf package.tar.gz
+wget https://github.com/bytedance/Elkeid/releases/download/v1.7/package_community.tar.gz
+tar -zxf package_community.tar.gz
 
 # get elkeidup help
 ./elkeidup --help
@@ -56,13 +57,13 @@ tar -zxf package.tar.gz
 # edit template，the point is all ip address
 vim elkeid_server.yaml
 # deploy
-./elkeidup deploy --package package/ --config ./elkeid_server.yaml
+./elkeidup deploy --package package_community/ --config ./elkeid_server.yaml
 # check status
 ./elkeidup status
 # view password and console url
 cat ~/.elkeidup/elkeid_passwd
 # build agent
-./elkeidup agent build --package package/ --config ./elkeid_will.yaml 
+./elkeidup agent build --package package_community/ 
 ```
 
 **Must-read notes**

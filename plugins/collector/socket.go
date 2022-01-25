@@ -264,7 +264,7 @@ type Socket struct {
 	Username  string `json:"username"`
 	Inode     uint32 `json:"inode"`
 	PID       int    `json:"pid"`
-	Cmdline   string `json:"argv"`
+	Cmdline   string `json:"cmdline"`
 	Comm      string `json:"comm"`
 	Type      uint8  `json:"type"`
 }
