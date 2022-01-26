@@ -40,6 +40,7 @@ Server Minimum requirements:
 * The backend server used for deployment can only be used: Centos7 and above; Ubuntu16 and above; Debian9 and above
 * The server which execute elkeidup could execute ssh root@x.x.x.x without password to any backend server
 * Deployment cannot be manually interrupted
+* Only cat use LAN IP, do not use 127.0.0.1 or hostname or public IP
 
 
 
