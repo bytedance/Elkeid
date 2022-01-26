@@ -74,6 +74,7 @@ debian|8,9,10|3.16~5.4.X |-
 ubuntu|14.04,16.04,18.04,20.04|3.12~5.4.X |generic
 centos|6.X,7.X,8.X|2.6.32.0~5.4.X |el6,el7,el8
 amazon|2|4.9.X~4.14.X|amzn2
+AlibabaCloudLinux|3|4.19.X~5.10.X|al7,al8
 EulerOS|V2.0|3.10.X|-
 
 
