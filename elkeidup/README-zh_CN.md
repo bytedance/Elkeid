@@ -71,6 +71,11 @@ cat ~/.elkeidup/elkeid_passwd
 * **除了Kafka其他的组件的 install 字段必须为true**
 * **不要修改任何组件的密码，包括Elkeid Console(Manager)初始默认用户**
 
+### Agent Install Remark
+* Driver 模块依赖预编译ko，具体支持列表参考：[ko_list](https://github.com/bytedance/Elkeid/blob/main/driver/ko_list.md)
+* 检测 Driver 是否存在的方式：`lsmod | grep hids_driver`
+
+
 ### Raw Data Usage Tutorial
 [Raw Data Usage Tutorial](raw_data_usage_tutorial-zh_CN.md)
 

@@ -72,6 +72,9 @@ cat ~/.elkeidup/elkeid_passwd
 * **In addition to kafka other components install field must be true**
 * **Don't fix any components used user's password, Include the Console(Elkeid Manager)**
 
+### Agent Install Remark
+* Driver module depends on pre-compiled ko, specific support list reference: [ko_list](https://github.com/bytedance/Elkeid/blob/main/driver/ko_list.md)
+* The way to check if driver exists: `lsmod | grep hids_driver`
 
 ### Raw Data Usage Tutorial
 [Raw Data Usage Tutorial](raw_data_usage_tutorial.md)
