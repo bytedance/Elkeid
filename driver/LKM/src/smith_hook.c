@@ -3173,6 +3173,7 @@ int mount_pre_handler(struct kprobe *p, struct pt_regs *regs)
     char *fstype = NULL;
     char *dev_name = NULL;
 
+    struct super_block *sb;
     struct path *path = NULL;
 
     dev_name = (char *)p_regs_get_arg1(regs);
@@ -3182,6 +3183,11 @@ int mount_pre_handler(struct kprobe *p, struct pt_regs *regs)
 
     if (IS_ERR_OR_NULL(path) || !dev_name || !*dev_name)
         return 0;
+
+    if (IS_ERR_OR_NULL(path->dentry) || IS_ERR_OR_NULL(path->dentry->d_sb))
+        sb = NULL;
+    else
+        sb = path->dentry->d_sb;
 
     pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
     file_path = smith_d_path(path, pname_buf, PATH_MAX);
@@ -3199,7 +3205,7 @@ int mount_pre_handler(struct kprobe *p, struct pt_regs *regs)
     }
 
     smith_check_privilege_escalation(PID_TREE_LIMIT, pid_tree);
-    mount_print(exe_path, pid_tree, dev_name, file_path, fstype, flags, data);
+    mount_print(exe_path, pid_tree, dev_name, file_path, sb ? sb->s_id : NULL, fstype, flags, data);
 
 out:
     if (tid)
