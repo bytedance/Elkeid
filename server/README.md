@@ -24,32 +24,5 @@ In short, AgentCenter collects Agent data, real-time/offline calculation module 
 ## Deployment document
 - [Deploy by Elkeidup](../elkeidup/README.md)
 
-## API interface documentation
-The Manger API uses token for authentication. Before calling all other interfaces, you need to use the /api/v1/user/login interface to get the token.
-```
-curl --location --request POST 'http://127.0.0.1:6701/api/v1/user/login' \
---data-raw '{
-    "username": "hids_test",
-    "password": "hids_test"
-}'
-
-
-{
-    "code": 0,
-    "msg": "success",
-    "data": {
-        "token": "xxxxxxxxxxx"
-    }
-}
-```
-Then add the token to the header of each request.
-```
-curl --location --request GET 'http://127.0.0.1:6701/api/v1/agent/getStatus'  -H "token:xxxxxxxxxxx"
-```
-For details, please refer to [API interface documentation](https://documenter.getpostman.com/view/9865152/TzCTZ5Do#intro)
-
-## QA
-- [Q&A](docs/qa.md)
-
 ## License
 Elkeid Server are distributed under the Apache-2.0 license.
