@@ -29,7 +29,7 @@ message MQData{
   string tags = 15;
 }
 
-message Item{d
+message Item{
   map<string,string> fields = 1;
 }
 ```

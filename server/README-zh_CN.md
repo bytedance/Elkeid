@@ -24,32 +24,5 @@ Elkeid 后台大体包含5个模块：
 ## 部署文档
 - [通过ElkeidUp部署](../elkeidup/README-zh_CN.md)
 
-## API接口文档
-Manger API通过token做鉴权，所有接口调用前都需要先用 /api/v1/user/login 接口，获取到token。
-```
-curl --location --request POST 'http://127.0.0.1:6701/api/v1/user/login' \
---data-raw '{
-    "username": "hids_test",
-    "password": "hids_test"
-}'
-
-
-{
-    "code": 0,
-    "msg": "success",
-    "data": {
-        "token": "xxxxxxxxxxx"
-    }
-}
-```
-再将登陆token加到每次请求的header中。
-```
-curl --location --request GET 'http://127.0.0.1:6701/api/v1/agent/getStatus'  -H "token:xxxxxxxxxxx"
-```
-详情请参考[API接口文档](https://documenter.getpostman.com/view/9865152/TzCTZ5Do#intro)
-
-## QA
-- [Q&A](docs/qa.md)
-
 ## License
 Elkeid Server are distributed under the Apache-2.0 license.
