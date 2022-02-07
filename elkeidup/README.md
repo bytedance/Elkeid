@@ -41,7 +41,7 @@ Server Minimum requirements:
 * The server which execute elkeidup could execute ssh root@x.x.x.x without password to any backend server
 * Deployment cannot be manually interrupted
 * Only cat use LAN IP, do not use 127.0.0.1 or hostname or public IP
-
+* To access Elkeid Console, only the LAN IP filled in the installation configuration can be used, and other such as public network IP cannot be used
 
 
 ```bash
