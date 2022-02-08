@@ -19,15 +19,18 @@ type CommandDetail struct {
 }
 
 type TaskMsg struct {
-	Name  string `json:"name,omitempty"`
-	Data  string `json:"data,omitempty"`
-	Token string `json:"token,omitempty"`
+	DataType int32  `json:"data_type,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Data     string `json:"data,omitempty"`
+	Token    string `json:"token,omitempty"`
 }
 
 type ConfigMsg struct {
 	Name        string   `json:"name,omitempty"`
+	Type        string   `json:"type,omitempty"`
 	Version     string   `json:"version,omitempty"`
 	SHA256      string   `json:"sha256,omitempty"`
+	Signature   string   `json:"signature,omitempty"`
 	DownloadURL []string `json:"download_url,omitempty"`
 	Detail      string   `json:"detail,omitempty"`
 }
@@ -53,15 +56,18 @@ func PostCommand(c *gin.Context) {
 			DownloadURL: v.DownloadURL,
 			SHA256:      v.SHA256,
 			Detail:      v.Detail,
+			Type:        v.Type,
+			Signature:   v.Signature,
 		}
 		mgCommand.Config = append(mgCommand.Config, tmp)
 	}
 
 	if taskModel.Command.Task.Name != "" {
 		task := pb.PluginTask{
-			Name:  taskModel.Command.Task.Name,
-			Data:  taskModel.Command.Task.Data,
-			Token: taskModel.Command.Task.Token,
+			Name:     taskModel.Command.Task.Name,
+			DataType: taskModel.Command.Task.DataType,
+			Data:     taskModel.Command.Task.Data,
+			Token:    taskModel.Command.Task.Token,
 		}
 		mgCommand.Task = &task
 	}
