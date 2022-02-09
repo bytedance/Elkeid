@@ -22,6 +22,8 @@ type ResAgentConf struct {
 
 type ConfigMsg struct {
 	Name        string   `json:"name,omitempty"`
+	Type        string   `json:"type,omitempty"`
+	Signature   string   `json:"signature,omitempty"`
 	Version     string   `json:"version,omitempty"`
 	SHA256      string   `json:"sha256,omitempty"`
 	DownloadURL []string `json:"download_url,omitempty"`
@@ -66,9 +68,11 @@ func GetConfigFromRemote(agentID string) ([]*pb.ConfigItem, error) {
 	for _, v := range response.Data {
 		tmp := &pb.ConfigItem{
 			Name:        v.Name,
+			Type:        v.Type,
 			Version:     v.Version,
-			DownloadURL: v.DownloadURL,
 			SHA256:      v.SHA256,
+			Signature:   v.Signature,
+			DownloadURL: v.DownloadURL,
 			Detail:      v.Detail,
 		}
 		res = append(res, tmp)

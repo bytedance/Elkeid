@@ -41,9 +41,9 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 		mqMsg.PSMName = ""
 		mqMsg.PSMPath = ""
 		if extraInfo != nil {
-			mqMsg.Tags = extraInfo.Tags
+			mqMsg.Tag = extraInfo.Tags
 		} else {
-			mqMsg.Tags = ""
+			mqMsg.Tag = ""
 		}
 
 		switch mqMsg.DataType {
