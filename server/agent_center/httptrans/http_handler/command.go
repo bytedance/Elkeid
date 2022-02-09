@@ -14,20 +14,23 @@ type CommandRequest struct {
 
 type CommandDetail struct {
 	AgentCtrl int32       `json:"agent_ctrl,omitempty"`
-	Task      TaskMsg     `json:"task,omitempty"`
+	Task      *TaskMsg    `json:"task,omitempty"`
 	Config    []ConfigMsg `json:"config,omitempty"`
 }
 
 type TaskMsg struct {
-	Name  string `json:"name,omitempty"`
-	Data  string `json:"data,omitempty"`
-	Token string `json:"token,omitempty"`
+	DataType int32  `json:"data_type,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Data     string `json:"data,omitempty"`
+	Token    string `json:"token,omitempty"`
 }
 
 type ConfigMsg struct {
 	Name        string   `json:"name,omitempty"`
+	Type        string   `json:"type,omitempty"`
 	Version     string   `json:"version,omitempty"`
 	SHA256      string   `json:"sha256,omitempty"`
+	Signature   string   `json:"signature,omitempty"`
 	DownloadURL []string `json:"download_url,omitempty"`
 	Detail      string   `json:"detail,omitempty"`
 }
@@ -43,25 +46,30 @@ func PostCommand(c *gin.Context) {
 
 	mgCommand := &pb.Command{
 		AgentCtrl: taskModel.Command.AgentCtrl,
-		Config:    make([]*pb.ConfigItem, 0),
 	}
 
-	for _, v := range taskModel.Command.Config {
-		tmp := &pb.ConfigItem{
-			Name:        v.Name,
-			Version:     v.Version,
-			DownloadURL: v.DownloadURL,
-			SHA256:      v.SHA256,
-			Detail:      v.Detail,
+	if taskModel.Command.Config != nil {
+		mgCommand.Config = make([]*pb.ConfigItem, 0, len(taskModel.Command.Config))
+		for _, v := range taskModel.Command.Config {
+			tmp := &pb.ConfigItem{
+				Name:        v.Name,
+				Version:     v.Version,
+				DownloadURL: v.DownloadURL,
+				SHA256:      v.SHA256,
+				Detail:      v.Detail,
+				Type:        v.Type,
+				Signature:   v.Signature,
+			}
+			mgCommand.Config = append(mgCommand.Config, tmp)
 		}
-		mgCommand.Config = append(mgCommand.Config, tmp)
 	}
 
-	if taskModel.Command.Task.Name != "" {
+	if taskModel.Command.Task != nil {
 		task := pb.PluginTask{
-			Name:  taskModel.Command.Task.Name,
-			Data:  taskModel.Command.Task.Data,
-			Token: taskModel.Command.Task.Token,
+			Name:     taskModel.Command.Task.Name,
+			DataType: taskModel.Command.Task.DataType,
+			Data:     taskModel.Command.Task.Data,
+			Token:    taskModel.Command.Task.Token,
 		}
 		mgCommand.Task = &task
 	}
