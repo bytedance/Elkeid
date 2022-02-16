@@ -13,7 +13,6 @@ MemoryMax=250M
 MemoryLimit=250M
 CPUQuota=10%
 Delegate=yes
-WatchdogSec=900
 EnvironmentFile=-/etc/elkeid/specified_env
 [Install]
 WantedBy=multi-user.target

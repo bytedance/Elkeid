@@ -12,8 +12,8 @@ import (
 
 var (
 	bootTime, _  = host.BootTime()
-	ioCache, _   = lru.New(30)
-	procCache, _ = lru.New(30)
+	ioCache, _   = lru.New(100)
+	procCache, _ = lru.New(100)
 )
 
 type ProcInfo struct {
