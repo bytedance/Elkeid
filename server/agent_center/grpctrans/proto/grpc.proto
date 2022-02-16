@@ -1,5 +1,5 @@
 syntax = "proto3";
-option go_package = "code.byted.org/hids/grpc";
+option go_package = "grpc";
 package grpc;
 
 //pb for rawdata
