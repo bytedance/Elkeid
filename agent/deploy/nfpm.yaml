@@ -42,7 +42,3 @@ scripts:
 rpm:
   group: Unspecified
   compression: lzma
-overrides:
-  deb:
-    conflicts:
-      - elkeid-agent-tx
