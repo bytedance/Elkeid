@@ -1012,8 +1012,8 @@ char *smith_query_exe_path(char **alloc, int len, int min)
 
 int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
-    int sa_family = -1;
-    int dport = 0, sport = 0;
+    int sa_family = -1, dport = 0, sport = 0;
+    int rc = regs_return_value(regs);
 
     __be32 dip4;
     __be32 sip4;
@@ -1034,16 +1034,21 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     struct in6_addr sip6;
     struct file *file;
     struct execve_data *data;
-    struct tty_struct *tty;
+    struct tty_struct *tty = NULL;
 
+     /* query kretprobe instance for current call */
     data = (struct execve_data *)ri->data;
-    exe_path = smith_query_exe_path(&buffer, PATH_MAX, 128);
+
+    /* ignore the failures that target doesn't exist */
+    if (rc == -ENOENT)
+        goto release_data;
 
     tty = get_current_tty();
     if(tty && strlen(tty->name) > 0)
         tty_name = tty->name;
 
     //exe filter check and argv filter check
+    exe_path = smith_query_exe_path(&buffer, PATH_MAX, 128);
     if (execve_exe_check(exe_path) || execve_argv_check(data->argv))
         goto out;
 
@@ -1082,7 +1087,7 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
                      dip4, dport, sip4, sport,
                      pid_tree, tty_name, socket_pid,
                      data->ssh_connection, data->ld_preload,
-                     regs_return_value(regs));
+                     rc);
     }
 #if IS_ENABLED(CONFIG_IPV6)
     else if (sa_family == AF_INET6) {
@@ -1092,7 +1097,7 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 			      &dip6, dport, &sip6, sport,
 			      pid_tree, tty_name, socket_pid,
 			      data->ssh_connection, data->ld_preload,
-			      regs_return_value(regs));
+			      rc);
 	}
 #endif
     else {
@@ -1101,36 +1106,30 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
                               tmp_stdin, tmp_stdout,
                               pid_tree, tty_name,
                               data->ssh_connection, data->ld_preload,
-                              regs_return_value(regs));
+                              rc);
     }
 
 out:
     if (pname_buf)
         smith_kfree(pname_buf);
-
     if (stdin_buf)
         smith_kfree(stdin_buf);
-
     if (stdout_buf)
         smith_kfree(stdout_buf);
-
-    if (buffer)
-        smith_kfree(buffer);
-
-    if (data->free_argv)
-        smith_kfree(data->argv);
-
     if (pid_tree)
         smith_kfree(pid_tree);
-
-    if (data->free_ld_preload)
-        smith_kfree(data->ld_preload);
-
-    if (data->free_ssh_connection)
-        smith_kfree(data->ssh_connection);
-
+    if (buffer)
+        smith_kfree(buffer);
     if(tty)
         tty_kref_put(tty);
+
+release_data:
+    if (data->free_argv)
+        smith_kfree(data->argv);
+    if (data->free_ld_preload)
+        smith_kfree(data->ld_preload);
+    if (data->free_ssh_connection)
+        smith_kfree(data->ssh_connection);
 
     return 0;
 }
