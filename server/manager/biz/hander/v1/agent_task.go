@@ -724,6 +724,9 @@ func updateConfig(dbTask *AgentConfigTask, hb *AgentHBInfo) {
 				if v.Detail != "" {
 					hb.Config[k1].Detail = dbTask.Data.Config[k].Detail
 				}
+				if v.Type != "" {
+					hb.Config[k1].Type = dbTask.Data.Config[k].Type
+				}
 				break
 			}
 		}
