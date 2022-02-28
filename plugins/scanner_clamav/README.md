@@ -65,6 +65,7 @@ llvm
 musl-gcc
 libclang >= 3.9 (requried by rust-bindgen)
 gcc >= 6.3 (suggested gcc 6.3.0 which is the default version in debian 9)
+libstdc++.a (libstdc++-6-dev in debian9, libstdc++-9-dev in ubuntu18)
 python3  >= 3.4 (requried by clamav-buildchain)
 clamav source and buildchain
 ```
@@ -78,13 +79,11 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup target add x86_64-unknown-linux-gnu
 ```
 
-Running script
+Run script to get dependencies
 ```bash
-# debian & ubuntu
+# for example : debian9
 bash ./get_deps.sh
 ```
-
-
 
 ## Build
 

@@ -83,6 +83,7 @@ pub const SCAN_DIR_FILTER: &[&str] = &[
     // bin
     "/bin/nc",
     "/bin/netcat",
+    "/bin/upx",
     "/etc/alternatives/upx",
     // etc alternatives
     "/etc/alternatives/nc",
