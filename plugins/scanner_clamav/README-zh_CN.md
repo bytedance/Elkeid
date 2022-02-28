@@ -147,14 +147,16 @@ ldd ./output/scanner_clamav
         "config":[
             {
                 "name":"scanner_clamav",
-                "version":"",
+                "version":"1.0.0.1",
                 "download_url":[
-                    "http://xxxxxxxx/scanner_clamav-1.6.0.1.tar.gz",
-                    "http://xxxxxxxx/scanner_clamav-1.6.0.1.tar.gz"
+                    "http://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav.tar.gz",
+                    "http://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav.tar.gz",
+                    "http://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav.tar.gz",
+                    "http://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav.tar.gz"
                 ],
                 "type": "tar.gz",
-                "sha256": "sha256sum of scanner_clamav.tar.gz",
-                "signature": "sha256sum of scanner_clamav elf binary",
+                "sha256": "cff37d1e71c001239a02eaaa4e9bc94aa0990d336c109b3b9ac338beed900772",
+                "signature": "4387c0a961619b07b20507e434832fda15c7e02b146887a253dc278c6c91bee7",
                 "detail":""
             }
         ]
