@@ -3154,13 +3154,13 @@ void exit_handler(int type)
 
 int exit_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
-    exit_handler(0);
+    exit_handler(1);
     return 0;
 }
 
 int exit_group_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
-    exit_handler(1);
+    exit_handler(0);
     return 0;
 }
 
