@@ -106,14 +106,14 @@ ldd ./target/x86_64-unknown-linux-gnu/release/scanner
 
 ## 预编译产物
 
-sha256 = a59f4a2f9f2ea582e787389536b18f33c340057797764e215f94ea2861d54ada
+sha256 = ebfcc58cfd9e6b32c1a15f02377a1b62d5d51fbb9b2812bbb249c3f55c7ba34e
 
 
 ```bash
-"https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-linux-amd64-3.0.0.5.plg",
-"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-linux-amd64-3.0.0.5.plg",
-"https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-linux-amd64-3.0.0.5.plg",
-"https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-linux-amd64-3.0.0.5.plg"
+"https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-linux-amd64-3.0.1.6.plg",
+"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-linux-amd64-3.0.1.6.plg",
+"https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-linux-amd64-3.0.1.6.plg",
+"https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-linux-amd64-3.0.1.6.plg"
 ```
 
 ## 插件任务下发
