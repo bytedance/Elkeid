@@ -6,6 +6,7 @@
 #include "../include/util.h"
 #include <linux/version.h>
 #include <linux/kallsyms.h>
+#include <linux/prefetch.h>
 
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0) || LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)

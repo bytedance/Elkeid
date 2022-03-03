@@ -16,6 +16,7 @@
 #include <linux/pid_namespace.h>
 #include <linux/ctype.h>
 #include <linux/cred.h>
+#include <linux/kthread.h>
 
 /*
  * constants & globals

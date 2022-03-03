@@ -2209,7 +2209,11 @@ static int smith_dns_work_handler(void *argu)
 #endif
     } while (!kthread_should_stop());
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
+    kthread_complete_and_exit(NULL, 0);
+#else
     do_exit(0);
+#endif
     return 0;
 }
 
