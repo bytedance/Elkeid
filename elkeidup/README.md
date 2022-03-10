@@ -76,6 +76,7 @@ cat ~/.elkeidup/elkeid_passwd
 ### Agent Install Remark
 * Driver module depends on pre-compiled ko, specific support list reference: [ko_list](https://github.com/bytedance/Elkeid/blob/main/driver/ko_list.md)
 * The way to check if driver exists: `lsmod | grep hids_driver`
+* If the kernel version of the test machine is not in the supported list, please compile the ko file and the sign file by yourself and place them in the corresponding server of nginx: `/elkeid/nginx/ElkeidAgent/agent/plugin/driver/ko`, under the ko/sign file The format should follow: `hids_driver_1.7.0.4_{uname -r}_{arch}.ko/sign` After the placement is completed, the Agent will automatically pull the corresponding ko file for installation
 
 ### Raw Data Usage Tutorial
 [Raw Data Usage Tutorial](raw_data_usage_tutorial.md)
