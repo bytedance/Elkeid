@@ -8,4 +8,4 @@ pub const RASP_GOLANG_BIN: &'static str = "/etc/elkeid/plugin/rasp/go_probe";
 pub const RASP_NODE_MODULE: &'static str = "/etc/elkeid/plugin/rasp/node/smith";
 pub const RASP_NODE_INJECTOR: &'static str = "/etc/elkeid/plugin/rasp/node/injector.js";
 pub const RASP_PYTHON_ENTRY: &'static str = "/etc/elkeid/plugin/rasp/python/entry.py";
-pub const RASP_PYTHON_INJECT: &'static str = "/etc/elkeid/plugin/rasp/python_inject";
+pub const RASP_PYTHON_LOADER: &'static str = "/etc/elkeid/plugin/rasp/python_loader";
