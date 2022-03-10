@@ -2,7 +2,7 @@ import os
 import sys
 
 name = 'rasp'
-path = '/etc/elkeid/plugin/RASP/rasp/python/rasp/__init__.py'
+path = '/etc/elkeid/plugin/rasp/python/rasp/__init__.py'
 
 if sys.version_info >= (3, 3):
     from importlib.machinery import SourceFileLoader
