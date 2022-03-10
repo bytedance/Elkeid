@@ -76,6 +76,7 @@ cat ~/.elkeidup/elkeid_passwd
 ### Agent Install Remark
 * Driver 模块依赖预编译ko，具体支持列表参考：[ko_list](https://github.com/bytedance/Elkeid/blob/main/driver/ko_list.md)
 * 检测 Driver 是否存在的方式：`lsmod | grep hids_driver`
+* 如果测试机器kernel版本不在支持列表中，请自行编译ko文件和sign文件放置在：nginx对应服务器的：`/elkeid/nginx/ElkeidAgent/agent/plugin/driver/ko`下，ko/sign文件的格式应该遵循：`hids_driver_1.7.0.4_{uname -r}_{arch}.ko/sign` 放置完成后Agent回自动拉取对应的ko文件进行安装
 
 
 ### Raw Data Usage Tutorial
