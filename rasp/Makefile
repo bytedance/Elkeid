@@ -96,7 +96,7 @@ python-loader: ## build python loader
 	CC=$(CC) CXX=$(CXX) cmake -DSTATIC_BUILD=$(STATIC) .. && make
 
 python-probe: python-loader ## install python client so
-	cd python/python-probe && python setup.py sdist bdist_wheel --universal
+	cd python/python-probe && python3 setup.py sdist bdist_wheel --universal
 
 python: python-probe ## build CPython probe
 	@echo "build CPython probe"
