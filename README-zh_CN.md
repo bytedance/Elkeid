@@ -36,7 +36,7 @@ Other Data
 * **[Elkeid ServiceDiscovery](server/service_discovery)** 后台中的各个服务模块都需要向该组件定时注册、同步服务信息，从而保证各个服务模块中的实例相互可见，便于直接通信
 * **[Elkeid Manager](server/manager)** 负责对整个后台进行管理，并提供相关的查询、管理接口
 * **[Elkeid Console](server/web_console)** Elkeid 前端部分
-* **[Elkeid HUB](https://github.com/bytedance/Elkeid-HUB)** Elkeid HIDS RuleEngine
+* **[Elkeid HUB](https://github.com/bytedance/Elkeid-HUB)** Elkeid HIDS RuleEngine，需要注意的是社区版HUB策略仅做示例使用，不保证任何的准确性和覆盖度
 
 ## Elkeid Advantage
 
