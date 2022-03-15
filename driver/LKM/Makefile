@@ -3,10 +3,9 @@ KERNEL_HEAD		:= $(if $(KVERSION),$(KVERSION),$(shell uname -r))
 ifneq ($(KERNELRELEASE),)
 
 obj-m += $(MODULE_NAME).o
-$(MODULE_NAME)-objs := src/init.o src/kprobe.o src/trace.o src/trace_buffer.o src/smith_hook.o src/anti_rootkit.o src/filter.o src/util.o
+$(MODULE_NAME)-objs := src/init.o src/trace.o src/trace_buffer.o src/smith_hook.o src/anti_rootkit.o src/filter.o src/util.o
 
 MODULE_DIR		:= $(KBUILD_EXTMOD)
-ldflags-y		+= -r -T $(MODULE_DIR)/kprobe.lds
 ccflags-y		+= -I$(MODULE_DIR)/include -I$(MODULE_DIR)
 
 K_I_PATH		:= .

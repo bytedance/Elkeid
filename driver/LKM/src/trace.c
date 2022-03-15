@@ -68,9 +68,8 @@
 #undef SD_XFER_DEFINE
 #define SD_XFER_DEFINE(n, p, x) SD_XFER_DEFINE_P(n, p, x)
 
-#include <kprobe_print.h>
-#include <anti_rootkit_print.h>
-
+#include "../include/kprobe_print.h"
+#include "../include/anti_rootkit_print.h"
 
 #define SD_XFER_DEFINE_X(n, p, x) {sizeof(SD_XFER_PROTO_##n), 0, SD_XFER_PROTO_##n},
 #undef SD_XFER_DEFINE
@@ -82,8 +81,8 @@ struct sd_event_point {
     struct sd_item_ent *ent;
 };
 static struct sd_event_point g_sd_events[] = {
-#include <kprobe_print.h>
-#include <anti_rootkit_print.h>
+#include "../include/kprobe_print.h"
+#include "../include/anti_rootkit_print.h"
     };
 #define N_SD_EVENTS (sizeof(g_sd_events)/sizeof(struct sd_event_point))
 
@@ -384,4 +383,4 @@ static void print_event_exit(void)
         tb_free(g_trace_ring);
 }
 
-KPROBE_INITCALL(print_event_init, print_event_exit);
+KPROBE_INITCALL(trace, print_event_init, print_event_exit);

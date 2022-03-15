@@ -8,16 +8,17 @@
  *  Author: Nick Bulischeck <nbulisc@clemson.edu>
  */
 
-#include <linux/kthread.h>
-#include <anti_rootkit.h>
 #include "../include/kprobe.h"
-#include "../include/util.h"
-
-#define __SD_XFER_SE__
-#include "../include/xfer.h"
-#include <anti_rootkit_print.h>
 
 #define ANTI_ROOTKIT_CHECK 1
+#if ANTI_ROOTKIT_CHECK
+
+#include "../include/util.h"
+#include <linux/kthread.h>
+#include "../include/anti_rootkit.h"
+#define __SD_XFER_SE__
+#include "../include/xfer.h"
+#include "../include/anti_rootkit_print.h"
 
 #define DEFERRED_CHECK_TIMEOUT (15 * 60)
 
@@ -57,7 +58,7 @@ static char *find_hidden_module(unsigned long addr)
         if (!kobj || !kobj->mod)
             continue;
 
-#ifdef KMOD_CORE_LAYOUT
+#if defined(KMOD_CORE_LAYOUT) || LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
 		/*
 		 * vanilla kernels (kernel.org): >= 4.5.0
 		 * ubuntu kernels: >= 4.4.0
@@ -268,7 +269,6 @@ static int __init anti_rootkit_start(void)
     return rc;
 }
 
-
 static int __init anti_rootkit_init(void)
 {
     struct kset **kset;
@@ -300,6 +300,18 @@ static void anti_rootkit_exit(void)
     }
 }
 
-#if ANTI_ROOTKIT_CHECK
-KPROBE_INITCALL(anti_rootkit_init, anti_rootkit_exit);
-#endif
+#else /* !ANTI_ROOTKIT_CHECK */
+
+static int __init anti_rootkit_init(void)
+{
+	return 0;
+}
+
+static void anti_rootkit_exit(void)
+{
+    return;
+}
+
+#endif /* ANTI_ROOTKIT_CHECK */
+
+KPROBE_INITCALL(anti_rootkit, anti_rootkit_init, anti_rootkit_exit);

@@ -76,9 +76,15 @@ static inline void smith_put_task_struct(struct task_struct *t)
 #define smith_put_task_struct(tsk)  put_task_struct(tsk)
 #endif
 
-#if defined(KGID_STRUCT_CHECK) && (!defined(KGID_CONFIG_CHECK) || \
-    (defined(KGID_CONFIG_CHECK) && defined(CONFIG_UIDGID_STRICT_TYPE_CHECKS)))
-/* vanilla kernels >= 3.5.0, but ubuntu backported for 3.4 */
+/*
+ * CONFIG_UIDGID_STRICT_TYPE_CHECKS introducted frmo 3.5.0 and
+ * removed after 3.14.0
+ * New gid/uid supported by vanilla kernels >= 3.5.0, but ubuntu
+ * has it backported for 3.4
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0) || \
+    defined(CONFIG_UIDGID_STRICT_TYPE_CHECKS) || \
+    (defined(KGID_STRUCT_CHECK) && !defined(KGID_CONFIG_CHECK))
 # define _XID_VALUE(x)  (x).val
 #else
 # ifndef GLOBAL_ROOT_UID
