@@ -41,11 +41,9 @@ pub fn golang_attach(pid: i32) -> Result<bool> {
     debug!("golang attach: {}", pid);
     let golang_probe = RASP_GOLANG_BIN;
     let pangolin = RASP_PANGOLIN_BIN;
-    let dash_c = "-c";
-    let dash_p = "-p";
     let daemon = "--daemon";
     let pid_string = pid.clone().to_string();
-    let args = &[dash_c, golang_probe, dash_p, pid_string.as_str(), daemon];
+    let args = &[daemon, pid_string.as_str(), golang_probe];
     return match Command::new(pangolin).args(args).status() {
         Ok(st) => Ok(st.success()),
         Err(e) => Err(anyhow!(e.to_string())),
