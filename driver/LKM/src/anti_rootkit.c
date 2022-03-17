@@ -56,29 +56,19 @@ static const char *find_hidden_module(unsigned long addr)
         if (!kobj || !kobj->mod)
             continue;
 
-#ifdef UBUNTU_CHECK
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
-		if (BETWEEN_PTR
-		    (addr, kobj->mod->core_layout.base,
-		     kobj->mod->core_layout.size))
+#ifdef KMOD_CORE_LAYOUT
+		/*
+		 * vanilla kernels (kernel.org): >= 4.5.0
+		 * ubuntu kernels: >= 4.4.0
+		 */
+		if (BETWEEN_PTR(addr, kobj->mod->core_layout.base,
+			kobj->mod->core_layout.size))
 			mod_name = kobj->mod->name;
 #else
-		if (BETWEEN_PTR
-		    (addr, kobj->mod->module_core, kobj->mod->core_size))
+		if (BETWEEN_PTR(addr, kobj->mod->module_core,
+			kobj->mod->core_size))
 			mod_name = kobj->mod->name;
 #endif
-#else //UBUNTU_CHECK
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
-        if (BETWEEN_PTR
-		    (addr, kobj->mod->core_layout.base,
-		     kobj->mod->core_layout.size))
-			mod_name = kobj->mod->name;
-#else
-        if (BETWEEN_PTR
-        (addr, kobj->mod->module_core, kobj->mod->core_size))
-            mod_name = kobj->mod->name;
-#endif
-#endif // UBUNTU_CHECK
     }
     spin_unlock(&mod_kset->list_lock);
 

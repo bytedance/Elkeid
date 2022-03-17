@@ -448,7 +448,7 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
                             break;
 #if IS_ENABLED(CONFIG_IPV6)
                             case AF_INET6:
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(CENTOS_CHECK)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(IPV6_SUPPORT)
 						    memcpy(dip6, &(sk->sk_v6_daddr), sizeof(sk->sk_v6_daddr));
 						    memcpy(sip6, &(sk->sk_v6_rcv_saddr), sizeof(sk->sk_v6_rcv_saddr));
 						    *sport = ntohs(inet->inet_sport);
@@ -720,7 +720,7 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
             case AF_INET6:
 			    sk = socket->sk;
 			    inet = (struct inet_sock *)sk;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(CENTOS_CHECK)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(IPV6_SUPPORT)
 			    if (inet->inet_dport) {
 				    //dip6 = &((struct sockaddr_in6 *)&tmp_dirp)->sin6_addr;
 				    dip6 = &(sk->sk_v6_daddr);
@@ -840,7 +840,7 @@ int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
             break;
 #if IS_ENABLED(CONFIG_IPV6)
         case AF_INET6:
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(CENTOS_CHECK)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(IPV6_SUPPORT)
 		    if (inet->inet_dport) {
 			    dip6 = &(sk->sk_v6_daddr);
 			    sip6 = &(sk->sk_v6_rcv_saddr);
@@ -1934,7 +1934,7 @@ int udpv6_recvmsg_entry_handler(struct kretprobe_instance *ri,
 	if (inet->dport == 13568 || inet->dport == 59668)
 #endif
 	{
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(CENTOS_CHECK)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(IPV6_SUPPORT)
 		if (inet->inet_dport) {
 			data->dip6 = &(sk->sk_v6_daddr);
 			data->sip6 = &(sk->sk_v6_rcv_saddr);
