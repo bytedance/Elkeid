@@ -2,6 +2,7 @@ package biz
 
 import (
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
 	"strings"
 
@@ -13,6 +14,15 @@ import (
 )
 
 func RegisterRouter(r *gin.Engine) {
+	router := gin.Default()
+
+	router.GET("/metrics", func(c *gin.Context) {
+		promhttp.Handler().ServeHTTP(c.Writer, c.Request)
+	})
+	router.GET("/ping", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"message": "pong"})
+	})
+
 	var (
 		apiv0Group *gin.RouterGroup
 		apiv1Group *gin.RouterGroup

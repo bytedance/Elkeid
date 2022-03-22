@@ -7,6 +7,8 @@ import (
 	"github.com/bytedance/Elkeid/server/agent_center/httptrans/http_handler"
 	"github.com/bytedance/Elkeid/server/agent_center/httptrans/midware"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"net/http"
 )
 
 func Run() {
@@ -15,6 +17,13 @@ func Run() {
 
 func runServer(port int, enableSSL, enableAuth bool, certFile, keyFile string) {
 	router := gin.Default()
+
+	router.GET("/metrics", func(c *gin.Context) {
+		promhttp.Handler().ServeHTTP(c.Writer, c.Request)
+	})
+	router.GET("/ping", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"message": "pong"})
+	})
 
 	apiGroup := router.Group("/")
 	if enableAuth {
