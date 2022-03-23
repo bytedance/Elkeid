@@ -38,10 +38,10 @@ clean: ## clean your workspace
 	$(MAKE) -C librasp clean
 	$(MAKE) -C plugin clean
 	rm -rf pangolin/build
-	rm -rf python/build
-	rm -rf python/dist
-	rm -rf python/rasp.egg-info
-	rm -rf python/python-inject/build
+	rm -rf python/python-probe/build
+	rm -rf python/python-probe/dist
+	rm -rf python/python-probe/rasp.egg-info
+	rm -rf python/python-loader/build
 	rm -rf golang/build
 	rm -rf output
 
@@ -84,28 +84,25 @@ java: java-attach java-probe ## java probe
 	cp jvm/jattach/build/jattach output/java/jattach
 
 process_injector: ## build process injector
+	cd pangolin && \
+	CFLAGS=-DDISABLE_LOG=1 CC=$(CC) LD=$(LD) make -C shellcode
 	mkdir -p pangolin/build && cd pangolin/build && \
 	CC=$(CC) CXX=$(CXX) \
 	LD=$(LD) cmake -DSTATIC_BUILD=$(STATIC) .. && make
-	cd pangolin && \
-	CFLAGS=-DDISABLE_LOG=1 CC=$(CC) LD=$(LD) make -C shellcode && mv shellcode/lib* bin
 	cp pangolin/bin/pangolin output/pangolin
-	cp pangolin/bin/lib*.so output/
 
-python-inject: ## build python injector
-	mkdir -p python/python-inject/build && cd python/python-inject/build && \
+python-loader: ## build python loader
+	mkdir -p python/python-loader/build && cd python/python-loader/build && \
 	CC=$(CC) CXX=$(CXX) cmake -DSTATIC_BUILD=$(STATIC) .. && make
-	cd python/python-inject && \
-	CFLAGS=-DDISABLE_LOG=1 CC=$(CC) LD=$(LD) make -C caller && mv caller/python_caller bin
 
-python-probe: python-inject ## install python client so
-	cd python/ && python setup.py sdist bdist_wheel --universal
+python-probe: python-loader ## install python client so
+	cd python/python-probe && python3 setup.py sdist bdist_wheel --universal
 
 python: python-probe ## build CPython probe
 	@echo "build CPython probe"
 	mkdir -p output/python
-	cp python/python-inject/bin/* output/
-	cp -r python/dist/rasp-1.0.0-py2.py3-none-any.whl output/python/
+	cp python/python-loader/bin/* output/
+	cp -r python/python-probe/dist/rasp-1.0.0-py2.py3-none-any.whl output/python/
 	cd output/python/ && unzip -o rasp-1.0.0-py2.py3-none-any.whl
 	cp -r python/entry.py output/python/
 
@@ -145,4 +142,3 @@ build: agent_plugin nsenter process_injector java python go node rasp server ## 
 install: ## install to $PREFIX default: /etc/elkeid/plugin/rasp
 	mkdir -p $(PREFIX)
 	cp -r output/* $(PREFIX)
-

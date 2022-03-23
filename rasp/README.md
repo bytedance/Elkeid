@@ -27,6 +27,12 @@ make build
 sudo make install
 ```
 
+* build with docker:
+
+```bash
+docker build . -f rasp/docker/Dockerfile -t rasp
+```
+
 ### Run
 
 * for single process inject

@@ -7,24 +7,12 @@
 [submodule "rasp/python/python-inject/cmake"]
 	path = rasp/python/python-inject/cmake
 	url = https://github.com/Hackerl/cmake-3rd
-[submodule "rasp/python/python-inject/include/common"]
-	path = rasp/python/python-inject/include/common
-	url = https://github.com/Hackerl/cpp-common
-[submodule "rasp/python/python-client/include/common"]
-	path = rasp/python/python-client/include/common
-	url = https://github.com/Hackerl/cpp-common
-[submodule "rasp/python/python-client/cmake"]
-	path = rasp/python/python-client/cmake
-	url = https://github.com/Hackerl/cmake-3rd
 [submodule "rasp/jvm/jattach"]
 	path = rasp/jvm/jattach
 	url = https://github.com/apangin/jattach.git
 [submodule "rasp/util-linux"]
 	path = rasp/util-linux
 	url = https://github.com/karelzak/util-linux.git
-[submodule "rasp/python/python-inject/caller/c-runtime"]
-	path = rasp/python/python-inject/caller/c-runtime
-	url = https://github.com/Hackerl/c-runtime
 [submodule "rasp/golang/tiny-regex-c"]
 	path = rasp/golang/tiny-regex-c
 	url = https://github.com/Hackerl/tiny-regex-c

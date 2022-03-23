@@ -44,21 +44,19 @@ pub fn python_attach(pid: i32) -> Result<bool> {
 pub fn pangolin_inject_file(pid: i32, file_path: &str) -> Result<bool> {
     debug!("pangolin inject: {}", pid);
     // let nsenter = settings::RASP_NS_ENTER_BIN.to_string();
-    let pyinject = settings::RASP_PYTHON_INJECT;
-    let pangolin = format!("--pangolin={}", settings::RASP_PANGOLIN_BIN);
-    let dash_p = "-p";
+    let python_loader = settings::RASP_PYTHON_LOADER;
+    let pangolin = settings::RASP_PANGOLIN_BIN;
     let file = "--file";
-    let dash_s = "-s";
+    let extra = "--";
     let pid_string = pid.clone().to_string();
     let args = &[
-        pangolin.as_str(),
-        file,
-        dash_s,
-        file_path,
-        dash_p,
         pid_string.as_str(),
+        extra,
+        python_loader,
+        file,
+        file_path
     ];
-    return match Command::new(pyinject).args(args).status() {
+    return match Command::new(pangolin).args(args).status() {
         Ok(st) => Ok(st.success()),
         Err(e) => Err(anyhow!(e.to_string())),
     };
