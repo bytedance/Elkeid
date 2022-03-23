@@ -16,6 +16,8 @@ func register(r *gin.Engine) {
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
+
+	r.Use(midware.Metrics())
 	authorized := r.Group("/")
 	if common.AuthEnable {
 		authorized.Use(midware.AKSKAuth())
