@@ -108,6 +108,7 @@ func recvData(stream pb.Transfer_TransferServer, conn *pool.Connection) {
 				ylog.Errorf("recvData", "Transfer Recv Error %s, now close the recv direction of the tcp, %s ", err.Error(), conn.AgentID)
 				return
 			}
+			recvCounter.Inc()
 			handleRawData(data, conn)
 		}
 	}
@@ -134,6 +135,7 @@ func sendData(stream pb.Transfer_TransferServer, conn *pool.Connection) {
 				close(cmd.Ready)
 				return
 			}
+			sendCounter.Inc()
 			ylog.Infof("sendData", "Transfer Send %s %s ", conn.AgentID, cmd)
 			cmd.Error = nil
 			close(cmd.Ready)
