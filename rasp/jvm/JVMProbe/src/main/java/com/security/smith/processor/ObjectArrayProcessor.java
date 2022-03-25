@@ -1,8 +1,8 @@
-package com.security.smith.process;
+package com.security.smith.processor;
 
 import java.util.Arrays;
 
-public class ObjectArrayProcess {
+public class ObjectArrayProcessor {
     public static Object transform(Object object) {
         if (object == null)
             return null;

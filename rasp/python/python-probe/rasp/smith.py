@@ -53,11 +53,20 @@ def smith_hook(func, class_id, method_id, constructor=False, can_block=False, ch
 
                 current = current.f_back
 
+        def stringify(obj):
+            if sys.version_info < (3, 0):
+                if isinstance(obj, str) or isinstance(obj, buffer):
+                    return unicode(obj, encoding='utf8', errors='replace')
+
+                return unicode(obj)
+
+            return str(obj)
+
         smith_trace = {
             'class_id': class_id,
             'method_id': method_id,
-            'args': [str(i) for i in args[int(constructor):]],
-            'kwargs': {str(key): str(value) for key, value in kwargs.items()},
+            'args': [stringify(i) for i in args[int(constructor):]],
+            'kwargs': {key: stringify(value) for key, value in kwargs.items()},
             'stack_trace': [
                 '{}({}:{})'.format(frame[2], frame[0], frame[1])
                 if isinstance(frame, tuple) else
@@ -75,7 +84,7 @@ def smith_hook(func, class_id, method_id, constructor=False, can_block=False, ch
         if can_block:
             _block = _blocks.get((class_id, method_id), None)
 
-            if _block and any([pred(rule) for rule in _block['rules']]):
+            if _block and any(pred(rule) for rule in _block['rules']):
                 _client.post_message(TRACE_OPERATE, smith_trace)
                 raise RuntimeError('API blocked by RASP')
 
@@ -88,10 +97,10 @@ def smith_hook(func, class_id, method_id, constructor=False, can_block=False, ch
         include = _filter['include']
         exclude = _filter['exclude']
 
-        if len(include) > 0 and not any([pred(rule) for rule in include]):
+        if len(include) > 0 and not any(pred(rule) for rule in include):
             return func(*args, **kwargs)
 
-        if len(exclude) > 0 and any([pred(rule) for rule in exclude]):
+        if len(exclude) > 0 and any(pred(rule) for rule in exclude):
             return func(*args, **kwargs)
 
         _client.post_message(TRACE_OPERATE, smith_trace)
