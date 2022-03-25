@@ -212,5 +212,5 @@ void CSmithClient::loopThread() {
 }
 
 bool CSmithClient::write(const CSmithMessage &message) {
-    return writeBuffer(nlohmann::json(message).dump());
+    return writeBuffer(nlohmann::json(message).dump(-1, ' ', false, nlohmann::json::error_handler_t::replace));
 }

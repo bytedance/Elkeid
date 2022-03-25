@@ -1,9 +1,9 @@
-package com.security.smith.process;
+package com.security.smith.processor;
 
 import com.security.smith.log.SmithLogger;
 import org.apache.commons.lang3.reflect.FieldUtils;
 
-public class ProcessProcess {
+public class ProcessProcessor {
     public static Object transform(Object object) {
         if (object == null)
             return null;
