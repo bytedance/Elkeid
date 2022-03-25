@@ -1,8 +1,8 @@
-package com.security.smith.process;
+package com.security.smith.processor;
 
 import java.net.ProtocolFamily;
 
-public class ProtocolFamilyProcess {
+public class ProtocolFamilyProcessor {
     public static Object transform(Object object) {
         if (object == null)
             return null;

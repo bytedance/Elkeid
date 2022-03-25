@@ -1,7 +1,7 @@
 package com.security.smith.asm;
 
 import com.security.smith.SmithProbe;
-import com.security.smith.process.*;
+import com.security.smith.processor.*;
 import org.apache.commons.lang3.ArrayUtils;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
@@ -15,19 +15,19 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class SmithMethodVisitor extends AdviceAdapter {
-    private static final Map<String, Class<?>> smithProcesses = new HashMap<String, Class<?>>() {{
-        put("byte[]", ByteArrayProcess.class);
-        put("int[]", IntegerArrayProcess.class);
-        put("java.net.ProtocolFamily", ProtocolFamilyProcess.class);
-        put("java.io.FileDescriptor", FileDescriptorProcess.class);
-        put("java.net.URL[]", ObjectArrayProcess.class);
-        put("java.net.DatagramPacket", DatagramPacketProcess.class);
-        put("java.net.DatagramSocket", DatagramSocketProcess.class);
-        put("java.lang.String[]", ObjectArrayProcess.class);
-        put("java.lang.Process", ProcessProcess.class);
-        put("java.lang.UNIXProcess", ProcessProcess.class);
-        put("java.lang.ProcessImpl", ProcessProcess.class);
-        put("java.net.InetAddress[]", ObjectArrayProcess.class);
+    private static final Map<String, Class<?>> smithProcessors = new HashMap<String, Class<?>>() {{
+        put("byte[]", ByteArrayProcessor.class);
+        put("int[]", IntegerArrayProcessor.class);
+        put("java.net.ProtocolFamily", ProtocolFamilyProcessor.class);
+        put("java.io.FileDescriptor", FileDescriptorProcessor.class);
+        put("java.net.URL[]", ObjectArrayProcessor.class);
+        put("java.net.DatagramPacket", DatagramPacketProcessor.class);
+        put("java.net.DatagramSocket", DatagramSocketProcessor.class);
+        put("java.lang.String[]", ObjectArrayProcessor.class);
+        put("java.lang.Process", ProcessProcessor.class);
+        put("java.lang.UNIXProcess", ProcessProcessor.class);
+        put("java.lang.ProcessImpl", ProcessProcessor.class);
+        put("java.net.InetAddress[]", ObjectArrayProcessor.class);
     }};
 
     protected SmithMethodVisitor(int api, Type classType, int classID, int methodID, boolean canBlock, MethodVisitor methodVisitor, int access, String name, String descriptor) {
@@ -257,13 +257,13 @@ public class SmithMethodVisitor extends AdviceAdapter {
     }
 
     void processObject(String name) {
-        Class<?> process = smithProcesses.get(name);
+        Class<?> processor = smithProcessors.get(name);
 
-        if (process == null)
+        if (processor == null)
             return;
 
         invokeStatic(
-                Type.getType(process),
+                Type.getType(processor),
                 new Method(
                         "transform",
                         Type.getType(Object.class),

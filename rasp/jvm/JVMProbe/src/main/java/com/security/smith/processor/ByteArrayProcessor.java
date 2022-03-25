@@ -1,6 +1,6 @@
-package com.security.smith.process;
+package com.security.smith.processor;
 
-public class ByteArrayProcess {
+public class ByteArrayProcessor {
     public static Object transform(Object object) {
         if (object == null)
             return null;

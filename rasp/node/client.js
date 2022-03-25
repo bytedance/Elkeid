@@ -1,8 +1,9 @@
 const net = require('net');
-const { EventEmitter } = require('events');
+const {EventEmitter} = require('events');
 
 const HEADER_SIZE = 4;
 const RECONNECT_TIMER = 60 * 1000;
+const BUFFER_MAX_SIZE = 1024 * 1024;
 
 const SOCKET_PATH = '/var/run/smith_agent.sock';
 
@@ -12,7 +13,9 @@ const OperateEnum = {
     trace: 2,
     config: 3,
     control: 4,
-    detect: 5
+    detect: 5,
+    filter: 6,
+    block: 7
 };
 
 class SmithClient extends EventEmitter {
@@ -32,7 +35,6 @@ class SmithClient extends EventEmitter {
     }
 
     connect() {
-        console.log('connect');
         this._socket.connect(SOCKET_PATH);
     }
 
@@ -41,17 +43,14 @@ class SmithClient extends EventEmitter {
     }
 
     onConnect() {
-        console.log('connected');
         this._connected = true;
     }
 
     onError(err) {
-        console.log(err);
+
     }
 
     onClose() {
-        console.log('closed');
-
         this._connected = false;
         this.reconnect();
     }
@@ -63,20 +62,23 @@ class SmithClient extends EventEmitter {
             if (this._buffer.length < HEADER_SIZE)
                 break;
 
-            const lentgh = this._buffer.readUInt32BE();
+            const length = this._buffer.readUInt32BE();
 
-            if (this._buffer.length < lentgh + HEADER_SIZE)
+            if (this._buffer.length < length + HEADER_SIZE)
                 break;
 
-            const message = this._buffer.slice(HEADER_SIZE, HEADER_SIZE + lentgh).toString();
+            const message = this._buffer.slice(HEADER_SIZE, HEADER_SIZE + length).toString();
             this.emit('message', JSON.parse(message));
 
-            this._buffer = this._buffer.slice(HEADER_SIZE + lentgh);
+            this._buffer = this._buffer.slice(HEADER_SIZE + length);
         }
     }
 
     postMessage(operate, data) {
         if (!this._connected)
+            return;
+
+        if ('writableLength' in this._socket && this._socket.writableLength > BUFFER_MAX_SIZE)
             return;
 
         const message = {
