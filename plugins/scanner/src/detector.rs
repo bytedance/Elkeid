@@ -42,6 +42,31 @@ pub struct DetectOneTaskEvent<'a> {
     token: &'a str,     // task token
 }
 
+impl DetectOneTaskEvent<'_> {
+    fn to_record_with_sid(&self, sid: &str) -> plugins::Record {
+        let mut r = plugins::Record::new();
+        let mut pld = plugins::Payload::new();
+        r.set_data_type(6003);
+        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
+        let mut hmp = ::std::collections::HashMap::with_capacity(6);
+        hmp.insert("types".to_string(), self.types.to_string());
+        hmp.insert("exe".to_string(), self.exe.to_string());
+        hmp.insert("exe_size".to_string(), self.exe_size.to_string());
+        hmp.insert("exe_hash".to_string(), self.exe_hash.to_string());
+        hmp.insert("data".to_string(), self.data.to_string());
+        hmp.insert("create_at".to_string(), self.create_at.to_string());
+        hmp.insert("modify_at".to_string(), self.modify_at.to_string());
+        hmp.insert("sid".to_string(), sid.to_string());
+        hmp.insert("source".to_string(), "602_scan".to_string());
+        hmp.insert("error".to_string(), self.error.to_string());
+        hmp.insert("token".to_string(), self.token.to_string());
+
+        pld.set_fields(hmp);
+        r.set_data(pld);
+        return r;
+    }
+}
+
 impl ToAgentRecord for DetectOneTaskEvent<'_> {
     fn to_record(&self) -> plugins::Record {
         let mut r = plugins::Record::new();
@@ -307,6 +332,23 @@ impl Detector {
                                     return;
                                 }
                             };
+                        }
+                        continue;
+                    }
+                    if let Some((file_path, sid)) = t.data.split_once("|") {
+                        let task = DetectTask {
+                            task_type: "6003".to_string(),
+                            pid: 0,
+                            path: file_path.to_string(),
+                            rpath: sid.to_string(),
+                            token: t.token,
+                            btime: 0,
+                            mtime: 0,
+                            size: 0,
+                        };
+                        if let Err(e) = task_sender.try_send(task) {
+                            error!("internal send task err : {:?}", e);
+                            continue;
                         }
                         continue;
                     }
@@ -605,6 +647,7 @@ impl Detector {
                                         rawc = std::str::from_utf8(&t.buffer).unwrap_or_default();
                                     }
 
+
                                     let t = &DetectOneTaskEvent{
                                         data_type:"6003",
                                         types: &first_result.identifier,
@@ -617,6 +660,16 @@ impl Detector {
                                         error: "",
                                         token: &task.token,
                                     };
+
+                                    if &task.rpath != ""{
+                                        if let Err(e) = self.client.send_record(&t.to_record_with_sid(&task.rpath)) {
+                                            warn!("send err, should exit : {:?}",e);
+                                            work_s_locker.send(()).unwrap();
+                                            return
+                                        };
+                                        continue
+                                    }
+
                                     if let Err(e) = self.client.send_record(&t.to_record()) {
                                         warn!("send err, should exit : {:?}",e);
                                         work_s_locker.send(()).unwrap();
@@ -729,29 +782,21 @@ pub fn get_file_bmtime(m: &std::fs::Metadata) -> (u64, u64) {
         Ok(m) => {
             let cti = match m.duration_since(UNIX_EPOCH) {
                 Ok(mi) => mi.as_secs(),
-                Err(_) => {
-                    0
-                }
+                Err(_) => 0,
             };
             cti
         }
-        Err(_) => {
-            0
-        }
+        Err(_) => 0,
     };
     let mt = match m.modified() {
         Ok(m) => {
             let cti = match m.duration_since(UNIX_EPOCH) {
                 Ok(mi) => mi.as_secs(),
-                Err(_) => {
-                    0
-                }
+                Err(_) => 0,
             };
             cti
         }
-        Err(_) => {
-            0
-        }
+        Err(_) => 0,
     };
     return (ct, mt);
 }
