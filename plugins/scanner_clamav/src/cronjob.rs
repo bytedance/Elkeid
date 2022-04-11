@@ -46,6 +46,7 @@ impl Cronjob {
     ) -> Self {
         let filter = Filter::new(100);
         let job = thread::spawn(move || loop {
+            let start_timestap = Clock::now_since_epoch().as_secs();
             // step-1
             // scan config dirs
             for conf in configs::SCAN_DIR_CONFIG {
@@ -99,7 +100,7 @@ impl Cronjob {
                         token: "".to_string(),
                     };
 
-                    while sender.len() > 8 {
+                    while sender.len() > 2 {
                         std::thread::sleep(Duration::from_secs(8));
                     }
 
@@ -110,6 +111,7 @@ impl Cronjob {
                             s_locker.send(()).unwrap();
                         }
                     };
+                    std::thread::sleep(Duration::from_secs(20));
                 }
             }
 
@@ -175,7 +177,7 @@ impl Cronjob {
                     mtime: btime.1,
                     token: "".to_string(),
                 };
-                while sender.len() > 8 {
+                while sender.len() > 2 {
                     std::thread::sleep(Duration::from_secs(8));
                 }
                 match sender.send(task) {
@@ -185,9 +187,11 @@ impl Cronjob {
                         s_locker.send(()).unwrap();
                     }
                 };
+                std::thread::sleep(Duration::from_secs(20));
             }
             // sleep cron_interval
-            thread::sleep(Duration::from_secs(cron_interval))
+            let timecost = Clock::now_since_epoch().as_secs() - start_timestap;
+            thread::sleep(Duration::from_secs(3600 * 24 - (timecost % (3600 * 24))));
         });
         return Self { job };
     }
