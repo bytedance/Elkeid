@@ -2,6 +2,7 @@ package utils
 
 import (
 	"net"
+	"os"
 )
 
 func CheckIPFormat(ip string) bool {
@@ -20,4 +21,15 @@ func GetOutboundIP() (string, error) {
 	}
 	defer conn.Close()
 	return conn.LocalAddr().(*net.UDPAddr).IP.String(), nil
+}
+
+func IsFileExist(path string) bool {
+	_, err := os.Stat(path)
+	if err != nil {
+		if os.IsExist(err) {
+			return true
+		}
+		return false
+	}
+	return true
 }
