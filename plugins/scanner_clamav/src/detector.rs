@@ -23,7 +23,7 @@ pub struct DetectFileEvent<'a> {
     exe_hash: &'a str, // * xhash
     md5_hash: &'a str, // * md5
     create_at: &'a str,
-    motify_at: &'a str,
+    modify_at: &'a str,
 }
 
 impl ToAgentRecord for DetectFileEvent<'_> {
@@ -41,7 +41,7 @@ impl ToAgentRecord for DetectFileEvent<'_> {
         hmp.insert("exe_hash".to_string(), self.exe_hash.to_string());
         hmp.insert("md5_hash".to_string(), self.md5_hash.to_string());
         hmp.insert("create_at".to_string(), self.create_at.to_string());
-        hmp.insert("motify_at".to_string(), self.motify_at.to_string());
+        hmp.insert("modify_at".to_string(), self.modify_at.to_string());
         pld.set_fields(hmp);
         r.set_data(pld);
         return r;
@@ -60,7 +60,7 @@ pub struct DetectProcEvent {
     exe_size: String,
     exe: String, //
     create_at: String,
-    motify_at: String,
+    modify_at: String,
     ppid: String,      //  status|stat - PID of parent process.
     pgid: String,      //  stat - The process group ID
     tgid: String,      //  status - Thread group ID
@@ -86,7 +86,7 @@ impl ToAgentRecord for DetectProcEvent {
         hmp.insert("exe_hash".to_string(), self.exe_hash.to_string());
         hmp.insert("md5_hash".to_string(), self.md5_hash.to_string());
         hmp.insert("create_at".to_string(), self.create_at.to_string());
-        hmp.insert("motify_at".to_string(), self.motify_at.to_string());
+        hmp.insert("modify_at".to_string(), self.modify_at.to_string());
         hmp.insert("pid".to_string(), self.pid.to_string());
         hmp.insert("ppid".to_string(), self.ppid.to_string());
         hmp.insert("pgid".to_string(), self.pgid.to_string());
@@ -115,7 +115,7 @@ impl DetectProcEvent {
         md5sum: &str,
         size: usize,
         create_at: u64,
-        motify_at: u64,
+        modify_at: u64,
     ) -> Result<Self> {
         let p = procfs::process::Process::new(pid)?;
         let mut pf = Self::default();
@@ -128,7 +128,7 @@ impl DetectProcEvent {
         pf.md5_hash = md5sum.to_string();
         pf.exe_size = size.to_string();
         pf.create_at = create_at.to_string();
-        pf.motify_at = motify_at.to_string();
+        pf.modify_at = modify_at.to_string();
         pf.comm = "-3".to_string();
         pf.ppid = "-3".to_string();
         pf.uid = "-3".to_string();
@@ -183,9 +183,36 @@ pub struct DetectOneTaskEvent<'a> {
     exe_hash: &'a str, // xhash 32k
     md5_hash: &'a str, // md5
     create_at: &'a str,
-    motify_at: &'a str,
+    modify_at: &'a str,
     error: &'a str, // error
     token: &'a str, // task token
+}
+
+impl DetectOneTaskEvent<'_> {
+    fn to_record_with_sid(&self, sid: &str) -> plugins::Record {
+        let mut r = plugins::Record::new();
+        let mut pld = plugins::Payload::new();
+        r.set_data_type(6003);
+        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
+        let mut hmp = ::std::collections::HashMap::with_capacity(6);
+        hmp.insert("types".to_string(), self.types.to_string());
+        hmp.insert("class".to_string(), self.class.to_string());
+        hmp.insert("name".to_string(), self.name.to_string());
+        hmp.insert("exe".to_string(), self.exe.to_string());
+        hmp.insert("exe_size".to_string(), self.exe_size.to_string());
+        hmp.insert("exe_hash".to_string(), self.exe_hash.to_string());
+        hmp.insert("md5_hash".to_string(), self.md5_hash.to_string());
+        hmp.insert("create_at".to_string(), self.create_at.to_string());
+        hmp.insert("modify_at".to_string(), self.modify_at.to_string());
+        hmp.insert("sid".to_string(), sid.to_string());
+        hmp.insert("source".to_string(), "602_scan".to_string());
+        hmp.insert("error".to_string(), self.error.to_string());
+        hmp.insert("token".to_string(), self.token.to_string());
+
+        pld.set_fields(hmp);
+        r.set_data(pld);
+        return r;
+    }
 }
 
 impl ToAgentRecord for DetectOneTaskEvent<'_> {
@@ -203,7 +230,7 @@ impl ToAgentRecord for DetectOneTaskEvent<'_> {
         hmp.insert("exe_hash".to_string(), self.exe_hash.to_string());
         hmp.insert("md5_hash".to_string(), self.md5_hash.to_string());
         hmp.insert("create_at".to_string(), self.create_at.to_string());
-        hmp.insert("motify_at".to_string(), self.motify_at.to_string());
+        hmp.insert("modify_at".to_string(), self.modify_at.to_string());
         hmp.insert("error".to_string(), self.error.to_string());
         hmp.insert("token".to_string(), self.token.to_string());
         pld.set_fields(hmp);
@@ -369,6 +396,23 @@ impl Detector {
                                 // ignored if not a fullpath from root /
                                 continue;
                             }
+                            if let Some((file_path, sid)) = t.data.split_once("|") {
+                                let task = DetectTask {
+                                    task_type: "6053".to_string(),
+                                    pid: 0,
+                                    path: file_path.to_string(),
+                                    rpath: sid.to_string(),
+                                    token: t.token,
+                                    btime: 0,
+                                    mtime: 0,
+                                    size: 0,
+                                };
+                                if let Err(e) = task_sender.try_send(task) {
+                                    error!("internal send task err : {:?}", e);
+                                    continue;
+                                }
+                                continue;
+                            }
                             let task = DetectTask {
                                 task_type: "6053".to_string(),
                                 pid: 0,
@@ -518,7 +562,7 @@ impl Detector {
                                         exe: &task.rpath,
                                         exe_size: &task.size.to_string(),
                                         create_at:&task.btime.to_string(),
-                                        motify_at:&task.mtime.to_string(),
+                                        modify_at:&task.mtime.to_string(),
                                         exe_hash: &xhash,
                                         md5_hash: &md5sum
                                     };
@@ -604,7 +648,7 @@ impl Detector {
                                         exe_hash: "",
                                         md5_hash: "",
                                         create_at:"",
-                                        motify_at:"",
+                                        modify_at:"",
                                         error: &format!("{:?}",e),
                                         token: &task.token,
                                     };
@@ -630,7 +674,7 @@ impl Detector {
                                         exe_hash: &xhash,
                                         md5_hash: &md5sum,
                                         create_at:&btime.0.to_string(),
-                                        motify_at:&btime.1.to_string(),
+                                        modify_at:&btime.1.to_string(),
                                         error: "",
                                         token: &task.token,
                                     };
@@ -645,12 +689,29 @@ impl Detector {
                                             &fclass,
                                             &fname
                                         );
+                                        if &task.rpath != ""{
+                                            if let Err(e) = self.client.send_record(&event.to_record_with_sid(&task.rpath)) {
+                                                warn!("send err, should exit : {:?}",e);
+                                                work_s_locker.send(()).unwrap();
+                                                return
+                                            };
+                                            continue
+                                        }
                                         if let Err(e) = self.client.send_record(&event.to_record()) {
                                             warn!("send err, should exit : {:?}",e);
                                             work_s_locker.send(()).unwrap();
                                             return
                                         };
                                     } else {
+                                        if &task.rpath != ""{
+                                            if let Err(e) = self.client.send_record(&event.to_record_with_sid(&task.rpath)) {
+                                                warn!("send err, should exit : {:?}",e);
+                                                work_s_locker.send(()).unwrap();
+                                                return
+                                            };
+                                            continue
+                                        }
+                                        
                                         if let Err(e) = self.client.send_record(&event.to_record()) {
                                             warn!("send err, should exit : {:?}",e);
                                             work_s_locker.send(()).unwrap();
