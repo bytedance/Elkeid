@@ -60,6 +60,35 @@ static inline unsigned long p_regs_get_arg5(struct pt_regs *p_regs) {
 static inline unsigned long p_regs_get_arg6(struct pt_regs *p_regs) {
    return p_regs->regs[5];
 }
+#elif defined(CONFIG_ARCH_RV64I)
+static inline void smith_regs_set_return_value(struct pt_regs *regs, unsigned long rc)
+{
+	regs->a0 = rc;
+}
+
+static inline unsigned long p_regs_get_arg1(struct pt_regs *p_regs) {
+   return p_regs->a0;
+}
+
+static inline unsigned long p_regs_get_arg2(struct pt_regs *p_regs) {
+   return p_regs->a1;
+}
+
+static inline unsigned long p_regs_get_arg3(struct pt_regs *p_regs) {
+   return p_regs->a2;
+}
+
+static inline unsigned long p_regs_get_arg4(struct pt_regs *p_regs) {
+   return p_regs->a3;
+}
+
+static inline unsigned long p_regs_get_arg5(struct pt_regs *p_regs) {
+   return p_regs->a4;
+}
+
+static inline unsigned long p_regs_get_arg6(struct pt_regs *p_regs) {
+   return p_regs->a5;
+}
 #endif
 
 #ifdef CONFIG_X86
@@ -109,6 +138,30 @@ static inline unsigned long p_regs_get_arg5_syscall(struct pt_regs *p_regs) {
 
 static inline unsigned long p_regs_get_arg6_syscall(struct pt_regs *p_regs) {
    return p_regs->regs[5];
+}
+#elif defined(CONFIG_ARCH_RV64I)
+static inline unsigned long p_regs_get_arg1_syscall(struct pt_regs *p_regs) {
+   return p_regs->a0;
+}
+
+static inline unsigned long p_regs_get_arg2_syscall(struct pt_regs *p_regs) {
+   return p_regs->a1;
+}
+
+static inline unsigned long p_regs_get_arg3_syscall(struct pt_regs *p_regs) {
+   return p_regs->a2;
+}
+
+static inline unsigned long p_regs_get_arg4_syscall(struct pt_regs *p_regs) {
+   return p_regs->a3;
+}
+
+static inline unsigned long p_regs_get_arg5_syscall(struct pt_regs *p_regs) {
+   return p_regs->a4;
+}
+
+static inline unsigned long p_regs_get_arg6_syscall(struct pt_regs *p_regs) {
+   return p_regs->a5;
 }
 #endif
 

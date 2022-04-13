@@ -16,6 +16,7 @@
 #include <linux/pid_namespace.h>
 #include <linux/ctype.h>
 #include <linux/cred.h>
+#include <linux/kthread.h>
 
 /*
  * constants & globals
@@ -66,7 +67,11 @@ static inline void smith_put_task_struct(struct task_struct *t)
 #define smith_put_task_struct(tsk)  put_task_struct(tsk)
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 5, 0)
+#if defined(KGID_STRUCT_CHECK) && (!defined(KGID_CONFIG_CHECK) || \
+    (defined(KGID_CONFIG_CHECK) && defined(CONFIG_UIDGID_STRICT_TYPE_CHECKS)))
+/* vanilla kernels >= 3.5.0, but ubuntu backported for 3.4 */
+# define _XID_VALUE(x)  (x).val
+#else
 # ifndef GLOBAL_ROOT_UID
 # define GLOBAL_ROOT_UID (0)
 # endif
@@ -80,8 +85,6 @@ static inline void smith_put_task_struct(struct task_struct *t)
 # define gid_eq(o, n) ((o) == (n))
 # endif
 # define _XID_VALUE(x)  (x)
-#else
-# define _XID_VALUE(x)  (x).val
 #endif
 
 static __always_inline int check_cred(const struct cred *current_cred, const struct cred *parent_cred)
@@ -125,6 +128,14 @@ static __always_inline void save_cred_info(unsigned int p_cred_info[], const str
     p_cred_info[5] = _XID_VALUE(parent_cred->egid);
     p_cred_info[6] = _XID_VALUE(parent_cred->sgid);
     p_cred_info[7] = _XID_VALUE(parent_cred->fsgid);
+}
+
+static inline int __get_current_uid(void) {
+    return _XID_VALUE(current->real_cred->uid);
+}
+
+static inline int __get_current_euid(void) {
+    return _XID_VALUE(current->real_cred->euid);
 }
 
 /*
@@ -309,23 +320,6 @@ static __always_inline char *smith_get_exe_file(char *buffer, int size)
     (x) = (__typeof__(*(ptr)))__val;                            \
     __ret;                                                      \
 })
-
-
-static inline int __get_current_uid(void) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
-    return current->real_cred->uid.val;
-#else
-    return current->real_cred->uid;
-#endif
-}
-
-static inline int __get_current_euid(void) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
-    return current->real_cred->euid.val;
-#else
-    return current->real_cred->euid;
-#endif
-}
 
 static inline void *__get_dns_query(unsigned char *data, int index, char *res) {
     int i;
