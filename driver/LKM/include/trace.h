@@ -8,10 +8,7 @@
 #ifdef __KERNEL__
 
 #include <linux/kernel.h>
-#include <linux/kallsyms.h>
-#include <linux/trace_seq.h>
-
-#ifdef SMITH_TRACE_EVENTS
+#if defined(SMITH_TRACE_EVENTS) || LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
 #include <linux/trace_events.h>
 #else
 #include <linux/ftrace_event.h>
@@ -20,75 +17,47 @@
 #define SZ_32K				0x00008000
 #define SZ_128K				0x00020000
 
-#ifdef SMITH_TRACE_SEQ
-#define SMITH_TRACE_SEQ_QUERY(s, e) (s)->seq.e
-#else
-#define SMITH_TRACE_SEQ_QUERY(s, e) (s)->e
-#endif
+#define RB_BUFFER_SIZE		SZ_128K
 
-#ifdef SMITH_TRACE_EVENTS
-static inline int __trace_seq_used(struct trace_seq *s)
-{
-	return trace_seq_used(s);
-}
-static inline bool __trace_seq_has_overflowed(struct trace_seq *s)
-{
-	return trace_seq_has_overflowed(s);
-}
-/*
- * Several functions return TRACE_TYPE_PARTIAL_LINE if the trace_seq
- * overflowed, and TRACE_TYPE_HANDLED otherwise. This helper function
- * simplifies those functions and keeps them in sync.
- */
-static inline enum print_line_t __trace_handle_return(struct trace_seq *s)
-{
-	return trace_handle_return(s);
-}
-#else /* !SMITH_TRACE_EVENTS */
-static inline int __trace_seq_used(struct trace_seq *s)
-{
-    unsigned int len = SMITH_TRACE_SEQ_QUERY(s, len);
-    return min(len, (unsigned int)(PAGE_SIZE - 1));
-}
-static inline bool __trace_seq_has_overflowed(struct trace_seq *s)
-{
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
-	if (s->full)
-		return s->full;
-#endif
-    return SMITH_TRACE_SEQ_QUERY(s, len) > (PAGE_SIZE - 1);
-}
-/*
- * Several functions return TRACE_TYPE_PARTIAL_LINE if the trace_seq
- * overflowed, and TRACE_TYPE_HANDLED otherwise. This helper function
- * simplifies those functions and keeps them in sync.
- */
-static inline enum print_line_t __trace_handle_return(struct trace_seq *s)
-{
-    return __trace_seq_has_overflowed(s) ?
-           TRACE_TYPE_PARTIAL_LINE : TRACE_TYPE_HANDLED;
-}
-#endif /* !SMITH_TRACE_EVENTS */
+extern struct tb_ring *g_trace_ring;
+
+#else /* !__KERNEL__ */
 
 /*
- * The print entry - the most basic unit of tracing.
+ * core routines for user mode consuming of trace-buffer
  */
-struct print_event_entry {
-	unsigned short	id;
+int tb_init_ring(void);
+void tb_fini_ring(void);
+int tb_read_ring(char *msg, int len, int (*cb)(int *), int *ctx);
+
+/*
+ * statatics support routines
+ */
+
+struct ring_stat {
+    uint32_t        nrings;
+    uint32_t        flags;
+
+    struct timeval  tv;
+    uint64_t        npros;  /* number of messages producted */
+    uint64_t        ncons;  /* number of messages consumed */
+    uint64_t        ndrop;  /* dropped by producer when ring is full */
+    uint64_t        ndisc;  /* discarded by producer for overwriting */
+    uint64_t        nexcd;  /* total dropped messages (too long to save) */
+    uint64_t        cpros;  /* bytes of produced messages */
+    uint64_t        ccons;  /* bytes of consumed messages */
+    uint64_t        cdrop;  /* bytes of dropped messages */
+    uint64_t        cdisc;  /* bytes of discarded messages */
+    uint32_t        maxsz;
 };
 
-struct print_event_class {
-	unsigned short id;
-	enum print_line_t (*format)(struct trace_seq *seq,
-				    struct print_event_entry *entry);
-	struct tb_ring *trace;
-};
+int tb_is_elapsed(struct timeval *tv, long cycle);
+int tb_query_stat_ring(struct ring_stat *stat);
+void tb_show_stat_ring(struct ring_stat *s, struct ring_stat *l, struct ring_stat *n);
 
-#define RB_BUFFER_SIZE	SZ_128K
-#define PRINT_EVENT_DEFINE(name, proto, args, tstruct, assign, print)
-
-#endif /* __KERNEL__ */
+#endif /* !__KERNEL__ */
 
 #define TRACE_IOCTL_STAT	(0xd00dbef0)	/* ioctl command for stat */
+#define TRACE_IOCTL_FORMAT	(0xd00dbef1)	/* ioctl command for format query */
 
 #endif /* _TRACE_EVENT_H */

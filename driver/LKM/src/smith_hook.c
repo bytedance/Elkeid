@@ -6,7 +6,8 @@
  */
 #include "../include/smith_hook.h"
 
-#define CREATE_PRINT_EVENT
+#define __SD_XFER_SE__
+#include "../include/xfer.h"
 #include "../include/kprobe_print.h"
 
 #include <linux/kthread.h>
@@ -2473,7 +2474,7 @@ int call_usermodehelper_exec_pre_handler(struct kprobe *p, struct pt_regs *regs)
     int wait = 0, argv_res_len = 0, argv_len = 0;
     int offset = 0, res = 0, free_argv = 0, i;
     void *si_tmp;
-    const char *path;
+    char *path;
     char **argv;
     char *argv_res = NULL;
     struct subprocess_info *si;
@@ -2485,7 +2486,7 @@ int call_usermodehelper_exec_pre_handler(struct kprobe *p, struct pt_regs *regs)
     si = (struct subprocess_info *)si_tmp;
     wait = (int)p_regs_get_arg2(regs);
 
-    path = si->path;
+    path = (char *)si->path;
     argv = si->argv;
 
     if (IS_ERR_OR_NULL(path))
@@ -3105,15 +3106,15 @@ int mount_pre_handler(struct kprobe *p, struct pt_regs *regs)
     char *pname_buf = NULL;
     char *file_path = DEFAULT_RET_STR;
 
-    const char *fstype = NULL;
-    const char *dev_name = NULL;
     char *data;
+    char *fstype = NULL;
+    char *dev_name = NULL;
 
     struct path *path = NULL;
 
-    dev_name = (const char *)p_regs_get_arg1(regs);
+    dev_name = (char *)p_regs_get_arg1(regs);
     path = (struct path *)p_regs_get_arg2(regs);
-    fstype = (const char *)p_regs_get_arg3(regs);
+    fstype = (char *)p_regs_get_arg3(regs);
     flags = (unsigned long)p_regs_get_arg4(regs);
 
     if (IS_ERR_OR_NULL(path) || !dev_name || !*dev_name)
@@ -4768,7 +4769,8 @@ static int __init smith_init(void)
     if (ret)
         return ret;
 
-    printk(KERN_INFO "[ELKEID] Filter Init Success \n");
+    printk(KERN_INFO "[ELKEID] kmod %s (%s) loaded.\n",
+           THIS_MODULE->name, THIS_MODULE->version);
 
 #if (EXIT_PROTECT == 1)
     exit_protect_action();

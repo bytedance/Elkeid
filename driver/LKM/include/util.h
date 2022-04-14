@@ -29,6 +29,20 @@
 static unsigned int ROOT_PID_NS_INUM;
 
 /*
+ * macro definitions for legacy kernels
+ */
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 1, 0)
+#define __ARG_PLACEHOLDER_1 0,
+#define config_enabled(cfg) _config_enabled(cfg)
+#define _config_enabled(value) __config_enabled(__ARG_PLACEHOLDER_##value)
+#define __config_enabled(arg1_or_junk) ___config_enabled(arg1_or_junk 1, 0)
+#define ___config_enabled(__ignored, val, ...) val
+#define IS_ENABLED(option) \
+        (config_enabled(option) || config_enabled(option##_MODULE))
+#endif
+
+/*
  * wrapper of kernel memory allocation routines
  */
 
@@ -40,8 +54,6 @@ static unsigned int ROOT_PID_NS_INUM;
  * common routines
  */
 extern unsigned long smith_kallsyms_lookup_name(const char *);
-
-extern char *__dentry_path(struct dentry *dentry, char *buf, int buflen);
 
 extern u8 *smith_query_sb_uuid(struct super_block *sb);
 
@@ -174,7 +186,7 @@ static inline char *smith_strim(char *s)
  *     __do_page_fault just cease when atomic-context is detected when
  *     processing page fault due to user-mode address
  *
- *     WARNING: pagefault_enable could trigger re-schedulinga, that's not
+ *     WARNING: pagefault_enable could trigger re-scheduling, that's not
  *     allowed under atomic-context of kprobe callback
  */
 static inline void smith_pagefault_disable(void)
@@ -328,5 +340,8 @@ static inline int __get_pgid(void) {
 static inline int __get_sid(void) {
     return task_session_nr_ns(current, &init_pid_ns);
 }
+
+#define CLASSERT(cond) do {switch('x') {case ((cond)): case 0: break;}} while (0)
+size_t smith_strnlen (const char *str, size_t maxlen);
 
 #endif /* UTIL_H */

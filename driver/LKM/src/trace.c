@@ -13,80 +13,135 @@
 #include "../include/kprobe.h"
 #include "../include/util.h"
 
-#define PROC_ENDPOINT	"elkeid-endpoint"
+#define __SD_XFER_SE__
+#include "../include/xfer.h"
 
-#define PRINT_EVENT_ID_MAX	\
-	((1 << (sizeof(((struct print_event_entry *)0)->id) * 8)) - 1)
+/*
+ * prototypes of event elements
+ */
 
-struct print_event_iterator {
-    struct mutex mutex;
-    struct tb_ring *ring;
+#define SD_TYPE_ENTRY_XID(v)    {v}}, {{SD_TYPE_U32}, {4}}
 
-    /* The below is zeroed out in pipe_read */
-    struct trace_seq seq;
-    struct print_event_entry *ent;
-    unsigned long lost_events;
-    int cpu;
-    u64 ts;
-    /* All new field here will be zeroed out in pipe_read */
-};
+#define SD_TYPE_ENTRY_U8( n, v) {{SD_TYPE_U32}, {4}}
+#define SD_TYPE_ENTRY_U16(n, v) {{SD_TYPE_U32}, {4}}
+#define SD_TYPE_ENTRY_U32(n, v) {{SD_TYPE_U32}, {4}}
+#define SD_TYPE_ENTRY_U64(n, v) {{SD_TYPE_U64}, {8}}
+#define SD_TYPE_ENTRY_S8( n, v) {{SD_TYPE_S32}, {4}}
+#define SD_TYPE_ENTRY_S16(n, v) {{SD_TYPE_S32}, {4}}
+#define SD_TYPE_ENTRY_S32(n, v) {{SD_TYPE_S32}, {4}}
+#define SD_TYPE_ENTRY_S64(n, v) {{SD_TYPE_S64}, {8}}
 
-static struct tb_ring *trace_ring;
+#define SD_TYPE_ENTRY_INT       SD_TYPE_ENTRY_S32
+#define SD_TYPE_ENTRY_UINT      SD_TYPE_ENTRY_U32
 
-/* Defined in linker script */
-extern struct print_event_class *const __start_print_event_class[];
-extern struct print_event_class *const __stop_print_event_class[];
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0)
-static ssize_t(*trace_seq_to_user_sym) (struct trace_seq * s,
-					char __user * ubuf, size_t cnt);
+#if BITS_PER_LONG == 32
+# define SD_TYPE_ENTRY_LONG     SD_TYPE_ENTRY_S32
+# define SD_TYPE_ENTRY_ULONG    SD_TYPE_ENTRY_U32
 #else
-#define trace_seq_to_user_sym trace_seq_to_user
+# define SD_TYPE_ENTRY_LONG     SD_TYPE_ENTRY_S64
+# define SD_TYPE_ENTRY_ULONG    SD_TYPE_ENTRY_U64
 #endif
 
-static int kallsyms_lookup_symbols(void)
+#define SD_TYPE_ENTRY_IP4(n, v) {{SD_TYPE_IP4}, {4}}
+#define SD_TYPE_ENTRY_IP6(n, v) {{SD_TYPE_IP6}, {16}}
+
+#define SD_TYPE_ENTRY_STR(n, v) {{SD_TYPE_STR}, {4}}
+#define SD_TYPE_ENTRY_STL(...)  {{SD_TYPE_STR}, {4}}
+
+#define SD_TYPE_POINTER_IP4     SD_TYPE_ENTRY_IP4
+#define SD_TYPE_POINTER_IP6     SD_TYPE_ENTRY_IP6
+#define SD_TYPE_POINTER_STR     SD_TYPE_ENTRY_STR
+#define SD_TYPE_POINTER_STL     SD_TYPE_ENTRY_STL
+
+#define SD_TYPE_I(n, ...)       SD_ENTS_N##n(n, ARG, ENT, SD_TYPE, __VA_ARGS__)
+#define SD_TYPE_N(n, ...)       SD_TYPE_I(n, __VA_ARGS__)
+#define SD_TYPE_D(...)          SD_TYPE_N(SD_N_ARGS(__VA_ARGS__), __VA_ARGS__)
+#define SD_TYPE_XFER(...)       SD_TYPE_D(__VA_ARGS__)
+
+#define SD_XFER_DEFINE_P(n, p, x)                               \
+    SD_XFER_DEFINE_E(n, p, x);                                  \
+    struct sd_item_ent SD_XFER_PROTO_##n[] = {                  \
+        {{0}, {0}},                                             \
+        {{sizeof(struct SD_XFER_EVENT_##n)},                    \
+        SD_TYPE_##x,                                            \
+        {{0}, {0}} };
+#undef SD_XFER_DEFINE
+#define SD_XFER_DEFINE(n, p, x) SD_XFER_DEFINE_P(n, p, x)
+
+#include <kprobe_print.h>
+#include <anti_rootkit_print.h>
+
+
+#define SD_XFER_DEFINE_X(n, p, x) {sizeof(SD_XFER_PROTO_##n), 0, SD_XFER_PROTO_##n},
+#undef SD_XFER_DEFINE
+#define SD_XFER_DEFINE(n, p, x) SD_XFER_DEFINE_X(n, p, x)
+
+struct sd_event_point {
+    uint32_t  fmt;
+    uint32_t  eid;
+    struct sd_item_ent *ent;
+};
+static struct sd_event_point g_sd_events[] = {
+#include <kprobe_print.h>
+#include <anti_rootkit_print.h>
+    };
+#define N_SD_EVENTS (sizeof(g_sd_events)/sizeof(struct sd_event_point))
+
+static int inline sd_init_events(void)
 {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0)
-    void *ptr = (void *)smith_kallsyms_lookup_name("trace_seq_to_user");
-    if (!ptr)
-        return -ENODEV;
-    trace_seq_to_user_sym = ptr;
-#endif
+    int i;
+
+    for (i = 0; i < N_SD_EVENTS; i++) {
+        g_sd_events[i].eid = i + 1;
+        g_sd_events[i].ent[0].eid = i + 1;
+        g_sd_events[i].ent[0].meta = g_sd_events[i].fmt;
+    }
 
     return 0;
 }
 
+#define PROC_ENDPOINT	"elkeid-endpoint"
+
+struct tb_ring *g_trace_ring;
+static DEFINE_MUTEX(g_trace_lock);
+
+struct trace_instance {
+    struct tb_ring *ring;
+    struct tb_event *event;
+
+    unsigned long lost_events;
+    int cpu;
+    u64 ts;
+};
+
 static int trace_open_pipe(struct inode *inode, struct file *filp)
 {
-    struct print_event_iterator *iter;
+    struct trace_instance *ti;
 
-    iter = kzalloc(sizeof(*iter), GFP_KERNEL);
-    if (!iter)
+    ti = kzalloc(sizeof(*ti), GFP_KERNEL);
+    if (!ti)
         return -ENOMEM;
 
-    trace_seq_init(&iter->seq);
-    mutex_init(&iter->mutex);
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0) || defined(SMITH_PROCFS_PDE_DATA)
-    iter->ring = pde_data(inode);
+    ti->ring = pde_data(inode);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-    iter->ring = PDE_DATA(inode);
+    ti->ring = PDE_DATA(inode);
 #else
-    iter->ring = PDE(inode)->data;
+    ti->ring = PDE(inode)->data;
 #endif
-    filp->private_data = iter;
+    filp->private_data = ti;
     nonseekable_open(inode, filp);
     __module_get(THIS_MODULE);
 
     return 0;
 }
 
-static int is_trace_empty(struct print_event_iterator *iter)
+static int trace_is_empty(struct trace_instance *ti)
 {
     int cpu;
 
     for_each_possible_cpu(cpu) {
-        if (!tb_empty_cpu(iter->ring, cpu))
+        if (!tb_empty_cpu(ti->ring, cpu))
             return 0;
     }
 
@@ -96,18 +151,15 @@ static int is_trace_empty(struct print_event_iterator *iter)
 /* Must be called with iter->mutex held. */
 static int trace_wait_pipe(struct file *filp)
 {
-    struct print_event_iterator *iter = filp->private_data;
+    struct trace_instance *ti = filp->private_data;
     int ret;
 
-    while (is_trace_empty(iter)) {
+    while (trace_is_empty(ti)) {
 
         if ((filp->f_flags & O_NONBLOCK))
             return -EAGAIN;
 
-        mutex_unlock(&iter->mutex);
-        ret = tb_wait(iter->ring, TB_RING_ALL_CPUS, 0);
-        mutex_lock(&iter->mutex);
-
+        ret = tb_wait(ti->ring, TB_RING_ALL_CPUS, 0);
         if (ret)
             return ret;
     }
@@ -115,20 +167,7 @@ static int trace_wait_pipe(struct file *filp)
     return 1;
 }
 
-static struct print_event_entry *peek_next_entry(struct print_event_iterator *iter,
-                                                 int cpu, u64 * ts,
-                                                 unsigned long *lost_events)
-{
-    struct tb_event *event;
-
-    event = tb_peek(iter->ring, cpu, ts, lost_events);
-    if (event)
-        return tb_event_data(event);
-
-    return NULL;
-}
-
-static inline int __cpumask_next_wrap(int n, const struct cpumask *mask, int start, bool wrap)
+static inline int trace_next_cpu(int n, const struct cpumask *mask, int start, bool wrap)
 {
 	int next;
 
@@ -147,184 +186,111 @@ again:
 	return next;
 }
 
-static struct print_event_entry *__find_next_entry(struct print_event_iterator *iter,
-                                                   int *ent_cpu, unsigned long *me,
-                                                   u64 *ent_ts)
+static struct tb_event *trace_peek_entry(struct trace_instance *ti)
 {
-    struct tb_ring *ring = iter->ring;
-    struct print_event_entry *ent = NULL;
-    u64 ts;
-    unsigned long lost_events = 0;
-    int cpu, start = 0;
+    struct tb_event *e = NULL;
+    int cpu, start = ti->cpu;
 
-    if (ent_cpu) {
-        /*
-         * always loop from next of last-read cpu (specified by user)
-         * to avoid possible starving on other cores, that is, reading
-         * one message for 'cpu', then move onto 'cpu' + 1
-         */
-        start = *ent_cpu + 1;
-        if (start >= nr_cpumask_bits)
-            start = 0;
-        else if (start < 0)
-            start = 0;
-    }
+    if (start >= nr_cpumask_bits)
+        start = 0;
+    else if (start < 0)
+        start = 0;
 
-    cpu = __cpumask_next_wrap(start - 1, cpu_possible_mask, start, 0);
+    cpu = trace_next_cpu(start - 1, cpu_possible_mask, start, 0);
     while (cpu < nr_cpumask_bits) {
 
-        if (tb_empty_cpu(ring, cpu))
+        if (tb_empty_cpu(ti->ring, cpu))
             goto next_cpu;
 
-        ent = peek_next_entry(iter, cpu, &ts, &lost_events);
-        if (ent) {
-           if (ent_cpu)
-               *ent_cpu = cpu;
-           if (ent_ts)
-               *ent_ts = ts;
-           if (me)
-               *me = lost_events;
+        e = tb_peek(ti->ring, cpu, &ti->ts, &ti->lost_events);
+        if (e) {
+            ti->event = e;
+            ti->cpu = cpu;
             break;
         }
 next_cpu:
-        cpu = __cpumask_next_wrap(cpu, cpu_possible_mask, start, 1);
+        cpu = trace_next_cpu(cpu, cpu_possible_mask, start, 1);
     }
 
-    return ent;
+    return e;
 }
 
-/* Find the next real entry, and increment the iterator to the next entry */
-static void *trace_next_entry_inc(struct print_event_iterator *iter)
+static int trace_put_user(struct trace_instance *ti, char __user *ubuf,
+                            size_t cnt, ssize_t *used)
 {
-    iter->ent = __find_next_entry(iter, &iter->cpu,
-                                  &iter->lost_events, &iter->ts);
+    int len = tb_event_size(ti->event);
 
-    return iter->ent ? iter : NULL;
+    if (len + 8 + *used > cnt)
+        return -EOVERFLOW;
+
+    if (copy_to_user(ubuf + *used + 0, &ti->ts, 8))
+        return -EBADF;
+    if (copy_to_user(ubuf + *used + 8, tb_event_data(ti->event), len))
+        return -EBADF;
+    *used += len + 8;
+
+    return len + 8;
 }
 
-static struct print_event_class *find_print_event(int id)
+static ssize_t trace_read_pipe(struct file *filp, char __user *ubuf,
+                               size_t cnt, loff_t *ppos)
 {
-    if (likely(id < (__stop_print_event_class - __start_print_event_class)))
-        return __start_print_event_class[id];
-
-    return NULL;
-}
-
-static enum print_line_t print_trace_fmt_line(struct print_event_iterator *iter)
-{
-    struct trace_seq *seq = &iter->seq;
-    struct print_event_entry *entry;
-    struct print_event_class *class;
-
-    entry = iter->ent;
-    class = find_print_event(entry->id);
-
-    if (__trace_seq_has_overflowed(seq))
-        return TRACE_TYPE_PARTIAL_LINE;
-
-    if (class)
-        return class->format(seq, entry);
-
-    trace_seq_printf(seq, "Unknown id %d\n", entry->id);
-
-    return __trace_handle_return(seq);
-}
-
-static ssize_t trace_read_pipe(struct file *filp, char __user * ubuf,
-                               size_t cnt, loff_t * ppos)
-{
-    ssize_t sret;
-    struct print_event_iterator *iter = filp->private_data;
-    static DEFINE_MUTEX(access_lock);
+    struct trace_instance *ti = filp->private_data;
+    ssize_t rc = 0;
 
     /*
      * Avoid more than one consumer on a single file descriptor
-    * This is just a matter of traces coherency, the ring buffer itself
-    * is protected.
-    */
-    mutex_lock(&iter->mutex);
+     * This is just a matter of traces coherency, the ring buffer
+     * itself is protected.
+     */
+    mutex_lock(&g_trace_lock);
 
-    sret = trace_seq_to_user_sym(&iter->seq, ubuf, cnt);
-    if (sret != -EBUSY)
-        goto out;
-
-    trace_seq_init(&iter->seq);
-
-waitagain:
     if(fatal_signal_pending(current))
         goto out;
 
-    if(!tb_record_is_on(trace_ring))
+    if(!tb_record_is_on(ti->ring))
         goto out;
 
-    sret = trace_wait_pipe(filp);
-    if (sret <= 0)
+    rc = trace_wait_pipe(filp);
+    if (rc <= 0)
         goto out;
 
     /* stop when tracing is finished */
-    if (is_trace_empty(iter)) {
-        sret = 0;
+    rc = 0;
+    if (trace_is_empty(ti))
         goto out;
-    }
 
-    if (cnt >= PAGE_SIZE)
-        cnt = PAGE_SIZE - 1;
+    while (trace_peek_entry(ti)) {
 
-    memset((void *)iter + offsetof(struct print_event_iterator, seq), 0,
-           sizeof(*iter) - offsetof(struct print_event_iterator, seq));
-
-    mutex_lock(&access_lock);
-    while (trace_next_entry_inc(iter) != NULL) {
-        enum print_line_t ret;
-        int save_len = SMITH_TRACE_SEQ_QUERY(&iter->seq, len);
-
-        ret = print_trace_fmt_line(iter);
-        if (ret == TRACE_TYPE_PARTIAL_LINE) {
-            /* don't print partial lines */
-            SMITH_TRACE_SEQ_QUERY(&iter->seq, len) = save_len;
+        if (trace_put_user(ti, ubuf, cnt, &rc) <= 0)
             break;
-        }
+        tb_consume(ti->ring, ti->cpu, &ti->ts, &ti->lost_events);
 
-        if (ret != TRACE_TYPE_NO_CONSUME)
-            tb_consume(iter->ring, iter->cpu, &iter->ts, &iter->lost_events);
+        /*
+         * try next cpu to avoid possible starving on other cores
+         * read only one message for 'cpu', then move onto next
+         */
+        ti->cpu += 1;
 
-        if (__trace_seq_used(&iter->seq) >= cnt)
+        /*
+         * timestamp + 32 bytes: minimized record-size
+         * fops/mod: anti-rootkit records
+         *   message_size + structure_size + xid + one_element
+         */
+        if (rc + 32 + 8 > cnt)
             break;
-    /*
-    * Setting the full flag means we reached the trace_seq buffer
-    * size and we should leave by partial output condition above.
-    * One of the trace_seq_* functions is not used properly.
-    */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
-        WARN_ONCE(iter->seq.full, "full flag set for trace id: %d", iter->ent->id);
-#endif
     }
-    mutex_unlock(&access_lock);
-
-/* Now copy what we have to the user */
-    sret = trace_seq_to_user_sym(&iter->seq, ubuf, cnt);
-    if (SMITH_TRACE_SEQ_QUERY(&iter->seq, readpos) >= __trace_seq_used(&iter->seq))
-        trace_seq_init(&iter->seq);
-
-    /*
-    * If there was nothing to send to user, in spite of consuming trace
-    * entries, go back to wait for more entries.
-    */
-    if (sret == -EBUSY)
-        goto waitagain;
 
 out:
-    mutex_unlock(&iter->mutex);
-
-    return sret;
+    mutex_unlock(&g_trace_lock);
+    return rc;
 }
 
 static int trace_release_pipe(struct inode *inode, struct file *file)
 {
-    struct print_event_iterator *iter = file->private_data;
+    struct trace_instance *ti = file->private_data;
 
-    mutex_destroy(&iter->mutex);
-    kfree(iter);
+    kfree(ti);
     module_put(THIS_MODULE);
 
     return 0;
@@ -332,20 +298,43 @@ static int trace_release_pipe(struct inode *inode, struct file *file)
 
 long trace_ioctl_pipe(struct file *filp, unsigned int cmd, unsigned long __user arg)
 {
-    struct print_event_iterator *iter = filp->private_data;
+    struct trace_instance *ti = filp->private_data;
     long rc = -EINVAL;
+    int i;
 
-    mutex_lock(&iter->mutex);
     if (cmd == TRACE_IOCTL_STAT) {
         struct tb_stat stat = {0};
-        tb_stat(iter->ring, &stat);
+        tb_stat(ti->ring, &stat);
         if (copy_to_user((void *)arg, &stat, sizeof(stat)))
             rc = -EFAULT;
         else
             rc = sizeof(stat);
-    }
-    mutex_unlock(&iter->mutex);
+    } else if (cmd == TRACE_IOCTL_FORMAT) {
+        struct sd_event_format fmt = {0}, usr = {0};
 
+        if (copy_from_user(&usr, (void *)arg, sizeof(usr)))
+            goto errorout;
+        if (usr.size < sizeof(fmt))
+            goto errorout;
+        fmt.size = sizeof(fmt);
+        fmt.nids = N_SD_EVENTS;
+        for (i = 0; i < N_SD_EVENTS; i++)
+            fmt.size += g_sd_events[i].fmt;
+        if (copy_to_user((void *)arg, &fmt, sizeof(fmt)))
+            goto errorout;
+        rc = sizeof(fmt);
+        if (usr.size < fmt.size)
+            goto errorout;
+        for (i = 0; i < N_SD_EVENTS; i++) {
+            if (copy_to_user((void *)arg + rc,
+                             g_sd_events[i].ent,
+                             g_sd_events[i].fmt))
+                break;
+            rc += g_sd_events[i].fmt;
+        }
+    }
+
+errorout:
     return rc;
 }
 
@@ -354,10 +343,10 @@ long trace_ioctl_pipe(struct file *filp, unsigned int cmd, unsigned long __user 
  */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
 static const struct file_operations trace_pipe_fops = {
-        .open = trace_open_pipe,
-        .read = trace_read_pipe,
-        .unlocked_ioctl = trace_ioctl_pipe,
-        .release = trace_release_pipe,
+    .open = trace_open_pipe,
+    .read = trace_read_pipe,
+    .unlocked_ioctl = trace_ioctl_pipe,
+    .release = trace_release_pipe,
 };
 #else
 static const struct proc_ops trace_pipe_fops = {
@@ -368,47 +357,22 @@ static const struct proc_ops trace_pipe_fops = {
 };
 #endif
 
-static inline int num_print_event_class(void)
-{
-    return __stop_print_event_class - __start_print_event_class;
-}
-
 static int __init print_event_init(void)
 {
-    int id = 0;
-    int num_class = num_print_event_class();
-    struct print_event_class *const *class_ptr;
+    sd_init_events();
 
-    if (num_class == 0)
-        return 0;
-
-    if (num_class >= PRINT_EVENT_ID_MAX)
-        return -EINVAL;
-
-    if (kallsyms_lookup_symbols())
-        return -ENODEV;
-
-    trace_ring = tb_alloc(RB_BUFFER_SIZE, TB_FL_OVERWRITE);
-    if (!trace_ring)
+    g_trace_ring = tb_alloc(RB_BUFFER_SIZE, TB_FL_OVERWRITE);
+    if (!g_trace_ring)
         return -ENOMEM;
 
     if (!proc_create_data(PROC_ENDPOINT, S_IRUSR, NULL,
-                          &trace_pipe_fops, trace_ring))
+                          &trace_pipe_fops, g_trace_ring))
         goto errorout;
-
-    for (class_ptr = __start_print_event_class;
-         class_ptr < __stop_print_event_class; class_ptr++) {
-        struct print_event_class *class = *class_ptr;
-
-        class->id = id++;
-        class->trace = trace_ring;
-    }
-    pr_info("create %d print event class\n", num_class);
 
     return 0;
 
 errorout:
-    tb_free(trace_ring);
+    tb_free(g_trace_ring);
 
     return -ENOMEM;
 }
@@ -416,10 +380,8 @@ errorout:
 static void print_event_exit(void)
 {
     remove_proc_entry(PROC_ENDPOINT, NULL);
-    if (trace_ring)
-        tb_free(trace_ring);
-
-    pr_info("destroy %d print event class\n", num_print_event_class());
+    if (g_trace_ring)
+        tb_free(g_trace_ring);
 }
 
 KPROBE_INITCALL(print_event_init, print_event_exit);

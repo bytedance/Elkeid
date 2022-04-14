@@ -9,12 +9,13 @@
  */
 
 #include <linux/kthread.h>
+#include <anti_rootkit.h>
 #include "../include/kprobe.h"
-#include "../include/anti_rootkit.h"
 #include "../include/util.h"
 
-#define CREATE_PRINT_EVENT
-#include "../include/anti_rootkit_print.h"
+#define __SD_XFER_SE__
+#include "../include/xfer.h"
+#include <anti_rootkit_print.h>
 
 #define ANTI_ROOTKIT_CHECK 1
 
@@ -38,9 +39,9 @@ static struct module *(*get_module_from_addr)(unsigned long addr);
     ((uintptr_t)x < ((uintptr_t)y+(uintptr_t)z)) \
 )
 
-static const char *find_hidden_module(unsigned long addr)
+static char *find_hidden_module(unsigned long addr)
 {
-    const char *mod_name = NULL;
+    char *mod_name = NULL;
     struct kobject *cur;
     struct module_kobject *kobj;
 
@@ -99,7 +100,7 @@ static void analyze_syscalls(void)
 
 	
 	for (i = 0; i < NR_syscalls; i++) {
-		const char *mod_name = "-1";
+		char *mod_name = "-1";
 		addr = sct[i];
 	
 		if (!ckt(addr)) {
@@ -108,7 +109,7 @@ static void analyze_syscalls(void)
 			if (mod) {
 				mod_name = mod->name;
 			} else {
-				const char* name = find_hidden_module(addr);
+				char* name = find_hidden_module(addr);
 				if (IS_ERR_OR_NULL(name)) {
 				    module_list_unlock();
 				    continue;
@@ -134,7 +135,7 @@ static void analyze_interrupts(void)
 		return;
 
 	for (i = 0; i < IDT_ENTRIES; i++) {
-		const char *mod_name = "-1"; 
+		char *mod_name = "-1";
 
 		addr = idt[i];
 		if (!ckt(addr)) {
@@ -144,7 +145,7 @@ static void analyze_interrupts(void)
 			if (mod) {
 				mod_name = mod->name;
 			} else {
-				const char *name = find_hidden_module(addr);
+				char *name = find_hidden_module(addr);
 				if (IS_ERR_OR_NULL(name)) {
 				    module_list_unlock();
 				    continue;
@@ -187,7 +188,7 @@ static void analyze_fops(void)
 {
     struct module *mod = NULL;
     unsigned long addr;
-	const char *mod_name;
+	char *mod_name;
 	struct file *fp;
 
 	fp = filp_open("/proc", O_RDONLY, S_IRUSR);

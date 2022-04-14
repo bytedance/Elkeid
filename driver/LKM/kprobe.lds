@@ -26,10 +26,5 @@ SECTIONS {
 		__start_kprobe_initcall = .;
 		KEEP(*(.__kprobe_initcall))
 		__stop_kprobe_initcall = .;
-
-		. = ALIGN(8);
-		__start_print_event_class = .;
-		KEEP(*(.__print_event_class))
-		__stop_print_event_class = .;
 	}
 }
