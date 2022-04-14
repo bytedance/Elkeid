@@ -98,6 +98,7 @@ impl Cronjob {
                         btime: btime.0,
                         mtime: btime.1,
                         token: "".to_string(),
+                        add_ons: None,
                     };
 
                     while sender.len() > 2 {
@@ -176,6 +177,7 @@ impl Cronjob {
                     btime: btime.0,
                     mtime: btime.1,
                     token: "".to_string(),
+                    add_ons: None,
                 };
                 while sender.len() > 2 {
                     std::thread::sleep(Duration::from_secs(8));

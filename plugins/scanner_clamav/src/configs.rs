@@ -6,16 +6,16 @@ pub const CLAMAV_MAX_SCANSIZE: i64 = 1024 * 1024 * 40;
 pub const WAIT_INTERVAL_SCAN: std::time::Duration = std::time::Duration::from_secs(1);
 
 pub const DB_URLS: &'static [&'static str] = &[
-    "http://lf26-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default",
-    "http://lf3-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default",
-    "http://lf6-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default",
-    "http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default",
+    "http://lf26-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220414",
+    "http://lf3-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220414",
+    "http://lf6-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220414",
+    "http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220414",
 ];
 
 pub const ARCHIVE_DB_PWD: &str = &"clamav_default_passwd";
 pub const ARCHIVE_DB_HASH: &str =
-    &"d3cfbdfa5747c28dec0c0060974c6b891dbab7c48fdd8d463382fff5d4f4da70";
-pub const ARCHIVE_DB_VERSION: &str = &"20220222";
+    &"aca73cc75f7cae9dc5f1e2194e3dc54fe8ad554e94424d26123125ecab03872e";
+pub const ARCHIVE_DB_VERSION: &str = &"20220414";
 
 pub const ARCHIVE_DB_VERSION_FILE: &str = &"version";
 pub const DB_PATH: &str = "./dat";

@@ -40,8 +40,8 @@ strip ./output/scanner_clamav_cli
 
 cd ./output 
 mkdir tmp 
-wget http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default.zip
-mv archive_db_default.zip ./tmp
+wget http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220414.zip
+mv archive_db_default_20220414.zip ./tmp
 tar zcvf scanner_clamav.tar.gz scanner_clamav tmp
 cd - 
 
