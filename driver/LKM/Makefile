@@ -11,22 +11,27 @@ ccflags-y		+= -I$(MODULE_DIR)/include -I$(MODULE_DIR)
 
 K_S_PATH	:= /lib/modules/$(KERNEL_HEAD)/source/include
 K_B_PATH	:= /lib/modules/$(KERNEL_HEAD)/build/include
+K_K_PATH	:= /usr/src/kernels/$(KERNEL_HEAD)/include
 
-KMOD_CORE_LAYOUT := $(shell bash -c "grep -s module_core\; $(K_S_PATH)/linux/module.h $(K_B_PATH)/linux/module.h")
+KMOD_FILES := $(K_S_PATH)/linux/module.h $(K_B_PATH)/linux/module.h $(K_K_PATH)/linux/module.h
+KMOD_CORE_LAYOUT := $(shell sh -c "grep -s module_core\; $(KMOD_FILES)")
 ifeq ($(KMOD_CORE_LAYOUT),)
 ccflags-y += -D KMOD_CORE_LAYOUT
 endif
 
-KGID_STRUCT_CHECK	:= $(shell bash -c "grep -s fsgid\; $(K_S_PATH)/linux/cred.h $(K_B_PATH)/linux/cred.h | grep kgid_t")
+KGID_CRED_FILES := $(K_S_PATH)/linux/cred.h $(K_B_PATH)/linux/cred.h $(K_K_PATH)/linux/cred.h
+KGID_XIDS_FILES := $(K_S_PATH)/linux/uidgid.h $(K_B_PATH)/linux/uidgid.h $(K_K_PATH)/linux/uidgid.h
+KGID_STRUCT_CHECK := $(shell sh -c "grep -s fsgid\; $(KGID_CRED_FILES) | grep kgid_t")
 ifneq ($(KGID_STRUCT_CHECK),)
 ccflags-y += -D KGID_STRUCT_CHECK
-KGID_CONFIG_CHECK	:= $(shell bash -c "grep -s CONFIG_UIDGID_STRICT_TYPE_CHECKS $(K_S_PATH)/linux/uidgid.h $(K_B_PATH)/linux/uidgid.h")
+KGID_CONFIG_CHECK := $(shell sh -c "grep -s CONFIG_UIDGID_STRICT_TYPE_CHECKS $(KGID_XIDS_FILES)")
 ifneq ($(KGID_CONFIG_CHECK),)
 ccflags-y += -D KGID_CONFIG_CHECK
 endif
 endif
 
-IPV6_SUPPORT	:= $(shell bash -c "grep -s skc_v6_daddr\; $(K_S_PATH)/net/sock.h $(K_B_PATH)/net/sock.h")
+IPV6_FILES := $(K_S_PATH)/net/sock.h $(K_B_PATH)/net/sock.h $(K_K_PATH)/net/sock.h
+IPV6_SUPPORT := $(shell sh -c "grep -s skc_v6_daddr\; $(IPV6_FILES)")
 ifneq ($(IPV6_SUPPORT),)
 ccflags-y += -D IPV6_SUPPORT
 endif
