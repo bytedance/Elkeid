@@ -1053,34 +1053,34 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 
 			len = smith_strnlen_user(native, MAX_ARG_STRLEN);
 			if (len > 11) {
-                if (len > 255)
-                    len = 255; 
+				if (len > 255)
+					len = 255; 
 				memset(buf, 0, 256);
 				if (smith_copy_from_user(buf, native, len))
 					break;
 				else {
 					if (strncmp("SSH_CONNECTION=", buf, 15) == 0) {
-					    ssh_connection_flag = 1;
+						ssh_connection_flag = 1;
 						if (free_ssh_connection == 1) {
 							strcpy(ssh_connection, buf + 15);
 						} else {
 							ssh_connection = "-1";
 						}
 					} else if (strncmp("LD_PRELOAD=", buf, 11) == 0) {
-					    ld_preload_flag = 1;
+						ld_preload_flag = 1;
 						if (free_ld_preload == 1) {
 							strcpy(ld_preload, buf + 11);
 						} else {
 							ld_preload = "-1";
 						}
 					} else if (strncmp("LD_LIBRARY_PATH=", buf, 16) == 0) {
-                        ld_library_path_flag = 1;
+                    	ld_library_path_flag = 1;
                         if (free_ld_library_path == 1) {
-                            strcpy(ld_library_path, buf + 16);
+                        	strcpy(ld_library_path, buf + 16);
                         } else {
-                            ld_library_path = "-1";
-                        }
-                    } 
+                        	ld_library_path = "-1";
+                    	}
+                    }
 				}
 			}
 		}
