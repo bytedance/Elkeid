@@ -55,7 +55,7 @@ More details in [Clamav Docs](https://docs.clamav.net/manual/Signatures.html)
 
 
 
-## <mark><font color=red>Compilation Environment Requirements</font></mark>
+## <font color=red>Compilation Environment Requirements</font>
 
 
 * Build Requirements
@@ -69,7 +69,7 @@ ninjia-build
 libclang >= 3.9 (requried by rust-bindgen)
 gcc >= 6.3 (suggested gcc 6.3.0 which is the default version in debian 9)
 libstdc++.a (libstdc++-6-dev in debian9, libstdc++-9-dev in ubuntu18)
-python3  >= 3.4 (requried by clamav-buildchain)
+python3  >= 3.6 (requried by clamav-buildchain)
 python3-pip (requried by clamav-buildchain)
 ```
 clamav source and buildchain (seen in [./get_deps.sh](./get_deps.sh))
@@ -97,6 +97,15 @@ bash ./get_deps.sh
 # debian & ubuntu
 bash ./libclamav.sh
 ```
+
+
+* export `libstdc++` path `STDLIBCXX_STATIC_PATH` 
+
+   - debian9 with libstdc++-6-dev `export STDLIBCXX_STATIC_PATH='/usr/lib/gcc/x86_64-linux-gnu/6/'`
+   - debian10 with libstdc++-7-dev  `export STDLIBCXX_STATIC_PATH='/usr/lib/gcc/x86_64-linux-gnu/7/'`
+   - debian10 with libstdc++-8-dev  `export STDLIBCXX_STATIC_PATH='/usr/lib/gcc/x86_64-linux-gnu/8/'`
+
+
 *  build elkeid scanner and cli tool
 ```bash
 # debian & ubuntu

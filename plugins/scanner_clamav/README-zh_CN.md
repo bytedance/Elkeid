@@ -58,7 +58,7 @@ root@hostname$ bash ./db_updater.sh
 
 
 
-## <mark><font color=red>需要的编译环境</font></mark>
+## <font color=red>需要的编译环境</font>
 
 * 编译依赖
 ```bash
@@ -70,7 +70,7 @@ ninjia-build
 libclang >= 3.9 (requried by rust-bindgen)
 gcc >= 6.3 (suggested gcc 6.3.0 which is the default version in debian 9)
 libstdc++.a (libstdc++-6-dev in debian9, libstdc++-9-dev in ubuntu18)
-python3  >= 3.4 (requried by clamav-buildchain)
+python3  >= 3.6 (requried by clamav-buildchain)
 python3-pip (requried by clamav-buildchain)
 ```
 clamav source and buildchain ( seen in [./get_deps.sh](./get_deps.sh))
@@ -98,6 +98,14 @@ bash ./get_deps.sh
 # debian & ubuntu
 bash ./libclamav.sh
 ```
+
+* 指定 `libstdc++` 的所在路径 `STDLIBCXX_STATIC_PATH` 
+
+    不同Linux发行版，不同的`libstdc++`版本，安装后对应不同的目录，需要手动指定 环境变量
+   - debian9 中安装 libstdc++-6-dev 版本，需要 `export STDLIBCXX_STATIC_PATH='/usr/lib/gcc/x86_64-linux-gnu/6/'`
+   - debian10 中安装 libstdc++-7-dev 版本，需要 `export STDLIBCXX_STATIC_PATH='/usr/lib/gcc/x86_64-linux-gnu/7/'`
+   - debian10 中安装 libstdc++-8-dev 版本，需要 `export STDLIBCXX_STATIC_PATH='/usr/lib/gcc/x86_64-linux-gnu/8/'`
+
 *  编译 elkeid clamav scanner 插件 和  cli 测试工具
 ```bash
 # debian & ubuntu
