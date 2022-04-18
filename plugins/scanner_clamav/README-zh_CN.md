@@ -58,22 +58,24 @@ root@hostname$ bash ./db_updater.sh
 
 
 
-## 需要的编译环境
+## <mark><font color=red>需要的编译环境</font></mark>
 
 * 编译依赖
 ```bash
 debian 9+ or ubuntu18+
-
 llvm
 musl-gcc
+cmake
+ninjia-build
 libclang >= 3.9 (requried by rust-bindgen)
 gcc >= 6.3 (suggested gcc 6.3.0 which is the default version in debian 9)
 libstdc++.a (libstdc++-6-dev in debian9, libstdc++-9-dev in ubuntu18)
 python3  >= 3.4 (requried by clamav-buildchain)
-clamav source and buildchain
 ```
+clamav source and buildchain ( seen in [./get_deps.sh](./get_deps.sh))
 
-* Rust 1.58.1+ stable 准备
+
+* Rust 1.59.0+ stable 准备
 
 Please install [rust](https://www.rust-lang.org/tools/install) environment:
 ```
@@ -82,7 +84,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup target add x86_64-unknown-linux-gnu
 ```
 
-* 运行脚本以获取依赖
+* 运行脚本以获取 libclamav 编译链依赖
 ```bash
 # 以 debian9 为例
 bash ./get_deps.sh
@@ -147,16 +149,16 @@ ldd ./output/scanner_clamav
         "config":[
             {
                 "name":"scanner_clamav",
-                "version":"1.0.0.1",
+                "version":"1.7.1.2",
                 "download_url":[
-                    "http://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav.tar.gz",
-                    "http://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav.tar.gz",
-                    "http://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav.tar.gz",
-                    "http://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav.tar.gz"
+                    "http://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav-1.7.1.2.tar.gz",
+                    "http://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav-1.7.1.2.tar.gz",
+                    "http://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav-1.7.1.2.tar.gz",
+                    "http://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav-1.7.1.2.tar.gz"
                 ],
                 "type": "tar.gz",
-                "sha256": "cff37d1e71c001239a02eaaa4e9bc94aa0990d336c109b3b9ac338beed900772",
-                "signature": "4387c0a961619b07b20507e434832fda15c7e02b146887a253dc278c6c91bee7",
+                "sha256": "4785de04501cd2043c5a9a1b145faf4d297f3ab0156319e3fc5fa19137e68c37",
+                "signature": "222e02064b9d2fff0ef4c53269e8f2ee3cc628c9befbf583ba93056766f32e68",
                 "detail":""
             }
         ]
@@ -177,7 +179,8 @@ ldd ./output/scanner_clamav
 ###  扫描任务
 * 创建扫描任务 POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
 
-data : The absolute path of the file (not dir) to be scanned.
+data : json strings
+- exe : The absolute path of the file (not dir) to be scanned.
 
 
 ```json
@@ -190,7 +193,7 @@ data : The absolute path of the file (not dir) to be scanned.
         "task": {
             "data_type":6053,
             "name": "scanner_clamav",
-            "data": "/root/xmirg"
+            "data": "{\"exe\":\"/path/to/target\"}"
         }
     }
 }

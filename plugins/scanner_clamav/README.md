@@ -27,13 +27,13 @@ In `config.rs`, there are the following constants. In order to avoid occupying t
 Get default database url with default password `clamav_default_passwd`:
 
 ```bash
-wget http://lf26-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default.zip
+wget http://lf26-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220414.zip
 
-#wget http://lf3-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default.zip
+#wget http://lf3-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220414.zip
 
-#wget http://lf6-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default.zip
+#wget http://lf6-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220414.zip
 
-#wget http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default.zip
+#wget http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220414.zip
 ```
 
 The clamav scanner plugin will [load local database](src/updater.rs) from `TMP_PATH/archive_db_default.zip` with password `ARCHIVE_DB_PWD`, besides, it will also check `ARCHIVE_DB_VERSION` from `ARCHIVE_DB_VERSION_FILE` and `ARCHIVE_DB_PWD`.
@@ -45,7 +45,7 @@ More details in [src/updater.rs](src/updater.rs)
 The default database includes cropped clamav database and open source yara rules.
 ```bash
 root@hostname$ ls
-main.ldb  main.ndb  online_20220222.yar
+main.ldb  main.ndb  online_XXXXXXXX.yar
 ```
 
 More details in [Clamav Docs](https://docs.clamav.net/manual/Signatures.html)
@@ -54,7 +54,8 @@ More details in [Clamav Docs](https://docs.clamav.net/manual/Signatures.html)
     - There are currently a few [limitations](https://docs.clamav.net/manual/Signatures/YaraRules.html) on using YARA rules within ClamAV
 
 
-## Compilation Environment Requirements
+
+## <mark><font color=red>Compilation Environment Requirements</font></mark>
 
 
 * Build Requirements
@@ -63,14 +64,17 @@ debian 9+ or ubuntu18+
 
 llvm
 musl-gcc
+cmake
+ninjia-build
 libclang >= 3.9 (requried by rust-bindgen)
 gcc >= 6.3 (suggested gcc 6.3.0 which is the default version in debian 9)
 libstdc++.a (libstdc++-6-dev in debian9, libstdc++-9-dev in ubuntu18)
 python3  >= 3.4 (requried by clamav-buildchain)
-clamav source and buildchain
 ```
+clamav source and buildchain (seen in [./get_deps.sh](./get_deps.sh))
 
-* Rust 1.58.1 stable
+
+* Rust 1.59.0+ stable
 
 Please install [rust](https://www.rust-lang.org/tools/install) environment:
 ```
@@ -79,7 +83,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup target add x86_64-unknown-linux-gnu
 ```
 
-Run script to get dependencies
+Run script to get build-tool-chain & dependencies of libclamav
 ```bash
 # for example : debian9
 bash ./get_deps.sh
@@ -145,16 +149,16 @@ The `output/scanner_clamav.tar.gz` is used for agent config.
         "config":[
             {
                 "name":"scanner_clamav",
-                "version":"1.0.0.1",
+                "version":"1.7.1.2",
                 "download_url":[
-                    "http://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav.tar.gz",
-                    "http://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav.tar.gz",
-                    "http://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav.tar.gz",
-                    "http://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav.tar.gz"
+                    "http://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav-1.7.1.2.tar.gz",
+                    "http://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav-1.7.1.2.tar.gz",
+                    "http://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav-1.7.1.2.tar.gz",
+                    "http://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner_clamav/scanner_clamav-1.7.1.2.tar.gz"
                 ],
                 "type": "tar.gz",
-                "sha256": "cff37d1e71c001239a02eaaa4e9bc94aa0990d336c109b3b9ac338beed900772",
-                "signature": "4387c0a961619b07b20507e434832fda15c7e02b146887a253dc278c6c91bee7",
+                "sha256": "4785de04501cd2043c5a9a1b145faf4d297f3ab0156319e3fc5fa19137e68c37",
+                "signature": "222e02064b9d2fff0ef4c53269e8f2ee3cc628c9befbf583ba93056766f32e68",
                 "detail":""
             }
         ]
@@ -175,7 +179,8 @@ Sending plugin-task using manager API
 ### scan task
 * create task POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
 
-data : The absolute path of the file (not dir) to be scanned.
+data : json strings
+- exe : The absolute path of the file (not dir) to be scanned.
 
 
 ```json
@@ -188,7 +193,7 @@ data : The absolute path of the file (not dir) to be scanned.
         "task": {
             "data_type":6053,
             "name": "scanner_clamav",
-            "data": "/root/xmirg"
+            "data": "{\"exe\":\"/path/to/target\"}"
         }
     }
 }
