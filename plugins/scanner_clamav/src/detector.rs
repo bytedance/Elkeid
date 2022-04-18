@@ -7,7 +7,7 @@ use coarsetime::Clock;
 use crossbeam_channel::{after, bounded, select};
 use log::*;
 use std::os::linux::fs::MetadataExt;
-use std::{path::Path, thread, time};
+use std::{collections::HashMap, path::Path, thread, time};
 
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -171,6 +171,7 @@ pub struct DetectTask {
     pub btime: u64,
     pub mtime: u64,
     pub token: String,
+    pub add_ons: Option<HashMap<String, String>>,
 }
 
 #[derive(Serialize, Debug)]
@@ -189,7 +190,7 @@ pub struct DetectOneTaskEvent<'a> {
 }
 
 impl DetectOneTaskEvent<'_> {
-    fn to_record_with_sid(&self, sid: &str) -> plugins::Record {
+    fn to_record_with_add_on(&self, addons: &HashMap<String, String>) -> plugins::Record {
         let mut r = plugins::Record::new();
         let mut pld = plugins::Payload::new();
         r.set_data_type(6003);
@@ -204,8 +205,9 @@ impl DetectOneTaskEvent<'_> {
         hmp.insert("md5_hash".to_string(), self.md5_hash.to_string());
         hmp.insert("create_at".to_string(), self.create_at.to_string());
         hmp.insert("modify_at".to_string(), self.modify_at.to_string());
-        hmp.insert("sid".to_string(), sid.to_string());
-        hmp.insert("source".to_string(), "602_scan".to_string());
+        for (k, v) in addons.into_iter() {
+            hmp.insert(k.to_string(), v.to_string());
+        }
         hmp.insert("error".to_string(), self.error.to_string());
         hmp.insert("token".to_string(), self.token.to_string());
 
@@ -391,39 +393,37 @@ impl Detector {
                                 );
                                 continue;
                             }
-                            if !t.data.starts_with("/") {
-                                info!("recv 6053 but not a fullpath {:?}", t.data);
-                                // ignored if not a fullpath from root /
-                                continue;
-                            }
-                            if let Some((file_path, sid)) = t.data.split_once("|") {
-                                let task = DetectTask {
-                                    task_type: "6053".to_string(),
-                                    pid: 0,
-                                    path: file_path.to_string(),
-                                    rpath: sid.to_string(),
-                                    token: t.token,
-                                    btime: 0,
-                                    mtime: 0,
-                                    size: 0,
+                            let task_map: HashMap<String, String> =
+                                match serde_json::from_str(&t.data) {
+                                    Ok(data) => data,
+                                    Err(e) => {
+                                        error!("error decode &t.data {:?}", &t.data);
+                                        continue;
+                                    }
                                 };
-                                if let Err(e) = task_sender.try_send(task) {
-                                    error!("internal send task err : {:?}", e);
+                            let mut target_path = "".to_string();
+
+                            if let Some(task_exe_scan) = task_map.get("exe") {
+                                if !task_exe_scan.starts_with("/") {
+                                    info!("recv 6053 but not a fullpath {:?}", t.data);
                                     continue;
+                                    // ignored if not a fullpath from root /
                                 }
+                                target_path = task_exe_scan.to_string();
+                            } else {
                                 continue;
                             }
                             let task = DetectTask {
                                 task_type: "6053".to_string(),
                                 pid: 0,
-                                path: t.data.to_string(),
+                                path: target_path,
                                 rpath: "".to_string(),
                                 token: t.token,
                                 btime: 0,
                                 mtime: 0,
                                 size: 0,
+                                add_ons: Some(task_map),
                             };
-
                             if let Err(e) = task_sender.try_send(task) {
                                 error!("internal send task err : {:?}", e);
                                 continue;
@@ -689,29 +689,16 @@ impl Detector {
                                             &fclass,
                                             &fname
                                         );
-                                        if &task.rpath != ""{
-                                            if let Err(e) = self.client.send_record(&event.to_record_with_sid(&task.rpath)) {
-                                                warn!("send err, should exit : {:?}",e);
-                                                work_s_locker.send(()).unwrap();
-                                                return
-                                            };
-                                            continue
-                                        }
-                                        if let Err(e) = self.client.send_record(&event.to_record()) {
+
+                                    }
+                                    if let Some(addonsmap) = &task.add_ons{
+                                        if let Err(e) = self.client.send_record(&event.to_record_with_add_on(&addonsmap)) {
                                             warn!("send err, should exit : {:?}",e);
                                             work_s_locker.send(()).unwrap();
                                             return
                                         };
-                                    } else {
-                                        if &task.rpath != ""{
-                                            if let Err(e) = self.client.send_record(&event.to_record_with_sid(&task.rpath)) {
-                                                warn!("send err, should exit : {:?}",e);
-                                                work_s_locker.send(()).unwrap();
-                                                return
-                                            };
-                                            continue
-                                        }
-                                        
+                                        continue;
+                                    }else {
                                         if let Err(e) = self.client.send_record(&event.to_record()) {
                                             warn!("send err, should exit : {:?}",e);
                                             work_s_locker.send(()).unwrap();
