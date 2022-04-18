@@ -70,6 +70,7 @@ libclang >= 3.9 (requried by rust-bindgen)
 gcc >= 6.3 (suggested gcc 6.3.0 which is the default version in debian 9)
 libstdc++.a (libstdc++-6-dev in debian9, libstdc++-9-dev in ubuntu18)
 python3  >= 3.4 (requried by clamav-buildchain)
+python3-pip (requried by clamav-buildchain)
 ```
 clamav source and buildchain (seen in [./get_deps.sh](./get_deps.sh))
 
