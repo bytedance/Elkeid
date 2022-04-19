@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/bytedance/Elkeid/agent/agent"
-	"github.com/bytedance/Elkeid/agent/core"
+	"github.com/bytedance/Elkeid/agent/buffer"
 	"github.com/bytedance/Elkeid/agent/proto"
 	"github.com/bytedance/Elkeid/agent/utils"
 	"go.uber.org/zap"
@@ -146,7 +146,7 @@ func Load(ctx context.Context, config proto.Config) (plg *Plugin, err error) {
 					break
 				}
 			}
-			core.Transmission(rec, true)
+			buffer.WriteEncodedRecord(rec)
 		}
 	}()
 	go func() {
