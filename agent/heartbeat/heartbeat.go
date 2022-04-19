@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/bytedance/Elkeid/agent/agent"
-	"github.com/bytedance/Elkeid/agent/core"
+	"github.com/bytedance/Elkeid/agent/buffer"
 	"github.com/bytedance/Elkeid/agent/host"
 	"github.com/bytedance/Elkeid/agent/plugin"
 	"github.com/bytedance/Elkeid/agent/proto"
@@ -97,7 +97,7 @@ func getAgentStat(now time.Time) {
 	}
 	zap.S().Infof("agent heartbeat completed:%+v", rec.Data.Fields)
 	daemon.SdNotify(false, "WATCHDOG=1")
-	core.Transmission(rec, false)
+	buffer.WriteRecord(rec)
 }
 func getPlgStat(now time.Time) {
 	plgs := plugin.GetAll()
@@ -118,7 +118,7 @@ func getPlgStat(now time.Time) {
 				rec.Data.Fields["rss"] = strconv.FormatUint(rss, 10)
 				rec.Data.Fields["read_speed"] = strconv.FormatFloat(readSpeed, 'f', 8, 64)
 				rec.Data.Fields["write_speed"] = strconv.FormatFloat(writeSpeed, 'f', 8, 64)
-				rec.Data.Fields["pid"] = strconv.Itoa(os.Getpid())
+				rec.Data.Fields["pid"] = strconv.Itoa(plg.Pid())
 				rec.Data.Fields["fd_cnt"] = strconv.FormatInt(int64(fds), 10)
 				rec.Data.Fields["started_at"] = strconv.FormatInt(startAt, 10)
 			}
@@ -129,7 +129,7 @@ func getPlgStat(now time.Time) {
 			rec.Data.Fields["rx_speed"] = strconv.FormatFloat(RxSpeed, 'f', 8, 64)
 			rec.Data.Fields["tx_speed"] = strconv.FormatFloat(TxSpeed, 'f', 8, 64)
 			zap.S().Infof("plugin heartbeat completed:%+v", rec.Data.Fields)
-			core.Transmission(rec, false)
+			buffer.WriteRecord(rec)
 		}
 	}
 }
