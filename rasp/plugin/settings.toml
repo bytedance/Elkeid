@@ -17,7 +17,6 @@ collect_env = [
 
 ### carefully! auto attach after inspected
 auto_attach_runtime = [
-"JVM",
 ]
 
 
@@ -58,4 +57,4 @@ external_message_capablility = 50
 pid_queue_length = 1000
 pid_poll_interval = 60
 clean_up_interval = 60
-report_interval = 60
+report_interval = 120

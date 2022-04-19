@@ -22,6 +22,7 @@ use librasp::{
 use log::*;
 use parking_lot::RwLock;
 use plugins::Client;
+use crate::utils::{generate_heartbeat, generate_seq_id};
 
 pub fn rasp_monitor_start() -> Anyhow<()> {
     let client = Client::new(false);
@@ -195,6 +196,7 @@ fn internal_main(
     let local_filters = load_local_filter()?;
     let tracing_process_arcrw = Arc::new(RwLock::new(HashMap::new()));
     let inspected_process_rw = Arc::clone(&tracing_process_arcrw);
+    let report_process_r = Arc::clone(&tracing_process_arcrw);
     let cleaning_process_rw = Arc::clone(&tracing_process_arcrw);
     let operation_process_rw = Arc::clone(&tracing_process_arcrw);
     let inspect_reportor = internal_message_sender.clone();
@@ -220,7 +222,7 @@ fn internal_main(
             let mut process = match ProcessInfo::collect(pid, &local_filters) {
                 Ok(p) => p,
                 Err(e) => {
-                    // warn!("process filting failed: {} {}", pid, e);
+                    warn!("process filting failed: {} {}", pid, e);
                     sleep(Duration::from_millis(50));
                     continue;
                 }
@@ -241,7 +243,7 @@ fn internal_main(
             };
             info!("found process: {} runtime: {}", process.pid, runtime);
             process.tracing_state = Some(TracingState::INSPECTED);
-	    process.runtime = Some(runtime.clone());
+            process.runtime = Some(runtime.clone());
             for rt in local_filters.auto_attach_runtime.iter() {
                 if &runtime.name == rt {
                     let _ = external_message_sender_for_inspected.send(RASPCommand {
@@ -259,6 +261,28 @@ fn internal_main(
             (*ip).insert(pid, process);
             drop(ip);
             sleep(Duration::from_millis(100));
+        })?;
+    let mut reporter_ctrl = ctrl.clone();
+    let reporter_sender = internal_message_sender.clone();
+    let reporter_thread = Builder::new()
+        .name("reporter".to_string())
+        .spawn(move || loop {
+            debug!("reporter thread looping");
+            if !reporter_ctrl.check() {
+                break;
+            }
+            sleep(Duration::from_secs(settings_int("internal", "report_interval").unwrap_or(120) as u64));
+            let watched_process = report_process_r.read();
+            let watched_process_cloned = watched_process.clone();
+            drop(watched_process);
+            let seq_id = generate_seq_id();
+            for (_pid, process) in watched_process_cloned.iter() {
+                let mut message = generate_heartbeat(&process);
+                message.insert("data_type", "2999".to_string());
+                message.insert("seq_id", seq_id.clone());
+                debug!("sending heartbeat: {:?}", &message);
+                let _ = reporter_sender.send(message);
+            }
         })?;
     /* clean missing process */
     let mut cleaner_ctrl = ctrl.clone();
@@ -298,7 +322,7 @@ fn internal_main(
             debug!("operation thread looping");
             if !operation_ctrl.check() {
                 warn!("opertation recv stop signal, quiting.");
-		break;
+                break;
             }
             let operation_message = match external_message_receiver.try_recv() {
                 Ok(p) => p,
@@ -372,6 +396,7 @@ fn internal_main(
             inspect_thread.join().unwrap();
             cleaner_thread.join().unwrap();
             operation_thread.join().unwrap();
+            reporter_thread.join().unwrap();
             break;
         }
         sleep(Duration::from_secs(10));
