@@ -34,25 +34,30 @@ impl ProbeStateInspect for CPythonProbeState {
         Ok(ProbeState::NotAttach)
     }
 }
+
 pub fn python_attach(pid: i32) -> Result<bool> {
     debug!("python attach: {}", pid);
-    let entry = settings::RASP_PYTHON_ENTRY;
+    let cwd_path = std::env::current_dir()?;
+    let cwd = cwd_path.to_str().unwrap();
+    let entry = format!("{}/{}", cwd, settings::RASP_PYTHON_ENTRY);
     // pangolin inject
-    pangolin_inject_file(pid, entry)
+    pangolin_inject_file(pid, entry.as_str())
 }
 
 pub fn pangolin_inject_file(pid: i32, file_path: &str) -> Result<bool> {
     debug!("pangolin inject: {}", pid);
     // let nsenter = settings::RASP_NS_ENTER_BIN.to_string();
-    let python_loader = settings::RASP_PYTHON_LOADER;
-    let pangolin = settings::RASP_PANGOLIN_BIN;
+    let cwd_path = std::env::current_dir()?;
+    let cwd = cwd_path.to_str().unwrap();
+    let python_loader = format!("{}/{}", cwd, settings::RASP_PYTHON_LOADER);
+    let pangolin = format!("{}/{}", cwd, settings::RASP_PANGOLIN_BIN);
     let file = "--file";
     let extra = "--";
     let pid_string = pid.clone().to_string();
     let args = &[
         pid_string.as_str(),
         extra,
-        python_loader,
+        python_loader.as_str(),
         file,
         file_path
     ];

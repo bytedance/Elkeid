@@ -372,8 +372,11 @@ impl RASPManager {
         }
     }
     pub fn copy_to_dest(&self, dest_root: String) -> Result<()> {
+        let cwd_path = std::env::current_dir()?;
+        let cwd = cwd_path.to_str().unwrap();
+        debug!("current dir: {}", cwd);
         // check namespace before copy
-        match create_all(format!("{}/etc/elkeid/plugin/RASP/rasp", dest_root), false) {
+        match create_all(format!("{}{}", dest_root, cwd), false) {
             Ok(_) => {}
             Err(e) => {
                 warn!("create failed: {:?}", e);
@@ -382,8 +385,8 @@ impl RASPManager {
         let mut options = CopyOptions::new();
         options.overwrite = true;
         return match copy(
-            "/etc/elkeid/plugin/RASP/rasp",
-            format!("{}/etc/elkeid/plugin/RASP/", dest_root),
+            format!("{}/lib", cwd),
+            format!("{}{}", cwd, dest_root),
             &options,
         ) {
             Ok(_) => Ok(()),

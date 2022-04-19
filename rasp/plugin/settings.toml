@@ -47,7 +47,7 @@ cgroup_name = "elkeid_rasp"
 ### mega byte
 cgroup_mem_limit = 300
 ### log
-log_level = "info"
+log_level = "debug"
 
 
 # ==== internal config ====

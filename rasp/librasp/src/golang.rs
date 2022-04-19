@@ -39,11 +39,13 @@ impl ProbeStateInspect for GolangProbeState {
 
 pub fn golang_attach(pid: i32) -> Result<bool> {
     debug!("golang attach: {}", pid);
-    let golang_probe = RASP_GOLANG_BIN;
-    let pangolin = RASP_PANGOLIN_BIN;
+    let cwd_path = std::env::current_dir()?;
+    let cwd = cwd_path.to_str().unwrap();
+    let golang_probe = format!("{}/{}", cwd, RASP_GOLANG_BIN);
+    let pangolin = format!("{}/{}", cwd, RASP_PANGOLIN_BIN);
     let daemon = "--daemon";
     let pid_string = pid.clone().to_string();
-    let args = &[daemon, pid_string.as_str(), golang_probe];
+    let args = &[daemon, pid_string.as_str(), golang_probe.as_str()];
     return match Command::new(pangolin).args(args).status() {
         Ok(st) => Ok(st.success()),
         Err(e) => Err(anyhow!(e.to_string())),

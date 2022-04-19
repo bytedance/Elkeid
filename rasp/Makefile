@@ -23,13 +23,13 @@ endif
 
 
 server: ## build rasp_server bin file
-	mkdir -p output
+	mkdir -p output/lib
 ifeq ($(STATIC), TRUE)
 	$(MAKE) -C rasp_server build-musl
-	cp rasp_server/target/x86_64-unknown-linux-musl/release/rasp_server output/rasp_server
+	cp rasp_server/target/x86_64-unknown-linux-musl/release/rasp_server output/lib/rasp_server
 else
 	$(MAKE) -C rasp_server build
-	cp rasp_server/target/release/rasp_server output/rasp_server
+	cp rasp_server/target/release/rasp_server output/lib/rasp_server
 endif
 
 
@@ -52,11 +52,13 @@ ifeq ($(STATIC), TRUE)
 	./autogen.sh && \
 	CC=$(CC) CFLAGS="-static" ./configure --enable-static-programs=nsenter --disable-all-programs --enable-nsenter && \
 	make
+	cp util-linux/nsenter output/nsenter
 else
 	cd util-linux && \
 	./autogen.sh && \
 	CC=$(CC) ./configure --enable-static-programs=nsenter --disable-all-programs --enable-nsenter && \
 	make
+	cp util-linux/nsenter output/nsenter
 endif
 
 java-attach: ## build jattach using musl-gcc
@@ -79,9 +81,9 @@ java-probe-example: ## build JVM probe example for test
 
 java: java-attach java-probe ## java probe
 	@echo "build JVM probe"
-	mkdir -p output/java
-	cp jvm/JVMProbe/output/SmithAgent.jar output/java/SmithAgent.jar
-	cp jvm/jattach/build/jattach output/java/jattach
+	mkdir -p output/lib/java
+	cp jvm/JVMProbe/output/SmithAgent.jar output/lib/java/SmithAgent.jar
+	cp jvm/jattach/build/jattach output/lib/java/jattach
 
 process_injector: ## build process injector
 	cd pangolin && \
@@ -89,7 +91,8 @@ process_injector: ## build process injector
 	mkdir -p pangolin/build && cd pangolin/build && \
 	CC=$(CC) CXX=$(CXX) \
 	LD=$(LD) cmake -DSTATIC_BUILD=$(STATIC) .. && make
-	cp pangolin/bin/pangolin output/pangolin
+	mkdir -p output/lib
+	cp pangolin/bin/pangolin output/lib/pangolin
 
 python-loader: ## build python loader
 	mkdir -p python/python-loader/build && cd python/python-loader/build && \
@@ -100,11 +103,13 @@ python-probe: python-loader ## install python client so
 
 python: python-probe ## build CPython probe
 	@echo "build CPython probe"
-	mkdir -p output/python
-	cp python/python-loader/bin/* output/
-	cp -r python/python-probe/dist/rasp-1.0.0-py2.py3-none-any.whl output/python/
-	cd output/python/ && unzip -o rasp-1.0.0-py2.py3-none-any.whl
-	cp -r python/entry.py output/python/
+	mkdir -p output/
+	mkdir -p output/lib
+	mkdir -p output/lib/python
+	cp python/python-loader/bin/* output/lib/python/
+	cp -r python/python-probe/dist/rasp-1.0.0-py2.py3-none-any.whl output/lib/python/
+	cd output/lib/python/ && unzip -o rasp-1.0.0-py2.py3-none-any.whl
+	cp -r python/entry.py output/lib/python/
 
 
 go-probe: ## build golang probe
@@ -114,13 +119,17 @@ go-probe: ## build golang probe
 
 go: go-probe ## build go probe
 	@echo "build Golang probe"
-	cp golang/bin/go_probe output/go_probe
+	mkdir -p output
+	mkdir -p output/lib
+	mkdir -p output/lib/golang
+	cp golang/bin/go_probe output/lib/golang/go_probe
+	cp golang/bin/go_loader output/lib/golang/go_loader
 
 
 node: nsenter ## build node probe
 	@echo "build NodeJS probe"
-	mkdir -p output/node
-	cp node/*.js output/node/
+	mkdir -p output/lib/node
+	cp node/*.js output/lib/node/
 
 agent_plugin: rasp server ## build Elkeid-RASP plugin for Agent
 	@echo "build plugin"
@@ -129,14 +138,16 @@ agent_plugin: rasp server ## build Elkeid-RASP plugin for Agent
 ifeq ($(STATIC), TRUE)
 	$(MAKE) -C plugin plugin-musl
 	cp plugin/target/x86_64-unknown-linux-musl/release/elkeid_rasp_monitor output/rasp
+	cp plugin/settings.toml output/settings.toml
 else
 	$(MAKE) -C plugin plugin
 	cp plugin/target/release/elkeid_rasp_monitor output/rasp
+	cp plugin/settings.toml output/settings.toml
 endif
 
 build: agent_plugin nsenter process_injector java python go node rasp server ## build all
 	mkdir -p output
-	cp util-linux/nsenter output/
+	mkdir -p output/lib
 
 
 install: ## install to $PREFIX default: /etc/elkeid/plugin/rasp
