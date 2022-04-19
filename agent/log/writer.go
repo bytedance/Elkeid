@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/bytedance/Elkeid/agent/core"
+	"github.com/bytedance/Elkeid/agent/buffer"
 	"github.com/bytedance/Elkeid/agent/proto"
 )
 
@@ -43,7 +43,7 @@ func (w *GrpcWriter) Write(p []byte) (n int, err error) {
 			rec.Data.Fields[k] = strconv.Itoa(v)
 		}
 	}
-	err = core.Transmission(rec, false)
+	err = buffer.WriteRecord(rec)
 	if err != nil {
 		return
 	}

@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/bytedance/Elkeid/agent/agent"
-	"github.com/bytedance/Elkeid/agent/core"
+	"github.com/bytedance/Elkeid/agent/buffer"
 	"github.com/bytedance/Elkeid/agent/proto"
 	"go.uber.org/zap"
 )
@@ -82,7 +82,7 @@ func (p *Plugin) ReceiveData() (rec *proto.EncodedRecord, err error) {
 	}
 	te := 1
 
-	rec = core.Get()
+	rec = buffer.GetEncodedRecord()
 	var dt, ts, e int
 
 	dt, e, err = readVarint(p.reader)

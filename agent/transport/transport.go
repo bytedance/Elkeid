@@ -15,7 +15,8 @@ func Startup(ctx context.Context, wg *sync.WaitGroup) {
 	defer cancel()
 	subWg := &sync.WaitGroup{}
 	defer subWg.Wait()
-	subWg.Add(1)
+	subWg.Add(2)
+	go startFileExt(subCtx, subWg)
 	go func() {
 		startTransfer(subCtx, subWg)
 		cancel()
