@@ -15,22 +15,31 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Set up JDK 11
-      uses: actions/setup-java@v2
-      with:
-        java-version: '11'
-        distribution: 'adopt'
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
 
     - name: Set up Go
       uses: actions/setup-go@v2
       with:
         go-version: 1.16
 
-    - name: Prerequisites
-      run: sudo apt install autopoint gettext
-
     - name: Build RASP
-      run: make -C rasp build
+      uses: docker/build-push-action@v2
+      with:
+        file: rasp/docker/Dockerfile
+        tags: Elkeid/rasp:latest
+
+    - name: Extract RASP
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: Elkeid/rasp:latest
+        path: /Elkeid/rasp/output/.
+
+    - name: Upload RASP
+      uses: actions/upload-artifact@@v3
+      with:
+        path: ${{ steps.extract.outputs.destination }}
+        name: rasp
 
     - name: Build Agent
       run: cd agent && go build -o elkeid-agent
