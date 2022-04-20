@@ -52,7 +52,7 @@ ifeq ($(STATIC), TRUE)
 	./autogen.sh && \
 	CC=$(CC) CFLAGS="-static" ./configure --enable-static-programs=nsenter --disable-all-programs --enable-nsenter && \
 	make
-	cp util-linux/nsenter output/nsenter
+	cp util-linux/nsenter.static output/nsenter
 else
 	cd util-linux && \
 	./autogen.sh && \
@@ -146,8 +146,7 @@ else
 endif
 
 build: agent_plugin nsenter process_injector java python go node rasp server ## build all
-	mkdir -p output
-	mkdir -p output/lib
+	cd output && tar -czvf rasp.tar.gz ./* && sha256sum rasp.tar.gz && sha256sum rasp
 
 
 install: ## install to $PREFIX default: /etc/elkeid/plugin/rasp

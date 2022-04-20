@@ -50,28 +50,34 @@ impl std::fmt::Display for TracingState {
 impl ProcessInfo {
     pub fn new(pid: i32) -> Self {
         let mut default = Self::default();
-	default.pid = pid;
-	default
+        default.pid = pid;
+        default
     }
     pub fn collect(pid: i32, filters: &Filters) -> AnyhowResult<Self> {
         let mut pi = Self::new(pid);
 
         let process = Process::new(pid)?;
-	let (exe_name, exe_path) = pi.update_exe(&process)?;
-	for ignore_path in filters.ignore_exe_path.iter() {
-	    if exe_path.starts_with(ignore_path) {
-		return Err(anyhow!("hit global exe_path filter: {}, ignore prcess", ignore_path));
-	    }
-	}
-	for ignore_name in filters.ignore_exe_name.iter() {
-	    if &exe_name == ignore_name {
-		return Err(anyhow!("hit global exe_path filter: {}, ignore prcess", ignore_name));
-	    }
-	}
-	pi.update_env(&process, &filters.collect_env)?;
-	pi.update_cmdline(&process)?;
-	pi.update_ns_info(&process)?;
-	Ok(pi)
+        let (exe_name, exe_path) = pi.update_exe(&process)?;
+        for ignore_path in filters.ignore_exe_path.iter() {
+            if exe_path.starts_with(ignore_path) {
+                return Err(anyhow!("hit global exe_path filter: {}, ignore prcess", ignore_path));
+            }
+        }
+        for ignore_name in filters.ignore_exe_name.iter() {
+            if &exe_name == ignore_name {
+                return Err(anyhow!("hit global exe_path filter: {}, ignore prcess", ignore_name));
+            }
+        }
+        if filters.collect_all_env {
+            log::debug!("collect_all_env");
+            pi.update_all_env(&process)?
+        } else {
+            pi.update_env(&process, &filters.collect_env)?;
+        }
+        pi.update_cmdline(&process)?;
+        pi.update_ns_info(&process)?;
+        log::debug!("collect_all_env: {:?}", pi.environ);
+        Ok(pi)
     }
     fn update_exe(&mut self, process: &Process) -> AnyhowResult<(String, String)> {
         if self.exe_name.is_some() && self.exe_path.is_some() {
@@ -97,12 +103,25 @@ impl ProcessInfo {
         self.exe_path = Some(exe_path.clone());
         Ok((exe_name, exe_path))
     }
+    fn update_all_env(
+        &mut self,
+        process: &Process,
+    ) -> AnyhowResult<()> {
+        let envs = process.environ()?;
+        let mut map = HashMap::new();
+        for (k, v) in envs {
+            map.insert(k.clone(), v.clone());
+        }
+        self.environ = Some(map);
+        Ok(())
+
+    }
     fn update_env(
         &mut self,
         process: &Process,
         collect: &Vec<String>,
     ) -> AnyhowResult<HashMap<String, String>> {
-	let mut keys = collect.clone();
+        let mut keys = collect.clone();
         let mut result: HashMap<String, String> = HashMap::new();
         if self.environ.is_some() {
             let environ = self.environ.as_ref().unwrap();
@@ -234,8 +253,8 @@ fn traverse_proc() -> AnyhowResult<Vec<i32>> {
 
 // copy from https://github.com/rust-psutil/rust-psutil/blob/b50a3fbc77fbf042c58b6f9ca9345e2c3c8d449b/src/errors.rs#L88
 fn read_dir<P>(path: P) -> AnyhowResult<Vec<fs::DirEntry>>
-where
-    P: AsRef<Path>,
+    where
+        P: AsRef<Path>,
 {
     fs::read_dir(&path)
         .map_err(|err| anyhow!("Failed to read file '{:?}': {}", path.as_ref(), err))?
@@ -249,17 +268,16 @@ where
 pub fn process_health(traced_processes: &HashMap<i32, ProcessInfo>) -> Vec<i32> {
     let mut result = Vec::new();
     for (pid, _) in traced_processes.iter() {
-	if let Ok(p) = Process::new(*pid) {
-	    // zombie check
-	    if let Ok(_) = p.status() {
-		continue;
-	    }
-	    else {
-		result.push(pid.clone());
-	    }
-	} else {
-	    result.push(pid.clone());
-	}
+        if let Ok(p) = Process::new(*pid) {
+            // zombie check
+            if let Ok(_) = p.status() {
+                continue;
+            } else {
+                result.push(pid.clone());
+            }
+        } else {
+            result.push(pid.clone());
+        }
     }
     result
 }

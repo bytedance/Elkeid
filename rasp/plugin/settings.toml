@@ -14,6 +14,7 @@ ignore_exe_name = [
 collect_env = [
 "PROCESS_ENV_KEY",
 ]
+collect_all_env = true
 
 ### carefully! auto attach after inspected
 auto_attach_runtime = [

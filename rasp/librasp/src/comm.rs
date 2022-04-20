@@ -36,7 +36,9 @@ pub struct RASPServerRunner {
 #[allow(dead_code)]
 fn no_ns_enter_spawn(log_level: String) -> Result<Child, String> {
     info!("spawn new rasp server");
-    let rasp_server = settings::RASP_SERVER_BIN.to_string();
+    let cwd_path = std::env::current_dir().unwrap();
+    let cwd = cwd_path.to_str().unwrap();
+    let rasp_server = format!("{}/{}", cwd, settings::RASP_SERVER_BIN.to_string());
     let log_level = format!("RUST_LOG={}", log_level);
     let args = &[log_level.as_str(), rasp_server.as_str()];
     debug!("env {:?}", args.clone());
@@ -57,8 +59,10 @@ fn no_ns_enter_spawn(log_level: String) -> Result<Child, String> {
 }
 fn ns_enter_spawn(pid: i32, log_level: String) -> Result<Child, String> {
     info!("spawn new rasp server");
-    let rasp_server = settings::RASP_SERVER_BIN.to_string();
-    let nsenter = settings::RASP_NS_ENTER_BIN.to_string();
+    let cwd_path = std::env::current_dir().unwrap();
+    let cwd = cwd_path.to_str().unwrap();
+    let rasp_server = format!("{}/{}", cwd, settings::RASP_SERVER_BIN.to_string());
+    let nsenter = format!("{}/{}", cwd, settings::RASP_NS_ENTER_BIN.to_string());
     let pid_string = pid.clone().to_string();
     let log_level = format!("RUST_LOG={}", log_level);
     let args = &[
@@ -71,7 +75,7 @@ fn ns_enter_spawn(pid: i32, log_level: String) -> Result<Child, String> {
         log_level.as_str(),
         rasp_server.as_str(),
     ];
-    debug!("nsenter {:?}", args.clone());
+    debug!("{} {:?}", nsenter, args.clone());
     let child = match Command::new(nsenter)
         .args(args)
         .stdin(Stdio::piped())
