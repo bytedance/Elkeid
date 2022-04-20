@@ -36,6 +36,7 @@ mod bindings {
             .header("wrapper.h")
             .clang_arg("-I./usr/include/linux")
             .clang_arg("-Iinclude")
+            .clang_arg("-Iclamav-mussels-cookbook/mussels/install/include")
             .generate()
             .unwrap();
         bindings.write_to_file("src/clamav.rs").unwrap();
