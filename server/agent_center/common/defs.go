@@ -14,6 +14,7 @@ var (
 
 	ConfPath string
 	LocalIP  string //server本地IP
+	FileDir  string = "./file/"
 
 	ManageAddrs []string // addrlist of Management Center
 

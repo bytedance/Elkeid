@@ -107,6 +107,9 @@ func runServer(enableCA bool, port int, crtFile, keyFile, caFile string) {
 
 	server := grpc.NewServer(opts...)
 	pb.RegisterTransferServer(server, &grpc_handler.TransferHandler{})
+	fileHandler := &grpc_handler.FileExtHandler{FileBaseDir: common.FileDir}
+	fileHandler.Init()
+	pb.RegisterFileExtServer(server, fileHandler)
 	reflection.Register(server)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
