@@ -1,5 +1,17 @@
 #!/bin/bash
 
+git clone --depth 1 https://github.com/Cisco-Talos/clamav-mussels-cookbook.git
+cd clamav-mussels-cookbook
+rm -rf  mussels/* &> /dev/null
+mkdir mussels &> /dev/null
+msl build libclamav_deps -t host-static -w mussels/work -i mussels/install
+cd -
+
+# make get clamav source code
+wget http://lf26-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/clamav-clamav-0.104.0.tar.gz
+tar xf ./clamav-clamav-0.104.0.tar.gz
+mv clamav-clamav-0.104.0 clamav
+
 cd clamav
 
 rm -rf  ./build/* &> /dev/null
