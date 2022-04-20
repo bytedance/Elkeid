@@ -43,6 +43,26 @@ jobs:
         path: ${{ steps.extract-rasp.outputs.destination }}
         name: rasp
 
+    - name: Build ScannerClamav
+      uses: docker/build-push-action@v2
+      with:
+        file: plugins/scanner_clamav/docker/Dockerfile
+        load: true
+        tags: elkeid/scanner_clamav:latest
+
+    - name: Extract ScannerClamav
+      id: extract-scanner_clamav
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeid/scanner_clamav:latest
+        path: /Elkeid/plugins/scanner_clamav/output/.
+
+    - name: Upload ScannerClamav
+      uses: actions/upload-artifact@v3
+      with:
+        path: ${{ steps.extract-scanner_clamav.outputs.destination }}
+        name: scanner_clamav
+
     - name: Build Agent
       run: cd agent && go build -o elkeid-agent
 
