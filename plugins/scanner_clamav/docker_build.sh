@@ -1,5 +1,5 @@
 #!/bin/bash
-docker build --build-arg STEP22=false  -t scanner_clamav -f docker/Dockerfile ../../ 
+docker build -t scanner_clamav -f docker/Dockerfile ../../ 
 
 
 # check if libclamav_deps-0.104 success
