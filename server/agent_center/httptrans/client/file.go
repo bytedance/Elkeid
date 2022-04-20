@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	UploadFileUrl = "%s/api/v6/shared/Upload"
+	UploadFileUrl = "http://%s/api/v6/shared/Upload"
 )
 
 type UploadResp struct {

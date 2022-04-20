@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const TaskUrl = `%s/api/v1/agent/subTask/updateSubTask`
+const TaskUrl = `http://%s/api/v1/agent/updateSubTask`
 
 type ResTaskConf struct {
 	Code    int    `json:"code"`

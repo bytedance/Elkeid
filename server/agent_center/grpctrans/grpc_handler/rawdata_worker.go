@@ -2,6 +2,7 @@ package grpc_handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/kafka"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
@@ -65,7 +66,7 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 			if err != nil {
 				continue
 			}
-
+			item["data_type"] = fmt.Sprintf("%d", mqMsg.DataType)
 			err = GlobalGRPCPool.PushTask2Manager(item)
 			if err != nil {
 				ylog.Errorf("handleRawData", "PushTask2Manager error %s", err.Error())
