@@ -64,7 +64,7 @@ debian 9+ or ubuntu18+
 
 llvm
 musl-gcc
-cmake
+cmake >= 3.15 (requried by clamav-buildchain)
 ninjia-build
 libclang >= 3.9 (requried by rust-bindgen)
 gcc >= 6.3 (suggested gcc 6.3.0 which is the default version in debian 9)
@@ -75,7 +75,7 @@ python3-pip (requried by clamav-buildchain)
 clamav source and buildchain (seen in [./get_deps.sh](./get_deps.sh))
 
 
-* Rust 1.59.0+ stable
+* Rust 1.60.0+ stable
 
 Please install [rust](https://www.rust-lang.org/tools/install) environment:
 ```
