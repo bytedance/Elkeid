@@ -54,8 +54,13 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 			//
 			//parse the agent plugins heartbeat data
 			parsePluginHeartBeat(req.GetData()[k], req, conn)
-		case 2001, 2003, 6003:
-			//Task asynchronously pushed to the remote end for reconciliation.
+		case 2001, 2003, 6003, 5100, 5101, 8010:
+			// Asynchronously pushed to the remote end for reconciliation.
+
+			//5100: 主动触发资产数据扫描
+			//5101: 组件版本验证
+			//8010: 基线扫描
+			//task数据。需要 对账+存储db
 			item, err := parseRecord(req.GetData()[k])
 			if err != nil {
 				continue
