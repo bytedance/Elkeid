@@ -72,7 +72,7 @@ libstdc++.a (libstdc++-6-dev in debian9, libstdc++-9-dev in ubuntu18)
 python3  >= 3.6 (requried by clamav-buildchain)
 python3-pip (requried by clamav-buildchain)
 ```
-clamav source and buildchain (seen in [./get_deps.sh](./get_deps.sh))
+clamav source and buildchain ( seen in [./get_deps.sh](./get_deps.sh) and [./libclamav.sh](./libclamav.sh))
 
 
 * Rust 1.60.0+ stable
