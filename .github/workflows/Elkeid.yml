@@ -27,6 +27,7 @@ jobs:
       uses: docker/build-push-action@v2
       with:
         file: rasp/docker/Dockerfile
+        load: true
         tags: elkeid/rasp:latest
 
     - name: Extract RASP
