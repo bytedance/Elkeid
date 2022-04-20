@@ -30,6 +30,7 @@ jobs:
         tags: elkeid/rasp:latest
 
     - name: Extract RASP
+      id: extract-rasp
       uses: shrink/actions-docker-extract@v1
       with:
         image: elkeid/rasp:latest
@@ -38,7 +39,7 @@ jobs:
     - name: Upload RASP
       uses: actions/upload-artifact@v3
       with:
-        path: ${{ steps.extract.outputs.destination }}
+        path: ${{ steps.extract-rasp.outputs.destination }}
         name: rasp
 
     - name: Build Agent
