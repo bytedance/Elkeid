@@ -36,7 +36,7 @@ jobs:
         path: /Elkeid/rasp/output/.
 
     - name: Upload RASP
-      uses: actions/upload-artifact@@v3
+      uses: actions/upload-artifact@v3
       with:
         path: ${{ steps.extract.outputs.destination }}
         name: rasp
