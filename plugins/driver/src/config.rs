@@ -50,7 +50,8 @@ lazy_static! {
     pub static ref IPV6_FILTER: IpRange<Ipv6Net> = {
         let mut r = IpRange::new();
         r.add("fe80::/10".parse().unwrap())
-            .add("::ffff:127.0.0.1/104".parse().unwrap());
+            .add("::ffff:127.0.0.1/104".parse().unwrap())
+            .add("::1/128".parse().unwrap());
         r
     };
     pub static ref PGID_ARGV_WHITELIST: HashSet<&'static [u8]> = {
