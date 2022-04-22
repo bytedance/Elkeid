@@ -213,6 +213,133 @@ struct file *smith_fget_raw(unsigned int fd)
 	return file;
 }
 
+static char *(*smith_d_absolute_path)(const struct path *path,
+	       char *buf, int buflen);
+static __always_inline char *smith_d_path(const struct path *path, char *buf, int buflen)
+{
+    char *name = DEFAULT_RET_STR;
+    if (buf) {
+        name = smith_d_absolute_path(path, buf, buflen);
+        if (IS_ERR(name))
+            name = NAME_TOO_LONG;
+    }
+    return name;
+}
+
+/*
+ * dentry_path_raw implementation for kernels < 2.6.38
+ */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 38)
+static int prepend(char **buffer, int *buflen, const char *str, int namelen)
+{
+    *buflen -= namelen;
+    if (*buflen < 0)
+        return -ENAMETOOLONG;
+    *buffer -= namelen;
+    memcpy(*buffer, str, namelen);
+    return 0;
+}
+
+static int prepend_name(char **buffer, int *buflen, struct qstr *name)
+{
+    return prepend(buffer, buflen, name->name, name->len);
+}
+
+//get file path from dentry struct
+static char *__dentry_path(struct dentry *dentry, char *buf, int buflen)
+{
+    char *end = buf + buflen;
+    char *retval;
+
+    prepend(&end, &buflen, "\0", 1);
+    if (buflen < 1)
+        goto Elong;
+    retval = end - 1;
+    *retval = '/';
+
+    while (!IS_ROOT(dentry)) {
+        struct dentry *parent = dentry->d_parent;
+        int error;
+
+        prefetch(parent);
+        spin_lock(&dentry->d_lock);
+        error = prepend_name(&end, &buflen, &dentry->d_name);
+        spin_unlock(&dentry->d_lock);
+        if (error != 0 || prepend(&end, &buflen, "/", 1) != 0)
+            goto Elong;
+
+        retval = end;
+        dentry = parent;
+    }
+    return retval;
+Elong:
+    return ERR_PTR(-ENAMETOOLONG);
+}
+#endif /* < 2.6.38 */
+
+/*
+ * query task's executable image file, with mmap lock avoided, just because
+ * mmput() could lead resched() (since it's calling might_sleep() interally)
+ *
+ * there could be races on mm->exe_file, but we could assure we can always
+ * get a valid filp or NULL
+ */
+static inline struct file *smith_get_task_exe_file(struct task_struct *task)
+{
+    struct file *exe = NULL;
+
+    /*
+     * get_task_mm/mmput must be avoided here
+     *
+     * mmput would put current task to sleep, which violates kprobe. or
+     * use mmput_async instead, but it's only available for after 4.7.0
+     * (and CONFIG_MMU is enabled)
+     */
+    task_lock(task);
+    if (task->mm && task->mm->exe_file) {
+        exe = task->mm->exe_file;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0)
+        if (!get_file_rcu(exe))
+            exe = NULL;
+#else
+        /* only inc f_count when it's not 0 to avoid races upon exe_file */
+        if (!atomic_long_inc_not_zero(&exe->f_count))
+            exe = NULL;
+#endif
+    }
+    task_unlock(task);
+
+    return exe;
+}
+
+// get full path of current task's executable image
+static __always_inline char *smith_get_exe_file(char *buffer, int size)
+{
+    char *exe_file_str = DEFAULT_RET_STR;
+    struct file *exe;
+
+    if (!buffer || !current->mm)
+        return exe_file_str;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0)
+    /*
+     * 1) performance improvement for kernels >=4.1: use get_mm_exe_file instead
+     *    get_mm_exe_file internally uses rcu lock (with semaphore locks killed)
+     * 2) it's safe to directly access current->mm under current's own context
+     * 3) get_mm_exe_file() is no longer exported after kernel 5.15
+     */
+    exe = get_mm_exe_file(current->mm);
+#else
+    exe = smith_get_task_exe_file(current);
+#endif
+    if (exe) {
+        exe_file_str = smith_d_path(&exe->f_path, buffer, size);
+        fput(exe);
+    }
+
+    return exe_file_str;
+}
+
 /*
  * wrapper for ktime_get_real_seconds
  */
@@ -267,6 +394,12 @@ static int __init kernel_symbols_init(void)
         smith_ktime_get_real_seconds = ptr;
     smith_init_get_seconds();
 #endif
+
+    ptr = (void *)smith_kallsyms_lookup_name("d_absolute_path");
+    if (ptr)
+        smith_d_absolute_path = ptr;
+    else
+        smith_d_absolute_path = (void *)d_path;
 
     return 0;
 }
