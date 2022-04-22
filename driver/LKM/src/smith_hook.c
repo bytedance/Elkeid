@@ -3078,6 +3078,21 @@ int file_permission_handler(struct kprobe *p, struct pt_regs *regs)
 //    return 0;
 //}
 
+/*
+ * data contains the mount options specified by user. It
+ * could containbinary chars or utf8/unicode, depending
+ * on filesystem. The buffer is fixed as 1 page long.
+ */
+static int mount_check_options(char *data)
+{
+    int i;
+    for (i = PAGE_SIZE - 1; i > 0; i--) {
+        if (data[i] == 0)
+            return 1;
+    }
+    return 0;
+}
+
 int mount_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     unsigned long flags = 0;
@@ -3091,6 +3106,7 @@ int mount_pre_handler(struct kprobe *p, struct pt_regs *regs)
 
     const char *fstype = NULL;
     const char *dev_name = NULL;
+    char *data;
 
     struct path *path = NULL;
 
@@ -3102,23 +3118,25 @@ int mount_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if (IS_ERR_OR_NULL(path) || !dev_name || !*dev_name)
         return 0;
 
-    pid_tree = smith_get_pid_tree(PID_TREE_LIMIT);
-
-    pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    file_path = smith_d_path(path, pname_buf, PATH_MAX);
-
     buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
     exe_path = smith_get_exe_file(buffer, PATH_MAX);
+    if (execve_exe_check(exe_path))
+        goto out;
 
-    if (!execve_exe_check(exe_path))
-        mount_print(exe_path, pid_tree, dev_name, file_path, fstype, flags);
+    pid_tree = smith_get_pid_tree(PID_TREE_LIMIT);
+    pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
+    file_path = smith_d_path(path, pname_buf, PATH_MAX);
+    data = (char *)p_regs_get_arg5(regs);
+    if (!data || !mount_check_options(data))
+        data = DEFAULT_RET_STR;
 
+    mount_print(exe_path, pid_tree, dev_name, file_path, fstype, flags, data);
+
+out:
     if (buffer)
         smith_kfree(buffer);
-
     if (pname_buf)
         smith_kfree(pname_buf);
-
     if (pid_tree)
         smith_kfree(pid_tree);
 

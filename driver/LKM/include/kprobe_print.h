@@ -2242,9 +2242,9 @@ PRINT_EVENT_DEFINE(file_permission_read,
 );
 
 PRINT_EVENT_DEFINE(mount,
-                   PE_PROTO(char * exe_path, char * pid_tree, const char * dev_name, char * file_path, const char * fstype, unsigned long  flags),
+                   PE_PROTO(char * exe_path, char * pid_tree, const char * dev_name, char * file_path, const char * fstype, unsigned long  flags, char *data),
 
-                   PE_ARGS(exe_path, pid_tree, dev_name, file_path, fstype, flags),
+                   PE_ARGS(exe_path, pid_tree, dev_name, file_path, fstype, flags, data),
 
                    PE_STRUCT__entry(
                            __field(int, uid)
@@ -2265,6 +2265,7 @@ PRINT_EVENT_DEFINE(mount,
                            __string(file_path, file_path)
                            __string(fstype, fstype)
                            __field(unsigned long, flags)
+                           __string(data, data)
                    ),
 
                    PE_fast_assign(
@@ -2286,9 +2287,10 @@ PRINT_EVENT_DEFINE(mount,
                            __assign_str(file_path, file_path);
                            __assign_str(fstype, fstype);
                            __entry->flags = flags;
+                           __assign_str(data, data);
                    ),
 
-                   PE_printk("165" RS "%d" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%u" RS "%u" RS "%s" RS "%s" RS "%s" RS "%s" RS "%lu",
+                   PE_printk("165" RS "%d" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%u" RS "%u" RS "%s" RS "%s" RS "%s" RS "%s" RS "%lu" RS "%s",
                            __get_ent(uid, __get_current_uid()),
                            __get_str(exe_path, exe_path),
                            __get_ent(pid, current->pid),
@@ -2306,7 +2308,8 @@ PRINT_EVENT_DEFINE(mount,
                            __get_str(dev_name, dev_name),
                            __get_str(file_path, file_path),
                            __get_str(fstype, fstype),
-                           __get_ent(flags, flags)
+                           __get_ent(flags, flags),
+                           __get_str(data, data)
                    )
 );
 
