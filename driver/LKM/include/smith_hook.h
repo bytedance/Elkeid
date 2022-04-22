@@ -129,7 +129,7 @@ struct smith_tid {
     uint32_t            st_sid;     /* session id (when being created) */
     char               *st_pid_tree;/* pid tree strings */
     struct smith_img   *st_img;     /* cache of exe path */
-    char                st_comm[TASK_COMM_LEN];
+    unsigned long       st_root;    /* ~ superblock of root filesystem */
 };
 
 static inline uint64_t smith_task_start_time(struct task_struct *task) {
@@ -146,6 +146,7 @@ static inline int smith_query_sid(void)
 {
     return smith_query_tid(current);
 }
+unsigned long smith_query_mntns(void);
 int smith_put_tid(struct smith_tid *tid);
 int smith_drop_tid(struct task_struct *task);
 void smith_enum_tid(void);

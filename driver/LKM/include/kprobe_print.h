@@ -14,8 +14,8 @@
                      ENTRY_STL(comm, current->comm, TASK_COMM_LEN),                 \
                      ENTRY_STR(nodename, current->nsproxy->uts_ns->name.nodename),  \
                      ENTRY_U32(sessionid, __get_sessionid()),                       \
-                     ENTRY_U32(pid_inum, __get_pid_ns_inum()),                      \
-                     ENTRY_U32(root_pid_inum, ROOT_PID_NS_INUM)
+                     ENTRY_ULONG(mntns_id, smith_query_mntns()),                    \
+                     ENTRY_ULONG(root_mntns_id, ROOT_MNT_NS_ID)
 #endif
 
 SD_XFER_DEFINE( NAME(call_usermodehelper_exec),
@@ -645,7 +645,7 @@ SD_XFER_DEFINE( NAME(privilege_escalation),
                      ENTRY_STR(nodename, current->nsproxy->uts_ns->name.nodename),
                      ENTRY_U32(sessionid, __get_sessionid()),
                      ENTRY_U32(pid_inum, __get_pid_ns_inum()),
-                     ENTRY_UINT(root_pid_inum, ROOT_PID_NS_INUM),
+                     ENTRY_ULONG(root_mntns_id, ROOT_MNT_NS_ID),
 
                      ENTRY_INT(parent_pid, parent_pid),
                      ENTRY_STR(pid_tree, pid_tree),
