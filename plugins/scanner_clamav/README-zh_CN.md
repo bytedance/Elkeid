@@ -218,4 +218,4 @@ error: "creation time is not available for the filesystem
 
 
 ## License
-Yara Scanner plugin is distributed under the Apache-2.0 license.
+Clamav Scanner plugin is distributed under the Apache-2.0 license.
