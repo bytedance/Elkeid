@@ -163,6 +163,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
         push(methodID);
         loadLocal(argumentsVariable);
         loadLocal(returnVariable);
+        push(false);
 
         invokeVirtual(
                 Type.getType(SmithProbe.class),
@@ -173,7 +174,8 @@ public class SmithMethodVisitor extends AdviceAdapter {
                                 Type.INT_TYPE,
                                 Type.INT_TYPE,
                                 Type.getType(Object[].class),
-                                Type.getType(Object.class)
+                                Type.getType(Object.class),
+                                Type.BOOLEAN_TYPE
                         }
                 )
         );
@@ -238,6 +240,13 @@ public class SmithMethodVisitor extends AdviceAdapter {
         loadLocal(argumentsVariable);
         visitInsn(Opcodes.ACONST_NULL);
 
+        if (!canBlock) {
+            push(false);
+        } else {
+            loadLocal(returnVariable + 1);
+            instanceOf(Type.getType(SecurityException.class));
+        }
+
         invokeVirtual(
                 Type.getType(SmithProbe.class),
                 new Method(
@@ -247,7 +256,8 @@ public class SmithMethodVisitor extends AdviceAdapter {
                                 Type.INT_TYPE,
                                 Type.INT_TYPE,
                                 Type.getType(Object[].class),
-                                Type.getType(Object.class)
+                                Type.getType(Object.class),
+                                Type.BOOLEAN_TYPE
                         }
                 )
         );
