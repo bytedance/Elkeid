@@ -65,6 +65,7 @@ def smith_hook(func, class_id, method_id, constructor=False, can_block=False, ch
         smith_trace = {
             'class_id': class_id,
             'method_id': method_id,
+            'blocked': False,
             'args': [stringify(i) for i in args[int(constructor):]],
             'kwargs': {key: stringify(value) for key, value in kwargs.items()},
             'stack_trace': [
@@ -85,6 +86,7 @@ def smith_hook(func, class_id, method_id, constructor=False, can_block=False, ch
             _block = _blocks.get((class_id, method_id), None)
 
             if _block and any(pred(rule) for rule in _block['rules']):
+                smith_trace['blocked'] = True
                 _client.post_message(TRACE_OPERATE, smith_trace)
                 raise RuntimeError('API blocked by RASP')
 

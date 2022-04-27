@@ -27,7 +27,8 @@ void from_json(const nlohmann::json &j, CSmithMessage &m) {
 void to_json(nlohmann::json &j, const CSmithTrace &t) {
     j = nlohmann::json {
         {"class_id", t.classID},
-        {"method_id", t.methodID}
+        {"method_id", t.methodID},
+        {"blocked", t.blocked}
     };
 
     for (int i = 0; i < t.count; i++)

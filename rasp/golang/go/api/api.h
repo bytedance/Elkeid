@@ -162,9 +162,6 @@ public:
 
 private:
     static bool handler(void *sp) {
-        if (!surplus())
-            return true;
-
         unsigned long SFP = FLOAT_REGISTER * sizeof(double _Complex);
         unsigned long SI = INTEGER_REGISTER * sizeof(unsigned long);
 
@@ -182,15 +179,19 @@ private:
         tracer.read(trace);
         trace.traceback(sp);
 
-        gSmithProbe->trace(trace);
+        if (ErrorIndex >= 0 && error.t && block(trace)) {
+            trace.blocked = true;
 
-        if (ErrorIndex < 0 || !error.t)
-            return true;
-
-        if (block(trace)) {
+            gSmithProbe->trace(trace);
             Tamper(I, FP, tracer.getResultStack()).write(ErrorIndex, &error);
+
             return false;
         }
+
+        if (!surplus())
+            return true;
+
+        gSmithProbe->trace(trace);
 
         return true;
     }

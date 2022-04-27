@@ -22,6 +22,14 @@ public class SmithTrace {
         this.methodID = methodID;
     }
 
+    public boolean isBlocked() {
+        return blocked;
+    }
+
+    public void setBlocked(boolean blocked) {
+        this.blocked = blocked;
+    }
+
     public Object getRet() {
         return ret;
     }
@@ -48,6 +56,7 @@ public class SmithTrace {
 
     private int classID;
     private int methodID;
+    private boolean blocked;
 
     @JsonSerialize(converter = RetConverter.class)
     private Object ret;
