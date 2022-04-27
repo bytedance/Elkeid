@@ -30,6 +30,7 @@ dependencies {
     implementation group: 'io.netty', name: 'netty-all', version: '4.1.51.Final'
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.11.2'
     implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.11'
+    implementation group: 'com.lmax', name: 'disruptor', version: '3.4.4'
 }
 
 compileJava {
@@ -99,6 +100,7 @@ task genDict {
 
 shadowJar {
     relocate 'io.netty', 'rasp.io.netty'
+    relocate 'com.lmax.disruptor', 'rasp.com.lmax.disruptor'
     relocate 'com.fasterxml.jackson', 'rasp.com.fasterxml.jackson'
     relocate 'META-INF/native/libnetty', 'META-INF/native/librasp_netty'
 }

@@ -10,7 +10,7 @@ import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
 public class SmithLogger {
-    public static Logger logger = Logger.getGlobal();
+    public static Logger logger = Logger.getLogger("RASP");
 
     static {
         logger.setUseParentHandlers(false);
