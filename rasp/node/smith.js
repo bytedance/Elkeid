@@ -95,6 +95,7 @@ function smithHook(func, classID, methodID, canBlock = false, processors = {}) {
         const smithTrace = {
             class_id: classID,
             method_id: methodID,
+            blocked: false,
             args: args.map(stringify),
             stack_trace: new Error().stack.split('\n').slice(1).map(s => s.trim())
         }
@@ -110,6 +111,7 @@ function smithHook(func, classID, methodID, canBlock = false, processors = {}) {
             const block = smith_blocks.get(`${classID} ${methodID}`);
 
             if (block && block.rules.some(pred)) {
+                smithTrace.blocked = true;
                 smith_client.postMessage(OperateEnum.trace, smithTrace);
                 throw new Error('API blocked by RASP');
             }

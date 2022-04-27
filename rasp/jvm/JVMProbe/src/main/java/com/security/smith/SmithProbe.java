@@ -1,5 +1,10 @@
 package com.security.smith;
 
+import com.lmax.disruptor.EventHandler;
+import com.lmax.disruptor.InsufficientCapacityException;
+import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.dsl.Disruptor;
+import com.lmax.disruptor.util.DaemonThreadFactory;
 import com.security.smith.asm.SmithClassVisitor;
 import com.security.smith.asm.SmithClassWriter;
 import com.security.smith.client.Operate;
@@ -21,7 +26,6 @@ import java.lang.instrument.UnmodifiableClassException;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.util.*;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerArray;
@@ -30,9 +34,9 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class SmithProbe implements ClassFileTransformer, ProbeNotify {
+public class SmithProbe implements ClassFileTransformer, ProbeNotify, EventHandler<SmithTrace> {
     private static final SmithProbe ourInstance = new SmithProbe();
-    private static final int TRACE_QUEUE_SIZE = 1000;
+    private static final int TRACE_BUFFER_SIZE = 1024;
     private static final int CLASS_MAX_ID = 30;
     private static final int METHOD_MAX_ID = 20;
     private static final int DEFAULT_QUOTA = 12000;
@@ -50,7 +54,7 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
         smithBlocks = new ConcurrentHashMap<>();
         smithLimits = new ConcurrentHashMap<>();
         probeClient = new ProbeClient(this);
-        traceQueue = new ArrayBlockingQueue<>(TRACE_QUEUE_SIZE);
+        disruptor = new Disruptor<>(SmithTrace::new, TRACE_BUFFER_SIZE, DaemonThreadFactory.INSTANCE);
         smithQuotas = Stream.generate(() -> new AtomicIntegerArray(METHOD_MAX_ID)).limit(CLASS_MAX_ID).toArray(AtomicIntegerArray[]::new);
     }
 
@@ -79,10 +83,8 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
         clientThread.setDaemon(true);
         clientThread.start();
 
-        Thread traceThread = new Thread(this::probeTraceThread);
-
-        traceThread.setDaemon(true);
-        traceThread.start();
+        disruptor.handleEventsWith(this);
+        disruptor.start();
 
         new Timer(true).schedule(
                 new TimerTask() {
@@ -129,7 +131,7 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
         }
     }
 
-    public void trace(int classID, int methodID, Object[] args, Object ret) {
+    public void trace(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
         if (!clientConnected)
             return;
 
@@ -146,53 +148,54 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
                 break;
         }
 
-        SmithTrace smithTrace = new SmithTrace();
+        RingBuffer<SmithTrace> ringBuffer = disruptor.getRingBuffer();
 
-        smithTrace.setClassID(classID);
-        smithTrace.setMethodID(methodID);
-        smithTrace.setRet(ret);
-        smithTrace.setArgs(args);
-        smithTrace.setStackTrace(Thread.currentThread().getStackTrace());
+        try {
+            long sequence = ringBuffer.tryNext();
 
-        traceQueue.offer(smithTrace);
+            SmithTrace smithTrace = ringBuffer.get(sequence);
+
+            smithTrace.setClassID(classID);
+            smithTrace.setMethodID(methodID);
+            smithTrace.setBlocked(blocked);
+            smithTrace.setRet(ret);
+            smithTrace.setArgs(args);
+            smithTrace.setStackTrace(Thread.currentThread().getStackTrace());
+
+            ringBuffer.publish(sequence);
+        } catch (InsufficientCapacityException ignored) {
+
+        }
     }
 
-    private void probeTraceThread() {
-        SmithLogger.logger.info("probe trace thread start");
+    @Override
+    public void onEvent(SmithTrace smithTrace, long sequence, boolean endOfBatch) {
+        SmithFilter filter = smithFilters.get(new ImmutablePair<>(smithTrace.getClassID(), smithTrace.getMethodID()));
 
-        while (true) {
-            try {
-                SmithTrace smithTrace = traceQueue.take();
-                SmithFilter filter = smithFilters.get(new ImmutablePair<>(smithTrace.getClassID(), smithTrace.getMethodID()));
-
-                if (filter == null) {
-                    probeClient.write(Operate.traceOperate, smithTrace);
-                    continue;
-                }
-
-                Predicate<SmithMatchRule> pred = rule -> {
-                    Object[] args = smithTrace.getArgs();
-
-                    if (rule.getIndex() >= args.length)
-                        return false;
-
-                    return Pattern.compile(rule.getRegex()).matcher(args[rule.getIndex()].toString()).find();
-                };
-
-                SmithMatchRule[] include = filter.getInclude();
-                SmithMatchRule[] exclude = filter.getExclude();
-
-                if (include.length > 0 && Arrays.stream(include).noneMatch(pred))
-                    continue;
-
-                if (exclude.length > 0 && Arrays.stream(exclude).anyMatch(pred))
-                    continue;
-
-                probeClient.write(Operate.traceOperate, smithTrace);
-            } catch (InterruptedException e) {
-                SmithLogger.exception(e);
-            }
+        if (filter == null) {
+            probeClient.write(Operate.traceOperate, smithTrace);
+            return;
         }
+
+        Predicate<SmithMatchRule> pred = rule -> {
+            Object[] args = smithTrace.getArgs();
+
+            if (rule.getIndex() >= args.length)
+                return false;
+
+            return Pattern.compile(rule.getRegex()).matcher(args[rule.getIndex()].toString()).find();
+        };
+
+        SmithMatchRule[] include = filter.getInclude();
+        SmithMatchRule[] exclude = filter.getExclude();
+
+        if (include.length > 0 && Arrays.stream(include).noneMatch(pred))
+            return;
+
+        if (exclude.length > 0 && Arrays.stream(exclude).anyMatch(pred))
+            return;
+
+        probeClient.write(Operate.traceOperate, smithTrace);
     }
 
     private void resetQuotas() {
@@ -359,7 +362,7 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
     private Boolean clientConnected;
     private Instrumentation inst;
     private final ProbeClient probeClient;
-    private final ArrayBlockingQueue<SmithTrace> traceQueue;
+    private final Disruptor<SmithTrace> disruptor;
     private final Map<String, SmithClass> smithClasses;
     private final Map<Pair<Integer, Integer>, SmithFilter> smithFilters;
     private final Map<Pair<Integer, Integer>, SmithBlock> smithBlocks;

@@ -35,6 +35,7 @@ public:
 public:
     int classID;
     int methodID;
+    bool blocked;
     int count;
     char args[ARG_COUNT][ARG_LENGTH];
     CStackTrace stackTrace[TRACE_COUNT];
