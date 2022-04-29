@@ -66,7 +66,14 @@ static int trace_open_pipe(struct inode *inode, struct file *filp)
 
     trace_seq_init(&iter->seq);
     mutex_init(&iter->mutex);
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
+    iter->ring = pde_data(inode);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
     iter->ring = PDE_DATA(inode);
+#else
+    iter->ring = PDE(inode)->data;
+#endif
     filp->private_data = iter;
     nonseekable_open(inode, filp);
     __module_get(THIS_MODULE);
