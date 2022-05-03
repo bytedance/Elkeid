@@ -8,8 +8,630 @@
 #include <linux/kallsyms.h>
 #include <linux/prefetch.h>
 
+/*
+ * rbtree support routines
+ */
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0) || LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
+struct tt_node *tt_rb_alloc_node(struct tt_rb *rb)
+{
+    struct memcache_node *mnod;
+    int size = rb->node ? rb->node : sizeof(struct tt_node);
+
+    mnod = memcache_pop(&rb->cache);
+    if (mnod) {
+        struct tt_node *tnod;
+        tnod = container_of(mnod, struct tt_node, cache);
+        tnod->flags = 0;
+        tnod->flag_pool = 1;
+        return tnod;
+    }
+    return smith_kmalloc(size, rb->gfp);
+}
+
+void tt_rb_free_node(struct tt_rb *rb, struct tt_node *node)
+{
+    if (node->flag_pool)
+        memcache_push(&node->cache, &rb->cache);
+    else
+        smith_kfree(node);
+}
+
+/* one-time call, to init objs just after pool allocation */
+static int tt_rb_init_node(void *context, struct memcache_node *mnod)
+{
+    struct tt_node *tnod;
+
+    tnod = container_of(mnod, struct tt_node, cache);
+    return 0;
+}
+
+int tt_rb_init(struct tt_rb *rb, void *data, int nobjs, int objsz,
+               gfp_t gfp_node, gfp_t gfp_op,
+               struct tt_node *(*init)(struct tt_rb *, void *),
+               int (*cmp)(struct tt_rb *, struct tt_node *, void *),
+               void (*release)(struct tt_rb *, struct tt_node *))
+{
+    /* initialize rbtree */
+    memset(rb, 0, sizeof(struct tt_rb));
+    rwlock_init(&rb->lock);
+    rb->data = data;
+    rb->node = objsz;
+    rb->gfp = gfp_node | __GFP_ZERO;
+    rb->init = init;
+    rb->release = release;
+    rb->cmp = cmp;
+
+    /* initialize memory cache for tt_node, errors are to be ignored,
+       then new nodes are to be allocated from memory pool */
+    memcache_init_pool(&rb->cache, nobjs, objsz, gfp_op, data,
+                       tt_rb_init_node);
+
+    return 0;
+}
+
+struct tt_node *tt_rb_lookup_nolock(struct tt_rb *rb, void *key)
+{
+    struct tt_node *tnod = NULL;
+    struct rb_node *node;
+
+    node = rb->root.rb_node;
+    while (node && !tnod) {
+        struct tt_node *nod;
+        int rc;
+        nod = container_of(node, struct tt_node, node);
+        rc = rb->cmp(rb, nod, key);
+        if (rc < 0)
+            node = node->rb_left;
+        else if (rc > 0)
+            node = node->rb_right;
+        else
+            tnod = nod;
+    }
+
+    return tnod;
+}
+
+int tt_rb_remove_node_nolock(struct tt_rb *rb, struct tt_node *tnod)
+{
+    rb_erase(&tnod->node, &rb->root);
+
+    if (rb->release)
+        rb->release(rb, tnod);
+    else
+        tt_rb_free_node(rb, tnod);
+    atomic_dec(&rb->count);
+
+    return 0;
+}
+
+int tt_rb_remove_node(struct tt_rb *rb, struct tt_node *node)
+{
+    int rc;
+
+    write_lock(&rb->lock);
+    rc = tt_rb_remove_node_nolock(rb, node);
+    write_unlock(&rb->lock);
+    return rc;
+}
+
+int tt_rb_remove_key(struct tt_rb *rb, void *key)
+{
+    struct tt_node *tnod;
+    int rc = -ENOENT;
+
+    write_lock(&rb->lock);
+    tnod = tt_rb_lookup_nolock(rb, key);
+    if (tnod)
+        rb_erase(&tnod->node, &rb->root);
+    write_unlock(&rb->lock);
+
+    if (tnod && !atomic_dec_return(&tnod->refs)) {
+        if (rb->release)
+            rb->release(rb, tnod);
+        else
+            tt_rb_free_node(rb, tnod);
+        atomic_dec(&rb->count);
+        return 0;
+    }
+
+    return rc;
+}
+
+int tt_rb_deref_node(struct tt_rb *rb, struct tt_node *tnod)
+{
+    int rc = atomic_add_unless(&tnod->refs, -1, 1);
+
+    if (rc)
+        return 0;
+
+    write_lock(&rb->lock);
+    if (0 == atomic_dec_return(&tnod->refs))
+        rc = tt_rb_remove_node_nolock(rb, tnod);
+    write_unlock(&rb->lock);
+
+    return rc;
+}
+
+int tt_rb_deref_key(struct tt_rb *rb, void *key)
+{
+    struct tt_node *tnod;
+    int rc = -ENOENT;
+
+    write_lock(&rb->lock);
+    tnod = tt_rb_lookup_nolock(rb, key);
+    if (tnod) {
+        if (atomic_dec_return(&tnod->refs)) {
+            tnod = NULL;
+            rc = -EEXIST;
+        } else {
+            rb_erase(&tnod->node, &rb->root);
+        }
+    }
+    write_unlock(&rb->lock);
+
+    if (tnod) {
+        if (rb->release)
+            rb->release(rb, tnod);
+        else
+            tt_rb_free_node(rb, tnod);
+        atomic_dec(&rb->count);
+        return 0;
+    }
+
+    return rc;
+}
+
+static struct tt_node *tt_rb_insert_node_nolock(struct tt_rb *rb, struct tt_node *tnod)
+{
+    struct rb_node **anchor, *parent = NULL;
+
+    anchor = &(rb->root.rb_node);
+    while (*anchor) {
+        struct tt_node *tanod;
+        int rc;
+        tanod = container_of(*anchor, struct tt_node, node);
+        rc = rb->cmp(rb, tanod, tnod);
+        parent = *anchor;
+        if (rc < 0)
+            anchor = &(*anchor)->rb_left;
+        else if (rc > 0)
+            anchor = &(*anchor)->rb_right;
+        else
+            return tanod;
+    }
+
+    rb_link_node(&tnod->node, parent, anchor);
+    rb_insert_color(&tnod->node, &rb->root);
+    return tnod;
+}
+
+struct tt_node *tt_rb_insert_key_nolock(struct tt_rb *rb, void *key)
+{
+    struct tt_node *tnod, *nnod = ERR_PTR(-ENOMEM);
+
+    /* initialize tnod from key */
+    tnod = rb->init(rb, key);
+    if (!tnod)
+        goto errorout;
+
+    /* insert newly allocated node into rbtree */
+    nnod = tt_rb_insert_node_nolock(rb, tnod);
+    if (nnod == tnod) {
+        atomic_inc(&rb->count);
+    } else {
+        rb->release(rb, tnod);
+    }
+
+errorout:
+    return nnod;
+}
+
+int tt_rb_insert_key(struct tt_rb *rb, void *key)
+{
+    struct tt_node *tnod;
+
+    write_lock(&rb->lock);
+    tnod = tt_rb_insert_key_nolock(rb, key);
+    write_unlock(&rb->lock);
+    if (IS_ERR(tnod)) {
+        return PTR_ERR(tnod);
+    } else if (!tnod) {
+        return -ENOMEM;
+    }
+    return 0;
+}
+
+struct tt_node *tt_rb_lookup_key(struct tt_rb *rb, void *key)
+{
+    struct tt_node *tnod;
+
+    read_lock(&rb->lock);
+    tnod = tt_rb_lookup_nolock(rb, key);
+    if (tnod)
+        atomic_inc(&tnod->refs);
+    read_unlock(&rb->lock);
+
+    return tnod;
+}
+
+int tt_rb_query_key(struct tt_rb *rb, void *key)
+{
+    struct tt_node *tnod;
+
+    read_lock(&rb->lock);
+    tnod = tt_rb_lookup_nolock(rb, key);
+    if (tnod)
+        memcpy(key, tnod, rb->node);
+    read_unlock(&rb->lock);
+
+    return !tnod;
+}
+
+struct tt_node *tt_rb_find_key(struct tt_rb *rb, void *key)
+{
+    struct tt_node *tnod;
+
+    /* do lookup first to check whether it's in rbtree */
+    read_lock(&rb->lock);
+    tnod = tt_rb_lookup_nolock(rb, key);
+    if (tnod)
+        atomic_inc(&tnod->refs);
+    read_unlock(&rb->lock);
+
+    if (tnod)
+        return tnod;
+
+    /* try to alloc new key and attach it to rbtree */
+    write_lock(&rb->lock);
+    tnod = tt_rb_insert_key_nolock(rb, key);
+    if (tnod)
+        atomic_inc(&tnod->refs);
+    write_unlock(&rb->lock);
+
+    return tnod;
+}
+
+static void tt_rb_clear_node(struct tt_rb *rb, struct rb_node *node)
+{
+    struct tt_node *tnod;
+
+    if (!node)
+        return;
+
+    tt_rb_clear_node(rb, node->rb_left);
+    tt_rb_clear_node(rb, node->rb_right);
+
+    tnod = container_of(node, struct tt_node, node);
+    rb->release(rb, tnod);
+}
+
+void tt_rb_fini(struct tt_rb *rb)
+{
+    write_lock(&rb->lock);
+    tt_rb_clear_node(rb, rb->root.rb_node);
+    write_unlock(&rb->lock);
+
+    /* cleanup objects pool */
+    memcache_fini(&rb->cache, NULL, NULL);
+}
+
+void tt_rb_enum(struct tt_rb *rb, void (*cb)(struct tt_node *))
+{
+    struct rb_node *nod;
+
+    read_lock(&rb->lock);
+    for (nod = rb_first(&rb->root); nod; nod = rb_next(nod)) {
+        cb(container_of(nod, struct tt_node, node));
+    }
+    read_unlock(&rb->lock);
+}
+
+/*
+ * hash list support routines (with rcu locking)
+ */
+
+struct hlist_hnod *hlist_alloc_node(struct hlist_root *hr)
+{
+    struct hlist_hnod *hnod;
+    struct memcache_node *mnod;
+    int size = hr->node ? hr->node : sizeof(struct hlist_hnod);
+
+    mnod = memcache_pop(&hr->cache);
+    if (mnod) {
+        hnod = container_of(mnod, struct hlist_hnod, cache);
+        hnod->flags = 0;
+        hnod->flag_pool = 1;
+        hnod->hash = hr;
+        atomic_inc(&hr->allocs);
+    } else {
+        hnod = (struct hlist_hnod *)smith_kmalloc(size, hr->gfp);
+        if (hnod) {
+            hnod->hash = hr;
+            atomic_inc(&hr->allocs);
+        }
+    }
+    return hnod;
+}
+
+/* one-time call, to init objs just after pool allocation */
+static int hlist_init_node(void *context, struct memcache_node *mnod)
+{
+    struct hlist_hnod *hnod;
+    hnod = container_of(mnod, struct hlist_hnod, cache);
+    return 0;
+}
+
+/* one-time call, to init objs just after pool allocation */
+void hlist_free_node(struct hlist_root *hr, struct hlist_hnod *node)
+{
+    if (node->flag_pool)
+        memcache_push(&node->cache, &hr->cache);
+    else
+        smith_kfree(node);
+    atomic_dec(&hr->allocs);
+}
+
+void hlist_free_node_rcu(struct rcu_head *rcu)
+{
+    struct hlist_hnod *hnod = container_of(rcu, struct hlist_hnod, rcu);
+    if (hnod->hash->release)
+        hnod->hash->release(hnod->hash, hnod);
+    else
+        hlist_free_node(hnod->hash, hnod);
+}
+
+int hlist_init(struct hlist_root *hr, void *data, int nobjs,
+               int objsz, gfp_t gfp_node, gfp_t gfp_op,
+               struct hlist_hnod *(*init)(struct hlist_root *, void *),
+               int (*hash)(struct hlist_root *, void *),
+               int (*cmp)(struct hlist_root *, struct hlist_hnod *, void *),
+               void (*release)(struct hlist_root *, struct hlist_hnod *))
+{
+    int i, n;
+
+    /* initialize hash list */
+    memset(hr, 0, sizeof(struct hlist_root));
+    spin_lock_init(&hr->lock);
+    hr->data = data;
+    hr->node = objsz;
+    hr->gfp = gfp_node | __GFP_ZERO;
+
+    /* initialize callbacks */
+    hr->init = init;
+    hr->hash = hash;
+    hr->release = release;
+    hr->cmp = cmp;
+
+    /* initialize hash lists */
+    n = rounddown_pow_of_two(PAGE_SIZE / sizeof(struct list_head));
+    if (num_present_cpus() > 50)
+        n = n << 1;
+    hr->nlists = n - 1;
+    hr->lists = vmalloc(sizeof(struct list_head) * n);
+    if (!hr->lists)
+        return -ENOMEM;
+    for (i = 0; i < n; i++)
+        INIT_LIST_HEAD(&hr->lists[i]);
+
+    /* initialize memory cache for hnod, errors to be ignored,
+       if fails, new node will be allocated from system slab */
+    memcache_init_pool(&hr->cache, nobjs, objsz, gfp_op, data,
+                       hlist_init_node);
+    return 0;
+}
+
+void hlist_fini(struct hlist_root *hr)
+{
+    int i;
+
+    if (!hr->lists)
+        return;
+
+    /*
+     * WARNING:
+     * loadable module must call rcu_barrier() in its exit function
+     * to make sure all pended call_rcu callbacks to finish. Calling
+     * synchronize_rcu() can NOT guarantee, though it waits a grace
+     * period to elapse.
+     */
+    rcu_barrier();
+
+    /*
+     * cleanup all nodes in the hash lists
+     *
+     * it's safe here calling list_for_each_entry_safe
+     * since tracepoints and kprobes are all disabled
+     */
+    for (i = 0; i <= hr->nlists; i++) {
+        struct hlist_hnod *hnod, *next;
+        list_for_each_entry_safe(hnod, next, &hr->lists[i], link) {
+            if (hr->release)
+                hr->release(hr, hnod);
+            else
+                hlist_free_node(hr, hnod);
+        }
+    }
+    vfree(hr->lists);
+
+    /* cleanup objects pool */
+    memcache_fini(&hr->cache, NULL, NULL);
+}
+
+void hlist_lock(struct hlist_root *hr)
+{
+    spin_lock(&hr->lock);
+}
+
+void hlist_unlock(struct hlist_root *hr)
+{
+    spin_unlock(&hr->lock);
+}
+
+static struct hlist_hnod *hlist_lookup_key_noref(struct hlist_root *hr, void *key)
+{
+    struct hlist_hnod *hnod = NULL, *e;
+    int id = hr->hash(hr, key);
+
+    list_for_each_entry_rcu(e, &hr->lists[id], link) {
+        if (hr->cmp(hr, e, key) == 0) {
+            hnod = e;
+            break;
+        }
+    }
+
+    return hnod;
+}
+
+struct hlist_hnod *hlist_lookup_key(struct hlist_root *hr, void *key)
+{
+    struct hlist_hnod *hnod = NULL, *e;
+    int id = hr->hash(hr, key);
+
+    rcu_read_lock();
+    list_for_each_entry_rcu(e, &hr->lists[id], link) {
+        if (hr->cmp(hr, e, key) == 0) {
+            atomic_inc(&e->refs);
+            hnod = e;
+            break;
+        }
+    }
+    rcu_read_unlock();
+
+    return hnod;
+}
+
+static int hlist_remove_node_nolock(struct hlist_root *hr, struct hlist_hnod *hnod)
+{
+    list_del_rcu(&hnod->link);
+    atomic_dec(&hr->count);
+    return atomic_dec_return(&hnod->refs);
+}
+
+int hlist_remove_node(struct hlist_root *hr, struct hlist_hnod *hnod)
+{
+    int rc;
+
+    spin_lock(&hr->lock);
+    rc = hlist_remove_node_nolock(hr, hnod);
+    spin_unlock(&hr->lock);
+    if (0 == rc)
+        call_rcu(&hnod->rcu, hlist_free_node_rcu);
+
+    return 0;
+}
+
+int hlist_remove_key(struct hlist_root *hr, void *key)
+{
+    struct hlist_hnod *hnod;
+    int rc;
+
+    spin_lock(&hr->lock);
+    hnod = hlist_lookup_key_noref(hr, key);
+    if (hnod) {
+        rc = hlist_remove_node_nolock(hr, hnod);
+    } else {
+        rc = -ENOENT;
+    }
+    spin_unlock(&hr->lock);
+    if (0 == rc)
+        call_rcu(&hnod->rcu, hlist_free_node_rcu);
+
+    return rc;
+}
+
+int hlist_deref_node(struct hlist_root *hr, struct hlist_hnod *hnod)
+{
+    int rc = atomic_dec_return(&hnod->refs);
+    if (0 == rc)
+        call_rcu(&hnod->rcu, hlist_free_node_rcu);
+    return rc;
+}
+
+int hlist_deref_key(struct hlist_root *hr, void *key)
+{
+    struct hlist_hnod *hnod;
+    int rc = -ENOENT;
+
+    rcu_read_lock();
+    hnod = hlist_lookup_key_noref(hr, key);
+    if (hnod)
+        rc = hlist_deref_node(hr, hnod);
+    rcu_read_unlock();
+
+    return rc;
+}
+
+static struct hlist_hnod *
+hlist_insert_node_nolock(struct hlist_root *hr, void *key, struct hlist_hnod *hnod)
+{
+    int id = hr->hash(hr, key);
+
+    list_add_tail_rcu(&hnod->link, &hr->lists[id]);
+    atomic_inc(&hnod->refs);
+    atomic_inc(&hr->count);
+    return hnod;
+}
+
+struct hlist_hnod *
+hlist_insert_key_nolock(struct hlist_root *hr, void *key)
+{
+    struct hlist_hnod *hnod;
+
+    /* make sure it isn't in the hash list */
+    hnod = hlist_lookup_key_noref(hr, key);
+    if (hnod)
+        goto errorout;
+
+    /* initialize hnod from key */
+    hnod = hr->init(hr, key);
+    if (!hnod)
+        goto errorout;
+
+    /* insert new hnod into hash list */
+    hnod = hlist_insert_node_nolock(hr, key, hnod);
+
+errorout:
+    return hnod;
+}
+
+struct hlist_hnod *hlist_insert_key(struct hlist_root *hr, void *key)
+{
+    struct hlist_hnod *hnod;
+
+    spin_lock(&hr->lock);
+    hnod = hlist_insert_key_nolock(hr, key);
+    spin_unlock(&hr->lock);
+    return hnod;
+}
+
+int hlist_query_key(struct hlist_root *hr, void *key, void *node)
+{
+    struct hlist_hnod *hnod;
+
+    rcu_read_lock();
+    hnod = hlist_lookup_key_noref(hr, key);
+    if (hnod)
+        memcpy(node, hnod, hr->node);
+    rcu_read_unlock();
+    return !hnod;
+}
+
+void hlist_enum(struct hlist_root *hr, void (*cb)(struct hlist_hnod *))
+{
+    struct hlist_hnod *e;
+    int i;
+
+    rcu_read_lock();
+    for (i = 0; i <= hr->nlists; i++) {
+        list_for_each_entry_rcu(e, &hr->lists[i], link) {
+            cb(e);
+        }
+    }
+    rcu_read_unlock();
+}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0) || \
+    LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 33)
 
 #include <linux/kprobes.h>
 

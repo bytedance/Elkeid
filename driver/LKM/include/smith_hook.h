@@ -88,4 +88,68 @@
 #define P_GET_SYSCALL_NAME(x) P_SYSCALL_PREFIX(x)
 #define P_GET_COMPAT_SYSCALL_NAME(x) P_COMPAT_SYSCALL_PREFIX(x)
 
+/*
+ * tracing id related definitions
+ */
+
+/* cache of executable images, managed by rbtree and lru list */
+#define SI_IMG_LENGTH  (256)
+#define SI_IMG_BUFLEN  (SI_IMG_LENGTH - offsetof(struct smith_img, si_buf))
+
+struct smith_img {
+    struct tt_node      si_node;    /* rbtree of cached img */
+    struct list_head    si_link;    /* lru list for reaper */
+    struct file        *si_exe;     /* executable image */
+    void               *si_sb;      /* superblock pointer of target volume */
+    ino_t               si_ino;     /* inode number of the executable image */
+    typeof(((struct inode *)0)->i_ctime) si_cts; /* inode creation time */
+    uint32_t            si_age;     /* time stamp in seconds */
+    uint16_t            si_max;
+    uint16_t            si_len;
+    char               *si_path;
+
+    union {
+        char           *si_alloc;
+        char            si_buf[0];
+    };
+};
+
+struct smith_img *smith_find_img(struct task_struct *task);
+struct smith_img *smith_get_img(struct smith_img *img);
+void smith_put_img(struct smith_img *img);
+void smith_enum_img(void);
+
+/*
+ * per-task record, managed by hash-list
+ */
+struct smith_tid {
+    struct hlist_hnod   st_node;
+    uint64_t            st_start;   /* start time of current task */
+    uint32_t            st_pid;     /* thread id (per task) */
+    uint32_t            st_sid;     /* session id (when being created) */
+    char               *st_pid_tree;/* pid tree strings */
+    struct smith_img   *st_img;     /* cache of exe path */
+    char                st_comm[TASK_COMM_LEN];
+};
+
+static inline uint64_t smith_task_start_time(struct task_struct *task) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
+    return task->start_time;
+#else
+    return timespec_to_ns(&task->start_time);
+#endif
+}
+
+struct smith_tid *smith_lookup_tid(struct task_struct *task);
+int smith_query_tid(struct task_struct *task);
+static inline int smith_query_sid(void)
+{
+    return smith_query_tid(current);
+}
+int smith_put_tid(struct smith_tid *tid);
+int smith_drop_tid(struct task_struct *task);
+void smith_enum_tid(void);
+
+void smith_trace_proc_execve(struct task_struct *task);
+
 #endif /* SMITH_HOOK_H */

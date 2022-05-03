@@ -24,9 +24,6 @@
 
 #define DEFAULT_RET_STR "-2"
 #define NAME_TOO_LONG "-4"
-#define PID_TREE_MATEDATA_LEN  32
-
-static unsigned int ROOT_PID_NS_INUM;
 
 /*
  * macro definitions for legacy kernels
@@ -57,7 +54,7 @@ extern unsigned long smith_kallsyms_lookup_name(const char *);
 
 extern u8 *smith_query_sb_uuid(struct super_block *sb);
 
-static struct task_struct *smith_get_task_struct(struct task_struct *tsk)
+static inline struct task_struct *smith_get_task_struct(struct task_struct *tsk)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
     if (tsk && refcount_inc_not_zero(&tsk->usage))
@@ -288,32 +285,6 @@ static inline unsigned int __get_sessionid(void) {
     return sessionid;
 }
 
-static inline void __init_root_pid_ns_inum(void) {
-    struct pid *pid_struct;
-    struct task_struct *task;
-
-    pid_struct = find_get_pid(1);
-    task = pid_task(pid_struct,PIDTYPE_PID);
-
-    smith_get_task_struct(task);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-    ROOT_PID_NS_INUM = task->nsproxy->pid_ns_for_children->ns.inum;
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
-    ROOT_PID_NS_INUM = task->nsproxy->pid_ns_for_children->proc_inum;
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
-    ROOT_PID_NS_INUM = task->nsproxy->pid_ns->proc_inum;
-#else
-    /*
-     * For kernels < 3.8.0, id for pid namespaces isn't defined.
-     * So here we are using fixed values, no emulating any more,
-     * previously we were using image file's inode number.
-     */
-    ROOT_PID_NS_INUM = 0xEFFFFFFCU /* PROC_PID_INIT_INO */;
-#endif
-    smith_put_task_struct(task);
-    put_pid(pid_struct);
-}
-
 static inline unsigned int __get_pid_ns_inum(void) {
     unsigned int inum;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
@@ -343,5 +314,130 @@ static inline int __get_sid(void) {
 
 #define CLASSERT(cond) do {switch('x') {case ((cond)): case 0: break;}} while (0)
 size_t smith_strnlen (const char *str, size_t maxlen);
+
+/*
+ * lru + rbtree implementation with object pool
+ */
+
+#include "../include/memcache.h"
+
+struct tt_node {
+    struct memcache_node cache;
+    struct rb_node  node;
+    atomic_t        refs;
+    union {
+        uint32_t    flags;
+        struct {
+          uint32_t  flag_pool:1;
+          uint32_t  flag_newsid:1;
+        };
+    };
+};
+
+static inline void tt_memcpy(void *t, void *p, int s)
+{
+    memcpy(t + sizeof(struct tt_node),
+           p + sizeof(struct tt_node),
+           s - sizeof(struct tt_node));
+}
+
+struct tt_rb {
+    struct rb_root  root;
+    rwlock_t        lock;
+    void           *data;
+    int             node;
+    gfp_t           gfp;
+    atomic_t        count;
+    struct memcache_head cache;
+    struct tt_node * (*init)(struct tt_rb *, void *);
+    int (*cmp)(struct tt_rb *, struct tt_node *, void *);
+    void (*release)(struct tt_rb *, struct tt_node *);
+};
+
+int tt_rb_init(struct tt_rb *rb, void *data, int ns, int sz,
+               gfp_t gfp_node, gfp_t gfp_cache,
+               struct tt_node *(*init)(struct tt_rb *, void *),
+               int (*cmp)(struct tt_rb *, struct tt_node *, void *),
+               void (*release)(struct tt_rb *, struct tt_node *));
+void tt_rb_fini(struct tt_rb *rb);
+struct tt_node *tt_rb_alloc_node(struct tt_rb *rb);
+void tt_rb_free_node(struct tt_rb *rb, struct tt_node *node);
+
+int tt_rb_remove_node_nolock(struct tt_rb *rb, struct tt_node *node);
+int tt_rb_remove_node(struct tt_rb *rb, struct tt_node *node);
+struct tt_node *tt_rb_lookup_nolock(struct tt_rb *rb, void *key);
+int tt_rb_remove_key(struct tt_rb *rb, void *key);
+int tt_rb_deref_key(struct tt_rb *rb, void *key);
+int tt_rb_deref_node(struct tt_rb *rb, struct tt_node *node);
+struct tt_node *tt_rb_insert_key_nolock(struct tt_rb *rb, void *key);
+int tt_rb_insert_key(struct tt_rb *rb, void *key);
+struct tt_node *tt_rb_lookup_key(struct tt_rb *rb, void *key);
+int tt_rb_query_key(struct tt_rb *rb, void *key);
+struct tt_node *tt_rb_find_key(struct tt_rb *rb, void *key);
+void tt_rb_enum(struct tt_rb *rb, void (*cb)(struct tt_node *));
+
+/*
+ * hash list implementation with rcu lock
+ */
+
+struct hlist_hnod {
+    struct memcache_node cache;
+    struct list_head    link;
+    struct rcu_head	    rcu;
+    struct hlist_root  *hash;
+    atomic_t            refs;
+    union {
+        uint32_t        flags;
+        struct {
+          uint32_t      flag_pool:1;
+          uint32_t      flag_newsid:1;
+        };
+    };
+};
+
+static inline void hlist_memcpy(void *t, void *p, int s)
+{
+    memcpy(t + sizeof(struct hlist_hnod),
+           p + sizeof(struct hlist_hnod),
+           s - sizeof(struct hlist_hnod));
+}
+
+struct hlist_root {
+    spinlock_t      lock;
+    void           *data;
+    uint16_t        node;
+    uint16_t        nlists;
+    gfp_t           gfp;
+    atomic_t        count;
+    atomic_t        allocs;
+    struct list_head  *lists;
+    struct memcache_head cache;
+    struct hlist_hnod * (*init)(struct hlist_root *, void *);
+    int (*hash)(struct hlist_root *, void *);
+    int (*cmp)(struct hlist_root *, struct hlist_hnod *, void *);
+    void (*release)(struct hlist_root *, struct hlist_hnod *);
+};
+
+int hlist_init(struct hlist_root *hr, void *data, int ns, int sz,
+               gfp_t gfp_node, gfp_t gfp_cache,
+               struct hlist_hnod *(*init)(struct hlist_root *, void *),
+               int (*hash)(struct hlist_root *, void *),
+               int (*cmp)(struct hlist_root *, struct hlist_hnod *, void *),
+               void (*release)(struct hlist_root *, struct hlist_hnod *));
+void hlist_fini(struct hlist_root *hr);
+struct hlist_hnod *hlist_alloc_node(struct hlist_root *hr);
+void hlist_free_node(struct hlist_root *hr, struct hlist_hnod *node);
+
+void hlist_lock(struct hlist_root *hr);
+void hlist_unlock(struct hlist_root *hr);
+int hlist_remove_node(struct hlist_root *hr, struct hlist_hnod *node);
+int hlist_remove_key(struct hlist_root *hr, void *key);
+int hlist_deref_key(struct hlist_root *hr, void *key);
+int hlist_deref_node(struct hlist_root *hr, struct hlist_hnod *node);
+struct hlist_hnod *hlist_insert_key_nolock(struct hlist_root *hr, void *key);
+struct hlist_hnod *hlist_insert_key(struct hlist_root *hr, void *key);
+struct hlist_hnod *hlist_lookup_key(struct hlist_root *hr, void *key);
+int hlist_query_key(struct hlist_root *hr, void *key, void *node);
+void hlist_enum(struct hlist_root *hr, void (*cb)(struct hlist_hnod *));
 
 #endif /* UTIL_H */

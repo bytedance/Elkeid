@@ -6,7 +6,9 @@
  */
 #include "../include/smith_hook.h"
 
+
 #define __SD_XFER_SE__
+static unsigned int ROOT_PID_NS_INUM;
 #include "../include/xfer.h"
 #include "../include/kprobe_print.h"
 
@@ -421,16 +423,12 @@ static void to_print_privilege_escalation(const struct cred *current_cred, unsig
     privilege_escalation_print(p_pid, pid_tree, p_cred, c_cred);
 }
 
-static char *smith_get_pid_tree(int limit)
+static int smith_check_privilege_escalation(int limit, char *pid_tree)
 {
-    int real_data_len = PID_TREE_MATEDATA_LEN;
     int limit_index = 0;
     int cred_detected_task_pid = 0;
     int cred_check_res = 0;
     unsigned int p_cred_info[8];
-
-    char *tmp_data = NULL;
-    char pid[24];
 
     struct task_struct *task;
     struct task_struct *old_task;
@@ -439,24 +437,10 @@ static char *smith_get_pid_tree(int limit)
 
     task = current;
     get_task_struct(task);
-
-    snprintf(pid, 24, "%d", task->tgid);
-    tmp_data = smith_kzalloc(1024, GFP_ATOMIC);
-
-    if (!tmp_data) {
-        smith_put_task_struct(task);
-        return tmp_data;
-    }
-
-    strcat(tmp_data, pid);
-    strcat(tmp_data, ".");
-    strcat(tmp_data, current->comm);
-
     current_cred = get_task_cred_sym(current);
 
-    while (1) {
-        limit_index = limit_index + 1;
-
+    //cred privilege_escalation check only check twice
+    while (++limit_index <= 2) {
         if (limit_index >= limit)
             break;
 
@@ -465,38 +449,26 @@ static char *smith_get_pid_tree(int limit)
         task = smith_get_task_struct(rcu_dereference(task->real_parent));
         rcu_read_unlock();
         smith_put_task_struct(old_task);
-        if (!task || task->pid == 0) {
+        if (!task || task->pid == 0)
             break;
-        }
 
-        //cred privilege_escalation check only check twice
-        if (!cred_check_res && limit_index <= 2) {
+        if (!cred_check_res) {
             cred_detected_task_pid = task->tgid;
             parent_cred = get_task_cred_sym(task);
             cred_check_res = check_cred(current_cred, parent_cred);
             save_cred_info(p_cred_info, parent_cred);
             put_cred(parent_cred);
         }
-
-        real_data_len = real_data_len + PID_TREE_MATEDATA_LEN;
-        if (real_data_len > 1024)
-            break;
-
-        snprintf(pid, 24, "%d", task->tgid);
-        strcat(tmp_data, "<");
-        strcat(tmp_data, pid);
-        strcat(tmp_data, ".");
-        strcat(tmp_data, task->comm);
     }
 
     if (task)
         smith_put_task_struct(task);
 
     if (cred_check_res)
-        to_print_privilege_escalation(current_cred, p_cred_info, tmp_data, cred_detected_task_pid);
+        to_print_privilege_escalation(current_cred, p_cred_info, pid_tree, cred_detected_task_pid);
 
     put_cred(current_cred);
-    return tmp_data;
+    return cred_check_res;
 }
 
 //get task tree first AF_INET/AF_INET6 socket info
@@ -741,16 +713,14 @@ int bind_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 
 int bind_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
-    int retval, sa_family, sport;
-
     char *exe_path = DEFAULT_RET_STR;
-    char *buffer = NULL;
-
+    struct smith_tid *tid = NULL;
     struct sockaddr *uaddr;
     struct sockaddr_in *sin;
     struct sockaddr_in6 *sin6;
     struct in_addr *in_addr = NULL;
     struct in6_addr *in6_addr = NULL;
+    int retval, sa_family, sport;
 
     uaddr = &((struct bind_data *)ri->data)->dirp;
     retval = regs_return_value(regs);
@@ -780,20 +750,24 @@ int bind_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
             return 0;
     }
 
-    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    exe_path = smith_get_exe_file(buffer, PATH_MAX);
-
-    if (!execve_exe_check(exe_path)) {
-        if (sa_family == AF_INET)
-            bind_print(exe_path, in_addr, sport, retval);
-#if IS_ENABLED(CONFIG_IPV6)
-        else if (sa_family == AF_INET6)
-            bind6_print(exe_path, in6_addr, sport, retval);
-#endif
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
     }
 
-    if (buffer)
-        smith_kfree(buffer);
+    if (sa_family == AF_INET)
+        bind_print(exe_path, in_addr, sport, retval);
+#if IS_ENABLED(CONFIG_IPV6)
+    else if (sa_family == AF_INET6)
+        bind6_print(exe_path, in6_addr, sport, retval);
+#endif
+
+out:
+    if (tid)
+        smith_put_tid(tid);
 
     return 0;
 }
@@ -808,7 +782,7 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     __be32 sip4 = 0;
 
     char *exe_path = DEFAULT_RET_STR;
-    char *buffer = NULL;
+    struct smith_tid *tid = NULL;
 
     struct socket *socket;
     struct sock *sk;
@@ -912,21 +886,25 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     }
 
     if (flag) {
-        buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-        exe_path = smith_get_exe_file(buffer, PATH_MAX);
-
-        if (!execve_exe_check(exe_path)) {
-            if (sa_family == AF_INET)
-                connect4_print(dport, dip4, exe_path, sip4, sport, retval);
-#if IS_ENABLED(CONFIG_IPV6)
-            else if (dip6 && sip6)
-                connect6_print(dport, dip6, exe_path, sip6, sport, retval);
-#endif
+        tid = smith_lookup_tid(current);
+        if (tid) {
+            exe_path = tid->st_img->si_path;
+            // exe filter check
+            if (execve_exe_check(exe_path))
+                goto out;
         }
 
-        if (buffer)
-            smith_kfree(buffer);
+        if (sa_family == AF_INET)
+            connect4_print(dport, dip4, exe_path, sip4, sport, retval);
+#if IS_ENABLED(CONFIG_IPV6)
+        else if (dip6 && sip6)
+            connect6_print(dport, dip6, exe_path, sip6, sport, retval);
+#endif
     }
+
+out:
+    if (tid)
+        smith_put_tid(tid);
 
     return 0;
 }
@@ -940,7 +918,7 @@ int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     __be32 sip4;
 
     char *exe_path = DEFAULT_RET_STR;
-    char *buffer = NULL;
+    struct smith_tid *tid = NULL;
 
     struct sock *sk;
     struct connect_data *data;
@@ -955,15 +933,14 @@ int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     if (IS_ERR_OR_NULL(sk))
         return 0;
 
-    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    exe_path = smith_get_exe_file(buffer, PATH_MAX);
-
-    //exe filter check
-    if (execve_exe_check(exe_path)) {
-        if (buffer)
-            smith_kfree(buffer);
-        return 0;
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
     }
+
     //only get AF_INET/AF_INET6 connect info
     inet = (struct inet_sock *)sk;
     switch (data->sa_family) {
@@ -1028,8 +1005,9 @@ int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 #endif
     }
 
-    if (buffer)
-        smith_kfree(buffer);
+out:
+    if (tid)
+        smith_put_tid(tid);
 
     return 0;
 }
@@ -1092,7 +1070,7 @@ int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     int retval, addrlen = 0, err = 0;
 
     char *exe_path = DEFAULT_RET_STR;
-    char *buffer = NULL;
+    struct smith_tid *tid = NULL;
 
     data = (struct accept_data *)ri->data;
     retval = regs_return_value(regs);
@@ -1100,8 +1078,13 @@ int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     if(IS_ERR_OR_NULL(sock))
         goto out;
 
-    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    exe_path = smith_get_exe_file(buffer, PATH_MAX);
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+    }
 
     if (smith_sock_getname(sock, &data->sa, &addrlen, 0) < 0)
         goto out;
@@ -1139,23 +1122,9 @@ int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 out:
     if (sock)
         sockfd_put(sock);
-    if (buffer)
-        smith_kfree(buffer);
+    if (tid)
+        smith_put_tid(tid);
     return 0;
-}
-
-char *smith_query_exe_path(char **alloc, int len, int min)
-{
-    char *buffer = NULL;
-
-    while (len >= min) {
-        buffer = smith_kzalloc(len, GFP_ATOMIC);
-        if (buffer)
-            break;
-        len = len / 2;
-    }
-    *alloc = buffer;
-    return smith_get_exe_file(buffer, len);
 }
 
 int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
@@ -1170,11 +1139,11 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     char *pname = DEFAULT_RET_STR;
     char *tmp_stdin = DEFAULT_RET_STR;
     char *tmp_stdout = DEFAULT_RET_STR;
-    char *buffer = NULL;
     char *pname_buf = NULL;
     char *pid_tree = NULL;
     char *tty_name = "-1";
     char *exe_path = DEFAULT_RET_STR;
+    struct smith_tid *tid = NULL;
     char *stdin_buf = NULL;
     char *stdout_buf = NULL;
 
@@ -1184,30 +1153,45 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     struct execve_data *data;
     struct tty_struct *tty = NULL;
 
-     /* query kretprobe instance for current call */
+    /* query kretprobe instance for current call */
     data = (struct execve_data *)ri->data;
 
     /* ignore the failures that target doesn't exist */
     if (rc == -ENOENT)
         goto release_data;
 
+    /*
+     * sched_process_exec emulation for earlier kernels (3.4).
+     * execve returns -1 on error
+     */
+    if (rc >= 0)
+        smith_trace_proc_execve(current);
+
     tty = get_current_tty();
     if(tty && strlen(tty->name) > 0)
         tty_name = tty->name;
 
-    //exe filter check and argv filter check
-    exe_path = smith_query_exe_path(&buffer, PATH_MAX, 128);
-    if (execve_exe_check(exe_path) || execve_argv_check(data->argv))
+    // argv filter check
+    if (execve_argv_check(data->argv))
         goto out;
+
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+        pid_tree = tid->st_pid_tree;
+    }
 
     get_process_socket(&sip4, &sip6, &sport, &dip4, &dip6, &dport,
                        &socket_pid, &sa_family);
 
-    //if socket exist,get pid tree
+    // if socket exist,get pid tree
     if (sa_family == AF_INET6 || sa_family == AF_INET)
-        pid_tree = smith_get_pid_tree(PID_TREE_LIMIT);
+        smith_check_privilege_escalation(PID_TREE_LIMIT, pid_tree);
     else
-        pid_tree = smith_get_pid_tree(PID_TREE_LIMIT_LOW);
+        smith_check_privilege_escalation(PID_TREE_LIMIT_LOW, pid_tree);
 
     // get stdin
     file = smith_fget_raw(0);
@@ -1217,7 +1201,7 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
         fput(file);
     }
 
-    //get stdout
+    // get stdout
     file = smith_fget_raw(1);
     if (file) {
         stdout_buf = smith_kzalloc(256, GFP_ATOMIC);
@@ -1264,12 +1248,10 @@ out:
         smith_kfree(stdin_buf);
     if (stdout_buf)
         smith_kfree(stdout_buf);
-    if (pid_tree)
-        smith_kfree(pid_tree);
-    if (buffer)
-        smith_kfree(buffer);
     if(tty)
         tty_kref_put(tty);
+    if (tid)
+        smith_put_tid(tid);
 
 release_data:
     if (data->free_argv)
@@ -1647,7 +1629,7 @@ int security_inode_create_pre_handler(struct kprobe *p, struct pt_regs *regs)
     pid_t socket_pid = -1;
 
     char *pname_buf = NULL;
-    char *buffer = NULL;
+    struct smith_tid *tid = NULL;
     char *pathstr = DEFAULT_RET_STR;
     char *exe_path = DEFAULT_RET_STR;
     char *s_id = DEFAULT_RET_STR;
@@ -1656,20 +1638,20 @@ int security_inode_create_pre_handler(struct kprobe *p, struct pt_regs *regs)
     struct in6_addr dip6;
     struct in6_addr sip6;
 
-    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    exe_path = smith_get_exe_file(buffer, PATH_MAX);
-
-    //exe filter check
-    if (execve_exe_check(exe_path))
-        goto out;
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+    }
 
     pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
     if (pname_buf) {
         file = (struct dentry *)p_regs_get_arg2(regs);
-        if (IS_ERR_OR_NULL(file)) {
-            smith_kfree(pname_buf);
+        if (IS_ERR_OR_NULL(file))
             goto out;
-        }
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
         pathstr = dentry_path_raw(file, pname_buf, PATH_MAX);
 #else
@@ -1702,18 +1684,18 @@ int security_inode_create_pre_handler(struct kprobe *p, struct pt_regs *regs)
         security_inode_create_nosocket_print(exe_path, pathstr, s_id);
     }
 
+out:
     if (pname_buf)
         smith_kfree(pname_buf);
-
-out:
-    if (buffer)
-        smith_kfree(buffer);
+    if (tid)
+        smith_put_tid(tid);
 
     return 0;
 }
 
 int ptrace_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
+    struct smith_tid *tid = NULL;
     long request;
     request = (long)p_get_arg1_syscall(regs);
 
@@ -1728,49 +1710,46 @@ int ptrace_pre_handler(struct kprobe *p, struct pt_regs *regs)
         long pid;
         void *addr;
         char *exe_path = DEFAULT_RET_STR;
-        char *buffer = NULL;
         char *pid_tree = NULL;
 
         pid = (long)p_get_arg2_syscall(regs);
         addr = (void *)p_get_arg3_syscall(regs);
-
         if (IS_ERR_OR_NULL(addr))
             return 0;
 
-        buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-        exe_path = smith_get_exe_file(buffer, PATH_MAX);
+        tid = smith_lookup_tid(current);
+        if (tid) {
+            exe_path = tid->st_img->si_path;
+            // exe filter check
+            if (execve_exe_check(exe_path))
+                goto out;
+            pid_tree = tid->st_pid_tree;
+        }
 
-        pid_tree = smith_get_pid_tree(PID_TREE_LIMIT);
+        smith_check_privilege_escalation(PID_TREE_LIMIT, pid_tree);
         ptrace_print(request, pid, addr, "-1", exe_path, pid_tree);
-
-        if(buffer)
-            smith_kfree(buffer);
-
-        if(pid_tree)
-            smith_kfree(pid_tree);
     }
 
+out:
+    if (tid)
+        smith_put_tid(tid);
     return 0;
 }
 
 void dns_data_transport(char *query, __be32 dip, __be32 sip, int dport,
                         int sport, int opcode, int rcode, int type)
 {
+    struct smith_tid *tid = NULL;
     char *exe_path = DEFAULT_RET_STR;
-    char *buffer = NULL;
 
-    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    exe_path = smith_get_exe_file(buffer, PATH_MAX);
-
-    //exe filter check
-    if (execve_exe_check(exe_path))
-        goto out;
+    tid = smith_lookup_tid(current);
+    if (tid)
+        exe_path = tid->st_img->si_path;
 
     dns_print(dport, dip, exe_path, sip, sport, opcode, rcode, query, type);
 
-out:
-    if (buffer)
-        smith_kfree(buffer);
+    if (tid)
+        smith_put_tid(tid);
 }
 
 #if IS_ENABLED(CONFIG_IPV6)
@@ -1778,21 +1757,17 @@ void dns6_data_transport(char *query, struct in6_addr *dip,
 			 struct in6_addr *sip, int dport, int sport,
 			 int opcode, int rcode, int type)
 {
-	char *exe_path = DEFAULT_RET_STR;
-	char *buffer = NULL;
+    struct smith_tid *tid = NULL;
+    char *exe_path = DEFAULT_RET_STR;
 
-	buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-	exe_path = smith_get_exe_file(buffer, PATH_MAX);
+    tid = smith_lookup_tid(current);
+    if (tid)
+        exe_path = tid->st_img->si_path;
 
-	//exe filter check
-	if (execve_exe_check(exe_path))
-		goto out;
+    dns6_print(dport, dip, exe_path, sip, sport, opcode, rcode, query, type);
 
-	dns6_print(dport, dip, exe_path, sip, sport, opcode, rcode, query, type);
-
-out:
-	if (buffer)
-		smith_kfree(buffer);
+    if (tid)
+        smith_put_tid(tid);
 }
 #endif
 
@@ -1818,7 +1793,7 @@ void udp_msg_parser(struct msghdr *msg, struct udp_recvmsg_data *data) {
     return;
 }
 
-int udp_process_dns(struct udp_recvmsg_data *data, unsigned char *recv_data, int iov_len)
+static int udp_process_dns(struct udp_recvmsg_data *data, unsigned char *recv_data, int iov_len)
 {
     // types of queries in the DNS system: https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml
     int qr, opcode = 0, rcode = 0, type = 0;
@@ -1870,7 +1845,6 @@ int udp_recvmsg_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     struct sockaddr_in6 *sin6;
 
     data = (struct udp_recvmsg_data *)ri->data;
-
     if (data->dport == 0) {
         if (IS_ERR_OR_NULL(data->msg) || IS_ERR_OR_NULL(data->msg->msg_name))
             return 0;
@@ -1906,7 +1880,7 @@ int udp_recvmsg_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     if (data->iov_len < 512)
         iov_len = data->iov_len;
 
-    recv_data = smith_kmalloc((iov_len + 1) * sizeof(char), GFP_ATOMIC);
+    recv_data = smith_kmalloc(iov_len + 1, GFP_ATOMIC);
     if (!recv_data)
         return 0;
 
@@ -2408,19 +2382,26 @@ int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
     char *file_buf = NULL;
     char *vm_file_path = "-1";
     char *vm_file_buff = NULL;
-    char *exe_path = "-1";
-    char *abs_buf = NULL;
+    char *exe_path = DEFAULT_RET_STR;
+    struct smith_tid *tid = NULL;
     char *pid_tree = NULL;
 
     struct vm_area_struct *vma;
+
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+        pid_tree = tid->st_pid_tree;
+    }
 
     //only get PROT_EXEC mprotect info
     //The memory can be used to store instructions which can then be executed. On most architectures,
     //this flag implies that the memory can be read (as if PROT_READ had been specified).
     prot = (unsigned long)p_regs_get_arg2(regs);
     if (prot & PROT_EXEC) {
-        abs_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-        exe_path = smith_get_exe_file(abs_buf, PATH_MAX);
 
         vma = (struct vm_area_struct *)p_regs_get_arg1(regs);
         if (IS_ERR_OR_NULL(vma)) {
@@ -2450,22 +2431,20 @@ int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
             }
             rcu_read_unlock();
 
-            pid_tree = smith_get_pid_tree(PID_TREE_LIMIT);
+            smith_check_privilege_escalation(PID_TREE_LIMIT, pid_tree);
             mprotect_print(exe_path, prot, file_path, target_pid, vm_file_path, pid_tree);
         }
-
-        if (pid_tree)
-            smith_kfree(pid_tree);
 
         if (file_buf)
             smith_kfree(file_buf);
 
-        if (abs_buf)
-            smith_kfree(abs_buf);
-
         if (vm_file_buff)
             smith_kfree(vm_file_buff);
     }
+
+out:
+    if (tid)
+        smith_put_tid(tid);
     return 0;
 }
 
@@ -2529,23 +2508,25 @@ int call_usermodehelper_exec_pre_handler(struct kprobe *p, struct pt_regs *regs)
 
 void rename_and_link_handler(int type, char * oldori, char * newori, char * s_id)
 {
-    char *buffer = NULL;
+    struct smith_tid *tid = NULL;
     char *exe_path = DEFAULT_RET_STR;
 
-    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    exe_path = smith_get_exe_file(buffer, PATH_MAX);
-
-    if (execve_exe_check(exe_path))
-        goto out_free;
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+    }
 
     if (type)
         rename_print(exe_path, oldori, newori, s_id);
     else
         link_print(exe_path, oldori, newori, s_id);
 
-out_free:
-    if (buffer)
-        smith_kfree(buffer);
+out:
+    if (tid)
+        smith_put_tid(tid);
 }
 
 int rename_pre_handler(struct kprobe *p, struct pt_regs *regs)
@@ -2665,31 +2646,32 @@ int link_pre_handler(struct kprobe *p, struct pt_regs *regs)
 int setsid_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     char *exe_path = DEFAULT_RET_STR;
-    char *buffer = NULL;
+    struct smith_tid *tid = NULL;
 
-    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    exe_path = smith_get_exe_file(buffer, PATH_MAX);
-
-    if (execve_exe_check(exe_path))
-        goto out;
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+    }
 
     setsid_print(exe_path);
 
 out:
-    if (buffer)
-        smith_kfree(buffer);
+    if (tid)
+        smith_put_tid(tid);
 
     return 0;
 }
 
 int prctl_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
+    struct smith_tid *tid = NULL;
     char *exe_path = DEFAULT_RET_STR;
-    char *buffer = NULL;
     int newname_len = 0;
     char __user *newname_ori;
     char *newname = NULL;
-
 
     //only get PS_SET_NAME data
     //PR_SET_NAME (since Linux 2.6.9)
@@ -2724,19 +2706,20 @@ int prctl_pre_handler(struct kprobe *p, struct pt_regs *regs)
         return 0;
     }
 
-    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    exe_path = smith_get_exe_file(buffer, PATH_MAX);
-
-    if (execve_exe_check(exe_path))
-        goto out;
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+    }
 
     prctl_print(exe_path, PR_SET_NAME, newname);
 
 out:
-    if (buffer)
-        smith_kfree(buffer);
-
     smith_kfree(newname);
+    if (tid)
+        smith_put_tid(tid);
 
     return 0;
 }
@@ -2750,10 +2733,15 @@ int memfd_create_kprobe_pre_handler(struct kprobe *p, struct pt_regs *regs)
     char *fdname = NULL;
     char __user *fdname_ori;
     char *exe_path = DEFAULT_RET_STR;
-    char *exe_buffer = NULL;
+    struct smith_tid *tid = NULL;
 
-    exe_buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    exe_path = smith_get_exe_file(exe_buffer, PATH_MAX);
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+    }
 
     fdname_ori = (void *)p_get_arg1_syscall(regs);
     if (IS_ERR_OR_NULL(fdname_ori))
@@ -2776,8 +2764,8 @@ int memfd_create_kprobe_pre_handler(struct kprobe *p, struct pt_regs *regs)
     memfd_create_print(exe_path, fdname, flags);
 
 out:
-    if (exe_buffer)
-        smith_kfree(exe_buffer);
+    if (tid)
+        smith_put_tid(tid);
 
     if (fdname)
         smith_kfree(fdname);
@@ -2791,7 +2779,7 @@ int open_pre_handler(struct kprobe *p, struct pt_regs *regs)
     int filename_len = 0;
 
     char *exe_path = DEFAULT_RET_STR;
-    char *buffer = NULL;
+    struct smith_tid *tid = NULL;
     char *filename = NULL;
     char __user *filename_ori;
 
@@ -2812,16 +2800,20 @@ int open_pre_handler(struct kprobe *p, struct pt_regs *regs)
 
     filename[filename_len] = '\0';
 
-    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    exe_path = smith_get_exe_file(buffer, PATH_MAX);
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+    }
 
     open_print(exe_path, filename, (int)p_get_arg2_syscall(regs),
                (umode_t)p_get_arg3_syscall(regs));
 
 out:
-    if (buffer)
-        smith_kfree(buffer);
-
+    if (tid)
+        smith_put_tid(tid);
     smith_kfree(filename);
 
     return 0;
@@ -2839,9 +2831,9 @@ int write_pre_handler(struct kprobe *p, struct pt_regs *regs)
     struct file *file;
     const char __user *buf;
     char *exe_path = DEFAULT_RET_STR;
+    struct smith_tid *tid = NULL;
     char *kbuf = NULL;
     char *pname_buf = NULL;
-    char *buffer = NULL;
     char *file_path = DEFAULT_RET_STR;
     size_t len;
 
@@ -2859,8 +2851,13 @@ int write_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if(smith_copy_from_user(kbuf, buf, len))
         goto out;
 
-    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    exe_path = smith_get_exe_file(buffer, PATH_MAX);
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+    }
 
     pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
     file_path = smith_d_path(&(file)->f_path, pname_buf, PATH_MAX);
@@ -2868,12 +2865,12 @@ int write_pre_handler(struct kprobe *p, struct pt_regs *regs)
     write_print(exe_path, file_path, kbuf);
 
 out:
-    if (buffer)
-        smith_kfree(buffer);
     if (pname_buf)
         smith_kfree(pname_buf);
     if (kbuf)
         smith_kfree(kbuf);
+    if (tid)
+        smith_put_tid(tid);
 
     return 0;
 }
@@ -2883,7 +2880,7 @@ int openat_pre_handler(struct kprobe *p, struct pt_regs *regs)
     int filename_len = 0;
 
     char *exe_path = DEFAULT_RET_STR;
-    char *buffer = NULL;
+    struct smith_tid *tid = NULL;
     char *filename = NULL;
     char __user *filename_ori;
 
@@ -2904,16 +2901,20 @@ int openat_pre_handler(struct kprobe *p, struct pt_regs *regs)
 
     filename[filename_len] = '\0';
 
-    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    exe_path = smith_get_exe_file(buffer, PATH_MAX);
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+    }
 
     open_print(exe_path, filename, (int)p_get_arg3_syscall(regs),
                (umode_t)p_get_arg4_syscall(regs));
 
-    out:
-    if (buffer)
-        smith_kfree(buffer);
-
+out:
+    if (tid)
+        smith_put_tid(tid);
     smith_kfree(filename);
 
     return 0;
@@ -2923,7 +2924,7 @@ int file_permission_handler(struct kprobe *p, struct pt_regs *regs)
 {
     int mask = 0;
     char *pname_buf = NULL;
-    char *buffer = NULL;
+    struct smith_tid *tid = NULL;
     char *file_path = DEFAULT_RET_STR;
     char *exe_path = DEFAULT_RET_STR;
     struct file *file = NULL;
@@ -2956,11 +2957,16 @@ int file_permission_handler(struct kprobe *p, struct pt_regs *regs)
     if(!parent)
         return 0;
 
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+    }
+
     if (file_notify_check(smith_query_sb_uuid(self->d_sb), parent->d_inode->i_ino, "*", 1, mask) || 
         file_notify_check(smith_query_sb_uuid(self->d_sb), parent->d_inode->i_ino, self->d_name.name, self->d_name.len, mask)) {
-        buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-        exe_path = smith_get_exe_file(buffer, PATH_MAX);
-
         pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
         file_path = smith_d_path(&(file)->f_path, pname_buf, PATH_MAX);
 
@@ -2970,9 +2976,9 @@ int file_permission_handler(struct kprobe *p, struct pt_regs *regs)
             file_permission_read_print(exe_path, file_path, self->d_sb->s_id);
     }
 
-    if (buffer)
-        smith_kfree(buffer);
-
+out:
+    if (tid)
+        smith_put_tid(tid);
     if (pname_buf)
         smith_kfree(pname_buf);
 
@@ -3101,7 +3107,7 @@ int mount_pre_handler(struct kprobe *p, struct pt_regs *regs)
 
     char *pid_tree = NULL;
     char *exe_path = DEFAULT_RET_STR;
-    char *buffer = NULL;
+    struct smith_tid *tid = NULL;
 
     char *pname_buf = NULL;
     char *file_path = DEFAULT_RET_STR;
@@ -3120,27 +3126,29 @@ int mount_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if (IS_ERR_OR_NULL(path) || !dev_name || !*dev_name)
         return 0;
 
-    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    exe_path = smith_get_exe_file(buffer, PATH_MAX);
-    if (execve_exe_check(exe_path))
-        goto out;
-
-    pid_tree = smith_get_pid_tree(PID_TREE_LIMIT);
     pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
     file_path = smith_d_path(path, pname_buf, PATH_MAX);
     data = (char *)p_regs_get_arg5(regs);
     if (!data || !mount_check_options(data))
         data = DEFAULT_RET_STR;
 
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+        pid_tree = tid->st_pid_tree;
+    }
+
+    smith_check_privilege_escalation(PID_TREE_LIMIT, pid_tree);
     mount_print(exe_path, pid_tree, dev_name, file_path, fstype, flags, data);
 
 out:
-    if (buffer)
-        smith_kfree(buffer);
+    if (tid)
+        smith_put_tid(tid);
     if (pname_buf)
         smith_kfree(pname_buf);
-    if (pid_tree)
-        smith_kfree(pid_tree);
 
     return 0;
 }
@@ -3148,7 +3156,7 @@ out:
 int nanosleep_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     char *exe_path = DEFAULT_RET_STR;
-    char *buffer = NULL;
+    struct smith_tid *tid = NULL;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
     struct __kernel_timespec *ts;
     struct timespec64 tu = {0, 0};
@@ -3175,14 +3183,20 @@ int nanosleep_pre_handler(struct kprobe *p, struct pt_regs *regs)
         return 0;
 #endif
 
-    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    exe_path = smith_get_exe_file(buffer, PATH_MAX);
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+    }
 
     /* Year-2038 issue: signed-32bit will overflow */
     nanosleep_print(exe_path, (long long)tu.tv_sec, tu.tv_nsec);
 
-    if (buffer)
-        smith_kfree(buffer);
+out:
+    if (tid)
+        smith_put_tid(tid);
 
     return 0;
 }
@@ -3190,18 +3204,24 @@ int nanosleep_pre_handler(struct kprobe *p, struct pt_regs *regs)
 void kill_and_tkill_handler(int type, pid_t pid, int sig)
 {
     char *exe_path = DEFAULT_RET_STR;
-    char *buffer = NULL;
+    struct smith_tid *tid = NULL;
 
-    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    exe_path = smith_get_exe_file(buffer, PATH_MAX);
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+    }
 
     if (type)
         kill_print(exe_path, pid, sig);
     else
         tkill_print(exe_path, pid, sig);
 
-    if (buffer)
-        smith_kfree(buffer);
+out:
+    if (tid)
+        smith_put_tid(tid);
     return;
 }
 
@@ -3223,19 +3243,25 @@ int tkill_pre_handler(struct kprobe *p, struct pt_regs *regs)
 
 void delete_file_handler(int type, char *path)
 {
-    char *buffer = NULL;
+    struct smith_tid *tid = NULL;
     char *exe_path = DEFAULT_RET_STR;
 
-    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    exe_path = smith_get_exe_file(buffer, PATH_MAX);
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+    }
 
     if (type)
         security_path_rmdir_print(exe_path, path);
     else
         security_path_unlink_print(exe_path, path);
 
-    if (buffer)
-        smith_kfree(buffer);
+out:
+    if (tid)
+        smith_put_tid(tid);
 }
 
 int security_path_rmdir_pre_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
@@ -3329,19 +3355,25 @@ int security_path_unlink_pre_handler(struct kretprobe_instance *ri, struct pt_re
 
 void exit_handler(int type)
 {
+    struct smith_tid *tid = NULL;
     char *exe_path = DEFAULT_RET_STR;
-    char *buffer = NULL;
 
-    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    exe_path = smith_get_exe_file(buffer, PATH_MAX);
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+    }
 
     if (type)
         exit_print(exe_path);
     else
         exit_group_print(exe_path);
 
-    if (buffer)
-        smith_kfree(buffer);
+out:
+    if (tid)
+        smith_put_tid(tid);
     return;
 }
 
@@ -3360,7 +3392,7 @@ int exit_group_pre_handler(struct kprobe *p, struct pt_regs *regs)
 int do_init_module_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     char *pid_tree = NULL;
-    char *buffer = NULL;
+    struct smith_tid *tid = NULL;
     char *exe_path = DEFAULT_RET_STR;
     char *pname_buf = NULL;
     char *pname = NULL;
@@ -3370,27 +3402,28 @@ int do_init_module_pre_handler(struct kprobe *p, struct pt_regs *regs)
     tmp_mod = (void *) p_regs_get_arg1(regs);
     if (IS_ERR_OR_NULL(tmp_mod))
         return 0;
-
     mod = (struct module *)tmp_mod;
 
-    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    exe_path = smith_get_exe_file(buffer, PATH_MAX);
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+        pid_tree = tid->st_pid_tree;
+    }
 
     pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
     pname = smith_d_path(&current->fs->pwd, pname_buf, PATH_MAX);
 
-    pid_tree = smith_get_pid_tree(PID_TREE_LIMIT);
+    smith_check_privilege_escalation(PID_TREE_LIMIT, pid_tree);
     do_init_module_print(exe_path, mod->name, pid_tree, pname);
 
-    if (buffer)
-        smith_kfree(buffer);
-
-    if (pid_tree)
-        smith_kfree(pid_tree);
-
+out:
+    if (tid)
+        smith_put_tid(tid);
     if (pname_buf)
         smith_kfree(pname_buf);
-
     return 0;
 }
 
@@ -3405,12 +3438,12 @@ int update_cred_entry_handler(struct kretprobe_instance *ri,
 
 int update_cred_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
-    int now_uid;
-    int retval;
-    char *exe_path = NULL;
-    char *buffer = NULL;
+    struct smith_tid *tid = NULL;
+    char *exe_path = DEFAULT_RET_STR;
     char *pid_tree = NULL;
     struct update_cred_data *data;
+    int now_uid;
+    int retval;
 
     now_uid = __get_current_uid();
     retval = regs_return_value(regs);
@@ -3419,45 +3452,55 @@ int update_cred_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     if (now_uid != 0)
         return 0;
 
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+        pid_tree = tid->st_pid_tree;
+    }
+
     data = (struct update_cred_data *)ri->data;
     if (data->old_uid != 0) {
-        buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-        exe_path = smith_get_exe_file(buffer, PATH_MAX);
-
-        pid_tree = smith_get_pid_tree(PID_TREE_LIMIT);
+        smith_check_privilege_escalation(PID_TREE_LIMIT, pid_tree);
         update_cred_print(exe_path, pid_tree, data->old_uid, retval);
-
-        if (buffer)
-            smith_kfree(buffer);
-
-        if (pid_tree)
-            smith_kfree(pid_tree);
     }
+
+out:
+    if (tid)
+        smith_put_tid(tid);
+
     return 0;
 }
 
 int smith_usb_ncb(struct notifier_block *nb, unsigned long val, void *priv)
 {
     char *exe_path = DEFAULT_RET_STR;
-    char *buffer = NULL;
+    struct smith_tid *tid = NULL;
     struct usb_device *udev;
 
     if (IS_ERR_OR_NULL(priv))
         return 0;
 
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+    }
+
     udev = (struct usb_device *)priv;
     if (USB_DEVICE_ADD == val) {
-        buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-        exe_path = smith_get_exe_file(buffer, PATH_MAX);
         udev_print(exe_path, udev->product, udev->manufacturer, udev->serial, 1);
     } else if (USB_DEVICE_REMOVE == val){
-        buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-        exe_path = smith_get_exe_file(buffer, PATH_MAX);
         udev_print(exe_path, udev->product, udev->manufacturer, udev->serial, 2);
     }
 
-    if (buffer)
-        smith_kfree(buffer);
+out:
+    if (tid)
+        smith_put_tid(tid);
 
     return NOTIFY_OK;
 }
@@ -4757,20 +4800,810 @@ void install_kprobe(void)
     }
 }
 
+/*
+ * rbtree defs for exectuable images
+ */
+struct tt_rb g_rb_img;  /* rbtree of cached images */
+LIST_HEAD(g_lru_img);   /* lru list of cached images */
+
+#define SMITH_IMG_REAPER_TIMEOUT  (600)     /* 10 minutes */
+#define SMITH_IMG_MAX_INSTANCES   (2048)    /* max cached imgs */
+
+/*
+ * callbacks for img-cache
+ */
+
+static char *smith_build_path(struct smith_img *img)
+{
+    char *buf = img->si_buf, *path;
+    int len = 256;
+
+    /* better d_absolute_path, but it's not exported */
+    path = d_path(&img->si_exe->f_path, buf, img->si_max);
+    while (IS_ERR(path) && len <= PATH_MAX) {
+        buf = smith_kmalloc(len, GFP_ATOMIC);
+        if (!buf)
+            break;
+        /* d_absolute_path */
+        path = d_path(&img->si_exe->f_path, buf, len);
+        /* got ERR_PTR(-ENAMETOOLONG) */
+        if (!IS_ERR(path)) {
+            img->si_max = len;
+            img->si_alloc = buf;
+            break;
+        }
+        kfree(buf);
+        len += 128;
+    }
+
+    if (IS_ERR(path))
+        return NULL;
+
+    return path;
+}
+
+static int smith_build_img(struct smith_img *img)
+{
+    struct dentry *de;
+
+    de = img->si_exe->f_path.dentry;
+    img->si_max = SI_IMG_BUFLEN;
+    img->si_sb = de->d_sb;
+    img->si_ino = de->d_inode->i_ino;
+    img->si_cts = de->d_inode->i_ctime;
+    img->si_path = smith_build_path(img);
+    if (!img->si_path)
+        return -ENOMEM;
+
+    return 0;
+}
+
+static struct tt_node *smith_init_img(struct tt_rb *rb, void *key)
+{
+    struct smith_img *img;
+
+    img = (struct smith_img *)tt_rb_alloc_node(rb);
+    if (img) {
+        tt_memcpy(img, key, offsetof(struct smith_img, si_age));
+        /* initialize pid (binding to its tid) */
+        if (smith_build_img(img)) {
+            tt_rb_free_node(rb, &img->si_node);
+            return 0;
+        }
+        INIT_LIST_HEAD(&img->si_link);
+        atomic_set(&img->si_node.refs, 0);
+        img->si_age = 0;
+        return &img->si_node;
+    }
+
+    return NULL;
+}
+
+static int smith_cmp_img(struct tt_rb *rb, struct tt_node *tnod, void *key)
+{
+    struct tt_node *node = key;
+    struct smith_img *img1, *img2;
+
+    img1 = container_of(tnod, struct smith_img, si_node);
+    img2 = container_of(node, struct smith_img, si_node);
+    if (img2->si_ino > img1->si_ino)
+        return 1;
+    if (img2->si_ino < img1->si_ino)
+        return -1;
+    if (img2->si_cts.tv_sec > img1->si_cts.tv_sec)
+        return 1;
+    if (img2->si_cts.tv_sec < img1->si_cts.tv_sec)
+        return -1;
+    if (img2->si_cts.tv_nsec > img1->si_cts.tv_nsec)
+        return 1;
+    if (img2->si_cts.tv_nsec < img1->si_cts.tv_nsec)
+        return -1;
+    if (img2->si_sb > img1->si_sb)
+        return 1;
+    if (img2->si_sb < img1->si_sb)
+        return -1;
+    return 0;
+}
+
+static void smith_release_img(struct tt_rb *rb, struct tt_node *tnod)
+{
+    struct smith_img *img = container_of(tnod, struct smith_img, si_node);
+    list_del(&img->si_link);
+    if (img->si_max > SI_IMG_BUFLEN)
+        kfree(img->si_alloc);
+    tt_rb_free_node(rb, tnod);
+}
+
+/*
+ * img-cache support routines
+ */
+
+static int smith_drop_head_img(void)
+{
+    struct list_head *link;
+    struct smith_img *img;
+    int rc = 0;
+
+    write_lock(&g_rb_img.lock);
+    link = g_lru_img.next;
+    img = list_entry(link, struct smith_img, si_link);
+    if (list_empty(&g_lru_img))
+        goto errorout;
+
+    if (0 == atomic_read(&img->si_node.refs)) {
+        if (smith_get_seconds() > img->si_age) {
+            list_del_init(&img->si_link);
+            /* img hasn't been touched for seconds */
+            /* remove this img from rbtree */
+            /* drop img */
+            tt_rb_remove_node_nolock(&g_rb_img, &img->si_node);
+            rc++;
+        } else {
+            /* it doesn't timeout yet, so continue and wait */
+        }
+    } else {
+        list_del_init(&img->si_link);
+        /* smith_put_img will put it back to lru list */
+    }
+
+errorout:
+    write_unlock(&g_rb_img.lock);
+
+    return rc;
+}
+
+static void smith_drop_head_imgs(struct tt_rb *rb)
+{
+    int count = atomic_read(&rb->count);
+
+    do {
+        if (!smith_drop_head_img())
+            break;
+    } while (--count > SMITH_IMG_MAX_INSTANCES);
+}
+
+struct smith_img *smith_get_img(struct smith_img *img)
+{
+    if (img)
+        atomic_inc_return(&img->si_node.refs);
+    return img;
+}
+
+void smith_put_img(struct smith_img *img)
+{
+    if (in_interrupt()) {
+        img->si_age = smith_get_seconds() + SMITH_IMG_REAPER_TIMEOUT;
+        atomic_dec(&img->si_node.refs);
+        return;
+    }
+
+    if (atomic_add_unless(&img->si_node.refs, -1, 1))
+        return;
+
+    write_lock(&g_rb_img.lock);
+    list_del_init(&img->si_link);
+    if (0 == atomic_dec_return(&img->si_node.refs)) {
+        img->si_age = smith_get_seconds() + SMITH_IMG_REAPER_TIMEOUT;
+        list_add_tail(&img->si_link, &g_lru_img);
+    }
+    write_unlock(&g_rb_img.lock);
+
+    smith_drop_head_imgs(&g_rb_img);
+}
+
+static int smith_build_key(struct task_struct *task, struct smith_img *img)
+{
+    struct dentry *de;
+
+    img->si_exe = smith_get_task_exe_file(task);
+    if (!img->si_exe)
+        return -ENOENT;
+
+    de = img->si_exe->f_path.dentry;
+    img->si_sb = de->d_sb;
+    img->si_ino = de->d_inode->i_ino;
+    img->si_cts = de->d_inode->i_ctime;
+
+    return 0;
+}
+
+struct smith_img *smith_find_img(struct task_struct *task)
+{
+    struct smith_img img, *si = NULL;
+    struct tt_node *tnod = NULL;
+    int rc = 0;
+
+    /* if succeeds, will return with si_exe grabbed */
+    rc = smith_build_key(task, &img);
+    if (rc)
+        goto errorout;
+
+    /* check whether the image was already inserted ? */
+    read_lock(&g_rb_img.lock);
+    tnod = tt_rb_lookup_nolock(&g_rb_img, &img);
+    if (tnod) {
+        atomic_inc(&tnod->refs);
+        read_unlock(&g_rb_img.lock);
+        si = container_of(tnod, struct smith_img, si_node);
+        goto errorout;
+    } else {
+        read_unlock(&g_rb_img.lock);
+    }
+
+    /* insert new node to rbtree */
+    write_lock(&g_rb_img.lock);
+    tnod = tt_rb_insert_key_nolock(&g_rb_img, &img.si_node);
+    if (tnod) {
+        atomic_inc(&tnod->refs);
+        si = container_of(tnod, struct smith_img, si_node);
+    }
+    write_unlock(&g_rb_img.lock);
+
+errorout:
+    if (img.si_exe)
+        fput(img.si_exe);
+    return si;
+}
+
+static void smith_show_img(struct tt_node *tnod)
+{
+    struct smith_img *img;
+
+    if (!tnod)
+        return;
+
+    img = container_of(tnod, struct smith_img, si_node);
+    printk("img: %px (%s) sb: %px ino: %lu refs: %d nimgs: %u.\n",
+            img, img->si_path, img->si_sb, img->si_ino,
+            atomic_read(&img->si_node.refs),
+            atomic_read(&g_rb_img.count));
+}
+
+void smith_enum_img(void)
+{
+    printk("enum all imgs:\n");
+    tt_rb_enum(&g_rb_img, smith_show_img);
+}
+
+static int smith_is_anchor(struct task_struct *task)
+{
+    struct {int len; char *name;} anchors[] = {
+        /* ordered via len, max is TASK_COMM_LEN (16) */
+        {4, "sshd"},
+        {5, "login"},
+        {15, "containerd-shim"},
+             /* k8s ? */
+
+        {0, 0} /* the end */
+    };
+    int len, i;
+
+    /* systemd / init */
+    if (task->pid == 1 || NULL == task)
+        return 1;
+
+    len = strnlen(task->comm, TASK_COMM_LEN);
+    if (len <= 0)
+        return 0;
+
+    for (i = 0; anchors[i].name; i++) {
+        if (len < anchors[i].len)
+            break;
+        if (len == anchors[i].len &&
+            0 == strncmp(anchors[i].name, task->comm, len))
+            return 1;
+    }
+    return 0;
+}
+
+/*
+ * hash lists for all active tasks
+ */
+struct hlist_root g_hlist_tid;
+
+/* query the original session id */
+int smith_query_tid(struct task_struct *task)
+{
+    struct smith_tid tid;
+    int rc = -1;
+
+    if (0 == hlist_query_key(&g_hlist_tid, task, &tid))
+        rc = tid.st_sid;
+
+    return rc;
+}
+
+struct smith_tid *smith_lookup_tid(struct task_struct *task)
+{
+    struct smith_tid *tid = NULL;
+    struct hlist_hnod *nod;
+
+    nod = hlist_lookup_key(&g_hlist_tid, task);
+    if (nod)
+        tid = container_of(nod, struct smith_tid, st_node);
+
+    return tid;
+}
+
+int smith_put_tid(struct smith_tid *tid)
+{
+    int rc = 0;
+    if (tid)
+        rc = hlist_deref_node(&g_hlist_tid, &tid->st_node);
+    return rc;
+}
+
+int smith_drop_tid(struct task_struct *task)
+{
+    return hlist_remove_key(&g_hlist_tid, task);
+}
+
+/*
+ * callbacks routines for tid
+ */
+
+static int smith_query_parents(struct task_struct *task)
+{
+    struct task_struct *old_task;
+    int i = 0;
+
+    get_task_struct(task);
+
+    while (task && task->pid != 0) {
+        i++;
+        old_task = task;
+        rcu_read_lock();
+        task = smith_get_task_struct(rcu_dereference(task->real_parent));
+        rcu_read_unlock();
+        smith_put_task_struct(old_task);
+    }
+
+    if (task)
+        smith_put_task_struct(task);
+
+    return i;
+}
+
+#define PID_TREE_MATEDATA_LEN (10 /* len of max uint32_t */ + 2 + TASK_COMM_LEN)
+static char *smith_get_pid_tree(struct task_struct *task)
+{
+    char *tree = NULL;
+    char pid[24];
+    int n;
+
+    get_task_struct(task);
+    n = smith_query_parents(task);
+    if (n > PID_TREE_LIMIT)
+        n = PID_TREE_LIMIT;
+    if (n <= 0)
+        n = 1;
+
+    tree = smith_kzalloc(n * PID_TREE_MATEDATA_LEN, GFP_ATOMIC);
+    if (!tree)
+        goto out;
+
+    snprintf(pid, 24, "%d", task->tgid);
+    strcat(tree, pid);
+    strcat(tree, ".");
+    strcat(tree, current->comm);
+
+    while (--n > 0) {
+
+        struct task_struct *old_task = task;
+        rcu_read_lock();
+        task = smith_get_task_struct(rcu_dereference(task->real_parent));
+        rcu_read_unlock();
+        smith_put_task_struct(old_task);
+        if (!task || task->pid == 0)
+            break;
+
+        snprintf(pid, 24, "%d", task->tgid);
+        strcat(tree, "<");
+        strcat(tree, pid);
+        strcat(tree, ".");
+        strcat(tree, task->comm);
+    }
+
+out:
+    if (task)
+        smith_put_task_struct(task);
+
+    return tree;
+}
+
+static void smith_update_pid_tree(char *pid_tree, char *comm_old, char *comm_new)
+{
+    char *s;
+    int o, n;
+
+    if (!pid_tree)
+        return;
+    s = strstr(pid_tree, comm_old);
+    if (!s)
+        return;
+    o = strlen(comm_old);
+    n = strlen(comm_new);
+    if (o == n && !strcmp(comm_old, comm_new))
+        return;
+    if (o != n)
+        memmove(s + n, s + o, strlen(pid_tree) - o - (int)(s - pid_tree) + 1 /* ending 0 */);
+    memcpy(s, comm_new, n);
+}
+
+static int smith_build_tid(struct smith_tid *tid, struct task_struct *task)
+{
+    tid->st_start = smith_task_start_time(task);
+    tid->st_pid = task->pid;
+    /* flags was already inited during allocation */
+    tid->st_node.flag_newsid = smith_is_anchor(task->parent);
+    tid->st_sid = task_session_nr_ns(task, &init_pid_ns);
+    memcpy(tid->st_comm, task->comm, TASK_COMM_LEN);
+    tid->st_img = smith_find_img(task);
+    if (!tid->st_img)
+        return -ENOMEM;
+    tid->st_pid_tree = smith_get_pid_tree(task);
+
+    return 0;
+}
+
+static struct hlist_hnod *smith_init_tid(struct hlist_root *hr, void *key)
+{
+    struct task_struct *task = key;
+    struct hlist_hnod *hnod;
+    struct smith_tid *tid;
+
+    hnod = hlist_alloc_node(hr);
+    if (hnod) {
+        tid = container_of(hnod, struct smith_tid, st_node);
+        if (!smith_build_tid(tid, task))
+            return &tid->st_node;
+        hlist_free_node(hr, &tid->st_node);
+    }
+
+    return NULL;
+}
+
+static int smith_cmp_tid(struct hlist_root *hr, struct hlist_hnod *hnod, void *key)
+{
+    struct task_struct *task = key;
+    struct smith_tid *tid;
+
+    tid = container_of(hnod, struct smith_tid, st_node);
+    return !(tid->st_start == smith_task_start_time(task) &&
+             tid->st_pid == task->pid);
+}
+
+static void smith_release_tid(struct hlist_root *hr, struct hlist_hnod *hnod)
+{
+    struct smith_tid *tid = container_of(hnod, struct smith_tid, st_node);
+
+    if (unlikely(!hnod))
+        return;
+
+    /* dereference st_img */
+    if (tid->st_img)
+        smith_put_img(tid->st_img);
+    if (tid->st_pid_tree)
+        smith_kfree(tid->st_pid_tree);
+    hlist_free_node(hr, hnod);
+}
+
+static int smith_insert_tid(struct task_struct *task)
+{
+    /* alloc tid and insert to tid hash lists */
+    return !hlist_insert_key(&g_hlist_tid, task);
+}
+
+static void smith_show_tid(struct hlist_hnod *hnod)
+{
+    struct smith_tid *tid;
+
+    if (!hnod)
+        return;
+
+    tid = container_of(hnod, struct smith_tid, st_node);
+    printk("task: %s refs: %d pid: %u sid: %u\n",
+            tid->st_comm, atomic_read(&tid->st_node.refs),
+            tid->st_pid, tid->st_sid);
+}
+
+void smith_enum_tid(void)
+{
+    printk("enum all tids:\n");
+    hlist_enum(&g_hlist_tid, smith_show_tid);
+}
+
+static int smith_hash_tid(struct hlist_root *hr, void *key)
+{
+    struct task_struct *task = key;
+    return (task->pid & hr->nlists);
+}
+
+static void smith_process_tasks(struct hlist_root *hr)
+{
+    struct task_struct *task;
+
+    hlist_lock(hr);
+    /* hlist locked instead of grabing tasklist_lock */
+    for_each_process(task) {
+        /* skip kernel threads and tasks being shut donw */
+        if (task->flags & (PF_KTHREAD | PF_EXITING))
+            continue;
+        hlist_insert_key_nolock(hr, task);
+    }
+    hlist_unlock(hr);
+}
+
+/*
+ * sched/process tracepoints support routines
+ */
+
+#include <linux/tracepoint.h>
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 35))
+    #define TRACEPOINT_PROBE_REGISTER(p1, p2) tracepoint_probe_register(p1, p2)
+    #define TRACEPOINT_PROBE_UNREGISTER(p1, p2) tracepoint_probe_unregister(p1, p2)
+    #define TRACEPOINT_PROBE(probe, args...) static void probe(args)
+#else
+    #define TRACEPOINT_PROBE_REGISTER(p1, p2) tracepoint_probe_register(p1, p2, NULL)
+    #define TRACEPOINT_PROBE_UNREGISTER(p1, p2) tracepoint_probe_unregister(p1, p2, NULL)
+    #define TRACEPOINT_PROBE(probe, args...) static void probe(void *__data, args)
+#endif
+
+TRACEPOINT_PROBE(smith_trace_proc_fork,
+                 struct task_struct *self,
+                 struct task_struct *task)
+{
+    /* skip kernel threads */
+    if (task->flags & PF_KTHREAD)
+        return;
+
+    smith_insert_tid(task);
+}
+
+/*
+ * Tracepoint sched_process_exec is only available for v3.4 and later kernels;
+ * For earlier kernels, we have to register kretprobe handler and call manually.
+ */
+static void smith_trace_proc_exec(
+                     void *data,
+                     struct task_struct *task,
+                     pid_t pid,
+                     struct linux_binprm *bprm)
+{
+    struct smith_tid *tid = NULL;
+    struct smith_img *img = NULL, *exe;
+
+    /* already inserted ? */
+    tid = smith_lookup_tid(task);
+    if (!tid)
+        goto errorout;
+    smith_update_pid_tree(tid->st_pid_tree, tid->st_comm, task->comm);
+    memcpy(tid->st_comm, task->comm, TASK_COMM_LEN);
+
+    /* build img for execed task */
+    exe = smith_find_img(task);
+    if (exe) {
+        /* update st_img with new execed image */
+        img = tid->st_img;
+        rcu_assign_pointer(tid->st_img, exe);
+    }
+
+errorout:
+    if (img)
+        smith_put_img(img);
+    if (tid)
+        smith_put_tid(tid);
+    return;
+}
+
+/*
+ * Process exec notifier: workaround for earlier kernels (< 3.4)
+ */
+void smith_trace_proc_execve(struct task_struct *task)
+{
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
+    smith_trace_proc_exec(NULL, task, task->pid, NULL);
+#endif
+}
+
+TRACEPOINT_PROBE(smith_trace_proc_exit, struct task_struct *task)
+{
+    /* skip kernel threads */
+    if (task->flags & PF_KTHREAD)
+        return;
+
+    /* try to cleanup current taks's tid record */
+    smith_drop_tid(task);
+}
+
+struct smith_tracepoint {
+    const char *name;
+    void *handler;
+    void *data;
+    struct tracepoint *control;
+} g_smith_tracepoints[] = {
+
+    {.name = "sched_process_exit", .handler = smith_trace_proc_exit},
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
+    {.name = "sched_process_exec", .handler = smith_trace_proc_exec},
+#endif
+    {.name = "sched_process_fork", .handler = smith_trace_proc_fork} };
+#define NUM_TRACE_POINTS (sizeof(g_smith_tracepoints) / sizeof(struct smith_tracepoint))
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0)
+static void smith_query_tracepoints(struct tracepoint *tp, void *ignore)
+{
+    int i;
+    for (i = 0; i < NUM_TRACE_POINTS; i++) {
+        if (strcmp(g_smith_tracepoints[i].name, tp->name) == 0)
+            g_smith_tracepoints[i].control = tp;
+    }
+}
+static int smith_assert_tracepoints(void)
+{
+    int i;
+
+    for_each_kernel_tracepoint(smith_query_tracepoints, NULL);
+    for (i = 0; i < NUM_TRACE_POINTS; i++) {
+        if (!g_smith_tracepoints[i].control)
+            return -ENOENT;
+    }
+
+    return 0;
+}
+static int smith_register_tracepoint(struct smith_tracepoint *tp)
+{
+    return tracepoint_probe_register(tp->control, tp->handler, tp->data);
+}
+static int smith_unregister_tracepoint(struct smith_tracepoint *tp)
+{
+    return tracepoint_probe_unregister(tp->control, tp->handler, tp->data);
+}
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35)
+static int smith_assert_tracepoints(void)
+{
+    return 0;
+}
+static int smith_register_tracepoint(struct smith_tracepoint *tp)
+{
+    return tracepoint_probe_register(tp->name, tp->handler, tp->data);
+}
+static int smith_unregister_tracepoint(struct smith_tracepoint *tp)
+{
+    return tracepoint_probe_unregister(tp->name, tp->handler, tp->data);
+}
+#else
+static int smith_assert_tracepoints(void)
+{
+    return 0;
+}
+static int smith_register_tracepoint(struct smith_tracepoint *tp)
+{
+    return tracepoint_probe_register(tp->name, tp->handler);
+}
+static int smith_unregister_tracepoint(struct smith_tracepoint *tp)
+{
+    return tracepoint_probe_unregister(tp->name, tp->handler);
+}
+#endif
+
+static int __init smith_tid_init(void)
+{
+    int i, rc, nimgs, ntids;
+
+    /* check the tracepoints of our interest */
+    rc = smith_assert_tracepoints();
+    if (rc)
+        goto errorout;
+
+    /* number of cached objects to be pre-allocated */
+    ntids = 64 * num_present_cpus();
+    if (ntids < 512)
+        ntids = 512;
+    if (ntids > (SMITH_IMG_MAX_INSTANCES << 1))
+        ntids = SMITH_IMG_MAX_INSTANCES << 1;
+    nimgs = SMITH_IMG_MAX_INSTANCES;
+    if (nimgs > ntids)
+        nimgs = ntids;
+
+    rc = tt_rb_init(&g_rb_img, 0, nimgs,
+                    SI_IMG_LENGTH, GFP_ATOMIC, 0,
+                    smith_init_img, smith_cmp_img,
+                    smith_release_img);
+    if (rc)
+        goto errorout;
+
+    rc = hlist_init(&g_hlist_tid, 0, ntids,
+                    sizeof(struct smith_tid), GFP_ATOMIC, 0,
+                    smith_init_tid, smith_hash_tid,
+                    smith_cmp_tid, smith_release_tid);
+    if (rc)
+        goto fini_rb_img;
+
+    /* register callbacks for the tracepoints of our interest */
+    for (i = 0; i < NUM_TRACE_POINTS; i++) {
+        rc = smith_register_tracepoint(&g_smith_tracepoints[i]);
+        if (rc)
+            goto clean_trace;
+    }
+
+    /* enum active tasks and build tid for each user task */
+    smith_process_tasks(&g_hlist_tid);
+
+errorout:
+    return rc;
+
+clean_trace:
+    while (--i >= 0)
+        smith_unregister_tracepoint(&g_smith_tracepoints[i]);
+    hlist_fini(&g_hlist_tid);
+
+fini_rb_img:
+    tt_rb_fini(&g_rb_img);
+
+    return rc;
+}
+
+static void smith_tid_fini(void)
+{
+    int i;
+    /* register callbacks for the tracepoints of our interest */
+    for (i = NUM_TRACE_POINTS; i > 0; i--)
+        smith_unregister_tracepoint(&g_smith_tracepoints[i - 1]);
+
+    hlist_fini(&g_hlist_tid);
+    tt_rb_fini(&g_rb_img);
+}
+
+static inline void __init_root_pid_ns_inum(void) {
+    struct pid *pid_struct;
+    struct task_struct *task;
+
+    pid_struct = find_get_pid(1);
+    task = pid_task(pid_struct,PIDTYPE_PID);
+
+    smith_get_task_struct(task);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
+    ROOT_PID_NS_INUM = task->nsproxy->pid_ns_for_children->ns.inum;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
+    ROOT_PID_NS_INUM = task->nsproxy->pid_ns_for_children->proc_inum;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
+    ROOT_PID_NS_INUM = task->nsproxy->pid_ns->proc_inum;
+#else
+    /*
+     * For kernels < 3.8.0, id for pid namespaces isn't defined.
+     * So here we are using fixed values, no emulating any more,
+     * previously we were using image file's inode number.
+     */
+    ROOT_PID_NS_INUM = 0xEFFFFFFCU /* PROC_PID_INIT_INO */;
+#endif
+    smith_put_task_struct(task);
+    put_pid(pid_struct);
+}
+
 static int __init smith_init(void)
 {
     int ret;
+
+    printk(KERN_INFO "[ELKEID] kmod %s (%s) loaded.\n",
+           THIS_MODULE->name, THIS_MODULE->version);
 
     ret = kernel_symbols_init();
     if (ret)
         return ret;
 
-    ret = filter_init();
+    ret = smith_tid_init();
     if (ret)
         return ret;
 
-    printk(KERN_INFO "[ELKEID] kmod %s (%s) loaded.\n",
-           THIS_MODULE->name, THIS_MODULE->version);
+    ret = filter_init();
+    if (ret) {
+        smith_tid_fini();
+        return ret;
+    }
+
+    printk(KERN_INFO "[ELKEID] Filter Init Success \n");
 
 #if (EXIT_PROTECT == 1)
     exit_protect_action();
@@ -4804,6 +5637,9 @@ static void smith_exit(void)
     /* cleaning up kprobe hook points */
     uninstall_kprobe();
     filter_cleanup();
+
+    /* cleaning up tid & img cache */
+    smith_tid_fini();
 
     printk(KERN_INFO "[ELKEID] uninstall_kprobe success\n");
 }
