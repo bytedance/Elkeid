@@ -25,12 +25,6 @@
 #define SZ_32K				0x00008000
 #define SZ_128K				0x00020000
 
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-#else
-#define PDE_DATA(i)  PDE(i)->data
-#endif
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
 static inline int __trace_seq_used(struct trace_seq *s)
 {
