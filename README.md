@@ -68,10 +68,13 @@ Other Data
 ## Contact us && Cooperation
 
 <img src="png/Lark.png" width="40%" style="float:left;"/>
+*Lark Group*
+
+
 
 If interested in Elkeid Enterprise Edition please contact elkeid@bytedance.com
 
-*Lark Group*
+
 
 ## License
 * Elkeid Driver: GPLv2
