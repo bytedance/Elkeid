@@ -48,7 +48,7 @@ Other Data
 * **Secondary Development Friendly**: Elkeid facilitates secondary development and increased demand for customization.
 
 
-## Front-end display
+## Front-end Display (Community Edition)
 * Host Details
   <img src="png/console1.png" style="float:left;"/>
 * Asset Details
@@ -68,6 +68,8 @@ Other Data
 ## Contact us && Cooperation
 
 <img src="png/Lark.png" width="40%" style="float:left;"/>
+
+If interested in Elkeid Enterprise Edition please contact elkeid@bytedance.com
 
 *Lark Group*
 
