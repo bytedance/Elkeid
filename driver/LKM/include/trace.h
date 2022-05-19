@@ -14,28 +14,27 @@
 #ifdef SMITH_TRACE_EVENTS
 #include <linux/trace_events.h>
 #else
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
-#define SMITH_TRACE_EVENTS
-#include <linux/trace_events.h>
-#else
 #include <linux/ftrace_event.h>
-#endif
 #endif
 
 #define SZ_32K				0x00008000
 #define SZ_128K				0x00020000
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
+#ifdef SMITH_TRACE_SEQ
+#define SMITH_TRACE_SEQ_QUERY(s, e) (s)->seq.e
+#else
+#define SMITH_TRACE_SEQ_QUERY(s, e) (s)->e
+#endif
+
+#ifdef SMITH_TRACE_EVENTS
 static inline int __trace_seq_used(struct trace_seq *s)
 {
 	return trace_seq_used(s);
 }
-
 static inline bool __trace_seq_has_overflowed(struct trace_seq *s)
 {
 	return trace_seq_has_overflowed(s);
 }
-
 /*
  * Several functions return TRACE_TYPE_PARTIAL_LINE if the trace_seq
  * overflowed, and TRACE_TYPE_HANDLED otherwise. This helper function
@@ -45,23 +44,20 @@ static inline enum print_line_t __trace_handle_return(struct trace_seq *s)
 {
 	return trace_handle_return(s);
 }
-#else
+#else /* !SMITH_TRACE_EVENTS */
 static inline int __trace_seq_used(struct trace_seq *s)
 {
-    return min(s->len, (unsigned int)(PAGE_SIZE - 1));
+    unsigned int len = SMITH_TRACE_SEQ_QUERY(s, len);
+    return min(len, (unsigned int)(PAGE_SIZE - 1));
 }
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 5, 0)
 static inline bool __trace_seq_has_overflowed(struct trace_seq *s)
 {
-    return s->len > PAGE_SIZE - 1;
-}
-#else
-static inline bool __trace_seq_has_overflowed(struct trace_seq *s)
-{
-    return s->full || s->len > PAGE_SIZE - 1;
-}
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
+	if (s->full)
+		return s->full;
 #endif
-
+    return SMITH_TRACE_SEQ_QUERY(s, len) > (PAGE_SIZE - 1);
+}
 /*
  * Several functions return TRACE_TYPE_PARTIAL_LINE if the trace_seq
  * overflowed, and TRACE_TYPE_HANDLED otherwise. This helper function
@@ -72,7 +68,7 @@ static inline enum print_line_t __trace_handle_return(struct trace_seq *s)
     return __trace_seq_has_overflowed(s) ?
            TRACE_TYPE_PARTIAL_LINE : TRACE_TYPE_HANDLED;
 }
-#endif
+#endif /* !SMITH_TRACE_EVENTS */
 
 /*
  * The print entry - the most basic unit of tracing.

@@ -161,7 +161,7 @@ static struct print_event_entry *__find_next_entry(struct print_event_iterator *
         /*
          * always loop from next of last-read cpu (specified by user)
          * to avoid possible starving on other cores, that is, reading
-         * one message for 'cpu', then moving onto 'cpu' + 1
+         * one message for 'cpu', then move onto 'cpu' + 1
          */
         start = *ent_cpu + 1;
         if (start >= nr_cpumask_bits)
@@ -276,19 +276,12 @@ waitagain:
     mutex_lock(&access_lock);
     while (trace_next_entry_inc(iter) != NULL) {
         enum print_line_t ret;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-        int save_len = iter->seq.seq.len;
-#else
-        int save_len = iter->seq.len;
-#endif
+        int save_len = SMITH_TRACE_SEQ_QUERY(&iter->seq, len);
+
         ret = print_trace_fmt_line(iter);
         if (ret == TRACE_TYPE_PARTIAL_LINE) {
             /* don't print partial lines */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-            iter->seq.seq.len = save_len;
-#else
-            iter->seq.len = save_len;
-#endif
+            SMITH_TRACE_SEQ_QUERY(&iter->seq, len) = save_len;
             break;
         }
 
@@ -310,12 +303,8 @@ waitagain:
 
 /* Now copy what we have to the user */
     sret = trace_seq_to_user_sym(&iter->seq, ubuf, cnt);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-    if (iter->seq.seq.readpos >= __trace_seq_used(&iter->seq))
-#else
-    if (iter->seq.readpos >= __trace_seq_used(&iter->seq))
-#endif
-    trace_seq_init(&iter->seq);
+    if (SMITH_TRACE_SEQ_QUERY(&iter->seq, readpos) >= __trace_seq_used(&iter->seq))
+        trace_seq_init(&iter->seq);
 
     /*
     * If there was nothing to send to user, in spite of consuming trace
