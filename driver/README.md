@@ -8,7 +8,7 @@ English | [简体中文](README-zh_CN.md)
 
 Elkeid Driver is a one-of-a-kind Kernel Space HIDS agent designed for Cyber-Security. 
 
-Elkeid Driver hooks kernel functions via Kprobe, providing rich and accurate data collection capabilities,  including kernel-level process execve probing, privilege escalation monitoring, network audition, and much more. The Driver treats Container-based monitoring as a first-class citizen as Host-based data collection by supporting Linux Namespace. Compare to User Space agents on the market, Elkeid provides more comprehensive information with massive performance improvement. 
+Elkeid Driver hooks kernel functions via Kprobe, providing rich and accurate data collection capabilities, including kernel-level process execve probing, privilege escalation monitoring, network audition, and much more. The Driver treats Container-based monitoring as a first-class citizen as Host-based data collection by supporting Linux Namespace. Compare to User Space agents on the market, Elkeid provides more comprehensive information with massive performance improvement.
 
 Elkeid has already been deployed massively for HIDS usage in world-class production environments. With its marvelous data collection ability, Elkeid also supports Sandbox, Honeypot, and Audition data requirements. 
 
@@ -59,17 +59,17 @@ curl -O "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0
 
 
 ## How to Test
-You can test the kernel module with [LTP](https://linux-test-project.github.io/) (better with [KASAN](https://www.kernel.org/doc/html/latest/dev-tools/kasan.html) truned on). Here's the [LTP-test-case](./ltp_testcase) configuration file for your reference:  [LTP-test-case](./ltp_testcase).
+You can test the kernel module with [LTP](https://linux-test-project.github.io/) (better with [KASAN](https://www.kernel.org/doc/html/latest/dev-tools/kasan.html) turned on). Here's the [LTP-test-case](./ltp_testcase) configuration file for your reference: [LTP-test-case](./ltp_testcase).
 
 
 ## About the compatibility with Linux distributions
 
 Distro|Version|x64 kernel|Suffix
 :- | :- | -: | -:
-debian|8,9,10|3.16~5.4.X |-
-ubuntu|14.04,16.04,18.04,20.04|3.12~5.4.X |generic
-centos|6.X,7.X,8.X|2.6.32.0~5.4.X |el6,el7,el8
-amazon|2|4.9.X~4.14.X|amzn2
+Debian|8,9,10|3.16~5.4.X |-
+Ubuntu|14.04,16.04,18.04,20.04|3.12~5.4.X |generic
+CentOS|6.X,7.X,8.X|2.6.32.0~5.4.X |el6,el7,el8
+Amazon|2|4.9.X~4.14.X|amzn2
 AlibabaCloudLinux|3|4.19.X~5.10.X|al7,al8
 EulerOS|V2.0|3.10.X|-
 
@@ -87,7 +87,7 @@ EulerOS|V2.0|3.10.X|-
 | ------ | -------------- |
 | Host   | hostname       |
 | Docker | container name |
-| k8s    | pod name       |
+| K8s    | pod name       |
 
 ## Hook List
 
@@ -112,13 +112,14 @@ EulerOS|V2.0|3.10.X|-
 | tkill              | 200      |                                         | OFF     |
 | exit_group         | 231      |                                         | OFF     |
 | memfd_create       | 356      |                                         | ON     |
-| dns queny          | 601      |                                         | ON     |
+| dns query          | 601      |                                         | ON     |
 | create_file        | 602      |                                         | ON      |
 | load_module        | 603      |                                         | ON      |
 | update_cred        | 604      | only old uid ≠0 && new uid == 0         | ON      |
 | unlink             | 605      |                                         | OFF     |
 | rmdir              | 606      |                                         | OFF     |
 | call_usermodehelper_exec     | 607      |                               | ON     |
+| file_write         | 608      |                                          | OFF     |
 | file_read          | 609      |                                          | OFF     |
 | usb_device_event   | 610      |                                          | ON     |
 | privilege_escalation   | 611      |                                          | ON     |
@@ -140,7 +141,7 @@ EulerOS|V2.0|3.10.X|-
 
 ### Data Protocol
 
-Every hit of the above hook-points will generate a record.  Each record contains several data itmes and the data items are being seperated by **data deliminator**: '**\x17**'.
+Every hit of the above hook-points will generate a record. Each record contains several data items and the data items are being separated by **data deliminator**: '**\x17**'.
 
 A record contains **Common Data** and ***Private Data***, with the exception of Anti-rootkit, which does **NOT** have  **Common Data**.
 
@@ -270,22 +271,22 @@ Only contains fields in ***Common Data***
 ### Rename Data (82)
 
 ```
-----------------------------
-|14      |15      |16      | 
-----------------------------
-|run_path|old_name|new_name|
-----------------------------
+-------------------------
+|14      |15      |16   |
+-------------------------
+|old_name|new_name|sb_id|
+-------------------------
 ```
 
 
 ### Link Data (86)
 
 ```
-----------------------------
-|14      |15      |16      | 
-----------------------------
-|run_path|old_name|new_name|
-----------------------------
+-------------------------
+|14      |15      |16   |
+-------------------------
+|old_name|new_name|sb_id|
+-------------------------
 ```
 
 
@@ -344,7 +345,7 @@ _____________________________________
 Only contains fields in ***Common Data***
 
 
-### memfd_create Data (356)
+### Memfd Create Data (356)
 
 ```
 ______________
@@ -370,22 +371,22 @@ ______________
 ### Create File data (602)
 
 ```
-----------------------------------------------------
-|14 	  |15 |16   |17 |18   |19       |20        |
-----------------------------------------------------
-|file_path|dip|dport|sip|sport|sa_family|socket_pid|
-----------------------------------------------------
+----------------------------------------------------------
+|14 	  |15 |16   |17 |18   |19       |20        |21   |
+----------------------------------------------------------
+|file_path|dip|dport|sip|sport|sa_family|socket_pid|sb_id|
+----------------------------------------------------------
 ```
 
 
 ### Load Module Data (603)
 
 ```
-----------------------------
-|14      |15      |16      | 
-----------------------------
+---------------------------
+|14      |15      |16     |
+---------------------------
 |ko_file|pid_tree|run_path|
-----------------------------
+---------------------------
 ```
 
 
@@ -532,7 +533,7 @@ allowlist driver is in: `/dev/hids_driver_allowlist`
 | Operations                    | Flag   | Example                                              |
 | ----------------------------- | ------ | ---------------------------------------------------- |
 | ADD_EXECVE_EXE_SHITELIST      | Y(89)  | `echo Y/bin/ls > /dev/someone_allowlist`             |
-| DEL_EXECVE_EXE_SHITELIST      | F(70)  | `echo Y/bin/ls > /dev/someone_allowlist`             |
+| DEL_EXECVE_EXE_SHITELIST      | F(70)  | `echo F/bin/ls > /dev/someone_allowlist`             |
 | DEL_ALL_EXECVE_EXE_SHITELIST  | w(119) | `echo w/del_all > /dev/someone_allowlist`            |
 | EXECVE_EXE_CHECK              | y(121) | `echo y/bin/ls > /dev/someone_allowlist && dmesg`    |
 | ADD_EXECVE_ARGV_SHITELIST     | m(109) | `echo m/bin/ls -l > /dev/someone_allowlist`          |
@@ -542,8 +543,8 @@ allowlist driver is in: `/dev/hids_driver_allowlist`
 | PRINT_ALL_ALLOWLIST           | .(46)  | `echo ./print_all > /dev/someone_allowlist && dmesg` |
 | ADD_WRITE_NOTIFI           | W(87)  | `echo W/etc/passwd > /dev/someone_allowlist` or `echo W/etc/ssh/ > /dev/someone_allowlist` support dir  |
 | DEL_WRITE_NOTIFI           | v(120)  | `echo v/etc/passwd > /dev/someone_allowlist` |
-| ADD_READ_NOTIFI           | R(82)  | `echo W/etc/passwd > /dev/someone_allowlist` or `echo W/etc/ssh/ > /dev/someone_allowlist` support dir  |
-| DEL_READ_NOTIFI           | s(115)  | `echo v/etc/passwd > /dev/someone_allowlist` |
+| ADD_READ_NOTIFI           | R(82)  | `echo R/etc/passwd > /dev/someone_allowlist` or `echo R/etc/ssh/ > /dev/someone_allowlist` support dir  |
+| DEL_READ_NOTIFI           | s(115)  | `echo s/etc/passwd > /dev/someone_allowlist` |
 | DEL_ALL_NOTIFI           | A(65)  | `echo A/del_all_file_notift > /dev/someone_allowlist` |
 
 Filter define is:
@@ -604,7 +605,7 @@ Testing Load:
 
 `udp_recvmsg_handler` will work only if the port is equal 53 or 5353
 
-Original Testing Data:[Benchmark Data](driver/benchmark_data/handler)
+Original Testing Data: [Benchmark Data](driver/benchmark_data/handler)
 
 
 ## About Deploy
@@ -620,7 +621,7 @@ You can use DKMS or Pre-packaged ko file
 ## Known Bugs
 * Hook point init failed : do_init_module
 <br>
-Some old version of ubuntu / centos kernels may show the dmesg :
+Some old version of Ubuntu / CentOS kernels may show the dmesg :
 do_init_module register_kprobe failed, returned -2.
 
 
