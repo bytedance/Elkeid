@@ -141,9 +141,11 @@ EulerOS|V2.0|3.10.X|-
 
 ### Data Protocol
 
-Every hit of the above hook-points will generate a record. Each record contains several data items and the data items are being separated by **data deliminator**: '**\x17**'.
+Every hit of the hook-points above will generate a record, and the records are separated by **deliminator** '**\x17**'.
 
-A record contains **Common Data** and ***Private Data***, with the exception of Anti-rootkit, which does **NOT** have  **Common Data**.
+Each record contains several data items, which are separated by **deliminator** '**\x1e**'.
+
+A record generally contains **Common Data** and **Private Data**, with the exception of Anti-rootkit, which does **NOT** have **Common Data**.
 
 ### Common Data
 
