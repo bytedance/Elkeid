@@ -7,15 +7,15 @@
 
 Elkeid Driver 主要是为信息安全需求而设计的。
 
-Elkeid Driver 主要通过 Kprobe Hook Kernel Funcion 来提供丰富而准确的数据收集功能，包括内核级进程执行探测，特权升级监控，网络审计等等。 并且支持 Linux namespace，因此对容器监控有着很好的实现。与传统的UserSpace HIDS相比，Elkeid由于驱动的存在提供了更全面的信息，并提高了性能。
+Elkeid Driver 主要通过 Kprobe Hook Kernel Function 来提供丰富而准确的数据收集功能，包括内核级进程执行探测，特权升级监控，网络审计等等。 并且支持 Linux Namespace，因此对容器监控有着很好的实现。与传统的 User Space HIDS 相比，Elkeid 由于驱动的存在提供了更全面的信息，并提高了性能。
 
-凭借其出色的数据收集能力，Elkeid Driver还可以支持沙盒，蜜罐和审计等需求。
+凭借其出色的数据收集能力，Elkeid Driver 还可以支持沙盒，蜜罐和审计等需求。
 
 如果发现 Bug 欢迎提 Issue 或 加入飞书公开群参与讨论。
 
 ## 快速尝试
 
-首先需要安装Linux Headers，Linux Headers 的版本必须等于 uname -r
+首先需要安装 Linux Headers，Linux Headers 的版本必须等于 uname -r
 
 ```shell script
 # clone and build
@@ -37,18 +37,18 @@ rmmod hids_driver
 
 ## 我们提供部分预编译好的 Ko 文件
 
-我们提供了一些预编译好的 Elkeid 内核模块，这些 Ko 包括了 debian,centos,ubuntu 等发行版的不同内核版本。
+我们提供了一些预编译好的 Elkeid 内核模块，这些 Ko 文件包括了 Debian / CentOS / Ubuntu 等发行版的不同内核版本。
 
 
 ### 预编译好的 Ko 文件
-[Ko 文件列表](./ko_list.md)
-若不再列表内，或下载失败，请自行编译 ko
+
+若 Ko 文件不在 [Ko 文件列表](./ko_list.md) 内，或下载失败，请自行编译。
 
 
 ### 获取方式
 
 
-如果所有链接都获取失败，则说明 [预编译的 Ko](./ko_list.md) 中，不包含当前系统的内核版本所需的 Ko，需要自行编译
+如果所有链接都获取失败，则说明 [预编译的 Ko](./ko_list.md) 中，不包含当前系统的内核版本所需的 Ko 文件，需要自行编译。
 
 ```bash
 wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.4_$(uname -r).ko"
@@ -61,32 +61,32 @@ curl -O "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0
 ```
 ### 内核模块的测试方法
 
-可以通过 [LTP](https://linux-test-project.github.io/) 或者 [Kasan](https://www.kernel.org/doc/html/latest/dev-tools/kasan.html)这两个方法对内核模块进行测试.
+可以通过 [LTP](https://linux-test-project.github.io/) 或者 [KASAN](https://www.kernel.org/doc/html/latest/dev-tools/kasan.html) 这两个方法对内核模块进行测试.
 
 这里提供 [LTP测试用例](./ltp_testcase) 文件
 
 
-## 关于Linux发行版的兼容性
+## 关于 Linux 发行版的兼容性
 
 发行版|版本号|x64 架构内核|内核后缀
 :- | :- | -: | -:
-debian|8,9,10|3.16~5.4.X |-
-ubuntu|14.04,16.04,18.04,20.04|3.12~5.4.X |generic
-centos|6.X,7.X,8.X|2.6.32.0~5.4.X |el6,el7,el8
-amazon|2|4.9.X~4.14.X|amzn2
+Debian|8,9,10|3.16~5.4.X |-
+Ubuntu|14.04,16.04,18.04,20.04|3.12~5.4.X |generic
+CentOS|6.X,7.X,8.X|2.6.32.0~5.4.X |el6,el7,el8
+Amazon|2|4.9.X~4.14.X|amzn2
 AlibabaCloudLinux|3|4.19.X~5.10.X|al7,al8
 EulerOS|V2.0|3.10.X|-
 
 
 
-## 关于ARM64 (AArch64)支持
+## 关于 ARM64 (AArch64) 支持
 
 * 支持
 
 
 
 
-## 关于Linux Kernel Version兼容性
+## 关于 Linux Kernel Version 兼容性
 
 * Linux Kernel Version >= 2.6.32 && <= 5.14.X
 
@@ -98,7 +98,7 @@ EulerOS|V2.0|3.10.X|-
 | ------ | -------------- |
 | Host   | hostname       |
 | Docker | container name |
-| k8s    | pod name       |
+| K8s    | pod name       |
 
 
 
@@ -125,7 +125,7 @@ EulerOS|V2.0|3.10.X|-
 | tkill              | 200      |                                         | OFF     |
 | exit_group         | 231      |                                         | OFF     |
 | memfd_create       | 356      |                                         | ON     |
-| dns queny          | 601      |                                         | ON     |
+| dns query          | 601      |                                         | ON     |
 | create_file        | 602      |                                         | ON      |
 | load_module        | 603      |                                         | ON      |
 | update_cred        | 604      | only old uid ≠0 && new uid == 0         | ON      |
@@ -153,7 +153,11 @@ EulerOS|V2.0|3.10.X|-
 
 ### 驱动数据协议
 
-上述Hook点每命中一次均会生成一条日志记录，每条日志包含多个数据项，数据项之间使用'**\x17**'作为间隔符。数据部分通常由**公共数据**和**私有数据**组合而成，值得注意的是Anti-rootkit没有**公共数据**。
+上述 Hook 点每命中一次，均会生成一条日志记录，记录之间使用 '**\x17**' 作为间隔符。
+
+每条记录包含多个数据项，数据项之间使用 '**\x1e**' 作为间隔符。
+
+一条记录数据通常由**公共数据**和**私有数据**组合而成，而值得注意的是，Anti-rootkit 没有**公共数据**。
 
 ### 公共数据
 ```
@@ -255,7 +259,7 @@ EulerOS|V2.0|3.10.X|-
 
 Note:
 
-* **socket_exe/dip/dport/sip/sport/sa_family** 来自于进程所持fd信息
+* **socket_exe/dip/dport/sip/sport/sa_family** 来自于进程所持的 fd 信息
 
 * **ssh/ld_preload** 来自于进程的环境变量信息
 
@@ -281,9 +285,9 @@ Note:
 ### Rename Data (82)
 
 ```
---------------------------
-|14      |15      |16    | 
---------------------------
+-------------------------
+|14      |15      |16   |
+-------------------------
 |old_name|new_name|sb_id|
 -------------------------
 ```
@@ -293,9 +297,9 @@ Note:
 ### Link Data (86)
 
 ```
---------------------------
-|14      |15      |16    | 
---------------------------
+-------------------------
+|14      |15      |16   |
+-------------------------
 |old_name|new_name|sb_id|
 -------------------------
 ```
@@ -353,7 +357,7 @@ _____________________________________
 
 该数据没有私有数据，仅有公共数据
 
-### memfd_create Data (356)
+### Memfd Create Data (356)
 
 ```
 ______________
@@ -394,11 +398,11 @@ ______________
 ### Load Module Data (603)
 
 ```
-----------------------------
-|14      |15      |16      | 
-----------------------------
+---------------------------
+|14      |15      |16     |
+---------------------------
 |ko_file|pid_tree|run_path|
-----------------------------
+---------------------------
 ```
 
 
@@ -537,16 +541,16 @@ c_cred = uid|euid|suid|fsuid|gid|egid|sgid|fsgid
 
 ## 关于 Driver Filter
 
-Elkeid驱动程序支持白名单以过滤出不需要的数据。 我们提供两种类型的白名单，**'exe'**白名单和**'argv'**白名单。
-**'exe'**白名单作用于**execve /create filte/ dns query/connect hook**，而**'argv'**白名单仅作用于**execve hook**  。
-出于性能和稳定性方面的考虑，‘exe’和‘argv’白名单容量为64。
+Elkeid 驱动程序支持白名单以过滤出不需要的数据。我们提供两种类型的白名单，**'exe'** 白名单和 **'argv'** 白名单。
+**'exe'** 白名单作用于 **execve/create file/dns query/connect hook**，而 **'argv'** 白名单仅作用于 **execve hook**。
+出于性能和稳定性方面的考虑，'exe' 和 'argv' 白名单容量为 64。
 
 白名单的字符串驱动位于: `/dev/hids_driver_allowlist`
 
 | Operations                    | Flag   | Example                                              |
 | ----------------------------- | ------ | ---------------------------------------------------- |
 | ADD_EXECVE_EXE_SHITELIST      | Y(89)  | `echo Y/bin/ls > /dev/someone_allowlist`             |
-| DEL_EXECVE_EXE_SHITELIST      | F(70)  | `echo Y/bin/ls > /dev/someone_allowlist`             |
+| DEL_EXECVE_EXE_SHITELIST      | F(70)  | `echo F/bin/ls > /dev/someone_allowlist`             |
 | DEL_ALL_EXECVE_EXE_SHITELIST  | w(119) | `echo w/del_all > /dev/someone_allowlist`            |
 | EXECVE_EXE_CHECK              | y(121) | `echo y/bin/ls > /dev/someone_allowlist && dmesg`    |
 | ADD_EXECVE_ARGV_SHITELIST     | m(109) | `echo m/bin/ls -l > /dev/someone_allowlist`          |
@@ -556,8 +560,8 @@ Elkeid驱动程序支持白名单以过滤出不需要的数据。 我们提供�
 | PRINT_ALL_ALLOWLIST           | .(46)  | `echo ./print_all > /dev/someone_allowlist && dmesg` |
 | ADD_WRITE_NOTIFI           | W(87)  | `echo W/etc/passwd > /dev/someone_allowlist` or `echo W/etc/ssh/ > /dev/someone_allowlist` support dir  |
 | DEL_WRITE_NOTIFI           | v(120)  | `echo v/etc/passwd > /dev/someone_allowlist` |
-| ADD_READ_NOTIFI           | R(82)  | `echo W/etc/passwd > /dev/someone_allowlist` or `echo W/etc/ssh/ > /dev/someone_allowlist` support dir  |
-| DEL_READ_NOTIFI           | s(115)  | `echo v/etc/passwd > /dev/someone_allowlist` |
+| ADD_READ_NOTIFI           | R(82)  | `echo R/etc/passwd > /dev/someone_allowlist` or `echo R/etc/ssh/ > /dev/someone_allowlist` support dir  |
+| DEL_READ_NOTIFI           | s(115)  | `echo s/etc/passwd > /dev/someone_allowlist` |
 | DEL_ALL_NOTIFI           | A(65)  | `echo A/del_all_file_notift > /dev/someone_allowlist` |
 
 Filter define is:
@@ -581,7 +585,7 @@ Filter define is:
 
 
 
-## 关于Elkeid Driver 性能
+## 关于 Elkeid Driver 性能
 
 ### Testing Environment(VM):
 
@@ -615,14 +619,14 @@ Testing Load:
 | security_inode_create_pre_handler | 1.5523            | 7.9454   | 5.5806   | 3.1441   |
 | ptrace_pre_handler                | 0.2039            | 0.4648   | 0.254    | 0.228    |
 
-`udp_recvmsg_handler` 仅工作在端口为 53 或 5353的情况
+`udp_recvmsg_handler` 仅工作在端口为 53 或 5353 的情况
 
-测试原始数据:[Benchmark Data](driver/benchmark_data/handler)
+测试原始数据: [Benchmark Data](driver/benchmark_data/handler)
 
 
 ## 关于部署
 
-可以使用DKMS或者提前编译好ko文件然后进行下发
+可以使用 DKMS 或者提前编译好 ko 文件然后进行下发
 
 * install driver: `insmod hids_driver.ko`
 * remove driver: first you need kill userspace agent and `rmmod hids_driver.ko`
@@ -633,7 +637,7 @@ Testing Load:
 ## 已知问题
 * 内核模块 hook 点初始化失败 : do_init_module
 <br>
-在一些老版本的 ubuntu/centos 内核中出现，dmesg 会有如下输出:<br>
+在一些老版本的 Ubuntu / CentOS 内核中出现，dmesg 会有如下输出:<br>
 do_init_module register_kprobe failed, returned -2.<br>
 内核模块仍然可以使用，但没有 do_init_module 数据
 
