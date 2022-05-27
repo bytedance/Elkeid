@@ -45,7 +45,7 @@ func (w *traceRawDataWriter) Run() {
 
 			res, err := col.BulkWrite(context.Background(), writes, writeOption)
 			if err != nil {
-				ylog.Errorf("traceRawDataWriter_BulkWrite", "error:%s len:%s", err.Error(), len(writes))
+				ylog.Errorf("traceRawDataWriter_BulkWrite", "error:%s len:%d", err.Error(), len(writes))
 			} else {
 				ylog.Debugf("traceRawDataWriter_BulkWrite", "UpsertedCount:%d InsertedCount:%d ModifiedCount:%d ", res.UpsertedCount, res.InsertedCount, res.ModifiedCount)
 			}
@@ -57,7 +57,7 @@ func (w *traceRawDataWriter) Run() {
 		if count >= 100 {
 			res, err := col.BulkWrite(context.Background(), writes, writeOption)
 			if err != nil {
-				ylog.Errorf("traceRawDataWriter_BulkWrite", "error:%s len:%s", err.Error(), len(writes))
+				ylog.Errorf("traceRawDataWriter_BulkWrite", "error:%s len:%d", err.Error(), len(writes))
 			} else {
 				ylog.Debugf("traceRawDataWriter_BulkWrite", "UpsertedCount:%d InsertedCount:%d ModifiedCount:%d ", res.UpsertedCount, res.InsertedCount, res.ModifiedCount)
 			}
