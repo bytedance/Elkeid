@@ -65,7 +65,7 @@ func (w *subTaskUpdateWriter) Run() {
 
 			res, err := agentSubTaskCollection.BulkWrite(context.Background(), writes, writeOption)
 			if err != nil {
-				ylog.Errorf("subTaskUpdateWriter_BulkWrite", "error:%s len:%s", err.Error(), len(writes))
+				ylog.Errorf("subTaskUpdateWriter_BulkWrite", "error:%s len:%d", err.Error(), len(writes))
 			} else {
 				ylog.Debugf("subTaskUpdateWriter_BulkWrite", "UpsertedCount:%d InsertedCount:%d ModifiedCount:%d ", res.UpsertedCount, res.InsertedCount, res.ModifiedCount)
 			}
@@ -77,7 +77,7 @@ func (w *subTaskUpdateWriter) Run() {
 		if count >= SendCountWeight {
 			res, err := agentSubTaskCollection.BulkWrite(context.Background(), writes, writeOption)
 			if err != nil {
-				ylog.Errorf("subTaskUpdateWriter_BulkWrite", "error:%s len:%s", err.Error(), len(writes))
+				ylog.Errorf("subTaskUpdateWriter_BulkWrite", "error:%s len:%d", err.Error(), len(writes))
 			} else {
 				ylog.Debugf("subTaskUpdateWriter_BulkWrite", "UpsertedCount:%d InsertedCount:%d ModifiedCount:%d ", res.UpsertedCount, res.InsertedCount, res.ModifiedCount)
 			}
