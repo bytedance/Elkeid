@@ -247,23 +247,24 @@ static __always_inline unsigned long __must_check smith_copy_from_user(void *to,
     __ret;                                                      \
 })
 
-static inline void *__get_dns_query(unsigned char *data, int index, char *res) {
+static inline void *__get_dns_query(unsigned char *data, int query_len, char *res, int *type) {
     int i;
     int flag = -1;
-    int len;
-    len = strlen(data + index);
 
-    for (i = 0; i < len; i++) {
+    for (i = 0; i < query_len; i++) {
         if (flag == -1) {
-            flag = (data + index)[i];
+            flag = (data + 12)[i];
         } else if (flag == 0) {
-            flag = (data + index)[i];
+            flag = (data + 12)[i];
             res[i - 1] = 46;
         } else {
-            res[i - 1] = (data + index)[i];
+            res[i - 1] = (data + 12)[i];
             flag = flag - 1;
         }
     }
+
+    //get dns queries type: https://en.wikipedia.org/wiki/List_of_DNS_record_types
+    *type = be16_to_cpu(*((uint16_t *)(data + query_len + 13)));
     return 0;
 }
 

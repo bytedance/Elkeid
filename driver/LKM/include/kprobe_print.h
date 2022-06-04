@@ -249,11 +249,11 @@ PRINT_EVENT_DEFINE(dns,
                    PE_PROTO(int dport,
                            __be32 dip, char * exe_path,
                            __be32 sip, int sport, int opcode, int rcode,
-                           char * query),
+                           char * query, int type),
 
                    PE_ARGS(dport, dip, exe_path,
                            sip, sport, opcode, rcode,
-                           query),
+                           query, type),
 
                    PE_STRUCT__entry(
                            __field(int, uid)
@@ -271,6 +271,7 @@ PRINT_EVENT_DEFINE(dns,
                            __field(int, sport)
                            __field(int, opcode)
                            __field(int, rcode)
+                           __field(int, type)
                            __string(query, query)
                            __field(unsigned int, sessionid)
                            __field(unsigned int, pid_inum)
@@ -293,13 +294,14 @@ PRINT_EVENT_DEFINE(dns,
                            __entry->sport = sport;
                            __entry->opcode = opcode;
                            __entry->rcode = rcode;
+                           __entry->type = type;
                            __assign_str(query, query);
                            __entry->sessionid = __get_sessionid();
                            __entry->pid_inum = __get_pid_ns_inum();
                            __entry->root_pid_inum = ROOT_PID_NS_INUM;
                    ),
 
-                   PE_printk("601" RS "%d" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%u" RS "%u" RS "%s" RS "2" RS "%d.%d.%d.%d" RS "%d" RS "%d.%d.%d.%d" RS "%d" RS "%d" RS "%d",
+                   PE_printk("601" RS "%d" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%u" RS "%u" RS "%s" RS "2" RS "%d.%d.%d.%d" RS "%d" RS "%d.%d.%d.%d" RS "%d" RS "%d" RS "%d" RS "%d",
                            __get_ent(uid, __get_current_uid()),
                            __get_str(exe_path, exe_path),
                            __get_ent(pid, current->pid),
@@ -318,7 +320,8 @@ PRINT_EVENT_DEFINE(dns,
                            NIPQUAD(__get_ent(sip, sip)),
                            __get_ent(sport, sport),
                            __get_ent(opcode, opcode),
-                           __get_ent(rcode, rcode)
+                           __get_ent(rcode, rcode),
+                           __get_ent(type, type)
                    )
 );
 
@@ -328,11 +331,11 @@ PRINT_EVENT_DEFINE(dns6,
                    PE_PROTO(int dport,
                            struct in6_addr *dip, char * exe_path,
                            struct in6_addr *sip, int sport, int opcode, int rcode,
-                           char * query),
+                           char * query, int type),
 
                    PE_ARGS(dport, dip, exe_path,
                            sip, sport, opcode, rcode,
-                           query),
+                           query, type),
 
                    PE_STRUCT__entry(
                            __field(int, uid)
@@ -351,6 +354,7 @@ PRINT_EVENT_DEFINE(dns6,
                            __field(int, opcode)
                            __field(int, rcode)
                            __string(query, query)
+                           __field(int, type)
                            __field(unsigned int, sessionid)
                            __field(unsigned int, pid_inum)
                            __field(unsigned int, root_pid_inum)
@@ -373,12 +377,13 @@ PRINT_EVENT_DEFINE(dns6,
                            __entry->opcode = opcode;
                            __entry->rcode = rcode;
                            __assign_str(query, query);
+                           __entry->rcode = type;
                            __entry->sessionid = __get_sessionid();
                            __entry->pid_inum = __get_pid_ns_inum();
                            __entry->root_pid_inum = ROOT_PID_NS_INUM;
                    ),
 
-                   PE_printk("601" RS "%d" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%u" RS "%u" RS "%s" RS "10" RS "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x" RS "%d" RS "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x" RS "%d" RS "%d" RS "%d",
+                   PE_printk("601" RS "%d" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%u" RS "%u" RS "%s" RS "10" RS "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x" RS "%d" RS "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x" RS "%d" RS "%d" RS "%d" RS "%d",
                            __get_ent(uid, __get_current_uid()),
                            __get_str(exe_path, exe_path),
                            __get_ent(pid, current->pid),
@@ -397,7 +402,8 @@ PRINT_EVENT_DEFINE(dns6,
                            NIP6(__get_ent(sip, sip)),
                            __get_ent(sport, sport),
                            __get_ent(opcode, opcode),
-                           __get_ent(rcode, rcode)
+                           __get_ent(rcode, rcode),
+                           __get_ent(type, type)
                    )
 );
 #endif

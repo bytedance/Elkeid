@@ -1753,7 +1753,7 @@ int ptrace_pre_handler(struct kprobe *p, struct pt_regs *regs)
 }
 
 void dns_data_transport(char *query, __be32 dip, __be32 sip, int dport,
-                        int sport, int opcode, int rcode)
+                        int sport, int opcode, int rcode, int type)
 {
     char *exe_path = DEFAULT_RET_STR;
     char *buffer = NULL;
@@ -1765,7 +1765,7 @@ void dns_data_transport(char *query, __be32 dip, __be32 sip, int dport,
     if (execve_exe_check(exe_path))
         goto out;
 
-    dns_print(dport, dip, exe_path, sip, sport, opcode, rcode, query);
+    dns_print(dport, dip, exe_path, sip, sport, opcode, rcode, query, type);
 
 out:
     if (buffer)
@@ -1775,7 +1775,7 @@ out:
 #if IS_ENABLED(CONFIG_IPV6)
 void dns6_data_transport(char *query, struct in6_addr *dip,
 			 struct in6_addr *sip, int dport, int sport,
-			 int opcode, int rcode)
+			 int opcode, int rcode, int type)
 {
 	char *exe_path = DEFAULT_RET_STR;
 	char *buffer = NULL;
@@ -1787,7 +1787,7 @@ void dns6_data_transport(char *query, struct in6_addr *dip,
 	if (execve_exe_check(exe_path))
 		goto out;
 
-	dns6_print(dport, dip, exe_path, sip, sport, opcode, rcode, query);
+	dns6_print(dport, dip, exe_path, sip, sport, opcode, rcode, query, type);
 
 out:
 	if (buffer)
@@ -1819,7 +1819,8 @@ void udp_msg_parser(struct msghdr *msg, struct udp_recvmsg_data *data) {
 
 int udp_process_dns(struct udp_recvmsg_data *data, unsigned char *recv_data, int iov_len)
 {
-    int qr, opcode = 0, rcode = 0;
+    // types of queries in the DNS system: https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml
+    int qr, opcode = 0, rcode = 0, type = 0;
     int query_len = 0;
 
     char *query;
@@ -1829,29 +1830,29 @@ int udp_process_dns(struct udp_recvmsg_data *data, unsigned char *recv_data, int
         opcode = (recv_data[2] >> 3) & 0x0f;
         rcode = recv_data[3] & 0x0f;
 
-        query_len = strlen(recv_data + 12);
-        if (query_len == 0 || query_len > 253) {
+        query_len = strnlen(recv_data + 12, iov_len - 12);
+        if (query_len == 0 || query_len > 253 || query_len + 17 > iov_len) {
             return 0;
         }
 
         //parser DNS protocol and get DNS query info
-        query = smith_kzalloc(query_len, GFP_ATOMIC);
+        query = smith_kzalloc(query_len + 1, GFP_ATOMIC);
         if (!query) {
             return 0;
         }
 
-        __get_dns_query(recv_data, 12, query);
+        __get_dns_query(recv_data, query_len, query, &type);
         if (data && data->sa_family == AF_INET)
             dns_data_transport(query, data->dip4,
                                data->sip4, data->dport,
                                data->sport, opcode,
-                               rcode);
+                               rcode, type);
 #if IS_ENABLED(CONFIG_IPV6)
         else if (data && data->sa_family == AF_INET6)
 			dns6_data_transport(query, data->dip6,
 					            data->sip6, data->dport,
 					            data->sport, opcode,
-					            rcode);
+					            rcode, type);
 #endif
         smith_kfree(query);
     }
