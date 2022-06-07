@@ -1,11 +1,26 @@
-use crate::configs::{ARCHIVE_DB_VERSION_FILE, DB_PATH, TMP_PATH};
 use anyhow::{anyhow, Result};
 use log::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{fs::File, io::Write, path::Path};
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+pub const DB_URLS: &'static [&'static str] = &[
+    "http://lf26-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607",
+    "http://lf3-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607",
+    "http://lf6-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607",
+    "http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607",
+];
+
+pub const ARCHIVE_DB_PWD: &str = &"clamav_default_passwd";
+pub const ARCHIVE_DB_HASH: &str =
+    &"025e0fdde3865ab89e1261df747806bbb8841e89318a8ff5e7c252ce24fd64fb";
+pub const ARCHIVE_DB_VERSION: &str = &"20220607";
+
+pub const ARCHIVE_DB_VERSION_FILE: &str = &"version";
+pub const DB_PATH: &str = "./dat";
+pub const TMP_PATH: &str = "./tmp";
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct DBManager {
     pub version: String,
     pub dbname: String,
@@ -55,14 +70,36 @@ impl DBManager {
         return Ok(());
     }
 
+    pub fn load_into(&self, db_path: &str) -> Result<()> {
+        std::fs::remove_dir_all(DB_PATH);
+        extract(
+            &format!("{}/{}.zip", TMP_PATH, self.dbname),
+            db_path,
+            &self.passwd,
+        )?;
+        let version: String =
+            std::fs::read_to_string(format!("{}/{}", db_path, ARCHIVE_DB_VERSION_FILE))?;
+        if &version.trim() != &self.version {
+            return Err(anyhow!(
+                "version {} != {} mismatch",
+                &version.trim(),
+                &self.version,
+            ));
+        }
+        let sha256sum = crate::get_file_sha256(&format!("{}/{}.zip", TMP_PATH, self.dbname));
+        if &sha256sum != &self.sha256 {
+            return Err(anyhow!(
+                "sha256sum {} != {} mismatch",
+                &sha256sum,
+                &self.sha256
+            ));
+        }
+        return Ok(());
+    }
+
     pub fn get(&self) -> Result<()> {
-        match self.load() {
-            Ok(_) => {
-                return Ok(());
-            }
-            Err(e) => {
-                error!("err while get_load {}", e);
-            }
+        if let Ok(_) = self.load() {
+            return Ok(());
         }
         std::fs::remove_dir_all(TMP_PATH);
         download(TMP_PATH, &self.url.iter().map(|url| url as &str).collect())?;

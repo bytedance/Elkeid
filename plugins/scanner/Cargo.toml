@@ -2,28 +2,70 @@
 name = "scanner"
 version = "0.1.0"
 authors = ["zhangjiacheng.111 <zhangjiacheng.111@bytedance.com>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[build-dependencies]
+bindgen = "0.59"
+
 [dependencies]
-# agent plugin
+
 plugins = { path = "../lib/rust" }
+
 anyhow = "1.0"
 coarsetime = "0.1"
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0" , features = ["derive"]}
 serde_json = "1.0"
+lazy_static = "1.4"
 log = { version = "0.4", features = ["std"] }
 
-# scanner
-yara = {version = "0.6", features = ["vendored"]}
-walkdir = "2"
+twox-hash = "1.6"
+
+reqwest = { version = "0.11", features = [
+    "blocking",
+    "rustls-tls",
+], default-features = false }
+
+walkdir = "2.3"
 procfs = "0.9"
-lru = "0.6"
 crossbeam-channel = "0.5"
-sha2 = "0.9"
+sha2 = "0.10"
+md5 = "0.7"
+hex = "0.4"
+
+nix = "0.24"
+
+rust-crypto = "0.2"
 libc = "0.2"
 
+fs2 = "0.4.3"
+
+cgroups-rs = "0.2"
+
+zip = "0.6"
+
+phf = { version = "0.10", features = ["macros"] }
+
+regex = "1.5"
+base64 = "0.13"
 
 [dev-dependencies]
 crossbeam = "0.8"
+
+[profile.release]
+debug = 1
+
+[features]
+debug = ["plugins/debug"]
+
+[[bin]]
+name = "scanner_clamav"
+path = "src/bin/scanner_plugin.rs"
+required-features = ["default"]
+
+
+[[bin]]
+name = "scanner_cli"
+path = "src/bin/scanner_cli.rs"
+required-features = []

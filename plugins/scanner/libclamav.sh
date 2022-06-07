@@ -8,9 +8,9 @@ msl build libclamav_deps -t host-static -w mussels/work -i mussels/install
 cd -
 
 # make get clamav source code
-wget http://lf26-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/clamav-clamav-0.104.0.tar.gz
-tar xf ./clamav-clamav-0.104.0.tar.gz
-mv clamav-clamav-0.104.0 clamav
+wget https://www.clamav.net/downloads/production/clamav-0.104.3.tar.gz
+tar xf ./clamav-0.104.3.tar.gz
+mv clamav-0.104.3 clamav
 
 cd clamav
 
@@ -22,7 +22,7 @@ export CLAMAV_DEPENDENCIES="$(pwd)/clamav-mussels-cookbook/mussels/install/"
 cd clamav/build 
 
 cmake .. -G Ninja                                                      \
-    -DCMAKE_BUILD_TYPE="Release"                                       \
+    -DCMAKE_BUILD_TYPE="RelWithDebInfo"                                       \
     -DJSONC_INCLUDE_DIR="$CLAMAV_DEPENDENCIES/include/json-c"          \
     -DJSONC_LIBRARY="$CLAMAV_DEPENDENCIES/lib/libjson-c.a"             \
     -DBZIP2_INCLUDE_DIR="$CLAMAV_DEPENDENCIES/include"                 \
@@ -45,9 +45,28 @@ cmake .. -G Ninja                                                      \
     -DENABLE_UNRAR=ON                                                  \
     -DENABLE_SHARED_LIB=OFF                                            \
     -DDATABASE_DIRECTORY=/var/lib/clamav                               \
+    -DAPP_CONFIG_DIRECTORY=/etc/clamav                                 \
+    -DBYTECODE_RUNTIME=none                                            \
+    -DENABLE_FUZZ=OFF                                                  \
+    -DENABLE_APP=OFF                                                   \
+    -DENABLE_CLAMONACC=OFF                                             \
+    -DENABLE_MILTER=OFF                                                \
+    -DENABLE_MAN_PAGES=OFF                                             \
+    -DMAINTAINER_MODE=ON                                               \
+    -DRUST_COMPILER_TARGET="x86_64-unknown-linux-gnu"                  \
     -DCMAKE_INSTALL_PREFIX=install 
 
+if [ $? -ne 0 ]; then
+    echo "libclamav cmake failed"
+    exit -1
+fi
+
 cmake --build .
+
+if [ $? -ne 0 ]; then
+    echo "libclamav build failed"
+    exit -1
+fi
 
 cd -
 
@@ -70,3 +89,6 @@ rm -rf ./include/*
 mkdir include &> /dev/null
 cp clamav/build/*.h ./include
 cp clamav/libclamav/clamav.h ./include
+cp clamav/libclamav/matcher.h ./include
+cp clamav/libclamav/matcher-ac.h ./include
+cp clamav/libclamav/others.h ./include

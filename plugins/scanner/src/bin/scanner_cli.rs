@@ -4,7 +4,8 @@ use plugins::logger::*;
 
 use std::{env, path::PathBuf, process::exit};
 
-use scanner_clamav::{configs, updater};
+use scanner::model::engine::clamav::updater;
+
 
 pub const WAIT_INTERVAL_DAILY: u64 = 3600;
 
@@ -22,8 +23,7 @@ fn main() {
     }
 
     let fp = std::path::Path::new(fpath);
-    if std::path::Path::new(fpath).exists() {
-    } else {
+    if !std::path::Path::new(fpath).exists() {
         error!("path not exists");
         return;
     }
@@ -54,10 +54,10 @@ fn main() {
                 Err(e) => {
                     error!("{:?} rule Deserialize err : {:?}", &val, e);
                     if let Ok(db) = updater::DBManager::new(
-                        configs::ARCHIVE_DB_VERSION,
-                        configs::ARCHIVE_DB_HASH,
-                        configs::ARCHIVE_DB_PWD,
-                        configs::DB_URLS,
+                        updater::ARCHIVE_DB_VERSION,
+                        updater::ARCHIVE_DB_HASH,
+                        updater::ARCHIVE_DB_PWD,
+                        updater::DB_URLS,
                     ) {
                         db
                     } else {
@@ -70,10 +70,10 @@ fn main() {
         }
         Err(_) => {
             if let Ok(db) = updater::DBManager::new(
-                configs::ARCHIVE_DB_VERSION,
-                configs::ARCHIVE_DB_HASH,
-                configs::ARCHIVE_DB_PWD,
-                configs::DB_URLS,
+                updater::ARCHIVE_DB_VERSION,
+                updater::ARCHIVE_DB_HASH,
+                updater::ARCHIVE_DB_PWD,
+                updater::DB_URLS,
             ) {
                 db
             } else {
@@ -93,7 +93,11 @@ fn main() {
         }
     }
 
-    let mut scanner = match scanner_clamav::detector::Scanner::new(configs::DB_PATH) {
+    #[cfg(feature = "ai_php_local")]
+    let mut scanner = match scanner_clamav::detector::Scanner::new(
+        tflite::config::DB_DEFAULT,
+        tflite::config::MODEL_PHP_PATH,
+    ) {
         Ok(s) => s,
         Err(e) => {
             warn!("db init err, should exit : {:?}", e);
@@ -103,12 +107,15 @@ fn main() {
 
     if fp.is_file() {
         match scanner.scan(fpath) {
-            Ok((ftype, class, name, xhash, md5sum)) => {
+            Ok((ftype, class, name, xhash, md5sum, matched_data)) => {
                 if &ftype != "not_detected" {
                     info!(
                         "scan {} : ftype={}, class={}, name={}, xhash={}, md5sum={}",
                         fpath, ftype, class, name, xhash, md5sum
                     );
+                    if let Some(mdata) = matched_data {
+                        println!("YARA HIT: {:?}", mdata);
+                    }
                 }
             }
             Err(e) => {
@@ -129,14 +136,16 @@ fn main() {
             let tfpath = entry.path().to_string_lossy().to_string();
 
             match scanner.scan(&tfpath) {
-                Ok((ftype, class, name, xhash, md5sum)) => {
+                Ok((ftype, class, name, xhash, md5sum, matched_data)) => {
                     if &ftype != "not_detected" {
                         println!(
                             "Catched file {} : ftype = {}, class = {}, name = {}, xhash = {}, md5sum={}",
                             &tfpath, &ftype, &class, &name, &xhash, &md5sum
                         );
+                        if let Some(mdata) = matched_data {
+                            println!("YARA HIT: {:?}", mdata);
+                        }
                     }
-                }
                 Err(e) => {
                     error!("scan {} : err :{}", &tfpath, e);
                 }

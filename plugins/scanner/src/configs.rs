@@ -5,31 +5,18 @@ pub const CLAMAV_MAX_SCANSIZE: i64 = 1024 * 1024 * 40;
 
 pub const WAIT_INTERVAL_SCAN: std::time::Duration = std::time::Duration::from_secs(1);
 
-pub const DB_URLS: &'static [&'static str] = &[
-    "http://lf26-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220414",
-    "http://lf3-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220414",
-    "http://lf6-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220414",
-    "http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220414",
-];
-
-pub const ARCHIVE_DB_PWD: &str = &"clamav_default_passwd";
-pub const ARCHIVE_DB_HASH: &str =
-    &"aca73cc75f7cae9dc5f1e2194e3dc54fe8ad554e94424d26123125ecab03872e";
-pub const ARCHIVE_DB_VERSION: &str = &"20220414";
-
-pub const ARCHIVE_DB_VERSION_FILE: &str = &"version";
-pub const DB_PATH: &str = "./dat";
-pub const TMP_PATH: &str = "./tmp";
-
 #[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct ScanConfig<'a> {
     pub fpath: &'a str,
     pub max_depth: usize,
 }
 
-// SCAN_DIR : config directory for yara scan
-#[cfg(not(feature = "debug"))]
+// SCAN_DIR : config directory for scan
 pub const SCAN_DIR_CONFIG: &[&ScanConfig] = &[
+    &ScanConfig {
+        fpath: "/root",
+        max_depth: 3,
+    },
     &ScanConfig {
         fpath: "/bin",
         max_depth: 2,
@@ -53,10 +40,6 @@ pub const SCAN_DIR_CONFIG: &[&ScanConfig] = &[
     &ScanConfig {
         fpath: "/lib/systemd/system",
         max_depth: 1,
-    },
-    &ScanConfig {
-        fpath: "/root",
-        max_depth: 3,
     },
     &ScanConfig {
         fpath: "/etc",
@@ -100,4 +83,9 @@ pub const SCAN_DIR_FILTER: &[&str] = &[
     "/etc/alternatives/nc",
     "/etc/alternatives/netcat",
     "/etc/dictionaries-common/words",
+    // full disk scan filter
+    "/dev",
+    "/boot",
+    "/sys",
+    "/usr/src",
 ];

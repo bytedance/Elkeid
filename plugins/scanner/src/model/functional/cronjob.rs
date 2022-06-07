@@ -12,7 +12,7 @@ use log::*;
 use walkdir::WalkDir;
 
 use crate::{
-    configs::{self, CLAMAV_MAX_FILESIZE},
+    configs::{self, model::engine::clamav::config::CLAMAV_MAX_FILESIZE,},
     detector::DetectTask,
     filter::Filter,
     get_file_btime,

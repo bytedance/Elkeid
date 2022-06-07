@@ -6,7 +6,7 @@ use plugins::{logger::*, Client};
 use std::{env, fs::File, path::PathBuf, thread, time::Duration};
 
 use cgroups_rs::{self, Controller};
-use scanner_clamav::{configs, cronjob::Cronjob, detector::Detector, updater};
+use scanner::{configs, cronjob::Cronjob, detector::Detector, updater};
 
 use fs2::FileExt;
 
@@ -19,7 +19,7 @@ pub struct ProcessLock {
 // Scanner_clamav locker
 impl ProcessLock {
     pub fn new() -> Self {
-        let file_path = "/var/run/scanner_clamav_plugin.pid";
+        let file_path = "/var/run/scanner_plugin.pid";
         let file = File::create(file_path).unwrap();
         Self { file }
     }
@@ -35,7 +35,7 @@ fn main() {
     /* flock */
     let process_lock = ProcessLock::new();
     if !process_lock.process_lock() {
-        eprintln!("Clamav running duplicate, exit");
+        eprintln!("Elkeid Scanner running duplicate, exit");
         return;
     };
 
@@ -112,9 +112,9 @@ fn main() {
 
     let client_c = client.clone();
 
-    info!("scanner_clamav start!");
+    info!("scanner start!");
 
-    let (s, r) = bounded(20);
+    let (s, r) = bounded(256);
     let (s_lock, r_lock) = bounded(0);
 
     // main detector worker
@@ -141,7 +141,6 @@ fn main() {
 
     // wait childs
     let _: () = r_lock.recv().unwrap();
-
     info!("[Main exit] bye ~");
 }
 
