@@ -1,0 +1,11 @@
+FROM cern/c8-base:latest AS rhel8
+
+RUN yum install -y wget perl gcc make tree elfutils-libelf-devel pciutils-libs; 
+RUN yum groupinstall -y  "Development Tools"; 
+RUN mkdir -p /ko_output
+
+
+ADD . /elkeid
+WORKDIR /elkeid/driver
+
+RUN bash ./batch_compile_elrepo8_ml.sh

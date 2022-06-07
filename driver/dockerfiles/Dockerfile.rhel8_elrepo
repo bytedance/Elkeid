@@ -13,7 +13,12 @@ wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.
 wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/cc/8.5/BaseOS/x86_64/os/Packages/';
 RUN rpm -ivh /tmp/*.rpm || true
 
+<<<<<<< HEAD
 ADD . /elkeid
 WORKDIR /elkeid/driver
+=======
+ADD . /elkeid_driver
+WORKDIR /elkeid_driver
+>>>>>>> 707aed2 (update driver auto_build)
 RUN bash ./batch_compile.sh
 

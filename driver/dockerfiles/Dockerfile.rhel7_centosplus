@@ -7,4 +7,4 @@ RUN mkdir /root/headers
 
 ADD . /elkeid
 WORKDIR /elkeid/driver
-RUN bash ./batch_compile_el7.sh
+RUN bash ./batch_compile_el7_centosplus.sh

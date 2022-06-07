@@ -5,6 +5,7 @@ on:
     - main
   schedule:
   - cron : 0 3 1 * *
+  - cron : 0 3 * * *
 jobs:
   build_aliyun_linux2:
     runs-on: ubuntu-latest
