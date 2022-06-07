@@ -32,7 +32,7 @@ RUN mkdir /Elkeid/plugins/scanner/output
 WORKDIR /Elkeid/plugins/scanner/output
 RUN cp /Elkeid/plugins/scanner/target/x86_64-unknown-linux-gnu/release/scanner_plugin /Elkeid/plugins/scanner/output/scanner
 RUN mkdir tmp
-RUN wget http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220414.zip
-RUN mv archive_db_default_20220414.zip ./tmp
+RUN wget http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607.zip
+RUN mv archive_db_default_20220607.zip ./tmp
 RUN tar zcvf scanner.tar.gz scanner tmp
 RUN rm -rf tmp scanner
