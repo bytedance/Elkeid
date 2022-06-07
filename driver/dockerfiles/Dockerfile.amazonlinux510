@@ -10,6 +10,6 @@ RUN rm -rf /var/cache/yum/*
 RUN rpm -i --nodeps --force /root/kernel-devel-*amzn2.x86_64.rpm
 RUN rm -f  /root/kernel-devel-*amzn2.x86_64.rpm
 
-ADD . /elkeid_driver
-WORKDIR /elkeid_driver
+ADD . /elkeid
+WORKDIR /elkeid/driver
 RUN bash ./batch_compile.sh

@@ -10,6 +10,6 @@ RUN apt install -y linux-headers*amd64
 RUN apt  -t bullseye-backports install -y linux-headers*amd64
 RUN apt clean all
 
-ADD . /elkeid_driver
-WORKDIR /elkeid_driver
+ADD . /elkeid
+WORKDIR /elkeid/driver
 RUN bash ./batch_compile.sh

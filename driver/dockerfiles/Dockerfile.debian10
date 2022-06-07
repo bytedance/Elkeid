@@ -14,6 +14,6 @@ RUN wget https://mirrors.bytedance.com/debian/pool/buster-main/l/linux-4.19.36.b
 
 RUN apt clean all
 
-ADD . /elkeid_driver
-WORKDIR /elkeid_driver
+ADD . /elkeid
+WORKDIR /elkeid/driver
 RUN bash ./batch_compile.sh

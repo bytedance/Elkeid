@@ -6,6 +6,6 @@ RUN mkdir /root/headers
 RUN for each_tag in `yum --showduplicates list kernel-devel | grep kernel-devel | awk -c '{print $2}'`; do yumdownloader  --destdir /root/headers kernel-devel-$each_tag.x86_64; done
 RUN rpm --force -ivh /root/headers/*.rpm || true
 
-ADD . /elkeid_driver
-WORKDIR /elkeid_driver
+ADD . /elkeid
+WORKDIR /elkeid/driver
 RUN bash ./batch_compile.sh

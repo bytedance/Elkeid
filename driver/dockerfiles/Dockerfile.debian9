@@ -18,6 +18,6 @@ RUN wget https://mirrors.bytedance.com/debian/pool/stretch-main/l/linux-4.19.36.
 RUN apt -t stretch-backports install -y linux-headers*amd64
 RUN apt clean all
 
-ADD . /elkeid_driver
-WORKDIR /elkeid_driver
+ADD . /elkeid
+WORKDIR /elkeid/driver
 RUN bash ./batch_compile.sh

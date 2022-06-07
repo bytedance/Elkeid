@@ -7,8 +7,8 @@ RUN apt-get -y install linux-headers-4.15.*-generic  || true
 
 RUN apt clean all
 
-ADD . /elkeid_driver
-WORKDIR /elkeid_driver
+ADD . /elkeid
+WORKDIR /elkeid/driver
 RUN bash ./batch_compile.sh
 
 RUN apt-get -y remove linux-headers-4.13.*-generic  || true

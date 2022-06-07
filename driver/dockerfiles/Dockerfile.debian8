@@ -15,6 +15,6 @@ linux-headers-amd64 || true
 
 
 
-ADD . /elkeid_driver
-WORKDIR /elkeid_driver
+ADD . /elkeid
+WORKDIR /elkeid/driver
 RUN bash ./batch_compile.sh

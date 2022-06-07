@@ -18,6 +18,6 @@ RUN apt-get -y install linux-headers-3.13.*-generic || true
 
 
 
-ADD . /elkeid_driver
-WORKDIR /elkeid_driver
+ADD . /elkeid
+WORKDIR /elkeid/driver
 RUN bash ./batch_compile.sh
