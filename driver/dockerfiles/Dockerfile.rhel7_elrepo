@@ -7,10 +7,15 @@ RUN for each_tag in `yum --showduplicates list kernel-devel | grep kernel-devel 
 RUN rpm --force -ivh /root/headers/*.rpm || true
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 ADD . /elkeid
 WORKDIR /elkeid/driver
 =======
 ADD . /elkeid_driver
 WORKDIR /elkeid_driver
 >>>>>>> 707aed2 (update driver auto_build)
+=======
+ADD . /elkeid
+WORKDIR /elkeid/driver
+>>>>>>> 6fc7695 (fix docker path)
 RUN bash ./batch_compile.sh
