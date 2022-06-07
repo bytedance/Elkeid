@@ -60,7 +60,7 @@ debug = 1
 debug = ["plugins/debug"]
 
 [[bin]]
-name = "scanner_clamav"
+name = "scanner"
 path = "src/bin/scanner_plugin.rs"
 required-features = ["default"]
 
