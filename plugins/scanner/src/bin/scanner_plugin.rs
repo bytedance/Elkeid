@@ -5,8 +5,11 @@ use plugins::{logger::*, Client};
 
 use std::{env, fs::File, path::PathBuf, thread, time::Duration};
 
-use cgroups_rs::{self, Controller};
-use scanner::{configs, cronjob::Cronjob, detector::Detector, updater};
+use scanner::{
+    detector::Detector,
+    model::engine::clamav::{self, updater},
+    model::functional::cronjob::Cronjob,
+};
 
 use fs2::FileExt;
 
@@ -16,10 +19,10 @@ pub struct ProcessLock {
     file: File,
 }
 
-// Scanner_clamav locker
+// scanner locker
 impl ProcessLock {
     pub fn new() -> Self {
-        let file_path = "/var/run/scanner_plugin.pid";
+        let file_path = "/var/run/elkeid_scanners_plugin.pid";
         let file = File::create(file_path).unwrap();
         Self { file }
     }
@@ -35,13 +38,15 @@ fn main() {
     /* flock */
     let process_lock = ProcessLock::new();
     if !process_lock.process_lock() {
-        eprintln!("Elkeid Scanner running duplicate, exit");
+        eprintln!("Clamav running duplicate, exit");
         return;
     };
 
     let pid = std::process::id();
     info!("pid : {:?}", pid);
-    setup_cgroup(pid);
+
+    #[cfg(feature = "cg_ctrl")]
+    scanner::setup_cgroup(pid, 1024 * 1024 * 180, 10000);
 
     let client = Client::new(true);
 
@@ -71,10 +76,10 @@ fn main() {
                 Err(e) => {
                     error!("{:?} rule Deserialize err : {:?}", &val, e);
                     if let Ok(db) = updater::DBManager::new(
-                        configs::ARCHIVE_DB_VERSION,
-                        configs::ARCHIVE_DB_HASH,
-                        configs::ARCHIVE_DB_PWD,
-                        configs::DB_URLS,
+                        updater::ARCHIVE_DB_VERSION,
+                        updater::ARCHIVE_DB_HASH,
+                        updater::ARCHIVE_DB_PWD,
+                        updater::DB_URLS,
                     ) {
                         db
                     } else {
@@ -87,10 +92,10 @@ fn main() {
         }
         Err(_) => {
             if let Ok(db) = updater::DBManager::new(
-                configs::ARCHIVE_DB_VERSION,
-                configs::ARCHIVE_DB_HASH,
-                configs::ARCHIVE_DB_PWD,
-                configs::DB_URLS,
+                updater::ARCHIVE_DB_VERSION,
+                updater::ARCHIVE_DB_HASH,
+                updater::ARCHIVE_DB_PWD,
+                updater::DB_URLS,
             ) {
                 db
             } else {
@@ -120,12 +125,14 @@ fn main() {
     // main detector worker
     let s_recv_worker = s.clone();
     let s_recv_lock = s_lock.clone();
+
     let mut mworker = Detector::new(
+        pid,
         client_c,
         s_recv_worker,
         r,
         s_recv_lock,
-        configs::DB_PATH,
+        clamav::config::DB_DEFAULT,
         db_manager,
     );
 
@@ -141,29 +148,6 @@ fn main() {
 
     // wait childs
     let _: () = r_lock.recv().unwrap();
+
     info!("[Main exit] bye ~");
-}
-
-fn setup_cgroup(pid: u32) {
-    let hier1 = cgroups_rs::hierarchies::auto();
-    let mem_cg = cgroups_rs::cgroup_builder::CgroupBuilder::new("clamav_mem")
-        .memory()
-        .memory_hard_limit(1024 * 1024 * 180) // 180 MB
-        .done()
-        .build(hier1);
-
-    let mems: &cgroups_rs::memory::MemController = mem_cg.controller_of().unwrap();
-    mems.add_task(&cgroups_rs::CgroupPid::from(pid as u64))
-        .unwrap();
-
-    let hier = cgroups_rs::hierarchies::auto();
-    let cpu_cg = cgroups_rs::cgroup_builder::CgroupBuilder::new("clamav_cpu")
-        .cpu()
-        .quota(10000) //  10000 / MAX 100000 = 10% CPU
-        .done()
-        .build(hier);
-
-    let cpus: &cgroups_rs::cpu::CpuController = cpu_cg.controller_of().unwrap();
-    cpus.add_task(&cgroups_rs::CgroupPid::from(pid as u64))
-        .unwrap();
 }

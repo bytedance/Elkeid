@@ -1,11 +1,16 @@
 use crate::{
-    get_file_md5_fast,
+    configs, get_file_btime, get_file_md5, get_file_md5_fast, get_file_xhash,
+    model::engine::{
+        clamav::{self, updater, Clamav},
+        ScanEngine,
+    },
     model::functional::{
         anti_ransom::HoneyPot,
         fulldiskscan::{
             FullScan, FulllScanFinished, MAX_SCAN_CPU_100, MAX_SCAN_ENGINES, MAX_SCAN_MEM_MB,
         },
     },
+    ToAgentRecord,
 };
 
 use anyhow::{anyhow, Result};
@@ -606,7 +611,6 @@ pub struct Scanner {
     pub inner: Clamav,
 }
 
-
 impl Scanner {
     pub fn new(db_path: &str) -> Result<Self> {
         let mut scanner: Clamav = ScanEngine::new(db_path)?;
@@ -800,7 +804,6 @@ pub struct Detector {
     _recv_worker: thread::JoinHandle<()>,
     rule_updater: crossbeam_channel::Receiver<String>,
     db_manager: updater::DBManager,
-    model_php: String,
     ppid: u32,
     supper_mode: bool,
 }
@@ -814,7 +817,6 @@ impl Detector {
         s_locker: crossbeam_channel::Sender<()>,
         db_path: &str,
         db_manager: updater::DBManager,
-        model_php: &str,
     ) -> Self {
         let recv_worker_s_locker = s_locker.clone();
         let (s, r) = bounded(0);
@@ -1040,7 +1042,6 @@ impl Detector {
             _recv_worker: recv_worker,
             rule_updater: r,
             db_manager: db_manager,
-            model_php: model_php.into(),
             supper_mode: false,
         };
     }
@@ -1090,7 +1091,7 @@ impl Detector {
                         work_s_locker.send(()).unwrap();
                         return
                     }
-                    match Scanner::new(&self.db_path,&self.model_php){
+                    match Scanner::new(&self.db_path){
                         Ok(s) =>{
                             self.scanner = Some(
                                 s
@@ -1113,7 +1114,7 @@ impl Detector {
                                 work_s_locker.send(()).unwrap();
                                 return
                             }
-                            match Scanner::new(&self.db_path,&self.model_php){
+                            match Scanner::new(&self.db_path){
                                 Ok(s) =>{
                                     self.scanner = Some(
                                         s

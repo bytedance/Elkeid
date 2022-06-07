@@ -5,17 +5,15 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use coarsetime::Clock;
 use lazy_static::lazy_static;
 use log::*;
 use walkdir::WalkDir;
 
 use crate::{
-    configs::{self, model::engine::clamav::config::CLAMAV_MAX_FILESIZE,},
-    detector::DetectTask,
-    filter::Filter,
-    get_file_btime,
+    configs, detector::DetectTask, filter::Filter, get_file_btime,
+    model::engine::clamav::config::CLAMAV_MAX_FILESIZE,
 };
 
 lazy_static! {
@@ -28,14 +26,12 @@ pub fn get_pid_live_time(pid: i32) -> Result<u64> {
     let start_time = process.stat.starttime as f32;
     let seconds_since_boot = (start_time / *CPU_TICKS) as u64;
     let timestamp = Clock::now_since_epoch().as_secs();
-    if seconds_since_boot + *CPU_BOOTTIME > timestamp {
-        return Err(anyhow!("timestamp underflowed"));
-    }
     return Ok(timestamp - seconds_since_boot - *CPU_BOOTTIME);
 }
 
 pub struct Cronjob {
-    pub job: JoinHandle<i32>,
+    pub job_dir: JoinHandle<i32>,
+    pub job_proc: JoinHandle<i32>,
 }
 
 impl Cronjob {
@@ -44,11 +40,12 @@ impl Cronjob {
         s_locker: crossbeam_channel::Sender<()>,
         cron_interval: u64,
     ) -> Self {
-        let filter = Filter::new(100);
-        let job = thread::spawn(move || loop {
+        let filter_proc = Filter::new(100);
+        let filter_dir = Filter::new(100);
+        let sender_proc = sender.clone();
+        let s_locker_proc = s_locker.clone();
+        let job_dir = thread::spawn(move || loop {
             let start_timestap = Clock::now_since_epoch().as_secs();
-            // step-1
-            // scan config dirs
             for conf in configs::SCAN_DIR_CONFIG {
                 let mut w_dir = WalkDir::new(conf.fpath)
                     .max_depth(conf.max_depth)
@@ -62,7 +59,7 @@ impl Cronjob {
                         }
                         Some(Ok(entry)) => entry,
                     };
-                    let filter_flag = filter.catch(&entry.path());
+                    let filter_flag = filter_dir.catch(&entry.path());
                     if filter_flag == 1 {
                         continue;
                     } else if filter_flag == 2 {
@@ -101,23 +98,26 @@ impl Cronjob {
                         add_ons: None,
                     };
 
-                    while sender.len() > 2 {
-                        std::thread::sleep(Duration::from_secs(8));
+                    while sender_proc.len() > 2 {
+                        std::thread::sleep(Duration::from_secs(2));
                     }
-
-                    match sender.send(task) {
+                    match sender_proc.send(task) {
                         Ok(_) => {}
                         Err(e) => {
                             error!("internal task send err {:?}", e);
-                            s_locker.send(()).unwrap();
+                            s_locker_proc.send(()).unwrap();
                         }
                     };
                     std::thread::sleep(Duration::from_secs(20));
                 }
+                let timecost = Clock::now_since_epoch().as_secs() - start_timestap;
+                // sleep cron_interval
+                thread::sleep(Duration::from_secs(3600 * 24 - (timecost % (3600 * 24))));
             }
+        });
 
-            // step-2
-            // proc scan
+        let job_proc = thread::spawn(move || loop {
+            let start_timestap = Clock::now_since_epoch().as_secs();
             let dir_p = fs::read_dir("/proc").unwrap();
 
             for each in dir_p {
@@ -125,18 +125,11 @@ impl Cronjob {
                     Ok(en) => en,
                     Err(_) => continue,
                 };
+
                 let pid = match each_en.file_name().to_string_lossy().parse::<i32>() {
                     Ok(opid) => opid,
                     Err(_) => continue,
                 };
-                // scan the process lived 10mins
-                if let Ok(pid_live_time) = get_pid_live_time(pid) {
-                    if pid_live_time <= 300 {
-                        continue;
-                    }
-                } else {
-                    continue;
-                }
 
                 let pstr: &str = &format!("/proc/{}/exe", pid);
                 let fp = Path::new(pstr);
@@ -146,10 +139,11 @@ impl Cronjob {
                 };
 
                 // proc filter
-                let filter_flag = filter.catch(Path::new(&exe_real));
+                let filter_flag = filter_proc.catch(Path::new(&exe_real));
                 if filter_flag != 0 {
                     continue;
                 }
+
                 let rfp = Path::new(&exe_real);
                 let (fsize, btime) = match rfp.metadata() {
                     Ok(p) => {
@@ -164,9 +158,11 @@ impl Cronjob {
                         continue;
                     }
                 };
+
                 if fsize <= 0 || fsize > CLAMAV_MAX_FILESIZE {
                     continue;
                 }
+
                 // send to scan
                 let task = DetectTask {
                     task_type: "6052".to_string(),
@@ -179,7 +175,7 @@ impl Cronjob {
                     token: "".to_string(),
                     add_ons: None,
                 };
-                while sender.len() > 2 {
+                while sender.len() > 8 {
                     std::thread::sleep(Duration::from_secs(8));
                 }
                 match sender.send(task) {
@@ -189,12 +185,12 @@ impl Cronjob {
                         s_locker.send(()).unwrap();
                     }
                 };
-                std::thread::sleep(Duration::from_secs(20));
+                std::thread::sleep(Duration::from_secs(8));
             }
-            // sleep cron_interval
             let timecost = Clock::now_since_epoch().as_secs() - start_timestap;
-            thread::sleep(Duration::from_secs(3600 * 24 - (timecost % (3600 * 24))));
+            // sleep cron_interval
+            thread::sleep(Duration::from_secs(3600 - (timecost % (3600))));
         });
-        return Self { job };
+        return Self { job_dir, job_proc };
     }
 }

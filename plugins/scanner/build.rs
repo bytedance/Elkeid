@@ -36,10 +36,18 @@ mod bindings {
             .header("wrapper.h")
             .clang_arg("-I./usr/include/linux")
             .clang_arg("-Iinclude")
+            .clang_arg("-Iclamav")
+            .clang_arg("-Iclamav/build")
+            .clang_arg("-Iclamav/libclamav")
+            .clang_arg("-Iclamav/libclamav/regex")
+            .clang_arg("-Iclamav/libclamunrar_iface")
             .clang_arg("-Iclamav-mussels-cookbook/mussels/install/include")
+            .clang_arg("-Iclamav-mussels-cookbook/mussels/install/include/json-c")
             .generate()
             .unwrap();
-        bindings.write_to_file("src/clamav.rs").unwrap();
+        bindings
+            .write_to_file("src/model/engine/clamav/clamav.rs")
+            .unwrap();
     }
 }
 
