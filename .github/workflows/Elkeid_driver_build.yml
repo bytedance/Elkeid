@@ -3,6 +3,7 @@ on:
   push:
     branches:
     - main
+    - 1.9/scanner
   schedule:
   - cron : 0 3 * * *
 jobs:
