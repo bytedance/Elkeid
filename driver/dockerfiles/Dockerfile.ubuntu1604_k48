@@ -1,0 +1,12 @@
+FROM ubuntu:xenial AS xenial
+
+RUN apt update;
+RUN apt install -y wget curl tree git gcc build-essential kbuild libelf-dev;
+RUN apt-get -y install linux-headers-4.8.*-generic  || true
+RUN apt clean all
+
+ADD . /elkeid_driver
+WORKDIR /elkeid_driver
+RUN bash ./batch_compile.sh
+
+RUN apt-get -y remove linux-headers-4.8.*-generic  || true

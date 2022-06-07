@@ -1,0 +1,23 @@
+FROM debian:stretch AS stretch
+
+RUN echo "deb http://deb.debian.org/debian stretch-backports main " >> /etc/apt/sources.list
+
+
+RUN apt update
+RUN apt install  -y apt-utils apt-transport-https ca-certificates debian-archive-keyring wget curl
+RUN apt install -y gcc build-essential libelf-dev; 
+RUN apt install -y linux-compiler-gcc* || true
+RUN apt install -y linux-kbuild*;
+RUN wget https://mirrors.bytedance.com/debian/pool/stretch-main/l/linux-4.14.81.bm.business.1-amd64/linux-headers-4.14.81.bm.business.1-amd64_4.14.81.bm.business.1_amd64.deb && dpkg -i linux-headers-4.14.81.bm.business.1-amd64_4.14.81.bm.business.1_amd64.deb
+RUN wget https://mirrors.bytedance.com/debian/pool/stretch-main/l/linux-4.14.156.bm.business.1-amd64/linux-headers-4.14.156.bm.business.1-amd64_4.14.156.bm.business.1_amd64.deb && dpkg -i linux-headers-4.14.156.bm.business.1-amd64_4.14.156.bm.business.1_amd64.deb
+RUN wget https://mirrors.bytedance.com/debian/pool/stretch-main/l/linux-4.14.156.bm.business.1-amd64/linux-headers-4.14.156.bm.business.1-amd64_4.14.156.bm.business.1-7-gc3e56d652383_amd64.deb  && dpkg -i linux-headers-4.14.156.bm.business.1-amd64_4.14.156.bm.business.1-7-gc3e56d652383_amd64.deb
+RUN wget https://mirrors.bytedance.com/debian/pool/stretch-main/l/linux-4.19.117.bsk.7-business-amd64/linux-headers-4.19.117.bsk.7-business-amd64_4.19.117.bsk.7-business_amd64.deb && dpkg -i linux-headers-4.19.117.bsk.7-business-amd64_4.19.117.bsk.7-business_amd64.deb
+RUN wget https://mirrors.bytedance.com/debian/pool/stretch-main/l/linux-4.19.117.bsk.business.1-amd64/linux-headers-4.19.117.bsk.business.1-amd64_4.19.117.bsk.business.1_amd64.deb && dpkg -i linux-headers-4.19.117.bsk.business.1-amd64_4.19.117.bsk.business.1_amd64.deb
+RUN wget https://mirrors.bytedance.com/debian/pool/stretch-main/l/linux-4.19.36.bsk.business.1-amd64/linux-headers-4.19.36.bsk.business.1-amd64_4.19.36.bsk.business.1-214-gfa3405186ab1_amd64.deb && dpkg -i linux-headers-4.19.36.bsk.business.1-amd64_4.19.36.bsk.business.1-214-gfa3405186ab1_amd64.deb
+
+RUN apt -t stretch-backports install -y linux-headers*amd64
+RUN apt clean all
+
+ADD . /elkeid_driver
+WORKDIR /elkeid_driver
+RUN bash ./batch_compile.sh
