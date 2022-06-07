@@ -57,10 +57,13 @@ crossbeam = "0.8"
 debug = 1
 
 [features]
+cg_ctrl = []
+vendored = []
+default = ["vendored","cg_ctrl"]
 debug = ["plugins/debug"]
 
 [[bin]]
-name = "scanner"
+name = "scanner_plugin"
 path = "src/bin/scanner_plugin.rs"
 required-features = ["default"]
 
