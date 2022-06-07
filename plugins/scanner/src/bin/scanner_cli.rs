@@ -92,15 +92,7 @@ fn main() {
         }
     }
 
-<<<<<<< HEAD
     let mut scanner = match scanner::detector::Scanner::new("./dat") {
-=======
-    #[cfg(feature = "ai_php_local")]
-    let mut scanner = match scanner_clamav::detector::Scanner::new(
-        tflite::config::DB_DEFAULT,
-        tflite::config::MODEL_PHP_PATH,
-    ) {
->>>>>>> 158296b (update scanner)
         Ok(s) => s,
         Err(e) => {
             warn!("db init err, should exit : {:?}", e);
@@ -149,6 +141,7 @@ fn main() {
                             println!("YARA HIT: {:?}", mdata);
                         }
                     }
+                }
                 Err(e) => {
                     error!("scan {} : err :{}", &tfpath, e);
                 }

@@ -22,11 +22,7 @@ pub struct ProcessLock {
 // scanner locker
 impl ProcessLock {
     pub fn new() -> Self {
-<<<<<<< HEAD
         let file_path = "/var/run/elkeid_scanners_plugin.pid";
-=======
-        let file_path = "/var/run/scanner_plugin.pid";
->>>>>>> 158296b (update scanner)
         let file = File::create(file_path).unwrap();
         Self { file }
     }
@@ -42,7 +38,7 @@ fn main() {
     /* flock */
     let process_lock = ProcessLock::new();
     if !process_lock.process_lock() {
-        eprintln!("Elkeid Scanner running duplicate, exit");
+        eprintln!("Clamav running duplicate, exit");
         return;
     };
 
@@ -152,5 +148,6 @@ fn main() {
 
     // wait childs
     let _: () = r_lock.recv().unwrap();
+
     info!("[Main exit] bye ~");
 }
