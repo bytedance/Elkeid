@@ -2,7 +2,8 @@ name: Elkeid_plugin_scanner
 
 on:
   push:
-    branches: [ 1.9/scanner ]
+    branches:
+    - main
 
 jobs:
 

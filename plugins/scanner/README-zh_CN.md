@@ -167,8 +167,8 @@ ldd ./output/scanner
                     "http://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-3.1.9.1.tar.gz"
                 ],
                 "type": "tar.gz",
-                "sha256": "4785de04501cd2043c5a9a1b145faf4d297f3ab0156319e3fc5fa19137e68c37",
-                "signature": "222e02064b9d2fff0ef4c53269e8f2ee3cc628c9befbf583ba93056766f32e68",
+                "sha256": "528ddd83cdcdcba90d11efa4a34279f2593b7489a8e71143ef11abf6a513fb9e",
+                "signature": "4114058a2c2c8dbf40a04360dcc1a3de8b229a420e23c5ea3d4d3c2f005c6047",
                 "detail":""
             }
         ]
