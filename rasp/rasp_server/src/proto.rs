@@ -1,11 +1,11 @@
-use std::sync::{Arc, Mutex};
-use std::fmt;
 use std::collections::HashMap;
+use std::fmt;
+use std::sync::{Arc, Mutex};
 
 use lazy_static::lazy_static;
+use log::*;
 use serde::{Deserialize, Serialize};
 use serde_json;
-use log::*;
 
 use super::utils::generate_timestamp_f64;
 
@@ -21,10 +21,13 @@ pub struct ProbeData {
     method_id: Option<u32>,
     class_id: Option<u32>,
     stack_trace: Option<Vec<String>>,
+    pub async_stack_trace: Option<Vec<Vec<String>>>,
     pub action: Option<u32>,
     pub config: Option<String>,
     pub jars: Option<Vec<JarData>>,
     pub golang: Option<GolangDepData>,
+    pub request: Option<String>,
+    pub blocked: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -49,7 +52,6 @@ pub struct GolangReplace {
     pub version: Option<String>,
 }
 
-
 impl ProbeData {
     pub fn new_config(config_string: String) -> Self {
         let mut pd = ProbeData::default();
@@ -62,7 +64,7 @@ impl ProbeData {
         pd.action = Some(action);
         pd
     }
-    pub fn to_hashmap(self) -> HashMap::<&'static str, String> {
+    pub fn to_hashmap(self) -> HashMap<&'static str, String> {
         let mut pdhm = HashMap::<&'static str, String>::new();
         if let Some(args) = self.args {
             pdhm.insert("args", serde_json::json!(args).to_string());
@@ -73,15 +75,26 @@ impl ProbeData {
         if let Some(class_id) = self.class_id {
             pdhm.insert("class_id", class_id.to_string());
         }
+        if let Some(async_stack_trace) = self.async_stack_trace {
+            pdhm.insert(
+                "async_stack_trace",
+                serde_json::json!(async_stack_trace).to_string(),
+            );
+        }
+        if let Some(req) = self.request {
+            pdhm.insert("request", serde_json::json!(req).to_string());
+        }
         if let Some(stack_trace) = self.stack_trace {
             pdhm.insert("stack_trace", serde_json::json!(stack_trace).to_string());
         }
         if let Some(jars) = self.jars {
             pdhm.insert("jars", serde_json::json!(jars).to_string());
         }
+        if let Some(blocked) = self.blocked {
+            pdhm.insert("blocked", blocked.to_string());
+        }
         pdhm
     }
-
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -93,20 +106,52 @@ pub struct JarData {
     specification_version: Option<String>,
 }
 
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ProbeConfig {
-    pub config: Option<String>,
-    pub action: Option<u32>,
+    pub pid: i32,
+    pub message_type: i32,
+    pub data: ProbeConfigData,
 }
 
-impl ProbeConfig {
-    fn default() -> Self {
-        ProbeConfig {
-            config: None,
-            action: None,
-        }
-    }
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct PidMissingProbeConfig {
+    pub message_type: i32,
+    pub data: ProbeConfigData,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ProbeConfigData {
+    pub blocks: Option<Vec<ProbeConfigBlock>>,
+    pub filters: Option<Vec<ProbeConfigFilter>>,
+    pub limits: Option<Vec<ProbeConfigLimit>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ProbeConfigBlock {
+    pub class_id: i32,
+    pub method_id: i32,
+    pub rules: Vec<ProbeConfigRules>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ProbeConfigRules {
+    pub index: i32,
+    pub regex: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ProbeConfigFilter {
+    pub class_id: i32,
+    pub method_id: i32,
+    pub include: Vec<ProbeConfigRules>,
+    pub exclude: Vec<ProbeConfigRules>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ProbeConfigLimit {
+    pub class_id: i32,
+    pub method_id: i32,
+    pub quota: i32,
 }
 
 pub fn message_handle(message: &String) -> Result<String, String> {
@@ -131,12 +176,10 @@ pub fn message_handle(message: &String) -> Result<String, String> {
             }
             None => String::new(),
         },
-        5 =>  match jar_report(&message.clone()) {
+        5 => match jar_report(&message.clone()) {
             Ok(_) => String::new(),
-            Err(e) => {
-                return Err(e)
-            }
-        }
+            Err(e) => return Err(e),
+        },
         _ => return Err(String::from("bad message type")),
     };
     Ok(response)
@@ -234,18 +277,18 @@ impl Message {
     pub fn to_json(&self) -> String {
         serde_json::json!(&self).to_string()
     }
-    pub fn to_hashmap(self) -> HashMap::<&'static str, String> {
+    pub fn to_hashmap(self) -> HashMap<&'static str, String> {
         let mut mhm = HashMap::<&'static str, String>::new();
         mhm.insert("pid", self.pid.to_string());
         mhm.insert("runtime", self.runtime);
         mhm.insert("runtime_version", self.runtime_version);
         mhm.insert("message_type", self.message_type.to_string());
         mhm.insert("rasp_timestamp", self.time.to_string());
+        mhm.insert("probe_version", self.probe_version.to_string());
         if let Some(data) = self.data {
             let probe_data_map = data.to_hashmap();
             mhm.extend(probe_data_map);
         }
         mhm
     }
-
 }

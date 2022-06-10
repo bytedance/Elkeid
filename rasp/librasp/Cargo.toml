@@ -39,6 +39,3 @@ path = "src/main.rs"
 
 [dependencies.rasp_server]
 path = "../rasp_server"
-
-[features]
-bin_mode = []

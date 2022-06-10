@@ -11,28 +11,27 @@ pub struct CPythonProbeState {}
 
 impl ProbeStateInspect for CPythonProbeState {
     fn inspect_process(process_info: &ProcessInfo) -> Result<ProbeState> {
-        // out of date
-        let tasks: procfs::process::TasksIter = match process_info.process_self.tasks() {
-            Ok(ts) => ts,
-            Err(e) => {
-                return Err(anyhow!(e));
-            }
-        };
-        for task_result in tasks {
-            if let Err(_e) = task_result {
-                continue;
-            }
-            if let Ok(task) = task_result {
-                let task_stat_result = task.stat();
-                if let Ok(task_stat) = task_stat_result {
-                    if task_stat.comm == "python-client" {
-                        return Ok(ProbeState::Attached);
-                    }
+        search_proc_map(process_info)
+    }
+}
+
+fn search_proc_map(process_info: &ProcessInfo) -> Result<ProbeState> {
+    let maps = procfs::process::Process::new(process_info.pid)?.maps()?;
+    for map in maps.iter() {
+        if let procfs::process::MMapPath::Path(p) = map.pathname.clone() {
+            let s = match p.into_os_string().into_string() {
+                Ok(s) => s,
+                Err(os) => {
+                    warn!("convert osstr to string failed: {:?}", os);
+                    continue;
                 }
+            };
+            if s.contains("python_loader") {
+                return Ok(ProbeState::Attached);
             }
         }
-        Ok(ProbeState::NotAttach)
     }
+    Ok(ProbeState::NotAttach)
 }
 
 pub fn python_attach(pid: i32) -> Result<bool> {

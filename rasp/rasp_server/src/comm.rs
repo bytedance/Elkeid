@@ -1,191 +1,239 @@
-use super::utils::{four_bytes_to_num, num_to_four_bytes, ByteBuf};
-use super::proto::*;
-use super::*;
+use log::*;
 
+use bytes::Bytes;
+use std::collections::HashMap;
 use std::fs;
 use std::os::unix::prelude::PermissionsExt;
 use std::path::Path;
+use std::sync::Arc;
+use std::time::Duration;
 
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{UnixListener, UnixStream};
-use tokio::stream::StreamExt;
+use crate::utils::Control;
+use crate::{RASPPair, RASPSock};
+
+use crossbeam::channel::{Sender, TryRecvError};
+use futures_util::{SinkExt, TryStreamExt};
+use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
+use tokio::net::UnixListener;
 use tokio::spawn;
+use tokio::sync::mpsc::Receiver;
+use tokio::sync::RwLock;
+use tokio::time::sleep;
 
-pub struct Server {
-    server_addr: &'static str,
-}
-
-impl Server {
-    pub fn new(server_addr: &'static str) -> Self {
-        Self { server_addr }
-    }
-    pub fn clean_bind_addr(&self) -> Option<String> {
-        let path = self.server_addr.clone();
-        if Path::new(path.clone()).exists() {
-            match fs::remove_file(path.clone()) {
-                Ok(_) => {}
-                Err(e) => return Some(e.to_string()),
-            }
+pub fn clean_bind_addr(addr: &str) -> Result<(), String> {
+    if Path::new(addr.clone()).exists() {
+        match fs::remove_file(addr.clone()) {
+            Ok(_) => {}
+            Err(e) => return Err(e.to_string()),
         }
-        None
     }
-    pub async fn start_bind(&mut self) -> Result<(), String> {
-        if let Some(e) = self.clean_bind_addr() {
-            return Err(e);
+    Ok(())
+}
+
+pub fn listen(addr: &str) -> Result<UnixListener, String> {
+    let listener: UnixListener = match UnixListener::bind(addr.clone()) {
+        Ok(l) => {
+            if let Err(e) = fs::set_permissions(addr, fs::Permissions::from_mode(0o777)) {
+                return Err(format!("chmod failed: {}", e.to_string()));
+            };
+            l
         }
-	info!("bind: {}", self.server_addr.clone());
-        let mut listener: UnixListener = match UnixListener::bind(self.server_addr.clone()) {
-            Ok(l) => {
-                if let Err(e) = fs::set_permissions(self.server_addr.clone(), fs::Permissions::from_mode(0o777))
-                {
-                    return Err(format!("chmod failed: {}", e.to_string()));
-                };
-                l
-            }
-            Err(e) => {
-                let msg = format!("bind socket failed: {}", e.to_string());
-                log::error!("{}", msg);
-                return Err(msg);
-            }
-        };
-        while let Some(stream) = listener.next().await {
-            match stream {
-                Ok(stream) => {
-		    info!("incoming stream");
-                    spawn(async move {
-                        if let Err(e) = process(stream).await {
-                            let msg =
-                                format!("failed to process connection; error: {}", e.to_string());
-                            error!("{}", msg);
-                        }
-                    });
-                }
-                Err(e) => {
-                    let msg = format!("connection failed: {}", e.to_string());
-                    error!("{}", msg);
-                }
-            }
+        Err(e) => {
+            let msg = format!("bind socket failed: {}", e.to_string());
+            log::error!("{}", msg);
+            return Err(msg);
         }
-        Ok(())
-    }
+    };
+    Ok(listener)
 }
 
-struct Stream {
-    stream: UnixStream,
+pub async fn new_pair(
+    pairs: &mut Arc<RwLock<HashMap<i32, RASPPair>>>,
+    pid: i32,
+) -> (tokio::sync::mpsc::Receiver<String>, Control) {
+    // println!("new pair: {}", pid);
+    let (probe_message_sender, probe_message_receiver) = tokio::sync::mpsc::channel(5);
+
+    let ctrl = Control::new();
+    let pair = RASPPair {
+        ctrl: ctrl.clone(),
+        probe_message_sender,
+    };
+    (*pairs.write().await).insert(pid, pair);
+    (probe_message_receiver, ctrl)
 }
 
-impl Stream {
-    pub async fn recv(&mut self) -> Result<String, String> {
-        let mut message_len_bytes: [u8; 4] = [0; 4];
-        let message_len = match self.stream.read_exact(&mut message_len_bytes).await {
-            Err(e) => {
-                let msg = format!("recv `message_len` failed: {}", e.to_string());
-                return Err(msg);
-            }
-            Ok(size) => {
-                if size == 0 {
-                    warn!("recv 0 len message");
-                    return Err(String::from("socket EOF"));
+pub async fn start_bind(sock: RASPSock) -> Result<(), String> {
+    clean_bind_addr(&sock.server_addr.clone())?;
+    info!("bind: {}", &sock.server_addr.clone());
+    let listener = listen(&sock.server_addr.clone())?;
+    let mut pairs: Arc<RwLock<HashMap<i32, RASPPair>>> = Arc::new(RwLock::new(HashMap::new()));
+    let pairs_clean = Arc::clone(&pairs);
+    let pairs_send_message = Arc::clone(&&pairs);
+    let mut clean_ctrl = sock.ctrl.clone();
+    spawn(async move {
+        loop {
+            debug!("pairs clean tokio thread looping");
+            if !clean_ctrl.check() {
+                info!("receive global quit signal, clean every paris then quit");
+                let mut pairs_clone = pairs_clean.write().await;
+                for (_, pair) in pairs_clone.iter_mut() {
+                    let _ = (*pair).ctrl.stop();
                 }
-                four_bytes_to_num(message_len_bytes)
+                return;
             }
-        };
-        log::debug!(
-            "RECV: {:x}, len: {}",
-            ByteBuf(&message_len_bytes),
-            message_len
-        );
-        let mut message_bytes = vec![0; message_len];
-        return match self.stream.read_exact(&mut message_bytes).await {
-            Err(e) => Err(format!("recv message body failed: {}", e.to_string())),
-            Ok(size) => {
-                if size != message_len {
-                    let msg = format!(
-                        "recv message body length not equal: {} {}",
-                        size, message_len
-                    );
-                    warn!("{}", msg);
-                    return Err(msg);
+            let mut pairs_clone = pairs_clean.write().await;
+            let mut pids = Vec::new();
+            for (pid, pair) in pairs_clone.iter_mut() {
+                if !(*pair).ctrl.check() {
+                    pids.push(pid.clone());
                 }
-                // convert bytes to string
-                let message = String::from_utf8_lossy(&message_bytes[0..message_len]).to_string();
-                log::debug!(
-                    "RECV: {:x}, {}",
-                    ByteBuf(&message_bytes.clone()),
-                    message.clone()
-                );
-                Ok(message)
             }
-        };
-    }
-    pub async fn send(&mut self, message: String) -> Result<(), String> {
-        let message_len = message.len();
-        debug!("SEND: {} {}", message_len, message.clone());
-        let message_len_bytes = num_to_four_bytes(message_len);
-        let message_bytes: Vec<u8> = [&message_len_bytes, message.as_bytes()].concat();
-        debug!("HEX: {:x}", ByteBuf(&message_bytes));
-        return match self.stream.write_all(message_bytes.as_slice()).await {
-            Err(e) => Err(e.to_string()),
-            Ok(_) => Ok(()),
-        };
-    }
-}
-
-async fn process(stream: UnixStream) -> Result<(), String> {
-    let mut st = Stream { stream };
+            drop(pairs_clone);
+            debug!("cleaning pid pairs: {:?}", pids);
+            let mut pw = pairs_clean.write().await;
+            if pids.len() > 0 {
+                for pid in pids {
+                    (*pw).remove(&pid);
+                }
+            }
+            sleep(Duration::from_secs(30)).await;
+        }
+    });
+    let global_rx = sock.rx_channel.clone();
+    let mut rx_ctrl = sock.ctrl.clone();
+    spawn(async move {
+        loop {
+            debug!("pairs rx dispatcher tokio thread looping");
+            if !rx_ctrl.check() {
+                warn!("global rx recv quit signal");
+                break;
+            }
+            let (pid, message) = match global_rx.try_recv() {
+                Ok(m) => m,
+                Err(TryRecvError::Disconnected) => {
+                    let _ = rx_ctrl.stop();
+                    break;
+                }
+                Err(TryRecvError::Empty) => {
+                    sleep(Duration::from_secs(30)).await;
+                    continue;
+                }
+            };
+            // println!("dispatcher recv message: {} {}", message, pid,);
+            let writable = pairs_send_message.write().await;
+            // println!(
+            //     "dispatcher paris: {} {} {:?}",
+            //     message,
+            //     pid,
+            //     writable.keys()
+            // );
+            let pair = match writable.get(&pid) {
+                Some(pair) => pair,
+                None => {
+                    warn!("pid not found: {}", pid);
+                    continue;
+                }
+            };
+            // println!("send to pair: {} {}", pid, message);
+            pair.probe_message_sender.send(message).await.unwrap();
+            sleep(Duration::from_secs(1)).await;
+        }
+    });
     loop {
-        let recv_message = match st.recv().await {
-            Ok(m) => m,
-            Err(e) => {
-                error!("{}", e);
-                return Err(e);
-            }
-        };
-        if recv_message == "" {
-	    warn!("recv empty message");
-            continue;
-        }
-
-        // check probe config flag
-        if let Some(flag) = get_probe_config_flag() {
-            if flag {
-                // gen probe config data
-                let (config_message, action_message) = match parse_config() {
-                    Ok(m) => m,
+        match listener.accept().await {
+            Ok((stream, _addr)) => {
+                let pid = match stream.peer_cred() {
+                    Ok(cred) => match cred.pid() {
+                        Some(p) => p,
+                        None => 0,
+                    },
                     Err(e) => {
-                        error!("parse config failed: {}", e);
-                        (None, None)
+                        log::warn!("can not get peer_cred: {}", e);
+                        0
                     }
                 };
-                // send to probe
-                if let Some(config) = config_message {
-                    if let Err(send_failed) = st.send(config.to_json()).await {
-                        error!("send config failed: {}", send_failed);
+                info!("recv new stream from: {}", pid);
+                let (sock_tx, ctrl) = new_pair(&mut pairs, pid as i32).await;
+                let sock_rx = sock.tx_channel.clone();
+                let rx_ctrl = ctrl.clone();
+                let tx_ctrl = ctrl.clone();
+                spawn(async move {
+                    let (rx, tx) = stream.into_split();
+                    looping(rx, tx, sock_rx, sock_tx, rx_ctrl, tx_ctrl).await;
+                });
+            }
+            Err(e) => {
+                let msg = format!("connection failed: {}", e.to_string());
+                error!("{}", msg);
+            }
+        }
+    }
+}
+
+pub async fn looping(
+    rx: OwnedReadHalf,
+    tx: OwnedWriteHalf,
+    sock_rx: Sender<String>,
+    mut sock_tx: Receiver<String>,
+    mut rx_ctrl: Control,
+    mut tx_ctrl: Control,
+) {
+    let mut framed_rx = tokio_util::codec::LengthDelimitedCodec::builder()
+        .length_field_offset(0)
+        .length_field_length(4)
+        .length_adjustment(0)
+        .num_skip(4)
+        .new_read(rx);
+    let mut framed_tx = tokio_util::codec::LengthDelimitedCodec::builder()
+        .length_field_offset(0)
+        .length_field_length(4)
+        .length_adjustment(0)
+        .num_skip(0)
+        .new_write(tx);
+    loop {
+        tokio::select! {
+            x = sock_tx.recv() => {
+                match x {
+                    Some(s) => {
+                        println!("send message to probe: {}", s);
+                        let bytes = Bytes::copy_from_slice(s.as_bytes());
+                        match framed_tx.send(bytes).await {
+                           Ok(_) => {}
+                            Err(e) => {
+                                println!("send failed: {}", e);
+                                return;
+                            }
+                        }
+                    }
+                    None => {
+                        log::warn!("tx recv ctrl stop: ");
+                        let _ = tx_ctrl.stop();
+                    }
+
+                }
+            },
+            x = framed_rx.try_next() => {
+                match x {
+                   Ok(Some(buf)) => {
+                        let message = String::from_utf8_lossy(&*buf).to_string();
+                        log::debug!("RECV: {}", &message.clone());
+                        if let Err(e) = sock_rx.send(message) {
+                            log::warn!("rx recv ctrl stop: {}", e);
+                            let _ = rx_ctrl.stop();
+                            return;
+                        }
+                    }
+                    Ok(None) => {
+                        warn!("frame_rx thread quiting");
+                        let _ = rx_ctrl.stop();
+                        return
+                    }
+                    Err(e) => {
+                        error!("frame_rx got err: {}", e);
                     }
                 }
-		if let Some(action) = action_message {
-		    if let Err(send_failed) = st.send(action.to_json()).await {
-			error!("send action failed: {}", send_failed);
-		    }
-		}
-            }
-	    if let Some(set_failed) = set_probe_config_flag(false) {
-		error!("set probe config flag failed: {}", set_failed);
-	    }
+            },
         }
-       let send_message = match message_handle(&recv_message) {
-            Ok(message) => message,
-            Err(e) => {
-                error!("handle request failed: {}", e);
-		return Err(e);
-            }
-        };
-	if send_message.is_empty() {
-	    continue;
-	}
-        if let Err(e) = st.send(send_message).await {
-            warn!("write failed: {}", e);
-	    return Err(e);
-	}
     }
 }

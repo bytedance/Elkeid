@@ -31,7 +31,7 @@ pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str) -> Result<
     let cwd_path = std::env::current_dir()?;
     let cwd = cwd_path.to_str().unwrap();
     let inject_script_path = format!("{}/{}", cwd, settings::RASP_NODE_INJECTOR);
-    let nspid = match ProcessInfo::read_ns_pid(pid) {
+    let nspid = match ProcessInfo::read_nspid(pid) {
         Ok(nspid_option) => {
             if let Some(nspid) = nspid_option {
                 nspid

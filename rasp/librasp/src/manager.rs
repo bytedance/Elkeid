@@ -1,35 +1,25 @@
-use anyhow::{anyhow, Result};
-use crossbeam::channel::{Receiver, Sender};
-use fs_extra::dir::{copy, create_all, CopyOptions};
+use std::collections::HashMap;
+
+use anyhow::{anyhow, Result, Result as AnyhowResult};
+use crossbeam::channel::Sender;
+use fs_extra::dir::{copy, CopyOptions, create_all};
 use log::*;
-use lru_time_cache::LruCache;
 
-use std::collections::VecDeque;
-use std::{
-    collections::HashMap,
-    path::PathBuf,
-    sync::{Arc, Mutex},
-    thread::sleep,
-    time::Duration,
-};
-
-use crate::cpython::{python_attach, CPythonProbeState};
-use crate::golang::{golang_attach, golang_bin_inspect, GolangProbeState};
-use crate::jvm::java_attach;
-use crate::nodejs::nodejs_attach;
-use crate::runtime::Runtime;
-use crate::runtime::RuntimeInspect;
-use crate::runtime::{ProbeState, ProbeStateInspect};
 use crate::{
     comm::{Control, RASPServerManager},
     process::ProcessInfo,
 };
+use crate::cpython::{CPythonProbeState, python_attach};
+use crate::golang::{golang_attach, GolangProbeState};
+use crate::jvm::java_attach;
+use crate::nodejs::nodejs_attach;
+use crate::runtime::{ProbeState, ProbeStateInspect, RuntimeInspect};
 
 pub struct RASPManager {
     pub namespace_tracer: MntNamespaceTracer,
     pub comm_manager: RASPServerManager,
-    pub async_runtime_inspect_task_queue: Arc<Mutex<VecDeque<PathBuf>>>,
-    pub async_runtime_inspect_result: Arc<Mutex<LruCache<PathBuf, Runtime>>>,
+    // pub async_runtime_inspect_task_queue: Arc<Mutex<VecDeque<PathBuf>>>,
+    // pub async_runtime_inspect_result: Arc<Mutex<LruCache<PathBuf, Runtime>>>,
 }
 
 impl RASPManager {
@@ -37,34 +27,90 @@ impl RASPManager {
     pub fn start_comm(
         &mut self,
         process_info: &ProcessInfo,
-        comm: (Sender<HashMap<&'static str, String>>, Receiver<String>),
+        result_sender: Sender<HashMap<&'static str, String>>,
         server_log_level: String,
         server_ctrl: Control,
-    ) -> Result<()> {
-        let mnt_namespace = if let Some(ref ns) = process_info.namespace_info {
-            match ns.mnt.clone() {
-                Some(mnt_ns) => mnt_ns,
-                None => {
-                    return Err(anyhow!("process mnt ns empty: {}", process_info.pid));
-                }
-            }
-        } else {
-            return Err(anyhow!("fetch process ns failed: {}", process_info.pid));
-        };
+    ) -> AnyhowResult<()> {
+        debug!("starting comm with probe, target pid: {}", process_info.pid);
+        let mnt_namespace = process_info.get_mnt_ns()?;
         self.namespace_tracer
             .add(mnt_namespace.clone(), process_info.pid);
+        // check reopen
         if let Some(opened) = self.namespace_tracer.server_state(&mnt_namespace) {
             if opened {
+                debug!("reusing stated server, mnt ns: {}", mnt_namespace);
+                if let Some(runner) = self
+                    .comm_manager
+                    .mnt_namespace_server_map
+                    .get_mut(&mnt_namespace)
+                {
+                    let nspid = if let Some(nspid) = ProcessInfo::read_nspid(process_info.pid)? {
+                        nspid
+                    } else {
+                        process_info.pid
+                    };
+                    let mut patch_field = HashMap::new();
+                    let sid = process_info.sid;
+                    let pid = process_info.pid;
+                    let ppid = process_info.ppid;
+                    let tgid = process_info.tgid;
+                    let exe = process_info.exe_path.clone().unwrap_or("".to_string());
+                    let cmdline = process_info.cmdline.clone().unwrap_or("".to_string());
+                    patch_field.insert("sid", sid.to_string());
+                    patch_field.insert("pid", pid.to_string());
+                    patch_field.insert("nspid", nspid.to_string());
+                    patch_field.insert("ppid", ppid.to_string());
+                    patch_field.insert("tgid", tgid.to_string());
+                    patch_field.insert("argv", cmdline);
+                    patch_field.insert("ruid", process_info.ruid.to_string());
+                    patch_field.insert("rgid", process_info.rgid.to_string());
+                    patch_field.insert("euid", process_info.euid.to_string());
+                    patch_field.insert("egid", process_info.egid.to_string());
+                    patch_field.insert("suid", process_info.suid.to_string());
+                    patch_field.insert("sgid", process_info.sgid.to_string());
+                    patch_field.insert("fuid", process_info.fuid.to_string());
+                    patch_field.insert("fgid", process_info.fgid.to_string());
+                    patch_field.insert("exe", exe);
+                    debug!("update patch_field: {:?}", patch_field);
+                    runner.update_patch_field(patch_field);
+                }
                 return Ok(());
             }
         }
-        let (result_sender, command_receiver) = comm;
+        let nspid = if let Some(nspid) = ProcessInfo::read_nspid(process_info.pid)? {
+            nspid
+        } else {
+            process_info.pid
+        };
+        let mut patch_field = HashMap::new();
+        let sid = process_info.sid;
+        let pid = process_info.pid;
+        let ppid = process_info.ppid;
+        let tgid = process_info.tgid;
+        let exe = process_info.exe_path.clone().unwrap_or("".to_string());
+        let cmdline = process_info.cmdline.clone().unwrap_or("".to_string());
+        patch_field.insert("sid", sid.to_string());
+        patch_field.insert("pid", pid.to_string());
+        patch_field.insert("nspid", nspid.to_string());
+        patch_field.insert("ppid", ppid.to_string());
+        patch_field.insert("tgid", tgid.to_string());
+        patch_field.insert("argv", cmdline);
+        patch_field.insert("exe", exe);
+        patch_field.insert("ruid", process_info.ruid.to_string());
+        patch_field.insert("rgid", process_info.rgid.to_string());
+        patch_field.insert("euid", process_info.euid.to_string());
+        patch_field.insert("egid", process_info.egid.to_string());
+        patch_field.insert("suid", process_info.suid.to_string());
+        patch_field.insert("sgid", process_info.sgid.to_string());
+        patch_field.insert("fuid", process_info.fuid.to_string());
+        patch_field.insert("fgid", process_info.fgid.to_string());
+        debug!("new patch_field: {:?}", patch_field);
         return match self.comm_manager.start_new_rasp_server(
             process_info,
             result_sender,
-            command_receiver,
             server_log_level,
             server_ctrl,
+            patch_field,
         ) {
             Ok(_) => {
                 self.namespace_tracer.server_state_on(mnt_namespace);
@@ -77,6 +123,7 @@ impl RASPManager {
             }
         };
     }
+
     pub fn stop_comm(&mut self, process_info: &ProcessInfo) -> Result<()> {
         let mnt_namespace = if let Some(ref ns) = process_info.namespace_info {
             match ns.mnt.clone() {
@@ -104,9 +151,6 @@ impl RASPManager {
         }
         Ok(())
     }
-    pub fn send_config() {
-        // TODO missing config
-    }
 }
 
 pub const PROCESS_BALACK: &'static [&'static str] = &[
@@ -120,183 +164,31 @@ pub const PROCESS_BALACK: &'static [&'static str] = &[
 
 impl RASPManager {
     // Inspect
-    pub fn inspect(&mut self, pid: i32) -> Result<ProcessInfo> {
-        // process dead or live
-        let mut process_info = match ProcessInfo::new(pid) {
-            Ok(pi) => pi,
-            Err(e) => {
-                let msg = format!("process pid: {} seems dead: {}", pid, e.to_string());
-                warn!("{}", msg);
-                return Err(anyhow!(msg));
-            }
+    pub fn inspect(&mut self, process_info: &ProcessInfo) -> Result<()> {
+        let exe_path = if let Some(p) = &process_info.exe_path {
+            p.clone()
+        } else {
+            return Err(anyhow!("missing exe path during inspect: {}", process_info.pid));
         };
-        let exe_path = match process_info.process_self.exe() {
-            Ok(p) => match p.into_os_string().into_string() {
-                Ok(ps) => ps,
-                Err(_) => return Err(anyhow!("convert osstring to string failed")),
-            },
-            Err(e) => {
-                return Err(anyhow!(e));
-            }
-        };
-        info!("process exe: {}", &exe_path);
+        info!("process exe: {}", exe_path);
         for proces_black_name in PROCESS_BALACK.iter() {
             if exe_path.starts_with(proces_black_name) {
                 info!("process hit black list: {}", &proces_black_name);
                 return Err(anyhow!("inspecting process hit black list"));
             }
         }
-        // update namesapce
-        if let Err(e) = process_info.update_ns_info() {
-            return Err(anyhow!(e));
-        };
-        Ok(process_info)
+        Ok(())
     }
     pub fn runtime_inspect(&mut self, process_info: &mut ProcessInfo) -> Result<bool> {
         let runtime = ProcessInfo::inspect_from_process_info(process_info)?;
-        #[cfg(not(feature = "bin_mode"))]
-        if runtime.is_none() {
-            debug!("can not inspect runtime");
-            match self.new_async_inspect(&process_info.clone()) {
-                Ok(option_runtime) => {
-                    // inspecting
-                    if option_runtime.is_none() {
-                        debug!("waiting inspect");
-                        // wait inspect
-                        return Ok(false);
-                    } else {
-                        debug!("inspect done");
-                        // hit result
-                        // update process_info
-                        process_info.runtime_info = option_runtime;
-                        return Ok(true);
-                    }
-                }
-                Err(e) => {
-                    debug!("can not inspect runtime type");
-                    // can not detect
-                    return Err(e);
-                }
-            }
-        }
         // update runtime
-        process_info.runtime_info = runtime;
+        process_info.runtime = runtime;
         Ok(true)
     }
-    pub fn new_async_inspect(&mut self, process_info: &ProcessInfo) -> Result<Option<Runtime>> {
-        let pid = process_info.pid.clone();
-        let exe_path = match process_info.process_self.exe() {
-            Ok(e) => e,
-            Err(e) => {
-                let msg = format!("read exe path failed: {}", e.to_string());
-                return Err(anyhow!(msg));
-            }
-        };
-        // /proc/<pid><exe_path> for process in container
-        let mut path = PathBuf::from(format!("/proc/{}/root/", pid));
-        let exe_path_buf = PathBuf::from(exe_path);
-        if !exe_path_buf.has_root() {
-            path.push(exe_path_buf);
-        } else {
-            for p in exe_path_buf.iter() {
-                if p == std::ffi::OsString::from("/") {
-                    continue;
-                }
-                path.push(p);
-            }
-        }
-        debug!("inspect path: {:?}", path);
-        // search exe cache first
-        let mut async_result = self.async_runtime_inspect_result.lock().unwrap();
-        match async_result.get(&path) {
-            Some(runtime) => {
-                debug!("hit cache, path: {} {:?}", runtime.name, path);
-                if runtime.name == "unknow" {
-                    return Err(anyhow!("unknow runtime"));
-                }
-                if runtime.name == "waiting" {
-                    return Ok(None);
-                }
-                let runtime_result = runtime.clone();
-                async_result.remove(&path);
-                return Ok(Some(runtime_result));
-            }
-            None => {
-                debug!("not hit cache, waiting");
-                async_result.insert(
-                    path.clone(),
-                    Runtime {
-                        name: "waiting",
-                        version: String::new(),
-                    },
-                )
-            }
-        };
-        // add inspect queue
-        let mut queue = self.async_runtime_inspect_task_queue.lock().unwrap();
-        debug!("add async inspect, path: {:?}", path);
-        queue.push_back(path);
-        drop(queue);
-        Ok(None)
-    }
-    pub fn async_inspect_daemon(&mut self) {
-        let task_queue = Arc::clone(&self.async_runtime_inspect_task_queue);
-        let task_result = Arc::clone(&self.async_runtime_inspect_result);
-        let _ = std::thread::Builder::new()
-            .name("async_inspect_daemon".to_string())
-            .spawn(move || {
-                loop {
-                    debug!("async inspect daemon looping");
-                    // pop inspect target
-                    let mut queue = task_queue.lock().unwrap();
-                    let exe = if let Some(e) = queue.pop_front() {
-                        e
-                    } else {
-                        drop(queue);
-                        sleep(Duration::from_secs(5));
-                        continue;
-                    };
-                    debug!("inspect daemon: {:?}", exe.clone());
-                    drop(queue);
-                    // golang inspect
-                    let inspect_result = match golang_bin_inspect(exe.clone()) {
-                        Ok(b) => b,
-                        Err(e) => {
-                            warn!("golang inspect failed: {}", e);
-                            false
-                        }
-                    };
-                    debug!("inspect done: {}", inspect_result);
-                    // lock result
-                    let mut result = task_result.lock().unwrap();
-                    // save inspect result
-                    if inspect_result {
-                        result.insert(
-                            exe.clone(),
-                            Runtime {
-                                name: "Golang",
-                                version: "".to_string(),
-                            },
-                        );
-                    } else {
-                        result.insert(
-                            exe.clone(),
-                            Runtime {
-                                name: "unknow",
-                                version: String::new(),
-                            },
-                        );
-                    }
-                    drop(result);
-                    sleep(Duration::from_secs(5));
-                    continue;
-                }
-            });
-    }
-    pub fn attach(&mut self, process_info: &mut ProcessInfo) -> Result<()> {
-        if let Some(runtime_info) = &process_info.runtime_info {
+    // Attach
+    pub fn attach(&mut self, process_info: &ProcessInfo) -> Result<()> {
+        if let Some(runtime_info) = &process_info.runtime {
             let attach_result = match runtime_info.name {
-                // TODO @Gaba
                 "JVM" => java_attach(process_info.pid),
                 "CPython" => match CPythonProbeState::inspect_process(process_info)? {
                     ProbeState::Attached => Ok(true),
@@ -307,22 +199,10 @@ impl RASPManager {
                     ProbeState::NotAttach => golang_attach(process_info.pid),
                 },
                 "NodeJS" => {
-                    let process_exe_file = process_info.update_exe()?;
-                    let process_exe_file_str = match process_exe_file.to_str() {
-                        Some(s) => s,
-                        None => {
-                            error!("nodejs attach failed, convert pathbuf to str failed");
-                            return Err(anyhow!(
-                                "nodejs attach failed, convert pathbuf to str failed"
-                            ));
-                        }
-                    };
+                    let process_exe_file = process_info.exe_path.clone().unwrap();
                     let pid = process_info.pid;
-                    let environ = match process_info.update_environ() {
-                        Ok(e) => e,
-                        Err(e) => return Err(anyhow!("can not fetch envrion {}", e)),
-                    };
-                    nodejs_attach(pid, &environ, &process_exe_file_str)
+                    let environ = process_info.environ.clone().unwrap();
+                    nodejs_attach(pid, &environ, &process_exe_file)
                 }
                 _ => {
                     let msg = format!("can not attach to runtime: `{}`", runtime_info.name);
@@ -354,19 +234,11 @@ impl RASPManager {
 }
 
 impl RASPManager {
-    pub fn init() -> Result<Self> {
-        let time_to_live = Duration::from_secs(300);
+    pub fn init() -> AnyhowResult<Self> {
         match RASPServerManager::new() {
             Ok(server) => Ok(RASPManager {
                 namespace_tracer: MntNamespaceTracer::new(),
                 comm_manager: server,
-                async_runtime_inspect_task_queue: Arc::new(Mutex::new(VecDeque::<PathBuf>::new())),
-                async_runtime_inspect_result: Arc::new(Mutex::new(
-                    LruCache::<PathBuf, Runtime>::with_expiry_duration_and_capacity(
-                        time_to_live,
-                        300,
-                    ),
-                )),
             }),
             Err(e) => Err(anyhow!(e)),
         }
@@ -386,7 +258,7 @@ impl RASPManager {
         options.overwrite = true;
         return match copy(
             format!("{}/lib", cwd),
-            format!("{}{}", cwd, dest_root),
+            format!("{}/{}/", dest_root, cwd),
             &options,
         ) {
             Ok(_) => Ok(()),

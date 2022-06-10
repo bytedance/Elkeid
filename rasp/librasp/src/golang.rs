@@ -10,32 +10,59 @@ use crate::process::ProcessInfo;
 use crate::runtime::{ProbeState, ProbeStateInspect};
 use crate::settings::{RASP_GOLANG_BIN, RASP_PANGOLIN_BIN};
 
-pub struct GolangProbeState{}
+pub struct GolangProbeState {}
 
 impl ProbeStateInspect for GolangProbeState {
     fn inspect_process(process_info: &ProcessInfo) -> Result<ProbeState> {
-        let tasks: procfs::process::TasksIter = match process_info.process_self.tasks() {
-            Ok(ts) => ts,
-            Err(e) => {
-                return Err(anyhow!(e));
+        match search_thread(process_info) {
+            Ok(ProbeState::Attached) => {
+                warn!("find golang probe client thread");
+                return Ok(ProbeState::Attached);
             }
+            _ => {}
         };
-        for task_result in tasks {
-            if let Err(_e) = task_result {
-                continue;
+        search_proc_map(process_info)
+    }
+}
+
+fn search_proc_map(process_info: &ProcessInfo) -> Result<ProbeState> {
+    let maps = procfs::process::Process::new(process_info.pid)?.maps()?;
+    for map in maps.iter() {
+        if let procfs::process::MMapPath::Path(p) = map.pathname.clone() {
+            let s = match p.into_os_string().into_string() {
+                Ok(s) => s,
+                Err(os) => {
+                    warn!("convert osstr to string failed: {:?}", os);
+                    continue;
+                }
+            };
+            if s.contains("go_probe") {
+                return Ok(ProbeState::Attached);
             }
-            if let Ok(task) = task_result {
-                let task_stat_result = task.stat();
-                if let Ok(task_stat) = task_stat_result {
-                    if task_stat.comm == "go-probe" {
-                        return Ok(ProbeState::Attached);
-                    }
+        }
+    }
+    Ok(ProbeState::NotAttach)
+}
+
+#[allow(dead_code)]
+fn search_thread(process_info: &ProcessInfo) -> Result<ProbeState> {
+    let tasks = procfs::process::Process::new(process_info.pid)?.tasks()?;
+    for task_result in tasks {
+        if let Err(_e) = task_result {
+            continue;
+        }
+        if let Ok(task) = task_result {
+            let task_stat_result = task.stat();
+            if let Ok(task_stat) = task_stat_result {
+                if task_stat.comm == "go-probe" {
+                    return Ok(ProbeState::Attached);
                 }
             }
         }
-        Ok(ProbeState::NotAttach)
     }
+    Ok(ProbeState::NotAttach)
 }
+
 
 pub fn golang_attach(pid: i32) -> Result<bool> {
     debug!("golang attach: {}", pid);
@@ -81,7 +108,7 @@ pub fn golang_bin_inspect(bin_file: PathBuf) -> Result<bool> {
         let offset = section.sh_name;
         if let Some(name) = shstrtab.get(offset) {
             if name.unwrap() == ".gopclntab" {
-		// drop(bin);
+                // drop(bin);
                 return Ok(true);
             }
         }

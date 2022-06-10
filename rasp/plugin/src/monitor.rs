@@ -9,14 +9,14 @@ use crate::{
     config::*,
     filter::load_local_filter,
     message::{make_record, parse_message, RASPCommand},
-    process::{poll_pid_func, process_health, ProcessInfo, TracingState},
+    process::{poll_pid_func, process_health},
     report::make_report,
     utils::Control,
 };
 use anyhow::{anyhow, Result as Anyhow};
 use crossbeam::channel::{bounded, Receiver, Sender, TrySendError};
 use librasp::{
-    process::ProcessInfo as RASPProcessInfo,
+    process::{ProcessInfo, TracingState},
     runtime::{Runtime, RuntimeInspect},
 };
 use log::*;
@@ -135,7 +135,7 @@ pub fn rasp_monitor_start() -> Anyhow<()> {
                         warn!("internal error: {}", e);
                     }
                 };
-                info!("internal stoped");
+                info!("internal stopped");
                 Ok(())
             })?;
     // WAIT until quit
@@ -219,7 +219,7 @@ fn internal_main(
                     continue;
                 }
             };
-            let mut process = match ProcessInfo::collect(pid, &local_filters) {
+            let mut process = match crate::process::collect(pid, &local_filters) {
                 Ok(p) => p,
                 Err(e) => {
                     warn!("process filting failed: {} {}", pid, e);
@@ -227,7 +227,7 @@ fn internal_main(
                     continue;
                 }
             };
-            let runtime: Runtime = match RASPProcessInfo::inspect_from_pid(pid) {
+            let runtime: Runtime = match ProcessInfo::inspect_from_process_info(&mut process) {
                 Ok(opt) => match opt {
                     Some(r) => r,
                     None => {
@@ -279,7 +279,7 @@ fn internal_main(
             for (_pid, process) in watched_process_cloned.iter() {
                 let mut message = generate_heartbeat(&process);
                 message.insert("data_type", "2999".to_string());
-                message.insert("seq_id", seq_id.clone());
+                message.insert("package_seq", seq_id.clone());
                 debug!("sending heartbeat: {:?}", &message);
                 let _ = reporter_sender.send(message);
             }
@@ -321,7 +321,7 @@ fn internal_main(
         .spawn(move || loop {
             debug!("operation thread looping");
             if !operation_ctrl.check() {
-                warn!("opertation recv stop signal, quiting.");
+                warn!("operation recv stop signal, quiting.");
                 break;
             }
             let operation_message = match external_message_receiver.try_recv() {
@@ -356,7 +356,7 @@ fn internal_main(
                     continue;
                 }
             };
-            // handle opertaion
+            // handle operation
             info!("starting operation: {:?}", operation_message);
             match operator.op(&mut process, state.clone(), probe_message) {
                 Ok(_) => {
@@ -372,13 +372,14 @@ fn internal_main(
                         e.to_string(),
                     );
                     let _ = operation_reporter.send(report);
+                    continue
                 }
             };
             // update
             let mut opp = operation_process_rw.write();
             match state.as_str() {
                 "WAIT_ATTACH" => {
-                    process.tracing_state = Some(TracingState::WAIT_ATTACH);
+                    process.tracing_state = Some(TracingState::ATTACHED);
                     (*opp).insert(process.pid, process);
                 }
                 "MISSING" => {

@@ -1,18 +1,34 @@
 [filter]
 ### filter process on this host
 ignore_exe_path = [
-"/opt/trash/",
-"/opt/tiger",
-"/sbin",
-"/usr/sbin",
+    "/opt/trash/",
+    "/opt/tiger",
+    "/sbin",
+    "/usr/sbin",
+    "/etc/sysop",
+    "/etc/elkeid",
+    "/opt/elkeid",
+    "/opt/hids",
+    "/opt/bytedance"
 ]
 
 ignore_exe_name = [
-"python2",
+    "python2",
+    "mongoosev3-agent",
+    "mongoosev3-agen",
+    "elkeid",
+    "elkeid-agent",
+    "journal_watcher",
+    "scanner_clamav",
+    "rasp",
+    "rasp_server",
+    "etrace",
+    "collector",
 ]
+
 ### report env after inspected both key and value
 collect_env = [
-"PROCESS_ENV_KEY",
+    "PROCESS_ENV_KEY",
 ]
 collect_all_env = true
 

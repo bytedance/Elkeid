@@ -44,7 +44,6 @@ uluru = "3.0.0"
 
 [dependencies.librasp]
 path = "../librasp"
-features=["bin_mode"]
 
 [lib]
 name = "elkeid_rasp"
