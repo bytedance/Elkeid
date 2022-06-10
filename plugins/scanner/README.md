@@ -1,7 +1,6 @@
 English | [简体中文](README-zh_CN.md)
-## About Yara Scanner Plugin
-Yara Scanner is a Elkied plugin for scanning static files (using yara rules).
-
+## About Clamav Scanner Plugin
+Clamav Scanner is a Elkied plugin for scanning static files (using [clamav](https://docs.clamav.net/Introduction.html) engine).
 
 ## Supported Platforms
 Same as [Elkeid Agent](../README.md#supported-platforms).
@@ -9,15 +8,9 @@ Same as [Elkeid Agent](../README.md#supported-platforms).
 
 Reasons for not providing static link based on musl-libc : Seen Known Errors & Bugs
 
+
 ## Config
 In `config.rs`, there are the following constants. In order to avoid occupying too much system resources, it is recommended to use the default parameters.
-
-### Plugin Config
-```
-const NAME:&str = "scanner";
-const VERSION:&str = "0.0.0.0";
-```
-These can be configured as required, but remember those constants need to be consistent with the [agent's parameters ](../README.md#parameters-and-options) and [agent's config.yaml](../README.md#config-file).
 
 ### Scan config
 * `SCAN_DIR_CONFIG` define the scan directory list and recursion depth
@@ -29,95 +22,160 @@ These can be configured as required, but remember those constants need to be con
 * `WAIT_INTERVAL_DIR_SCAN` define the interval between scanning directories
 * `WAIT_INTERVAL_PROC_SCAN` define the interval between scanning processes
 
+### Option : 1. Clamav database 
 
-### [Yara Rules](https://yara.readthedocs.io/en/stable/writingrules.html)
-`RULES_SET` define the yara rule string.
+Get default database url with default password `clamav_default_passwd`:
 
-Current rules for reference:
-* UPX-elf
-* miner stratum elf/script
-* suspicious script
-
-
-More Yara rules [Ref](https://github.com/InQuest/awesome-yara)
-* https://github.com/godaddy/yara-rules
-* https://github.com/Yara-Rules/rules
-* https://github.com/fireeye/red_team_tool_countermeasures
-* https://github.com/x64dbg/yarasigs
-...
-
-
-## Compilation Environment Requirements
-
-* Requirements
 ```bash
+wget http://lf26-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607.zip
+
+#wget http://lf3-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607.zip
+
+#wget http://lf6-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607.zip
+
+#wget http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607.zip
+```
+
+The clamav scanner plugin will [load local database](src/model/engine/updater.rs) from `TMP_PATH/archive_db_default.zip` with password `ARCHIVE_DB_PWD`, besides, it will also check `ARCHIVE_DB_VERSION` from `ARCHIVE_DB_VERSION_FILE` and `ARCHIVE_DB_PWD`.
+
+More details in [src/model/engine/updater.rs](src/model/engine/updater.rs)
+
+### Option : 2. Rules
+
+The default database includes cropped clamav database and open source yara rules.
+```bash
+root@hostname$ ls
+main.ldb  main.ndb  online_XXXXXXXX.yar
+```
+
+More details in [Clamav Docs](https://docs.clamav.net/manual/Signatures.html)
+
+* Notice
+    - There are currently a few [limitations](https://docs.clamav.net/manual/Signatures/YaraRules.html) on using YARA rules within ClamAV
+
+
+
+## <font color=red>Compilation Environment Requirements</font>
+
+
+* Build Requirements
+```bash
+debian 9+ or ubuntu18+
+
 llvm
 musl-gcc
+cmake >= 3.15 (requried by clamav-buildchain)
+ninjia-build
 libclang >= 3.9 (requried by rust-bindgen)
 gcc >= 6.3 (suggested gcc 6.3.0 which is the default version in debian 9)
+libstdc++.a (libstdc++-6-dev in debian9, libstdc++-9-dev in ubuntu18)
+python3  >= 3.6 (requried by clamav-buildchain)
+python3-pip (requried by clamav-buildchain)
 ```
+clamav source and buildchain ( seen in [./get_deps.sh](./get_deps.sh) and [./libclamav.sh](./libclamav.sh))
 
-* Build-essential
-```bash
-# debian & ubuntu
-apt-get install build-essential clang llvm
-# centos & rhel
-yum groupinstall "Development Tools" && yum install clang llvm
-```
-Optional - [musl tool-chain](https://www.musl-libc.org/how.html)
 
-* Rust 1.56 +
+* Rust 1.60.0+ stable
 
 Please install [rust](https://www.rust-lang.org/tools/install) environment:
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 # add build target x86_64-unknown-linux-gnu
 rustup target add x86_64-unknown-linux-gnu
-
-# add build target x86_64-unknown-linux-musl
-rustup target add x86_64-unknown-linux-musl
 ```
 
-## Building
-Just run:
+Run script to get build-tool-chain & dependencies of libclamav
+```bash
+# for example : debian9
+bash ./get_deps.sh
 ```
-chmod +x build.sh && ./build.sh
+
+## Build
+
+*  build libclamav static lib
+```bash
+# debian & ubuntu
+bash ./libclamav.sh
 ```
-or
-```
-RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_64-unknown-linux-gnu
-```
-You will find the scanner binary file under `target/x86_64-unknown-linux-gnu/release/`.
 
 
+* export `libstdc++` path `STDLIBCXX_STATIC_PATH` 
 
-musl style:
+   - debian9 with libstdc++-6-dev `export STDLIBCXX_STATIC_PATH='/usr/lib/gcc/x86_64-linux-gnu/6/'`
+   - debian10 with libstdc++-7-dev  `export STDLIBCXX_STATIC_PATH='/usr/lib/gcc/x86_64-linux-gnu/7/'`
+   - debian10 with libstdc++-8-dev  `export STDLIBCXX_STATIC_PATH='/usr/lib/gcc/x86_64-linux-gnu/8/'`
+
+
+*  build elkeid scanner and cli tool
+```bash
+# debian & ubuntu
+bash ./build.sh
 ```
-cargo build --release --target x86_64-unknown-linux-musl
-```
-You will find the scanner binary file under `target/x86_64-unknown-linux-musl/release/`.
 
-
-## check static binary
+*  check static binary
 
 ```
-ldd ./target/x86_64-unknown-linux-gnu/release/scanner
+ldd ./output/scanner
 #output
    not a dynamic executable
 ```
 
+* output
 
-## Pre-compiled binary
+The `output/scanner.tar.gz` is used for agent config.
 
-sha256 = 3ff83dec39974074f8683f39163e7af57fe58ddf2958fde7360ffec2a3de303f
-
-
-```bash
-"https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-linux-amd64-3.0.1.7.plg",
-"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-linux-amd64-3.0.1.7.plg",
-"https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-linux-amd64-3.0.1.7.plg",
-"https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-linux-amd64-3.0.1.7.plg"
+```json
+{
+    "id_list":[
+        "xxxxxxxx"
+    ],
+    "data":{
+        "config":[
+            {
+                "name":"scanner",
+                "version":"",
+                "download_url":[
+                    "http://xxxxxxxx/scanner-3.1.9.1.tar.gz",
+                    "http://xxxxxxxx/scanner-3.1.9.1.tar.gz"
+                ],
+                "type": "tar.gz",
+                "sha256": "sha256sum of scanner.tar.gz",
+                "signature": "sha256sum of scanner elf binary",
+                "detail":""
+            }
+        ]
+    },
+}
 ```
+
+* pre-compiled package
+
+```json
+{
+    "id_list":[
+        "xxxxxxxx"
+    ],
+    "data":{
+        "config":[
+            {
+                "name":"scanner",
+                "version":"3.1.9.1",
+                "download_url":[
+                    "http://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-3.1.9.1.tar.gz",
+                    "http://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-3.1.9.1.tar.gz",
+                    "http://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-3.1.9.1.tar.gz",
+                    "http://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-3.1.9.1.tar.gz"
+                ],
+                "type": "tar.gz",
+                "sha256": "528ddd83cdcdcba90d11efa4a34279f2593b7489a8e71143ef11abf6a513fb9e",
+                "signature": "4114058a2c2c8dbf40a04360dcc1a3de8b229a420e23c5ea3d4d3c2f005c6047",
+                "detail":""
+            }
+        ]
+    },
+}
+```
+
 
 ## plugin task
 
@@ -131,41 +189,21 @@ Sending plugin-task using manager API
 ### scan task
 * create task POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
 
-data : The absolute path of the file (not dir) to be scanned.
+data : json strings
+- exe : The absolute path of the file (not dir) to be scanned.
 
 
 ```json
 {
-    "tag": "test_all",
+    "tag": "test_all", // scan task for all the agent tagged as "test_all"
     "id_list": [
         "33623333-3365-4905-b417-331e183333ff"
     ],
     "data": {
         "task": {
-            "data_type":6001,
+            "data_type":6053,
             "name": "scanner",
-            "data": "/root/xmirg"
-        }
-    }
-}
-```
-
-### rule update task
-* create task POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
-
-data : A long string startswith "rule", and the new rules will overwrite the original rules.
-
-```json
-{
-    "tag": "test_all",
-    "id_list": [
-        "33623333-3365-4905-b417-331e183333ff"
-    ],
-    "data": {
-        "task": {
-            "data_type":6002,
-            "name": "scanner",
-            "data": "rule miner_script \n{ strings:\n$a1 = \"stratum+tcp\"\n$a2 = \"stratum+udp\"\n$a3 = \"stratum+ssl\"\n$a4 = \"ethproxy+tcp\"\n$a5 = \"nicehash+tcp\"\ncondition:\nis_script and any of them\n}"
+            "data": "{\"exe\":\"/path/to/target\"}"
         }
     }
 }
@@ -173,7 +211,7 @@ data : A long string startswith "rule", and the new rules will overwrite the ori
 
 
 
-## Known Errors & Bugs
+## Known Errors & issues
 * Creation time / birth_time is not available for some filesystems
 ```bash
 error: "creation time is not available for the filesystem
@@ -181,4 +219,4 @@ error: "creation time is not available for the filesystem
 * Centos7 default compile tool-chains didn't work,  high version of tool-chains needed.
 
 ## License
-Yara Scanner Plugin is distributed under the Apache-2.0 license.
+Clamav Scanner Plugin is distributed under the GPLv2 license.

@@ -1,0 +1,23 @@
+FROM ubuntu:precise AS precise
+
+RUN echo 'deb http://old-releases.ubuntu.com/ubuntu/ precise main restricted universe multiverse \n\  
+deb http://old-releases.ubuntu.com/ubuntu/ precise-security main restricted universe multiverse \n\ 
+deb http://old-releases.ubuntu.com/ubuntu/ precise-updates main restricted universe multiverse \n\ 
+deb http://old-releases.ubuntu.com/ubuntu/ precise-proposed main restricted universe multiverse \n\  
+deb http://old-releases.ubuntu.com/ubuntu/ precise-backports main restricted universe multiverse \n\ 
+\n\ 
+' > /etc/apt/sources.list;
+
+RUN apt-get update;
+RUN apt-get install -y gcc build-essential dkms git wget || true;
+RUN apt-get -y install linux-headers-3.2.*-generic || true
+RUN apt-get -y install linux-headers-3.5.*-generic || true
+RUN apt-get -y install linux-headers-3.8.*-generic || true
+RUN apt-get -y install linux-headers-3.11.*-generic || true
+RUN apt-get -y install linux-headers-3.13.*-generic || true
+
+
+
+ADD . /elkeid
+WORKDIR /elkeid/driver
+RUN bash ./batch_compile.sh

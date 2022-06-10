@@ -1,20 +1,12 @@
 [English](README.md) | 简体中文
-## 关于 Yara Scanner 插件
-Yara Scanner 使用 [yara 规则](https://yara.readthedocs.io/)对系统进程和敏感目录进行周期扫描，并使用fanotify监控敏感目录文件变动，以发现可疑静态文件（UPX/挖矿二进制/挖矿脚本/可疑脚本文件/...）。
+## 关于 Clamav Scanner 插件
+Clamav Scanner 使用 [clamav 引擎](https://docs.clamav.net/Introduction.html)对系统进程和敏感目录进行周期扫描，以发现可疑静态文件（UPX/挖矿二进制/挖矿脚本/可疑脚本文件/...）。
 
 ## 平台兼容性
 与[Elkeid Agent](../README-zh_CN.md#平台兼容性)相同。
 
-
 ## 配置
 在[config.rs](./src/config.rs)中,有下面一些常量，可根据实际情况进行配置（出于性能考虑，除规则外，建议保持默认）。
-
-### 插件配置
-```
-const NAME:&str = "scanner";
-const VERSION:&str = "0.0.0.0";
-```
-这些常量可以根据需要进行修改，但是要注意：他们需要与[Agent参数](../README-zh_CN.md#参数和选项)以及[Agent的配置文件](../README-zh_CN.md#配置文件)保持一致。
 
 ### 扫描配置
 * `SCAN_DIR_CONFIG` 定义扫描目录，以及递归深度
@@ -26,148 +18,196 @@ const VERSION:&str = "0.0.0.0";
 * `WAIT_INTERVAL_DIR_SCAN` 定义周期扫描目录的间隔时间
 * `WAIT_INTERVAL_PROC_SCAN` 定义周期扫描proc进程的间隔时间
 
+### 可选 : 1. Clamav database 
 
-### [Yara 扫描规则](https://yara.readthedocs.io/en/stable/writingrules.html)
-配置`RULES_SET`定义Yara扫描规则
-目前提供参考的规则:
-* UPX 带壳elf
-* 存在挖矿通信协议的elf/脚本
-* 可疑的脚本文件
+通过如下 url 获取默认 database（解压密码为 `clamav_default_passwd`）:
 
-
-更多Yara规则可[参考](https://github.com/InQuest/awesome-yara)
-* https://github.com/godaddy/yara-rules
-* https://github.com/Yara-Rules/rules
-* https://github.com/fireeye/red_team_tool_countermeasures
-* https://github.com/x64dbg/yarasigs
-...
-
-
-## 需要的编译环境
-
-* Requirements
 ```bash
+wget http://lf26-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607.zip
+
+#wget http://lf3-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607.zip
+
+#wget http://lf6-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607.zip
+
+#wget http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607.zip
+```
+
+
+
+clamav scanner 插件会在启动时，从 `TMP_PATH/archive_db_default_XXXX.zip` 使用默认密码 `ARCHIVE_DB_PWD`, [加载本地database](src/model/engine/updater.rs) 。同时, 从  `ARCHIVE_DB_VERSION_FILE` 文件中检查 `ARCHIVE_DB_VERSION` ，并且检查密码 `ARCHIVE_DB_PWD`.
+
+更过逻辑细节参考代码 [src/model/engine/updater.rs](src/model/engine/updater.rs)
+
+### 可选 : 2. database 中的规则
+
+默认的 database 包括裁剪过的 clamav 官方数据库，以及开源的 yara 规则。
+```bash
+root@hostname$ ls
+main.ldb  main.ndb  online_XXXXX.yar
+```
+
+在 debian9+ 或 ubuntu18+的 linux 中，可以通过如下方式，从最新的 clamav 官方数据库中生成裁剪过的 clamav 数据库。
+```bash
+root@hostname$ bash ./db_updater.sh
+```
+
+更多细节参考 [clamav 官方文档](https://docs.clamav.net/manual/Signatures.html)
+
+* Notice
+    - There are currently a few [limitations](https://docs.clamav.net/manual/Signatures/YaraRules.html) on using YARA rules within ClamAV
+
+
+
+## <font color=red>需要的编译环境</font>
+
+* 编译依赖
+```bash
+debian 9+ or ubuntu18+
+
 llvm
 musl-gcc
+cmake >= 3.15 (requried by clamav-buildchain)
+ninjia-build
 libclang >= 3.9 (requried by rust-bindgen)
 gcc >= 6.3 (suggested gcc 6.3.0 which is the default version in debian 9)
+libstdc++.a (libstdc++-6-dev in debian9, libstdc++-9-dev in ubuntu18)
+python3  >= 3.6 (requried by clamav-buildchain)
+python3-pip (requried by clamav-buildchain)
 ```
-Optional - [musl tool-chain](https://www.musl-libc.org/how.html)
+clamav source and buildchain ( seen in [./get_deps.sh](./get_deps.sh) and [./libclamav.sh](./libclamav.sh))
 
-* Build-essential
-```bash
-# debian & ubuntu
-apt-get install build-essential clang llvm
-# centos & rhel
-yum groupinstall "Development Tools" && yum install clang llvm musl-tools llvm-dev
-```
 
-* Rust 1.56 +
+* Rust 1.60.0+ stable 准备
 
-快速安装 [rust](https://www.rust-lang.org/tools/install) 环境：
+Please install [rust](https://www.rust-lang.org/tools/install) environment:
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
 # add build target x86_64-unknown-linux-gnu
 rustup target add x86_64-unknown-linux-gnu
+```
 
-# add build target x86_64-unknown-linux-musl
-rustup target add x86_64-unknown-linux-musl
-
+* 运行脚本以获取 libclamav 编译链依赖
+```bash
+# 以 debian9 为例
+bash ./get_deps.sh
 ```
 
 ## 编译
-方式1:执行以下命令:
-```
-chmod +x build.sh && ./build.sh
-```
-或者：
-```
-RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_64-unknown-linux-gnu
-```
-你将会在`target/x86_64-unknown-linux-gnu/release/`下面找到`scanner`二进制文件。静态链接的二进制文件(更易于分发)。
 
-
-方式2:执行以下命令:
+*  编译 libclamav 静态库和静态依赖库
+```bash
+# debian & ubuntu
+bash ./libclamav.sh
 ```
-cargo build --release --target x86_64-unknown-linux-musl
-```
-你将会在`target/x86_64-unknown-linux-musl/release/`下面找到`scanner`二进制文件。静态链接的二进制文件(更易于分发)。
 
+* 指定 `libstdc++` 的所在路径 `STDLIBCXX_STATIC_PATH` 
 
-## 检查
-如果检查结果为动态链接的可执行文件，则非预期，请检查编译链
+    不同Linux发行版，不同的`libstdc++`版本，安装后对应不同的目录，需要手动指定 环境变量
+   - debian9 中安装 libstdc++-6-dev 版本，需要 `export STDLIBCXX_STATIC_PATH='/usr/lib/gcc/x86_64-linux-gnu/6/'`
+   - debian10 中安装 libstdc++-7-dev 版本，需要 `export STDLIBCXX_STATIC_PATH='/usr/lib/gcc/x86_64-linux-gnu/7/'`
+   - debian10 中安装 libstdc++-8-dev 版本，需要 `export STDLIBCXX_STATIC_PATH='/usr/lib/gcc/x86_64-linux-gnu/8/'`
+
+*  编译 elkeid clamav scanner 插件 和  cli 测试工具
+```bash
+# debian & ubuntu
+bash ./build.sh
 ```
-ldd ./target/x86_64-unknown-linux-gnu/release/scanner
+
+*  检查静态二进制编译产物
+```
+ldd ./output/scanner
 #output
    not a dynamic executable
 ```
 
+* elkeid 插件 （包模式）
 
-## 预编译产物
-
-sha256 = 3ff83dec39974074f8683f39163e7af57fe58ddf2958fde7360ffec2a3de303f
-
-
-```bash
-"https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-linux-amd64-3.0.1.7.plg",
-"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-linux-amd64-3.0.1.7.plg",
-"https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-linux-amd64-3.0.1.7.plg",
-"https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-linux-amd64-3.0.1.7.plg"
-```
-
-## 插件任务下发
-
-使用 manager API 对 agent 下发插件任务
-
-* 创建任务 POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
-* 执行任务 POST http://{{IP}}:{PORT}/api/v1/agent/controlTask
-
-
-
-### 临时扫描任务下发
-* 创建任务 POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
-
-data 为扫描文件（非文件夹）的绝对路径
+插件下发格式.
 
 ```json
 {
-    "tag": "test_all",
+    "id_list":[
+        "xxxxxxxx"
+    ],
+    "data":{
+        "config":[
+            {
+                "name":"scanner",
+                "version":"",
+                "download_url":[
+                    "http://xxxxxxxx/scanner-3.1.9.1.tar.gz",
+                    "http://xxxxxxxx/scanner-3.1.9.1.tar.gz"
+                ],
+                "type": "tar.gz",
+                "sha256": "sha256sum of scanner.tar.gz",
+                "signature": "sha256sum of scanner elf binary",
+                "detail":""
+            }
+        ]
+    },
+}
+```
+
+* 预编译包
+
+```json
+{
+    "id_list":[
+        "xxxxxxxx"
+    ],
+    "data":{
+        "config":[
+            {
+                "name":"scanner",
+                "version":"3.1.9.1",
+                "download_url":[
+                    "http://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-3.1.9.1.tar.gz",
+                    "http://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-3.1.9.1.tar.gz",
+                    "http://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-3.1.9.1.tar.gz",
+                    "http://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/scanner/scanner-3.1.9.1.tar.gz"
+                ],
+                "type": "tar.gz",
+                "sha256": "528ddd83cdcdcba90d11efa4a34279f2593b7489a8e71143ef11abf6a513fb9e",
+                "signature": "4114058a2c2c8dbf40a04360dcc1a3de8b229a420e23c5ea3d4d3c2f005c6047",
+                "detail":""
+            }
+        ]
+    },
+}
+```
+
+
+## 插件任务
+
+通过 manager API 下发插件任务
+
+* 创建任务 : POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
+* 执行任务 : POST http://{{IP}}:{PORT}/api/v1/agent/controlTask
+
+
+
+###  扫描任务
+* 创建扫描任务 POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
+
+data : json strings
+- exe : The absolute path of the file (not dir) to be scanned.
+
+
+```json
+{
+    "tag": "test_all", // scan task for all the agent tagged as "test_all"
     "id_list": [
         "33623333-3365-4905-b417-331e183333ff"
     ],
     "data": {
         "task": {
-            "data_type":6001,
+            "data_type":6053,
             "name": "scanner",
-            "data": "/root/xmirg"
+            "data": "{\"exe\":\"/path/to/target\"}"
         }
     }
 }
 ```
-
-### 规则更新下发
-* 创建任务 POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
-
-data 为以 rule 开头的规则字符串，规则更新以覆盖方式进行
-
-```json
-{
-    "tag": "test_all",
-    "id_list": [
-        "33623333-3365-4905-b417-331e183333ff"
-    ],
-    "data": {
-        "task": {
-            "data_type":6002,
-            "name": "scanner",
-            "data": "rule miner_script \n{ strings:\n$a1 = \"stratum+tcp\"\n$a2 = \"stratum+udp\"\n$a3 = \"stratum+ssl\"\n$a4 = \"ethproxy+tcp\"\n$a5 = \"nicehash+tcp\"\ncondition:\nis_script and any of them\n}"
-        }
-    }
-}
-```
-
-
 
 ## 已知问题
 * Creation time / birth_time is not available for some filesystems
@@ -178,4 +218,4 @@ error: "creation time is not available for the filesystem
 
 
 ## License
-Yara Scanner plugin is distributed under the Apache-2.0 license.
+Clamav Scanner plugin is distributed under the Apache-2.0 license.
