@@ -1,0 +1,18 @@
+FROM centos:centos6 AS rhel6
+
+RUN sed -e "s|^mirrorlist=|#mirrorlist=|g" \
+         -e "s|^#baseurl=http://mirror.centos.org/centos/\$releasever|baseurl=https://mirrors.aliyun.com/centos-vault/6.10|g" \
+         -i.bak \
+         /etc/yum.repos.d/CentOS-*.repo
+
+RUN yum install -y wget perl gcc make tree elfutils-libelf-devel unzip; 
+RUN yum groupinstall -y  "Development Tools"; 
+RUN mkdir /root/headers
+
+RUN cd /tmp; wget http://lf26-elkeid.bytetos.com/obj/elkeid-download/kernel_headers/centos6_devel.zip; unzip centos6_devel.zip; rm -f centos6_devel.zip;
+
+RUN rpm -ivh /tmp/centos6_devel/*.rpm || true
+
+ADD . /elkeid
+WORKDIR /elkeid/driver
+RUN bash ./batch_compile.sh
