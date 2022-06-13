@@ -76,3 +76,7 @@ server:
   pprof:
     enable: true
     port: 6753
+
+es:
+  enable: true
+  address: http://127.0.0.1:9200

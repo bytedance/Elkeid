@@ -6,6 +6,7 @@ import (
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/kafka"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
+	"github.com/bytedance/Elkeid/server/agent_center/es"
 	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/pool"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/gogo/protobuf/proto"
@@ -81,6 +82,7 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 			if err != nil {
 				continue
 			}
+			es.CollectLog(req.AgentID, item)
 			b, err := json.Marshal(item)
 			if err != nil {
 				continue

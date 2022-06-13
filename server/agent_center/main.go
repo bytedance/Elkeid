@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
+	"github.com/bytedance/Elkeid/server/agent_center/es"
 	"github.com/bytedance/Elkeid/server/agent_center/grpctrans"
 	"github.com/bytedance/Elkeid/server/agent_center/httptrans"
 	"github.com/bytedance/Elkeid/server/agent_center/svr_registry"
@@ -19,6 +20,9 @@ func init() {
 
 func main() {
 	ylog.Infof("[MAIN]", "START_SERVER")
+
+	//start es to write agent err log
+	go es.Run()
 
 	//start http server and grpc server
 	go httptrans.Run()

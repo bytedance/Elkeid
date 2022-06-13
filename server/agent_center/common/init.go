@@ -61,6 +61,12 @@ func initDefault() {
 
 	PProfEnable = UserConfig.GetBool("server.pprof.enable")
 	PProfPort = UserConfig.GetInt("server.pprof.port")
+
+	EsEnable = UserConfig.GetBool("es.enable")
+	EsAddress = UserConfig.GetString("es.address")
+	EsAuthEnable = UserConfig.GetBool("es.auth.enable")
+	EsUser = UserConfig.GetString("es.auth.user")
+	EsPassword = UserConfig.GetString("es.auth.password")
 }
 
 func initLog() {

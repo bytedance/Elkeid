@@ -35,4 +35,10 @@ var (
 
 	PProfEnable bool
 	PProfPort   int //pprof
+
+	EsEnable     bool
+	EsAddress    string
+	EsAuthEnable bool
+	EsUser       string
+	EsPassword   string
 )
