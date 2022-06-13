@@ -2,12 +2,14 @@ package grpc_handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/kafka"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/pool"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/gogo/protobuf/proto"
+	"github.com/prometheus/client_golang/prometheus"
 	"strconv"
 	"strings"
 	"time"
@@ -46,14 +48,30 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 			mqMsg.Tag = ""
 		}
 
+		outputDataTypeCounter.With(prometheus.Labels{"data_type": fmt.Sprint(mqMsg.DataType)}).Add(float64(1))
+		outputAgentIDCounter.With(prometheus.Labels{"agent_id": mqMsg.AgentID}).Add(float64(1))
+
 		switch mqMsg.DataType {
 		case 1000:
 			//parse the agent heartbeat data
-			parseAgentHeartBeat(req.GetData()[k], req, conn)
+			detail := parseAgentHeartBeat(req.GetData()[k], req, conn)
+			if detail != nil {
+				if cpu, ok := detail["cpu"]; ok {
+					if fv, ok2 := cpu.(float64); ok2 {
+						agentCpuGauge.With(prometheus.Labels{"agent_id": req.AgentID}).Set(fv)
+					}
+				}
+			}
 		case 1001:
-			//
 			//parse the agent plugins heartbeat data
-			parsePluginHeartBeat(req.GetData()[k], req, conn)
+			detail := parsePluginHeartBeat(req.GetData()[k], req, conn)
+			if detail != nil {
+				if cpu, ok := detail["cpu"]; ok {
+					if fv, ok2 := cpu.(float64); ok2 {
+						pluginCpuGauge.With(prometheus.Labels{"agent_id": req.AgentID, "name": detail["name"].(string)}).Set(fv)
+					}
+				}
+			}
 		case 2001, 2003, 6003:
 			//Task asynchronously pushed to the remote end for reconciliation.
 			item, err := parseRecord(req.GetData()[k])
@@ -83,11 +101,11 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 	return req.AgentID
 }
 
-func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connection) {
+func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connection) map[string]interface{} {
 	var fv float64
 	hb, err := parseRecord(record)
 	if err != nil {
-		return
+		return nil
 	}
 
 	//存储心跳数据到connect
@@ -136,20 +154,21 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 	//last heartbeat time get from server
 	detail["last_heartbeat_time"] = time.Now().Unix()
 	conn.SetAgentDetail(detail)
+	return detail
 }
 
-func parsePluginHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connection) {
+func parsePluginHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connection) map[string]interface{} {
 	var fv float64
 
 	data, err := parseRecord(record)
 	if err != nil {
-		return
+		return nil
 	}
 
 	pluginName, ok := data["name"]
 	if !ok {
 		ylog.Errorf("parsePluginHeartBeat", "parsePluginHeartBeat Error, cannot find the name of plugin data %v", data)
-		return
+		return nil
 	}
 
 	detail := make(map[string]interface{}, len(data)+8)
@@ -172,6 +191,7 @@ func parsePluginHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connect
 	detail["last_heartbeat_time"] = time.Now().Unix()
 
 	conn.SetPluginDetail(pluginName, detail)
+	return detail
 }
 
 func parseRecord(hb *pb.Record) (map[string]string, error) {
