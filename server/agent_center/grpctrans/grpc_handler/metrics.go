@@ -9,10 +9,17 @@ var (
 	sendCounter           = initPrometheusGrpcSendCounter()
 	outputDataTypeCounter = initPrometheusOutputDataTypeCounter()
 	outputAgentIDCounter  = initPrometheusOutputAgentIDCounter()
-
-	agentCpuGauge  = initPrometheusAgentCpuGauge()
-	pluginCpuGauge = initPrometheusPluginCpuGauge()
 )
+
+var agentGauge = map[string]*prometheus.GaugeVec{
+	"cpu":         initPrometheusAgentCpuGauge(),
+	"rss":         initPrometheusAgentRssGauge(),
+	"du":          initPrometheusAgentDuGauge(),
+	"read_speed":  initPrometheusAgentReadSpeedGauge(),
+	"write_speed": initPrometheusAgentWriteSpeedGauge(),
+	"tx_speed":    initPrometheusAgentTxSpeedGauge(),
+	"rx_speed":    initPrometheusAgentRxSpeedGauge(),
+}
 
 func initPrometheusGrpcConnGauge() {
 	prometheusOpts := prometheus.GaugeOpts{
@@ -67,18 +74,68 @@ func initPrometheusOutputAgentIDCounter() *prometheus.CounterVec {
 
 func initPrometheusAgentCpuGauge() *prometheus.GaugeVec {
 	prometheusOpts := prometheus.GaugeOpts{
-		Name: "elkeid_ac_agent_cpu_usage",
-		Help: "Elkeid AC agent cpu usage",
+		Name: "elkeid_ac_agent_cpu",
+		Help: "Elkeid AC agent cpu",
 	}
-	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"agent_id"})
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"agent_id", "name"})
 	prometheus.MustRegister(vec)
 	return vec
 }
 
-func initPrometheusPluginCpuGauge() *prometheus.GaugeVec {
+func initPrometheusAgentRssGauge() *prometheus.GaugeVec {
 	prometheusOpts := prometheus.GaugeOpts{
-		Name: "elkeid_ac_plugin_cpu_usage",
-		Help: "Elkeid AC agent plugin cpu usage",
+		Name: "elkeid_ac_agent_rss",
+		Help: "Elkeid AC agent rss",
+	}
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"agent_id", "name"})
+	prometheus.MustRegister(vec)
+	return vec
+}
+
+func initPrometheusAgentDuGauge() *prometheus.GaugeVec {
+	prometheusOpts := prometheus.GaugeOpts{
+		Name: "elkeid_ac_agent_du",
+		Help: "Elkeid AC agent du",
+	}
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"agent_id", "name"})
+	prometheus.MustRegister(vec)
+	return vec
+}
+
+func initPrometheusAgentReadSpeedGauge() *prometheus.GaugeVec {
+	prometheusOpts := prometheus.GaugeOpts{
+		Name: "elkeid_ac_agent_read_speed",
+		Help: "Elkeid AC agent read speed",
+	}
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"agent_id", "name"})
+	prometheus.MustRegister(vec)
+	return vec
+}
+
+func initPrometheusAgentWriteSpeedGauge() *prometheus.GaugeVec {
+	prometheusOpts := prometheus.GaugeOpts{
+		Name: "elkeid_ac_agent_write_speed",
+		Help: "Elkeid AC agent write speed",
+	}
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"agent_id", "name"})
+	prometheus.MustRegister(vec)
+	return vec
+}
+
+func initPrometheusAgentTxSpeedGauge() *prometheus.GaugeVec {
+	prometheusOpts := prometheus.GaugeOpts{
+		Name: "elkeid_ac_agent_tx_speed",
+		Help: "Elkeid AC agent tx speed",
+	}
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"agent_id", "name"})
+	prometheus.MustRegister(vec)
+	return vec
+}
+
+func initPrometheusAgentRxSpeedGauge() *prometheus.GaugeVec {
+	prometheusOpts := prometheus.GaugeOpts{
+		Name: "elkeid_ac_agent_rx_speed",
+		Help: "Elkeid AC agent rx speed",
 	}
 	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"agent_id", "name"})
 	prometheus.MustRegister(vec)

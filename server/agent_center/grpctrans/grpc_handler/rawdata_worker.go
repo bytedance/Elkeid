@@ -55,21 +55,13 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 		case 1000:
 			//parse the agent heartbeat data
 			detail := parseAgentHeartBeat(req.GetData()[k], req, conn)
-			if detail != nil {
-				if cpu, ok := detail["cpu"]; ok {
-					if fv, ok2 := cpu.(float64); ok2 {
-						agentCpuGauge.With(prometheus.Labels{"agent_id": req.AgentID}).Set(fv)
-					}
-				}
-			}
+			metricsAgentHeartBeat(req.AgentID, "agent", detail)
 		case 1001:
 			//parse the agent plugins heartbeat data
 			detail := parsePluginHeartBeat(req.GetData()[k], req, conn)
 			if detail != nil {
-				if cpu, ok := detail["cpu"]; ok {
-					if fv, ok2 := cpu.(float64); ok2 {
-						pluginCpuGauge.With(prometheus.Labels{"agent_id": req.AgentID, "name": detail["name"].(string)}).Set(fv)
-					}
+				if name, ok := detail["name"].(string); ok {
+					metricsAgentHeartBeat(req.AgentID, name, detail)
 				}
 			}
 		case 2001, 2003, 6003:
@@ -99,6 +91,19 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 		common.KafkaProducer.SendPBWithKey(req.AgentID, mqMsg)
 	}
 	return req.AgentID
+}
+
+func metricsAgentHeartBeat(agentID, name string, detail map[string]interface{}) {
+	if detail == nil {
+		return
+	}
+	for k, v := range agentGauge {
+		if cpu, ok := detail[k]; ok {
+			if fv, ok2 := cpu.(float64); ok2 {
+				v.With(prometheus.Labels{"agent_id": agentID, "name": name}).Set(fv)
+			}
+		}
+	}
 }
 
 func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connection) map[string]interface{} {
