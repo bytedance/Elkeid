@@ -55,4 +55,4 @@ RUN mkdir tmp
 RUN wget http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607.zip
 RUN mv archive_db_default_20220607.zip ./tmp
 RUN tar zcvf scanner.tar.gz scanner tmp elkeid_targets
-RUN rm -rf tmp scanner
+RUN rm -rf tmp scanner elkeid_targets
