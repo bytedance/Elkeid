@@ -1,11 +1,17 @@
 #!/bin/bash
-
-git clone --depth 1 https://github.com/Cisco-Talos/clamav-mussels-cookbook.git
 cd clamav-mussels-cookbook
 rm -rf  mussels/* &> /dev/null
 mkdir mussels &> /dev/null
 msl build libclamav_deps -t host-static -w mussels/work -i mussels/install
 cd -
+
+if [ $? -ne 0 ]; then
+    echo "mussels clamav_deps build failed"
+    exit -1
+else
+    echo "mussels clamav_deps build succeed"
+fi
+
 
 # make get clamav source code
 wget https://www.clamav.net/downloads/production/clamav-0.104.3.tar.gz
