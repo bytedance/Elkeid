@@ -41,7 +41,7 @@ RUN bash ./libclamav.sh
 
 RUN source /opt/rust/env
 RUN source ~/.bashrc
-ENV PATH=/opt/rust/bin:/opt/x86_64-linux-musl/bin:$PATH
+ENV PATH="/opt/rust/bin:/opt/x86_64-linux-musl/bin:${PATH}"
 RUN rustup target add x86_64-unknown-linux-musl
 RUN CC="x86_64-linux-musl-gcc" CXX="x86_64-linux-musl-c++" RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --bin scanner_plugin --target x86_64-unknown-linux-musl
 RUN cp -r tools/* ./output/.
