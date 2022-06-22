@@ -43,6 +43,8 @@ cmake .. -G Ninja                                                      \
     -DPCRE2_LIBRARY="$CLAMAV_DEPENDENCIES/lib/libpcre2-8.a"            \
     -DZLIB_INCLUDE_DIR="$CLAMAV_DEPENDENCIES/include"                  \
     -DZLIB_LIBRARY="$CLAMAV_DEPENDENCIES/lib/libz.a"                   \
+    -DIconv_INCLUDE_DIR="$CLAMAV_DEPENDENCIES/include"                 \
+    -DIconv_LIBRARY="$CLAMAV_DEPENDENCIES/lib/libiconv.a"              \
     -DENABLE_JSON_SHARED=OFF                                           \
     -DENABLE_STATIC_LIB=ON                                             \
     -DENABLE_SYSTEMD=OFF                                               \
@@ -83,13 +85,7 @@ cp clamav/build/libclammspack/libclammspack_static.a ./lib
 cp clamav/build/libclamunrar/libclamunrar_static.a ./lib
 cp clamav/build/libclamunrar_iface/libclamunrar_iface_static.a ./lib
 
-cp "$CLAMAV_DEPENDENCIES/lib/libbz2_static.a" ./lib
-cp "$CLAMAV_DEPENDENCIES/lib/libjson-c.a" ./lib
-cp "$CLAMAV_DEPENDENCIES/lib/libcrypto.a" ./lib
-cp "$CLAMAV_DEPENDENCIES/lib/libssl.a" ./lib 
-cp "$CLAMAV_DEPENDENCIES/lib/libxml2.a"  ./lib
-cp "$CLAMAV_DEPENDENCIES/lib/libpcre2-8.a"  ./lib
-cp "$CLAMAV_DEPENDENCIES/lib/libz.a" ./lib
+cp "$CLAMAV_DEPENDENCIES/lib/"*.a ./lib
 
 rm -rf ./include/*
 mkdir include &> /dev/null
