@@ -18,4 +18,4 @@
 	url = https://github.com/karelzak/util-linux.git
 [submodule "plugins/scanner/clamav-mussels-cookbook"]
 	path = plugins/scanner/clamav-mussels-cookbook
-	url = git@github.com:kulukami/clamav-mussels-cookbook.git
+	url = https://github.com/kulukami/clamav-mussels-cookbook.git
