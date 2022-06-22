@@ -16,3 +16,6 @@
 [submodule "rasp/golang/tiny-regex-c"]
 	path = rasp/golang/tiny-regex-c
 	url = https://github.com/Hackerl/tiny-regex-c
+[submodule "plugins/scanner/clamav-mussels-cookbook"]
+	path = plugins/scanner/clamav-mussels-cookbook
+	url = git@github.com:kulukami/clamav-mussels-cookbook.git
