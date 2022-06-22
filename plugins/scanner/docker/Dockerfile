@@ -37,8 +37,9 @@ WORKDIR /Elkeid/plugins/scanner
 
 RUN bash ./libclamav.sh
 
-RUN rustup target add x86_64-unknown-linux-musl
+RUN source /opt/rust/env
 RUN source ~/.bashrc
+RUN rustup target add x86_64-unknown-linux-musl
 RUN CC="x86_64-linux-musl-gcc" CXX="x86_64-linux-musl-c++" RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --bin scanner_plugin --target x86_64-unknown-linux-musl
 RUN cp -r tools/* ./output/.
 
