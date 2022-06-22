@@ -15,9 +15,9 @@ RUN python3 -m pip install mussels wheel
 RUN apt-get clean all
 
 RUN curl -O https://musl.cc/x86_64-linux-musl-cross.tgz
-RUN tar zxvf x86_64-linux-musl-1.2.3.tgz
+RUN tar zxvf x86_64-linux-musl-cross.tgz
 RUN mv x86_64-linux-musl-cross /opt/x86_64-linux-musl
-RUN rm -f x86_64-linux-musl-1.2.3.tgz
+RUN rm -f x86_64-linux-musl-cross.tgz
 
 ENV RUSTUP_HOME=/opt/rust
 ENV CARGO_HOME=/opt/rust
