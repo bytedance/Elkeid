@@ -1,5 +1,7 @@
 FROM debian:bullseye as scanner_compiler
 
+SHELL ["/bin/bash", "-c"]
+
 RUN apt update
 RUN apt-get install -y apt-transport-https ca-certificates debian-archive-keyring
 RUN apt-get install -y bison autoconf gettext curl unzip git wget curl
