@@ -58,4 +58,8 @@ lazy_static! {
         let s = HashSet::new();
         s
     };
+     pub static ref PPID_ARGV_WHITELIST: HashSet<&'static [u8]> = {
+        let s = HashSet::new();
+        s
+    };
 }
