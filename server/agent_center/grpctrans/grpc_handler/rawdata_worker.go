@@ -9,6 +9,7 @@ import (
 	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/pool"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/gogo/protobuf/proto"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -90,7 +91,6 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 }
 
 func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connection) {
-	var fv float64
 	hb, err := parseRecord(record)
 	if err != nil {
 		return
@@ -105,11 +105,11 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 			continue
 		}
 
-		fv, err = strconv.ParseFloat(v, 64)
-		if err == nil {
-			detail[k] = fv
-		} else {
+		fv, err := strconv.ParseFloat(v, 64)
+		if err != nil || math.IsNaN(fv) || math.IsInf(fv, 0) {
 			detail[k] = v
+		} else {
+			detail[k] = fv
 		}
 	}
 	detail["agent_id"] = req.AgentID
@@ -145,8 +145,6 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 }
 
 func parsePluginHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connection) {
-	var fv float64
-
 	data, err := parseRecord(record)
 	if err != nil {
 		return
@@ -166,13 +164,12 @@ func parsePluginHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connect
 			continue
 		}
 
-		fv, err = strconv.ParseFloat(v, 64)
-		if err == nil {
-			detail[k] = fv
-		} else {
+		fv, err := strconv.ParseFloat(v, 64)
+		if err != nil || math.IsNaN(fv) || math.IsInf(fv, 0) {
 			detail[k] = v
+		} else {
+			detail[k] = fv
 		}
-
 	}
 	//last heartbeat time get from server
 	detail["last_heartbeat_time"] = time.Now().Unix()
