@@ -162,6 +162,7 @@ SD_XFER_DEFINE( NAME(execve),
                      ELEMENT(pid_t, socket_pid),
                      ELEMENT(char *, ssh_connection),
                      ELEMENT(char *, ld_preload),
+                     ELEMENT(char *, ld_library_path),
                      ELEMENT(int, retval)
                 ),
 
@@ -179,6 +180,7 @@ SD_XFER_DEFINE( NAME(execve),
                      ENTRY_U32(socket_pid, socket_pid),
                      ENTRY_STR(ssh_connection, ssh_connection),
                      ENTRY_STR(ld_preload, ld_preload),
+                     ENTRY_STR(ld_library_path, ld_library_path),
                      ENTRY_INT(retval, retval)
                 )
 )
@@ -194,6 +196,7 @@ SD_XFER_DEFINE( NAME(execve_nosocket),
                      ELEMENT(char *, tty_name),
                      ELEMENT(char *, ssh_connection),
                      ELEMENT(char *, ld_preload),
+                     ELEMENT(char *, ld_library_path),
                      ELEMENT(int, retval)
                 ),
 
@@ -211,6 +214,7 @@ SD_XFER_DEFINE( NAME(execve_nosocket),
                      /* ENTRY_U32(socket_pid, socket_pid), */
                      ENTRY_STR(ssh_connection, ssh_connection),
                      ENTRY_STR(ld_preload, ld_preload),
+                     ENTRY_STR(ld_library_path, ld_library_path),
                      ENTRY_INT(retval, retval)
                 )
 )
@@ -232,6 +236,7 @@ SD_XFER_DEFINE( NAME(execve6),
                      ELEMENT(pid_t, socket_pid),
                      ELEMENT(char *, ssh_connection),
                      ELEMENT(char *, ld_preload),
+                     ELEMENT(char *, ld_library_path),
                      ELEMENT(int, retval)
                 ),
 
@@ -249,6 +254,7 @@ SD_XFER_DEFINE( NAME(execve6),
                      ENTRY_U32(socket_pid, socket_pid),
                      ENTRY_STR(ssh_connection, ssh_connection),
                      ENTRY_STR(ld_preload, ld_preload),
+                     ENTRY_STR(ld_library_path, ld_library_path),
                      ENTRY_INT(retval, retval)
                 )
 )
