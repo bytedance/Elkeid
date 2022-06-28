@@ -33,12 +33,12 @@ func CreateModule(c *gin.Context) {
 		return
 	}
 
-	// agent名字必须是mongoosev3-agent
+	// agent名字必须是elkeid-agent
 	if module.ModuleType == "agent" {
 		if module.Name == "agent" {
-			module.Name = "mongoosev3-agent"
+			module.Name = "elkeid-agent"
 		} else {
-			common.CreateResponse(c, common.UnknownErrorCode, "agent's name must be mongoosev3-agent")
+			common.CreateResponse(c, common.UnknownErrorCode, "agent's name must be elkeid-agent")
 			return
 		}
 	}
@@ -141,12 +141,12 @@ func UpdateModule(c *gin.Context) {
 		return
 	}
 	if module.Name == "agent" {
-		module.Name = "mongoosev3-agent"
+		module.Name = "elkeid-agent"
 	}
 
 	// 不允许修改agent name
-	if module.ModuleType == "agent" && module.Name != "mongoosev3-agent" {
-		common.CreateResponse(c, common.UnknownErrorCode, "agent's name must be mongoosev3-agent")
+	if module.ModuleType == "agent" && module.Name != "elkeid-agent" {
+		common.CreateResponse(c, common.UnknownErrorCode, "agent's name must be elkeid-agent")
 		return
 	}
 
@@ -274,7 +274,7 @@ func GetModuleId(c *gin.Context) {
 	}
 
 	if module.Name == "agent" {
-		module.Name = "mongoosev3-agent"
+		module.Name = "elkeid-agent"
 	}
 
 	// 获取组件ID
