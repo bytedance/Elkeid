@@ -474,10 +474,117 @@ static int smith_check_privilege_escalation(int limit, char *pid_tree)
     return cred_check_res;
 }
 
+/*
+ * Our own implementation of kernel_getsockname and kernel_getpeername,
+ * resuing codes logic of kernel inet_getname and inet6_getname.
+ *
+ * From 5.15.3 inet_getname and inet6_getname will call lock_sock for
+ * lock acquisition, and then lock_sock would lead possible reschedule,
+ * which violates the requirement of atomic context for kprobe/ketprobe.
+ *
+ * Interfaces of kernel_getsockname and kernel_getpeername are changed
+ * after 4.17.0, then we'll use our own routines to keep things simple.
+ */
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
+
+static int smith_get_sock_v4(struct socket *sock, struct sockaddr *sa)
+{
+    struct sock *sk	= sock->sk;
+    struct inet_sock *inet = inet_sk(sk);
+    DECLARE_SOCKADDR(struct sockaddr_in *, sin, sa);
+    __be32 addr;
+
+    sin->sin_family = AF_INET;
+    addr = inet->inet_rcv_saddr;
+    if (!addr)
+        addr = inet->inet_saddr;
+    sin->sin_port = inet->inet_sport;
+    sin->sin_addr.s_addr = addr;
+    return sizeof(*sin);
+}
+
+static int smith_get_peer_v4(struct socket *sock, struct sockaddr *sa)
+{
+    struct sock *sk	= sock->sk;
+    struct inet_sock *inet = inet_sk(sk);
+    DECLARE_SOCKADDR(struct sockaddr_in *, sin, sa);
+
+    sin->sin_family = AF_INET;
+    if (!inet->inet_dport ||
+        (((1 << sk->sk_state) & (TCPF_CLOSE | TCPF_SYN_SENT))))
+        return -ENOTCONN;
+    sin->sin_port = inet->inet_dport;
+    sin->sin_addr.s_addr = inet->inet_daddr;
+    return sizeof(*sin);
+}
+
+#if IS_ENABLED(CONFIG_IPV6)
+static int smith_get_sock_v6(struct socket *sock, struct sockaddr *sa)
+{
+    struct sockaddr_in6 *sin = (struct sockaddr_in6 *)sa;
+    struct sock *sk = sock->sk;
+    struct inet_sock *inet = inet_sk(sk);
+    struct ipv6_pinfo *np = inet6_sk(sk);
+
+    sin->sin6_family = AF_INET6;
+    if (ipv6_addr_any(&sk->sk_v6_rcv_saddr))
+        sin->sin6_addr = np->saddr;
+    else
+        sin->sin6_addr = sk->sk_v6_rcv_saddr;
+    sin->sin6_port = inet->inet_sport;
+    return sizeof(*sin);
+}
+
+static int smith_get_peer_v6(struct socket *sock, struct sockaddr *sa)
+{
+    struct sockaddr_in6 *sin = (struct sockaddr_in6 *)sa;
+    struct sock *sk = sock->sk;
+    struct inet_sock *inet = inet_sk(sk);
+
+    sin->sin6_family = AF_INET6;
+    if (!inet->inet_dport)
+        return -ENOTCONN;
+    if ((1 << sk->sk_state) & (TCPF_CLOSE | TCPF_SYN_SENT))
+        return -ENOTCONN;
+    sin->sin6_port = inet->inet_dport;
+    sin->sin6_addr = sk->sk_v6_daddr;
+    return sizeof(*sin);
+}
+#endif
+
+#else /* < 4.17.0 */
+
+static int smith_get_sock_v4(struct socket *sock, struct sockaddr *sa)
+{
+    int len = 0;
+    return kernel_getsockname(sock, sa, &len);
+}
+static int smith_get_peer_v4(struct socket *sock, struct sockaddr *sa)
+{
+    int len = 0;
+    return kernel_getpeername(sock, sa, &len);
+}
+
+#if IS_ENABLED(CONFIG_IPV6)
+static int smith_get_sock_v6(struct socket *sock, struct sockaddr *sa)
+{
+    int len = 0;
+    return kernel_getsockname(sock, sa, &len);
+}
+static int smith_get_peer_v6(struct socket *sock, struct sockaddr *sa)
+{
+    int len = 0;
+    return kernel_getpeername(sock, sa, &len);
+}
+#endif
+
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0) */
+
 //get task tree first AF_INET/AF_INET6 socket info
-void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
-                        __be32 * dip4, struct in6_addr *dip6, int *dport,
-                        pid_t * socket_pid, int *sa_family)
+void get_process_socket(__be32 *sip4, struct in6_addr *sip6, int *sport,
+                        __be32 *dip4, struct in6_addr *dip6, int *dport,
+                        pid_t *socket_pid, int *sa_family)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)
 
@@ -491,21 +598,13 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
 
 #else
 
+    struct task_struct *task = current;
     int it = 0, socket_check = 0;
 
-    char fd_buff[24];
-    const char *d_name;
-
-    void *tmp_socket = NULL;
-    struct task_struct *task;
-    struct sock *sk;
-    struct inet_sock *inet;
-    struct socket *socket;
-
-    task = current;
     get_task_struct(task);
 
     while (task && task->pid != 1 && it++ < EXECVE_GET_SOCK_PID_LIMIT) {
+        struct task_struct *old_task;
         struct files_struct *files;
         unsigned int i;
 
@@ -514,7 +613,8 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
             goto next_task;
 
         for (i = 0; i < EXECVE_GET_SOCK_FD_LIMIT; i++) {
-            struct file *file;
+            struct socket *socket;
+            int err = 0;
 
             rcu_read_lock();
             /* move to next if exceeding current task's max_fds,
@@ -523,77 +623,54 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
                 rcu_read_unlock();
                 break;
             }
-            file = smith_lookup_fd(files, i);
-            if (!file || !get_file_rcu(file)) {
-                rcu_read_unlock();
-                continue;
-            }
+            socket = sockfd_lookup(i, &err);
             rcu_read_unlock();
 
-            d_name = smith_d_path(&file->f_path, fd_buff, 24);
-            if (strlen(d_name) < 8)
-                goto next_file;
+            if (!IS_ERR_OR_NULL(socket)) {
+                struct sock *sk = socket->sk;
 
-            //find socket fd
-            if (strncmp("socket:[", d_name, 8) == 0) {
-                if (IS_ERR_OR_NULL(file->private_data))
-                    goto next_file;
-
-                tmp_socket = file->private_data;
-                socket = (struct socket *)tmp_socket;
                 /* only process known states: SS_CONNECTING/SS_CONNECTED/SS_DISCONNECTING,
                    SS_FREE/SS_UNCONNECTED or any possible new states are to be skipped */
-                if (socket && (socket->state == SS_CONNECTING ||
-                               socket->state == SS_CONNECTED ||
-                               socket->state == SS_DISCONNECTING)) {
-                    sk = socket->sk;
-                    if (!socket->sk)
-                        goto next_file;
+                if ((socket->state == SS_CONNECTING ||
+                     socket->state == SS_CONNECTED ||
+                     socket->state == SS_DISCONNECTING) && sk) {
 
-                    inet = (struct inet_sock *)sk;
-                    switch (sk->sk_family) {
-                        case AF_INET:
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
-                            *dip4 = inet->inet_daddr;
-						    *sip4 = inet->inet_saddr;
-						    *sport = ntohs(inet->inet_sport);
-						    *dport = ntohs(inet->inet_dport);
-#else
-                            *dip4 = inet->daddr;
-                            *dip4 = inet->saddr;
-                            *sport = ntohs(inet->sport);
-                            *dport = ntohs(inet->dport);
-#endif
-                            socket_check = 1;
-                            *sa_family = sk->sk_family;
-                            break;
+                    union {
+                        struct sockaddr    sa;
+                        struct sockaddr_in si4;
+                        struct sockaddr_in6 si6;
+                        /* to avoid overflow access of kernel_getsockname */
+                        struct __kernel_sockaddr_storage kss;
+                    } sa;
+
+                    if (AF_INET == sk->sk_family) {
+                        if (smith_get_sock_v4(socket, &sa.sa) < 0)
+                            goto next_socket;
+                        *sip4 = sa.si4.sin_addr.s_addr;
+                        *sport = ntohs(sa.si4.sin_port);
+                        if (smith_get_peer_v4(socket, &sa.sa) < 0)
+                            goto next_socket;
+                        *dip4 = sa.si4.sin_addr.s_addr;
+                        *dport = ntohs(sa.si4.sin_port);
 #if IS_ENABLED(CONFIG_IPV6)
-                            case AF_INET6:
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(IPV6_SUPPORT)
-						    memcpy(dip6, &(sk->sk_v6_daddr), sizeof(sk->sk_v6_daddr));
-						    memcpy(sip6, &(sk->sk_v6_rcv_saddr), sizeof(sk->sk_v6_rcv_saddr));
-						    *sport = ntohs(inet->inet_sport);
-						    *dport = ntohs(inet->inet_dport);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
-						    memcpy(dip6, &(inet->pinet6->daddr), sizeof(inet->pinet6->daddr));
-						    memcpy(sip6, &(inet->pinet6->saddr), sizeof(inet->pinet6->saddr));
-						    *sport = ntohs(inet->inet_sport);
-						    *dport = ntohs(inet->inet_dport);
-#else
-						    memcpy(dip6, &(inet->pinet6->daddr), sizeof(inet->pinet6->daddr));
-						    memcpy(sip6, &(inet->pinet6->saddr), sizeof(inet->pinet6->saddr));
-						    *sport = ntohs(inet->sport);
-						    *dport = ntohs(inet->dport);
-#endif
-						    socket_check = 1;
-						    *sa_family = sk->sk_family;
-						    break;
+                    } else if (AF_INET6 == sk->sk_family) {
+                        if (smith_get_sock_v6(socket, &sa.sa) < 0)
+                            goto next_socket;
+                        *sport = ntohs(sa.si6.sin6_port);
+                        memcpy(sip6, &sa.si6.sin6_addr, sizeof(struct in6_addr));
+                        if (smith_get_peer_v6(socket, &sa.sa) < 0)
+                            goto next_socket;
+                        *dport = ntohs(sa.si6.sin6_port);
+                        memcpy(dip6, &sa.si6.sin6_addr, sizeof(struct in6_addr));
 #endif
                     }
+
+                    socket_check = 1;
+                    *sa_family = sk->sk_family;
                 }
+next_socket:
+                sockfd_put(socket);
             }
-next_file:
-            fput(file);
         }
         smith_put_files_struct(files);
 
@@ -601,16 +678,14 @@ next_file:
             *socket_pid = task->pid;
             smith_put_task_struct(task);
             return;
-        } else {
-            struct task_struct *old_task;
+        }
 
 next_task:
-            old_task = task;
-            rcu_read_lock();
-            task = smith_get_task_struct(rcu_dereference(task->real_parent));
-            rcu_read_unlock();
-            smith_put_task_struct(old_task);
-        }
+        old_task = task;
+        rcu_read_lock();
+        task = smith_get_task_struct(rcu_dereference(task->real_parent));
+        rcu_read_unlock();
+        smith_put_task_struct(old_task);
     }
 
     if (task)
@@ -806,7 +881,7 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
         return 0;
 
     socket = sockfd_lookup(fd, &err);
-    if (socket) {
+    if (!IS_ERR_OR_NULL(socket)) {
         copy_res = smith_copy_from_user(&tmp_dirp, data->dirp, 16);
 
         if (copy_res) {
@@ -1050,21 +1125,6 @@ int accept4_entry_handler(struct kretprobe_instance *ri,
     return 0;
 }
 
-static int smith_sock_getname(struct socket *s, struct sockaddr *sa, int *l, int peer)
-{
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
-    if (peer)
-        return kernel_getpeername(s, sa);
-    else
-        return kernel_getsockname(s, sa);
-#else
-    if (peer)
-        return kernel_getpeername(s, sa, l);
-    else
-        return kernel_getsockname(s, sa, l);
-#endif
-}
-
 int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     struct accept_data *data;
@@ -1072,7 +1132,7 @@ int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 
     int sport = 0;
     int dport = 0;
-    int retval, addrlen = 0, err = 0;
+    int retval, err = 0;
 
     char *exe_path = DEFAULT_RET_STR;
     struct smith_tid *tid = NULL;
@@ -1080,7 +1140,7 @@ int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     data = (struct accept_data *)ri->data;
     retval = regs_return_value(regs);
     sock = sockfd_lookup(retval, &err);
-    if(IS_ERR_OR_NULL(sock))
+    if (IS_ERR_OR_NULL(sock))
         goto out;
 
     tid = smith_lookup_tid(current);
@@ -1091,16 +1151,16 @@ int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
             goto out;
     }
 
-    if (smith_sock_getname(sock, &data->sa, &addrlen, 0) < 0)
-        goto out;
-
     //only get AF_INET/AF_INET6 accept info
     if (data->si4.sin_family == AF_INET) {
-        __be32 sip4 = 0;
-        __be32 dip4 = data->si4.sin_addr.s_addr;
+        __be32 sip4, dip4;
+
+        if (smith_get_sock_v4(sock, &data->sa) < 0)
+            goto out;
+        dip4 = data->si4.sin_addr.s_addr;
         dport = ntohs(data->si4.sin_port);
 
-        if (smith_sock_getname(sock, &data->sa, &addrlen, 1) < 0)
+        if (smith_get_peer_v4(sock, &data->sa) < 0)
             goto out;
         sip4 = (data->si4.sin_addr.s_addr);
         sport = ntohs(data->si4.sin_port);
@@ -1110,11 +1170,14 @@ int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     }
 #if IS_ENABLED(CONFIG_IPV6)
     else if (data->si4.sin_family == AF_INET6) {
-        struct in6_addr *sip6;
-        struct in6_addr dip6 = data->si6.sin6_addr;
+        struct in6_addr *sip6, dip6;
+
+        if (smith_get_sock_v6(sock, &data->sa) < 0)
+            goto out;
+        dip6 = data->si6.sin6_addr;
         dport = ntohs(data->si6.sin6_port);
 
-        if (smith_sock_getname(sock, &data->sa, &addrlen, 1) < 0)
+        if (smith_get_peer_v6(sock, &data->sa) < 0)
             goto out;
         sport = ntohs(data->si6.sin6_port);
         sip6 = &(data->si6.sin6_addr);
@@ -1125,7 +1188,7 @@ int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 #endif
 
 out:
-    if (sock)
+    if (!IS_ERR_OR_NULL(sock))
         sockfd_put(sock);
     if (tid)
         smith_put_tid(tid);
