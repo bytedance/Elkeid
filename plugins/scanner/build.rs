@@ -16,6 +16,8 @@ mod bindings {
         "xml2",
         "pcre2-8",
         "z",
+        "iconv",
+        "charset",
         "clammspack_static",
         "clamunrar_static",
         "clamunrar_iface_static",
@@ -34,7 +36,10 @@ mod bindings {
         println!("{}{}", RUSTC_LINK_SEARCH, CLAMAV_MUSSELS);
         let mut bindings = bindgen::Builder::default()
             .header("wrapper.h")
-            .clang_arg("-I./usr/include/linux")
+            .clang_arg("-I./opt/x86_64-linux-musl/include")
+            .clang_arg("-I./opt/x86_64-linux-musl/x86_64-linux-musl/include")
+            .clang_arg("-I./opt/x86_64-linux-musl/x86_64-linux-musl/include/strings.h")
+            .clang_arg("-I./opt/x86_64-linux-musl/x86_64-linux-musl/include/linux")
             .clang_arg("-Iinclude")
             .clang_arg("-Iclamav")
             .clang_arg("-Iclamav/build")
