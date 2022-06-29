@@ -3,16 +3,17 @@ package v6
 import (
 	"time"
 
-	"github.com/bytedance/Elkeid/server/manager/biz/common"
-	v1 "github.com/bytedance/Elkeid/server/manager/biz/hander/v1"
-	"github.com/bytedance/Elkeid/server/manager/infra"
-	. "github.com/bytedance/Elkeid/server/manager/infra/def"
-	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"github.com/bytedance/Elkeid/server/manager/biz/common"
+	v1 "github.com/bytedance/Elkeid/server/manager/biz/hander/v1"
+	"github.com/bytedance/Elkeid/server/manager/infra"
+	. "github.com/bytedance/Elkeid/server/manager/infra/def"
+	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 )
 
 type TaskDetail struct {
@@ -269,13 +270,18 @@ func ControlPlugin(c *gin.Context) {
 	agentConfigTask.Action = createTask.Action
 	agentConfigTask.TaskName = createTask.TaskName
 	if createTask.Action == "plu_uninstall" {
-		agentConfigTask.Data.AgentCtrl = 0
+		agentConfigTask.Data.Config = []AgentConfigMsg{
+			{
+				Name: plugin.Name,
+			},
+		}
+
 	} else if createTask.Action == "plu_update" || createTask.Action == "plu_install" {
+		agentConfigTask.Data.Config = []AgentConfigMsg{*plugin}
 	} else {
 		common.CreateResponse(c, common.ParamInvalidErrorCode, "unknown action")
 		return
 	}
-	agentConfigTask.Data.Config = []AgentConfigMsg{*plugin}
 
 	// 生成任务下发主机列表
 	filter := bson.M{}
