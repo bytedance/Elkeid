@@ -47,7 +47,6 @@ RUN rustup target add x86_64-unknown-linux-musl
 RUN CC="x86_64-linux-musl-gcc" CXX="x86_64-linux-musl-c++" RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --bin scanner_plugin --target x86_64-unknown-linux-musl
 
 RUN mkdir /Elkeid/plugins/scanner_clamav/output
-RUN cp -r tools/* ./output/.
 
 WORKDIR /Elkeid/plugins/scanner_clamav/output
 RUN cp /Elkeid/plugins/scanner_clamav/target/x86_64-unknown-linux-musl/release/scanner_plugin /Elkeid/plugins/scanner_clamav/output/scanner_clamav
@@ -55,4 +54,6 @@ RUN mkdir tmp
 RUN wget http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607.zip
 RUN mv archive_db_default_20220607.zip ./tmp
 RUN tar zcvf scanner_clamav.tar.gz scanner_clamav tmp
+RUN sha256sum scanner_clamav.tar.gz > sha256
+RUN sha256sum scanner_clamav > sign
 RUN rm -rf tmp scanner_clamav
