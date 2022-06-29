@@ -1,3 +1,5 @@
+
+
 #!/bin/bash
 
 # make static lib for clamav deps

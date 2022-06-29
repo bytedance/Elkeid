@@ -1,16 +1,22 @@
 #!/bin/bash
-
-git clone --depth 1 https://github.com/Cisco-Talos/clamav-mussels-cookbook.git
 cd clamav-mussels-cookbook
 rm -rf  mussels/* &> /dev/null
 mkdir mussels &> /dev/null
 msl build libclamav_deps -t host-static -w mussels/work -i mussels/install
 cd -
 
+if [ $? -ne 0 ]; then
+    echo "mussels clamav_deps build failed"
+    exit -1
+else
+    echo "mussels clamav_deps build succeed"
+fi
+
+
 # make get clamav source code
-wget http://lf26-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/clamav-clamav-0.104.0.tar.gz
-tar xf ./clamav-clamav-0.104.0.tar.gz
-mv clamav-clamav-0.104.0 clamav
+wget https://www.clamav.net/downloads/production/clamav-0.104.3.tar.gz
+tar xf ./clamav-0.104.3.tar.gz
+mv clamav-0.104.3 clamav
 
 cd clamav
 
@@ -22,7 +28,7 @@ export CLAMAV_DEPENDENCIES="$(pwd)/clamav-mussels-cookbook/mussels/install/"
 cd clamav/build 
 
 cmake .. -G Ninja                                                      \
-    -DCMAKE_BUILD_TYPE="Release"                                       \
+    -DCMAKE_BUILD_TYPE="RelWithDebInfo"                                       \
     -DJSONC_INCLUDE_DIR="$CLAMAV_DEPENDENCIES/include/json-c"          \
     -DJSONC_LIBRARY="$CLAMAV_DEPENDENCIES/lib/libjson-c.a"             \
     -DBZIP2_INCLUDE_DIR="$CLAMAV_DEPENDENCIES/include"                 \
@@ -37,6 +43,8 @@ cmake .. -G Ninja                                                      \
     -DPCRE2_LIBRARY="$CLAMAV_DEPENDENCIES/lib/libpcre2-8.a"            \
     -DZLIB_INCLUDE_DIR="$CLAMAV_DEPENDENCIES/include"                  \
     -DZLIB_LIBRARY="$CLAMAV_DEPENDENCIES/lib/libz.a"                   \
+    -DIconv_INCLUDE_DIR="$CLAMAV_DEPENDENCIES/include"                 \
+    -DIconv_LIBRARY="$CLAMAV_DEPENDENCIES/lib/libiconv.a"              \
     -DENABLE_JSON_SHARED=OFF                                           \
     -DENABLE_STATIC_LIB=ON                                             \
     -DENABLE_SYSTEMD=OFF                                               \
@@ -45,9 +53,28 @@ cmake .. -G Ninja                                                      \
     -DENABLE_UNRAR=ON                                                  \
     -DENABLE_SHARED_LIB=OFF                                            \
     -DDATABASE_DIRECTORY=/var/lib/clamav                               \
+    -DAPP_CONFIG_DIRECTORY=/etc/clamav                                 \
+    -DBYTECODE_RUNTIME=none                                            \
+    -DENABLE_FUZZ=OFF                                                  \
+    -DENABLE_APP=OFF                                                   \
+    -DENABLE_CLAMONACC=OFF                                             \
+    -DENABLE_MILTER=OFF                                                \
+    -DENABLE_MAN_PAGES=OFF                                             \
+    -DMAINTAINER_MODE=ON                                               \
+    -DRUST_COMPILER_TARGET="x86_64-unknown-linux-gnu"                  \
     -DCMAKE_INSTALL_PREFIX=install 
 
+if [ $? -ne 0 ]; then
+    echo "libclamav cmake failed"
+    exit -1
+fi
+
 cmake --build .
+
+if [ $? -ne 0 ]; then
+    echo "libclamav build failed"
+    exit -1
+fi
 
 cd -
 
@@ -58,15 +85,12 @@ cp clamav/build/libclammspack/libclammspack_static.a ./lib
 cp clamav/build/libclamunrar/libclamunrar_static.a ./lib
 cp clamav/build/libclamunrar_iface/libclamunrar_iface_static.a ./lib
 
-cp "$CLAMAV_DEPENDENCIES/lib/libbz2_static.a" ./lib
-cp "$CLAMAV_DEPENDENCIES/lib/libjson-c.a" ./lib
-cp "$CLAMAV_DEPENDENCIES/lib/libcrypto.a" ./lib
-cp "$CLAMAV_DEPENDENCIES/lib/libssl.a" ./lib 
-cp "$CLAMAV_DEPENDENCIES/lib/libxml2.a"  ./lib
-cp "$CLAMAV_DEPENDENCIES/lib/libpcre2-8.a"  ./lib
-cp "$CLAMAV_DEPENDENCIES/lib/libz.a" ./lib
+cp "$CLAMAV_DEPENDENCIES/lib/"*.a ./lib
 
 rm -rf ./include/*
 mkdir include &> /dev/null
 cp clamav/build/*.h ./include
 cp clamav/libclamav/clamav.h ./include
+cp clamav/libclamav/matcher.h ./include
+cp clamav/libclamav/matcher-ac.h ./include
+cp clamav/libclamav/others.h ./include

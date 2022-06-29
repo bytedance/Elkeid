@@ -149,7 +149,7 @@ fn setup_cgroup(pid: u32) {
     let hier1 = cgroups_rs::hierarchies::auto();
     let mem_cg = cgroups_rs::cgroup_builder::CgroupBuilder::new("clamav_mem")
         .memory()
-        .memory_hard_limit(1024 * 1024 * 180) // 180 MB
+        .memory_hard_limit(1024 * 1024 * 256) // 180 MB
         .done()
         .build(hier1);
 
