@@ -1,9 +1,9 @@
 #!/bin/bash
+
 cd clamav-mussels-cookbook
 rm -rf  mussels/* &> /dev/null
 mkdir mussels &> /dev/null
 msl build libclamav_deps -t host-static -w mussels/work -i mussels/install
-cd -
 
 if [ $? -ne 0 ]; then
     echo "mussels clamav_deps build failed"
@@ -12,6 +12,7 @@ else
     echo "mussels clamav_deps build succeed"
 fi
 
+cd -
 
 # make get clamav source code
 wget https://www.clamav.net/downloads/production/clamav-0.104.3.tar.gz
@@ -86,6 +87,7 @@ cp clamav/build/libclamunrar/libclamunrar_static.a ./lib
 cp clamav/build/libclamunrar_iface/libclamunrar_iface_static.a ./lib
 
 cp "$CLAMAV_DEPENDENCIES/lib/"*.a ./lib
+
 
 rm -rf ./include/*
 mkdir include &> /dev/null

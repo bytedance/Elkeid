@@ -1,5 +1,6 @@
 FROM debian:bullseye as scanner_compiler
 
+
 SHELL ["/bin/bash", "-c"]
 
 RUN apt update
@@ -8,6 +9,7 @@ RUN apt-get install -y bison autoconf gettext curl unzip git wget curl
 RUN apt-get install -y python3.9 python3-pip python3.9-dev libc-dev
 RUN apt-get install -y clang llvm flex ninja-build lsb-release
 RUN apt-get install -y libstdc++-10-dev cmake make libpcre2-dev
+
 
 ARG DEBIAN_FRONTEND=noninteractive
 ENV PATH=/root/.cargo/bin:$PATH
@@ -56,3 +58,4 @@ RUN wget http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f0
 RUN mv archive_db_default_20220607.zip ./tmp
 RUN tar zcvf scanner.tar.gz scanner tmp elkeid_targets
 RUN rm -rf tmp scanner elkeid_targets
+
