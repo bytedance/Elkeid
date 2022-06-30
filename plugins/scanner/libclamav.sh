@@ -15,11 +15,9 @@ fi
 cd -
 
 # make get clamav source code
-wget https://www.clamav.net/downloads/production/clamav-0.104.3.tar.gz
-tar xf ./clamav-0.104.3.tar.gz
-mv clamav-0.104.3 clamav
-
+git clone git@github.com:kulukami/clamav.git
 cd clamav
+git checkout rel/0.104
 
 rm -rf  ./build/* &> /dev/null
 mkdir build &> /dev/null
