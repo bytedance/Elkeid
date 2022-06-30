@@ -14,7 +14,7 @@ fi
 
 
 # make get clamav source code
-git clone git@github.com:kulukami/clamav.git
+git clone https://github.com/kulukami/clamav.git
 cd clamav
 git checkout rel/0.104
 
