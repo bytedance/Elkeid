@@ -25,6 +25,7 @@ use libc::{c_char, size_t};
 pub struct Clamav {
     engine: *mut clamav::cl_engine,
     scan_option: clamav::cl_scan_options,
+    scan_option_php: clamav::cl_scan_options,
 }
 
 // impl .Send trait for Clamav
@@ -52,6 +53,13 @@ impl Clamav {
             scan_option: clamav::cl_scan_options {
                 general: 0,
                 parse: clamav::CL_SCAN_PARSE_ELF,
+                heuristic: 0,
+                mail: 0,
+                dev: 0,
+            },
+            scan_option_php: clamav::cl_scan_options {
+                general: clamav::CL_SCAN_GENERAL_YARAHIT,
+                parse: 0,
                 heuristic: 0,
                 mail: 0,
                 dev: 0,
@@ -187,34 +195,80 @@ impl ScanEngine for Clamav {
         if !fp.is_file() {
             return Err(anyhow!("scan target {} is not a regular file!", fpath));
         }
+        let mut php_flag = false;
+        if fpath.ends_with(".php") {
+            php_flag = true;
+        }
         let target_path = CString::new(fpath.as_bytes()).unwrap();
         let mut virus_name: *const ::std::os::raw::c_char = ptr::null();
+
         let mut scann_bytes: u64 = 0;
 
         unsafe {
+            let mut nil_ctx: *mut clamav::yr_hit_cb_ctx = ptr::null_mut();
+            if php_flag {
+                nil_ctx = clamav::cl_yr_hit_cb_ctx_init();
+            }
             let mut retc: u32 = 0;
-            retc = clamav::cl_scanfile(
-                target_path.as_ptr(),
-                &mut virus_name,
-                &mut scann_bytes as *mut u64,
-                self.engine,
-                &mut self.scan_option,
-            );
+            let mut yr_ctx: *mut c_void = nil_ctx as _;
+
+            if php_flag {
+                retc = clamav::cl_scanfile_callback(
+                    target_path.as_ptr(),
+                    &mut virus_name,
+                    &mut scann_bytes as *mut u64,
+                    self.engine,
+                    &mut self.scan_option_php,
+                    yr_ctx,
+                );
+            } else {
+                retc = clamav::cl_scanfile(
+                    target_path.as_ptr(),
+                    &mut virus_name,
+                    &mut scann_bytes as *mut u64,
+                    self.engine,
+                    &mut self.scan_option,
+                );
+            }
 
             match retc {
                 clamav::cl_error_t_CL_CLEAN => {
+                    if php_flag {
+                        clamav::cl_yr_hit_cb_ctx_free(nil_ctx);
+                    }
                     return Ok(("OK".to_string(), None));
                 }
                 clamav::cl_error_t_CL_VIRUS => {
                     let target_virust_name =
                         CStr::from_ptr(virus_name).to_str().unwrap().to_string();
+                    if php_flag {
+                        if (*nil_ctx).hit_cnt != 0 {
+                            let length = (*nil_ctx).hit_cnt as usize;
+                            let mut hitstring: Vec<String> = Vec::new();
+                            let mut v: Vec<*mut c_char> =
+                                Vec::from_raw_parts((*nil_ctx).hits, length, length);
+                            loop {
+                                if let Some(tc) = v.pop() {
+                                    hitstring
+                                        .push(CStr::from_ptr(tc).to_string_lossy().to_string());
+                                } else {
+                                    break;
+                                }
+                            }
+                            mem::forget(v);
+                            clamav::cl_yr_hit_cb_ctx_free(nil_ctx);
+                            return Ok((target_virust_name, Some(hitstring)));
+                        }
+                    }
                     return Ok((target_virust_name, None));
                 }
                 tc => {
                     let errmsg = CStr::from_ptr(clamav::cl_strerror(tc as ::std::os::raw::c_int))
                         .to_string_lossy()
                         .into_owned();
-
+                    if php_flag {
+                        clamav::cl_yr_hit_cb_ctx_free(nil_ctx);
+                    }
                     return Err(anyhow!("clamav::cl_scanfile {:?} err", errmsg));
                 }
             };
@@ -238,6 +292,13 @@ impl Clone for Clamav {
             scan_option: clamav::cl_scan_options {
                 general: 0,
                 parse: clamav::CL_SCAN_PARSE_ELF,
+                heuristic: 0,
+                mail: 0,
+                dev: 0,
+            },
+            scan_option_php: clamav::cl_scan_options {
+                general: clamav::CL_SCAN_GENERAL_YARAHIT,
+                parse: 0,
                 heuristic: 0,
                 mail: 0,
                 dev: 0,
