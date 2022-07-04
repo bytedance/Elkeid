@@ -13,7 +13,8 @@ use self::clamav::timeval;
 use super::ScanEngine;
 use std::{
     ffi::{c_void, CStr, CString},
-    io::Read,
+    fs::File,
+    io::{Read, Seek, SeekFrom},
     mem,
     path::Path,
     ptr,
@@ -305,4 +306,33 @@ impl Clone for Clamav {
             },
         };
     }
+}
+
+
+// read file with offset & bufsize
+pub fn raw_read(f: &mut File, off: u64) -> Result<String> {
+    // This is unsafe
+    let mut buf: Vec<u8> = vec![0; 16];
+    f.seek(SeekFrom::Start(off))?; // return Io Error
+    let _: usize = f.read(&mut buf)?; // return Io Error
+    let result = String::from_utf8(buf)?;
+    return Ok(result);
+}
+
+pub fn get_hit_data(fpath: &str, hit_data: &Vec<String>) -> Result<Vec<String>> {
+    let mut f = File::open(fpath)?;
+    let fmeta = f.metadata()?;
+
+    let mut new_matched_data = Vec::<String>::new();
+    for each_match_item in hit_data {
+        let tmp_v: Vec<&str> = each_match_item.splitn(3, ",").collect();
+        if tmp_v.len() == 3 {
+            let file_offset: u64 = tmp_v[1].parse::<u64>().unwrap();
+            if file_offset < fmeta.len() {
+                let hit_raw = raw_read(&mut f, file_offset)?;
+                new_matched_data.push(hit_raw);
+            }
+        }
+    }
+    return Ok(new_matched_data);
 }

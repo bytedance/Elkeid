@@ -1,7 +1,7 @@
 use crate::{
     configs, get_file_btime, get_file_md5, get_file_md5_fast, get_file_xhash,
     model::engine::{
-        clamav::{self, updater, Clamav},
+        clamav::{self, updater, Clamav, get_hit_data},
         ScanEngine,
     },
     model::functional::{
@@ -623,7 +623,7 @@ impl Scanner {
         fpath: &str,
     ) -> Result<(String, String, String, String, String, Option<Vec<String>>)> {
         match self.inner.scan_file(fpath) {
-            Ok((result, matched_data)) => {
+            Ok((result, mut matched_data)) => {
                 let mut res: Vec<String> = Vec::new();
                 let xhash = get_file_xhash(fpath);
                 let md5sum = get_file_md5_fast(fpath);
@@ -692,6 +692,8 @@ impl Scanner {
                     );
                     if let Some(data) = &matched_data {
                         info!("[Catch] yara hit data:{:?}", data);
+                        let mut new_matched_data = get_hit_data(fpath, data)?;
+                        matched_data = Some(new_matched_data);
                     }
                 }
 
@@ -708,7 +710,7 @@ impl Scanner {
         fpath: &str,
     ) -> Result<(String, String, String, String, String, Option<Vec<String>>)> {
         match self.inner.scan_file(fpath) {
-            Ok((result, matched_data)) => {
+            Ok((result, mut matched_data)) => {
                 let mut res: Vec<String> = Vec::new();
                 let xhash = get_file_xhash(fpath);
                 let md5sum = get_file_md5(fpath);
@@ -777,6 +779,8 @@ impl Scanner {
                     );
                     if let Some(data) = &matched_data {
                         info!("[Catch] yara hit data:{:?}", data);
+                        let mut new_matched_data = get_hit_data(fpath, data)?;
+                        matched_data = Some(new_matched_data);
                     }
                 }
 
