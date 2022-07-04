@@ -9,6 +9,7 @@ import (
 	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/pool"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/gogo/protobuf/proto"
+	"github.com/prometheus/client_golang/prometheus"
 	"math"
 	"strconv"
 	"strings"
@@ -48,14 +49,23 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 			mqMsg.Tag = ""
 		}
 
+		outputDataTypeCounter.With(prometheus.Labels{"data_type": fmt.Sprint(mqMsg.DataType)}).Add(float64(1))
+		outputAgentIDCounter.With(prometheus.Labels{"agent_id": mqMsg.AgentID}).Add(float64(1))
+
 		switch mqMsg.DataType {
 		case 1000:
 			//parse the agent heartbeat data
-			parseAgentHeartBeat(req.GetData()[k], req, conn)
+			detail := parseAgentHeartBeat(req.GetData()[k], req, conn)
+			metricsAgentHeartBeat(req.AgentID, "agent", detail)
 		case 1001:
 			//
 			//parse the agent plugins heartbeat data
-			parsePluginHeartBeat(req.GetData()[k], req, conn)
+			detail := parsePluginHeartBeat(req.GetData()[k], req, conn)
+			if detail != nil {
+				if name, ok := detail["name"].(string); ok {
+					metricsAgentHeartBeat(req.AgentID, name, detail)
+				}
+			}
 		case 2001, 2003, 6003, 5100, 5101, 8010:
 			// Asynchronously pushed to the remote end for reconciliation.
 
@@ -90,10 +100,23 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 	return req.AgentID
 }
 
-func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connection) {
+func metricsAgentHeartBeat(agentID, name string, detail map[string]interface{}) {
+	if detail == nil {
+		return
+	}
+	for k, v := range agentGauge {
+		if cpu, ok := detail[k]; ok {
+			if fv, ok2 := cpu.(float64); ok2 {
+				v.With(prometheus.Labels{"agent_id": agentID, "name": name}).Set(fv)
+			}
+		}
+	}
+}
+
+func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connection) map[string]interface{} {
 	hb, err := parseRecord(record)
 	if err != nil {
-		return
+		return nil
 	}
 
 	//存储心跳数据到connect
@@ -142,18 +165,19 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 	//last heartbeat time get from server
 	detail["last_heartbeat_time"] = time.Now().Unix()
 	conn.SetAgentDetail(detail)
+	return detail
 }
 
-func parsePluginHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connection) {
+func parsePluginHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connection) map[string]interface{} {
 	data, err := parseRecord(record)
 	if err != nil {
-		return
+		return nil
 	}
 
 	pluginName, ok := data["name"]
 	if !ok {
 		ylog.Errorf("parsePluginHeartBeat", "parsePluginHeartBeat Error, cannot find the name of plugin data %v", data)
-		return
+		return nil
 	}
 
 	detail := make(map[string]interface{}, len(data)+8)
@@ -175,6 +199,7 @@ func parsePluginHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connect
 	detail["last_heartbeat_time"] = time.Now().Unix()
 
 	conn.SetPluginDetail(pluginName, detail)
+	return detail
 }
 
 func parseRecord(hb *pb.Record) (map[string]string, error) {
