@@ -81,7 +81,7 @@ yaml_cfg_build = OrderedDict(
                     "main",
                 ]
             },
-            "schedule": ["cron : '0 3 * * *'"]
+            "schedule": ["cron : '0 3 1 * *'"]
         }
     }
 )
