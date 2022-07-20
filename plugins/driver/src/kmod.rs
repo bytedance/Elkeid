@@ -56,6 +56,40 @@ fn check_crash() -> Result<()> {
     }
     Ok(())
 }
+fn insmod(p: &String) -> Result<()> {
+    let f = File::open(p)?;
+    match finit_module(
+        &f,
+        &CString::new("").unwrap(),
+        kmod::ModuleInitFlags::empty(),
+    ) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            if let Some(eno) = e.as_errno() {
+                if eno == nix::errno::Errno::ENOSYS {
+                    match Command::new("insmod")
+                        .arg(p)
+                        .env("PATH", "/sbin:/usr/sbin")
+                        .output()
+                    {
+                        Ok(output) => {
+                            if !output.status.success() {
+                                Err(anyhow!(String::from_utf8(output.stderr).unwrap()))
+                            } else {
+                                Ok(())
+                            }
+                        }
+                        Err(e) => Err(e.into()),
+                    }
+                } else {
+                    Err(e.into())
+                }
+            } else {
+                Err(e.into())
+            }
+        }
+    }
+}
 pub struct Kmod {
     filtered_exe_entries: Arc<Mutex<VecDeque<(Instant, Vec<u8>)>>>,
     filtered_argv_entries: Arc<Mutex<VecDeque<(Instant, Vec<u8>)>>>,
@@ -235,14 +269,7 @@ impl Kmod {
                     .lines()
                     .any(|line| line.contains("version") && line.contains(KMOD_VERSION))
             {
-                if let Ok(f) = File::open(&ko_dst) {
-                    return finit_module(
-                        &f,
-                        &CString::new("").unwrap(),
-                        kmod::ModuleInitFlags::empty(),
-                    )
-                    .map_err(|err| anyhow!("load module failed: {}", err));
-                }
+                return insmod(&ko_dst).map_err(|err| anyhow!("load module failed: {}", err));
             }
         }
         let src = format!(
@@ -278,29 +305,7 @@ impl Kmod {
                 },
             }
         }
-        let file = File::open(&ko_dst)?;
-        finit_module(
-            &file,
-            &CString::new("").unwrap(),
-            kmod::ModuleInitFlags::empty(),
-        )
-        .or_else(|_| {
-            match Command::new("insmod")
-                .arg(ko_dst)
-                .env("PATH", "/sbin:/usr/sbin")
-                .output()
-            {
-                Err(err) => Err(err.into()),
-                Ok(output) => {
-                    if !output.status.success() {
-                        return Err(anyhow!(String::from_utf8(output.stderr).unwrap()));
-                    } else {
-                        return Ok(());
-                    }
-                }
-            }
-        })
-        .map_err(|err| anyhow!("load module failed: {}", err))
+        return insmod(&ko_dst).map_err(|err| anyhow!("load module failed: {}", err));
     }
     pub fn add_filtered_argv(&mut self, argv: &[u8]) {
         let mut controler = self.controler.lock();
