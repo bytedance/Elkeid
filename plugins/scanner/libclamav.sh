@@ -1,18 +1,23 @@
 #!/bin/bash
 
-git clone --depth 1 https://github.com/Cisco-Talos/clamav-mussels-cookbook.git
 cd clamav-mussels-cookbook
 rm -rf  mussels/* &> /dev/null
 mkdir mussels &> /dev/null
 msl build libclamav_deps -t host-static -w mussels/work -i mussels/install
+
+if [ $? -ne 0 ]; then
+    echo "mussels clamav_deps build failed"
+    exit -1
+else
+    echo "mussels clamav_deps build succeed"
+fi
+
 cd -
 
 # make get clamav source code
-wget https://www.clamav.net/downloads/production/clamav-0.104.3.tar.gz
-tar xf ./clamav-0.104.3.tar.gz
-mv clamav-0.104.3 clamav
-
+git clone https://github.com/kulukami/clamav.git
 cd clamav
+git checkout rel/0.104
 
 rm -rf  ./build/* &> /dev/null
 mkdir build &> /dev/null
@@ -37,6 +42,8 @@ cmake .. -G Ninja                                                      \
     -DPCRE2_LIBRARY="$CLAMAV_DEPENDENCIES/lib/libpcre2-8.a"            \
     -DZLIB_INCLUDE_DIR="$CLAMAV_DEPENDENCIES/include"                  \
     -DZLIB_LIBRARY="$CLAMAV_DEPENDENCIES/lib/libz.a"                   \
+    -DIconv_INCLUDE_DIR="$CLAMAV_DEPENDENCIES/include"                 \
+    -DIconv_LIBRARY="$CLAMAV_DEPENDENCIES/lib/libiconv.a"              \
     -DENABLE_JSON_SHARED=OFF                                           \
     -DENABLE_STATIC_LIB=ON                                             \
     -DENABLE_SYSTEMD=OFF                                               \
@@ -77,13 +84,8 @@ cp clamav/build/libclammspack/libclammspack_static.a ./lib
 cp clamav/build/libclamunrar/libclamunrar_static.a ./lib
 cp clamav/build/libclamunrar_iface/libclamunrar_iface_static.a ./lib
 
-cp "$CLAMAV_DEPENDENCIES/lib/libbz2_static.a" ./lib
-cp "$CLAMAV_DEPENDENCIES/lib/libjson-c.a" ./lib
-cp "$CLAMAV_DEPENDENCIES/lib/libcrypto.a" ./lib
-cp "$CLAMAV_DEPENDENCIES/lib/libssl.a" ./lib 
-cp "$CLAMAV_DEPENDENCIES/lib/libxml2.a"  ./lib
-cp "$CLAMAV_DEPENDENCIES/lib/libpcre2-8.a"  ./lib
-cp "$CLAMAV_DEPENDENCIES/lib/libz.a" ./lib
+cp "$CLAMAV_DEPENDENCIES/lib/"*.a ./lib
+
 
 rm -rf ./include/*
 mkdir include &> /dev/null
