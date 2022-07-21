@@ -66,7 +66,6 @@ int EXECVE_GET_SOCK_FD_LIMIT = 12;  /* maximum fd numbers to be queried */
 char connect_syscall_kprobe_state = 0x0;
 char bind_kprobe_state = 0x0;
 char create_file_kprobe_state = 0x0;
-char ptrace_kprobe_state = 0x0;
 int  udp_recvmsg_kprobe_state = 0x0;
 int  udpv6_recvmsg_kprobe_state = 0x0;
 char do_init_module_kprobe_state = 0x0;
@@ -1431,29 +1430,23 @@ out:
     return 0;
 }
 
-int ptrace_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static void smith_trace_sysret_ptrace(long request, long pid, void *addr, long ret)
 {
     struct smith_tid *tid = NULL;
-    long request;
-    request = (long)p_get_arg1_syscall(regs);
 
-    //only get PTRACE_POKETEXT/PTRACE_POKEDATA ptrace
-    //Read a word at the address addr in the tracee's memory,
-    //returning the word as the result of the ptrace() call.  Linux
-    //does not have separate text and data address spaces, so these
-    //two requests are currently equivalent.  (data is ignored; but
-    //see NOTES.)
+    // only get PTRACE_POKETEXT/PTRACE_POKEDATA ptrace
+    // Read a word at the address addr in the tracee's memory,
+    // returning the word as the result of the ptrace() call.  Linux
+    // does not have separate text and data address spaces, so these
+    // two requests are currently equivalent.  (data is ignored; but
+    // see NOTES.)
 
     if (request == PTRACE_POKETEXT || request == PTRACE_POKEDATA) {
-        long pid;
-        void *addr;
         char *exe_path = DEFAULT_RET_STR;
         char *pid_tree = NULL;
 
-        pid = (long)p_get_arg2_syscall(regs);
-        addr = (void *)p_get_arg3_syscall(regs);
         if (IS_ERR_OR_NULL(addr))
-            return 0;
+            return;
 
         tid = smith_lookup_tid(current);
         if (tid) {
@@ -1471,7 +1464,6 @@ int ptrace_pre_handler(struct kprobe *p, struct pt_regs *regs)
 out:
     if (tid)
         smith_put_tid(tid);
-    return 0;
 }
 
 void dns_data_transport(char *query, __be32 dip, __be32 sip, int dport,
@@ -3449,11 +3441,6 @@ struct kprobe link_kprobe = {
         .pre_handler = link_pre_handler,
 };
 
-struct kprobe ptrace_kprobe = {
-        .symbol_name = P_GET_SYSCALL_NAME(ptrace),
-        .pre_handler = ptrace_pre_handler,
-};
-
 struct kretprobe udp_recvmsg_kretprobe = {
         .kp.symbol_name = "udp_recvmsg",
         .data_size = sizeof(struct udp_recvmsg_data),
@@ -3746,22 +3733,6 @@ int register_link_kprobe(void)
 void unregister_link_kprobe(void)
 {
     unregister_kprobe(&link_kprobe);
-}
-
-int register_ptrace_kprobe(void)
-{
-    int ret;
-    ret = register_kprobe(&ptrace_kprobe);
-
-    if (ret == 0)
-        ptrace_kprobe_state = 0x1;
-
-    return ret;
-}
-
-void unregister_ptrace_kprobe(void)
-{
-    unregister_kprobe(&ptrace_kprobe);
 }
 
 int register_udp_recvmsg_kprobe(void)
@@ -4211,9 +4182,6 @@ void uninstall_kprobe(void)
     if (mprotect_kprobe_state == 0x1)
         unregister_mprotect_kprobe();
 
-    if (ptrace_kprobe_state == 0x1)
-        unregister_ptrace_kprobe();
-
     if (create_file_kprobe_state == 0x1)
         unregister_create_file_kprobe();
 
@@ -4497,12 +4465,6 @@ void install_kprobe(void)
         ret = register_call_usermodehelper_exec_kprobe();
         if (ret < 0)
             printk(KERN_INFO "[ELKEID] call_usermodehelper_exec register_kprobe failed, returned %d\n", ret);
-    }
-
-    if (PTRACE_HOOK == 1) {
-        ret = register_ptrace_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] ptrace register_kprobe failed, returned %d\n", ret);
     }
 
     if (DO_INIT_MODULE_HOOK == 1) {
@@ -5234,6 +5196,15 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
                 break;
 
             /*
+             * ptrace: PTRACE_POKETEXT and PTRACE_POKEDATA
+             */
+            case 26 /* __NR_ia32_ptrace */:
+                if (PTRACE_HOOK)
+                    smith_trace_sysret_ptrace(regs->bx, regs->cx,
+                                              (void *)regs->dx, ret);
+                break;
+
+            /*
              * chmod operations
              */
             case 15 /* __NR_ia32_chmod */:
@@ -5283,6 +5254,17 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
 
             if (EXECVE_HOOK)
                 smith_trace_sysret_exec(ret);
+            break;
+
+        /*
+         * ptrace: PTRACE_POKETEXT and PTRACE_POKEDATA
+         */
+        case __NR_ptrace:
+            if (PTRACE_HOOK)
+                smith_trace_sysret_ptrace(p_regs_get_arg1_of_syscall(regs),
+                                          p_regs_get_arg2_syscall(regs),
+                                          (void *)p_regs_get_arg3_syscall(regs),
+                                          ret);
             break;
 
         /*
