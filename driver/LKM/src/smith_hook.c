@@ -78,7 +78,6 @@ char mprotect_kprobe_state = 0x0;
 char mount_kprobe_state = 0x0;
 char rename_kprobe_state = 0x0;
 char link_kprobe_state = 0x0;
-char prctl_kprobe_state = 0x0;
 char memfd_create_kprobe_state = 0x0;
 char accept_kretprobe_state = 0x0;
 char accept4_kretprobe_state = 0x0;
@@ -2391,13 +2390,12 @@ out:
         smith_put_tid(tid);
 }
 
-int prctl_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static void smith_trace_sysent_prctl(long option, char __user *name)
 {
     struct smith_tid *tid = NULL;
     char *exe_path = DEFAULT_RET_STR;
-    int newname_len = 0;
-    char __user *newname_ori;
     char *newname = NULL;
+    int len;
 
     //only get PS_SET_NAME data
     //PR_SET_NAME (since Linux 2.6.9)
@@ -2406,31 +2404,22 @@ int prctl_pre_handler(struct kprobe *p, struct pt_regs *regs)
     //bytes long, including the terminating null byte.  (If the
     //length of the string, including the terminating null byte, ex‐
     //ceeds 16 bytes, the string is silently truncated.)
-    if (PR_SET_NAME != (int)p_get_arg1_syscall(regs))
-        return 0;
+    if (PR_SET_NAME != option || IS_ERR_OR_NULL(name))
+        return;
 
-    newname_ori = (void *)p_get_arg2_syscall(regs);
-    if (IS_ERR_OR_NULL(newname_ori))
-        return 0;
+    len = smith_strnlen_user(name, PATH_MAX);
+    if (len <= 0 || len > PATH_MAX)
+        return;
 
-    newname_len = smith_strnlen_user((char __user *)newname_ori, PATH_MAX);
-    if (!newname_len || newname_len > PATH_MAX)
-        return 0;
-
-    newname = smith_kmalloc((newname_len + 1) * sizeof(char), GFP_ATOMIC);
+    newname = smith_kzalloc(len + 1, GFP_ATOMIC);
     if(!newname)
-        return 0;
+        return;
 
-    if(smith_copy_from_user(newname, (char __user *)newname_ori, newname_len)) {
+    if(smith_copy_from_user(newname, name, len)) {
         smith_kfree(newname);
-        return 0;
+        return;
     }
-    newname[newname_len] = '\0';
-
-    if (strcmp(newname, current->comm) == 0) {
-        smith_kfree(newname);
-        return 0;
-    }
+    newname[len] = '\0';
 
     tid = smith_lookup_tid(current);
     if (tid) {
@@ -2446,8 +2435,6 @@ out:
     smith_kfree(newname);
     if (tid)
         smith_put_tid(tid);
-
-    return 0;
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
@@ -3559,11 +3546,6 @@ struct kprobe memfd_create_kprobe = {
 };
 #endif
 
-struct kprobe prctl_kprobe = {
-        .symbol_name = P_GET_SYSCALL_NAME(prctl),
-        .pre_handler = prctl_pre_handler,
-};
-
 struct kprobe open_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(open),
         .pre_handler = open_pre_handler,
@@ -3949,22 +3931,6 @@ void unregister_memfd_create_kprobe(void)
 }
 #endif
 
-int register_prctl_kprobe(void)
-{
-    int ret;
-    ret = register_kprobe(&prctl_kprobe);
-
-    if (ret == 0)
-        prctl_kprobe_state = 0x1;
-
-    return ret;
-}
-
-void unregister_prctl_kprobe(void)
-{
-    unregister_kprobe(&prctl_kprobe);
-}
-
 int register_update_cred_kprobe(void)
 {
     int ret;
@@ -4174,9 +4140,6 @@ void uninstall_kprobe(void)
     if (rename_kprobe_state == 0x1)
         unregister_rename_kprobe();
 
-    if (prctl_kprobe_state == 0x1)
-        unregister_prctl_kprobe();
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
     if (memfd_create_kprobe_state == 0x1)
         unregister_memfd_create_kprobe();
@@ -4354,12 +4317,6 @@ void install_kprobe(void)
         ret = register_mprotect_kprobe();
         if (ret < 0)
             printk(KERN_INFO "[ELKEID] mprotect register_kprobe failed, returned %d\n", ret);
-    }
-
-    if (PRCTL_HOOK == 1) {
-        ret = register_prctl_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] prctl register_kprobe failed, returned %d\n", ret);
     }
 
     if (BIND_HOOK == 1) {
@@ -5175,6 +5132,14 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
                     smith_trace_sysret_fchmodat(regs->bx, (char *)regs->cx, regs->dx, ret);
                 break;
 
+            /*
+             * prctl: PR_SET_NAME
+             */
+            case 172 /* __NR_ia32_prctl */:
+                if (PRCTL_HOOK)
+                    smith_trace_sysent_prctl(regs->bx, (char *)regs->cx);
+                break;
+
             default:
                 break;
         }
@@ -5278,6 +5243,15 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
                                             p_regs_get_arg3_syscall(regs), ret);
             break;
 #endif
+
+        /*
+         * prctl: PR_SET_NAME
+         */
+        case __NR_prctl:
+            if (PRCTL_HOOK)
+                smith_trace_sysent_prctl(p_regs_get_arg1_of_syscall(regs),
+                                         (char __user *)p_regs_get_arg2_syscall(regs));
+            break;
 
         default:
             break;
