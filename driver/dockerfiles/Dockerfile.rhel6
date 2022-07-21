@@ -21,3 +21,4 @@ ADD . /elkeid
 WORKDIR /elkeid/driver
 RUN bash ./batch_compile.sh
 RUN rm -rf /root/headers/*
+RUN yum remove kernel-devel*
