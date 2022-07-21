@@ -63,23 +63,15 @@ int PID_TREE_LIMIT_LOW = 8;
 int EXECVE_GET_SOCK_PID_LIMIT = 4;
 int EXECVE_GET_SOCK_FD_LIMIT = 12;  /* maximum fd numbers to be queried */
 
-char connect_syscall_kprobe_state = 0x0;
-char bind_kprobe_state = 0x0;
 char create_file_kprobe_state = 0x0;
 int  udp_recvmsg_kprobe_state = 0x0;
 int  udpv6_recvmsg_kprobe_state = 0x0;
 char do_init_module_kprobe_state = 0x0;
 char update_cred_kprobe_state = 0x0;
-char ip4_datagram_connect_kprobe_state = 0x0;
-char ip6_datagram_connect_kprobe_state = 0x0;
-char tcp_v4_connect_kprobe_state = 0x0;
-char tcp_v6_connect_kprobe_state = 0x0;
 char mprotect_kprobe_state = 0x0;
 char mount_kprobe_state = 0x0;
 char rename_kprobe_state = 0x0;
 char link_kprobe_state = 0x0;
-char accept_kretprobe_state = 0x0;
-char accept4_kretprobe_state = 0x0;
 char open_kprobe_state = 0x0;
 char openat_kprobe_state = 0x0;
 char exit_kprobe_state = 0x0;
@@ -650,127 +642,28 @@ next_task:
     return;
 }
 
-struct connect_data {
-    struct sock *sk;
-    int sa_family;
-    int type;
-};
-
-struct connect_syscall_data {
-    int fd;
-    struct sockaddr *dirp;
-};
-
-struct accept_data {
-    int type;
-    void __user *accept_dirp;
+static void smith_trace_sysret_bind(long sockfd, long ret)
+{
+    struct socket *sock = NULL;
     union {
         struct sockaddr    sa;
         struct sockaddr_in si4;
         struct sockaddr_in6 si6;
-        struct __kernel_sockaddr_storage kss; /* to avoid overflow access of kernel_getsockname */
-    };
-};
+        /* to avoid overflow access of kernel_getsockname */
+        struct __kernel_sockaddr_storage kss;
+    } sa;
+    int sport = 0, err = 0;
 
-struct udp_recvmsg_data {
-    int sport;
-    int dport;
-    int sa_family;
-
-    __be32 dip4;
-    __be32 sip4;
-
-    struct in6_addr *dip6;
-    struct in6_addr *sip6;
-    struct msghdr *msg;
-
-    void __user *iov_base;
-    __kernel_size_t iov_len;
-};
-
-struct bind_data {
-    int fd;
-    union {
-        struct sockaddr dirp;
-        struct sockaddr_in sin;
-#if IS_ENABLED(CONFIG_IPV6)
-        struct sockaddr_in6 sin6;
-#endif
-    };
-};
-
-struct update_cred_data {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
-    uid_t old_uid;
-#else
-    int old_uid;
-#endif
-};
-
-int bind_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
-{
-    struct bind_data *data = (struct bind_data *)ri->data;
-    struct sockaddr_storage address;
-    struct sockaddr *uaddr;
-    int ulen = p_get_arg3_syscall(regs);
-
-    if (ulen <= 0 || ulen > sizeof(struct sockaddr_storage))
-        return -EINVAL;
-
-    if (smith_copy_from_user(&address, (void __user *)p_get_arg2_syscall(regs), ulen))
-        return -EFAULT;
-
-    uaddr = (struct sockaddr *)&address;
-    if (uaddr->sa_family == AF_INET && ulen >= sizeof(data->sin))
-        memcpy(&data->sin, (void *)&address, sizeof(data->sin));
-#if IS_ENABLED(CONFIG_IPV6)
-    else if (uaddr->sa_family == AF_INET6 && ulen >= sizeof(data->sin6))
-		memcpy(&data->sin6, (void *)&address, sizeof(data->sin6));
-#endif
-    else
-        return -EINVAL;
-
-    return 0;
-}
-
-int bind_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
-{
     char *exe_path = DEFAULT_RET_STR;
     struct smith_tid *tid = NULL;
-    struct sockaddr *uaddr;
-    struct sockaddr_in *sin;
-    struct sockaddr_in6 *sin6;
-    struct in_addr *in_addr = NULL;
-    struct in6_addr *in6_addr = NULL;
-    int retval, sa_family, sport;
 
-    uaddr = &((struct bind_data *)ri->data)->dirp;
-    retval = regs_return_value(regs);
-    /*
-     * If the return value is not zero, the data passed by the user
-     * is untrusted. Access to untrusted data may be problematic.
-     */
-    if (retval)
-        return 0;
+    /* ignore failed bind calls */
+    if (ret != 0)
+        goto out;
 
-    sa_family = uaddr->sa_family;
-    //only get AF_INET/AF_INET6 bind info
-    switch (sa_family) {
-        case AF_INET:
-            sin = &((struct bind_data *)ri->data)->sin;
-            in_addr = &sin->sin_addr;
-            sport = ntohs(sin->sin_port);
-            break;
-#if IS_ENABLED(CONFIG_IPV6)
-        case AF_INET6:
-		    sin6 = &((struct bind_data *)ri->data)->sin6;
-		    in6_addr = &sin6->sin6_addr;
-		    sport = ntohs(sin6->sin6_port);
-		    break;
-#endif
-        default:
-            return 0;
-    }
+    sock = sockfd_lookup(sockfd, &err);
+    if (IS_ERR_OR_NULL(sock))
+        goto out;
 
     tid = smith_lookup_tid(current);
     if (tid) {
@@ -780,308 +673,117 @@ int bind_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
             goto out;
     }
 
-    if (sa_family == AF_INET)
-        bind_print(exe_path, in_addr, sport, retval);
-#if IS_ENABLED(CONFIG_IPV6)
-    else if (sa_family == AF_INET6)
-        bind6_print(exe_path, in6_addr, sport, retval);
-#endif
-
-out:
-    if (tid)
-        smith_put_tid(tid);
-
-    return 0;
-}
-
-int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
-{
-    int flag = 0;
-    int err, fd, copy_res;
-    int dport, sport, retval, sa_family;
-
-    __be32 dip4 = 0;
-    __be32 sip4 = 0;
-
-    char *exe_path = DEFAULT_RET_STR;
-    struct smith_tid *tid = NULL;
-
-    struct socket *socket;
-    struct sock *sk;
-    struct sockaddr tmp_dirp;
-    struct connect_syscall_data *data;
-    struct inet_sock *inet;
-    struct in6_addr *dip6 = NULL;
-    struct in6_addr *sip6 = NULL;
-
-    retval = regs_return_value(regs);
-
-    data = (struct connect_syscall_data *)ri->data;
-    fd = data->fd;
-
-    if (!fd || IS_ERR_OR_NULL(data->dirp))
-        return 0;
-
-    socket = sockfd_lookup(fd, &err);
-    if (!IS_ERR_OR_NULL(socket)) {
-        copy_res = smith_copy_from_user(&tmp_dirp, data->dirp, 16);
-
-        if (copy_res) {
-            sockfd_put(socket);
-            return 0;
-        }
-
-        switch (tmp_dirp.sa_family) {
-            case AF_INET:
-                sk = socket->sk;
-                inet = (struct inet_sock *)sk;
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
-                if (inet->inet_daddr) {
-                    dip4 = inet->inet_daddr;
-				    //dip4 = ((struct sockaddr_in *)&tmp_dirp)->sin_addr.s_addr;
-				    sip4 = inet->inet_saddr;
-				    sport = ntohs(inet->inet_sport);
-				    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
-				    if(dport == 0)
-				        dport = ntohs(inet->inet_dport);
-				    flag = 1;
-			    }
-#else
-                if (inet->daddr) {
-                    dip4 = inet->daddr;
-                    //dip4 = ((struct sockaddr_in *)&tmp_dirp)->sin_addr.s_addr;
-                    sip4 = inet->saddr;
-                    sport = ntohs(inet->sport);
-                    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
-                    if(dport == 0)
-                        dport = ntohs(inet->dport);
-                    flag = 1;
-                }
-#endif
-                sa_family = AF_INET;
-                break;
-#if IS_ENABLED(CONFIG_IPV6)
-            case AF_INET6:
-			    sk = socket->sk;
-			    inet = (struct inet_sock *)sk;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(IPV6_SUPPORT)
-			    if (inet->inet_dport) {
-				    //dip6 = &((struct sockaddr_in6 *)&tmp_dirp)->sin6_addr;
-				    dip6 = &(sk->sk_v6_daddr);
-				    sip6 = &(sk->sk_v6_rcv_saddr);
-				    sport = ntohs(inet->inet_sport);
-				    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
-				    if(dport == 0)
-				        dport = ntohs(inet->inet_dport);
-				    flag = 1;
-			    }
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
-			    if (inet->inet_dport) {
-				    //dip6 = &((struct sockaddr_in6 *)&tmp_dirp)->sin6_addr;
-				    dip6 = &(inet->pinet6->daddr);
-				    sip6 = &(inet->pinet6->saddr);
-				    sport = ntohs(inet->inet_sport);
-				    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
-				    if(dport)
-				        dport = ntohs(inet->inet_dport);
-				    flag = 1;
-			    }
-#else
-			    if (inet->dport) {
-				    //dip6 = &((struct sockaddr_in6 *)&tmp_dirp)->sin6_addr;
-				    dip6 = &(inet->pinet6->daddr);
-				    sip6 = &(inet->pinet6->saddr);
-				    sport = ntohs(inet->sport);
-				    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
-				    if(dport)
-				        dport = ntohs(inet->dport);
-				    flag = 1;
-			    }
-#endif
-			sa_family = AF_INET6;
-			break;
-#endif
-            default:
-                break;
-        }
-        sockfd_put(socket);
-    }
-
-    if (flag) {
-        tid = smith_lookup_tid(current);
-        if (tid) {
-            exe_path = tid->st_img->si_path;
-            // exe filter check
-            if (execve_exe_check(exe_path))
-                goto out;
-        }
-
-        if (sa_family == AF_INET)
-            connect4_print(dport, dip4, exe_path, sip4, sport, retval);
-#if IS_ENABLED(CONFIG_IPV6)
-        else if (dip6 && sip6)
-            connect6_print(dport, dip6, exe_path, sip6, sport, retval);
-#endif
-    }
-
-out:
-    if (tid)
-        smith_put_tid(tid);
-
-    return 0;
-}
-
-int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
-{
-    int flag = 0;
-    int retval, dport, sport;
-
-    __be32 dip4;
-    __be32 sip4;
-
-    char *exe_path = DEFAULT_RET_STR;
-    struct smith_tid *tid = NULL;
-
-    struct sock *sk;
-    struct connect_data *data;
-    struct inet_sock *inet;
-    struct in6_addr *dip6;
-    struct in6_addr *sip6;
-
-    retval = regs_return_value(regs);
-    data = (struct connect_data *)ri->data;
-
-    sk = data->sk;
-    if (IS_ERR_OR_NULL(sk))
-        return 0;
-
-    tid = smith_lookup_tid(current);
-    if (tid) {
-        exe_path = tid->st_img->si_path;
-        // exe filter check
-        if (execve_exe_check(exe_path))
+    if (AF_INET == sock->sk->sk_family) {
+        struct in_addr *sip4;
+        if (smith_get_sock_v4(sock, &sa.sa) < 0)
             goto out;
-    }
-
-    //only get AF_INET/AF_INET6 connect info
-    inet = (struct inet_sock *)sk;
-    switch (data->sa_family) {
-        case AF_INET:
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
-            if (inet->inet_daddr) {
-			dip4 = inet->inet_daddr;
-			sip4 = inet->inet_saddr;
-			sport = ntohs(inet->inet_sport);
-			dport = ntohs(inet->inet_dport);
-			flag = 1;
-		}
-#else
-            if (inet->daddr) {
-                dip4 = inet->daddr;
-                sip4 = inet->saddr;
-                sport = ntohs(inet->sport);
-                dport = ntohs(inet->dport);
-                flag = 1;
-            }
-#endif
-            break;
+        sip4 = &sa.si4.sin_addr;
+        sport = ntohs(sa.si4.sin_port);
+        bind_print(exe_path, sip4, sport, sockfd);
 #if IS_ENABLED(CONFIG_IPV6)
-        case AF_INET6:
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(IPV6_SUPPORT)
-		    if (inet->inet_dport) {
-			    dip6 = &(sk->sk_v6_daddr);
-			    sip6 = &(sk->sk_v6_rcv_saddr);
-			    sport = ntohs(inet->inet_sport);
-			    dport = ntohs(inet->inet_dport);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
-		    if (inet->inet_dport) {
-			    dip6 = &(inet->pinet6->daddr);
-			    sip6 = &(inet->pinet6->saddr);
-			    sport = ntohs(inet->inet_sport);
-			    dport = ntohs(inet->inet_dport);
-#else
-		    if (inet->dport) {
-			    dip6 = &(inet->pinet6->daddr);
-			    sip6 = &(inet->pinet6->saddr);
-			    sport = ntohs(inet->sport);
-			    dport = ntohs(inet->dport);
-#endif
-			    flag = 1;
-		    }
-		break;
-#endif
-        default:
-            break;
-    }
+    } else if (AF_INET6 == sock->sk->sk_family) {
+        struct in6_addr *sip6;
 
-    if (flag) {
-        if (data->sa_family == AF_INET)
-            //connect4_print(data->type, dport, dip4, exe_path, sip4,
-            //               sport, retval);
-            connect4_print(dport, dip4, exe_path, sip4, sport, retval);
-#if IS_ENABLED(CONFIG_IPV6)
-        else
-			//connect6_print(data->type, dport, dip6, exe_path, sip6,
-			//	       sport, retval);
-			connect6_print(dport, dip6, exe_path, sip6, sport, retval);
+        if (smith_get_sock_v6(sock, &sa.sa) < 0)
+            goto out;
+        sip6 = &sa.si6.sin6_addr;
+        sport = ntohs(sa.si6.sin6_port);
+        bind6_print(exe_path, sip6, sport, sockfd);
 #endif
     }
 
 out:
+    if (!IS_ERR_OR_NULL(sock))
+        sockfd_put(sock);
     if (tid)
         smith_put_tid(tid);
-
-    return 0;
 }
 
-int accept_entry_handler(struct kretprobe_instance *ri,
-                         struct pt_regs *regs)
+static void smith_trace_sysret_connect(long sockfd, int retval)
 {
-    struct accept_data *data;
-    struct sockaddr *dirp;
-
-    data = (struct accept_data *)ri->data;
-    data->type = 2;
-
-    dirp = (void __user *)p_get_arg2_syscall(regs);
-    if(IS_ERR_OR_NULL(dirp))
-        return -EINVAL;
-    data->accept_dirp = dirp;
-    return 0;
-}
-
-int accept4_entry_handler(struct kretprobe_instance *ri,
-                          struct pt_regs *regs)
-{
-    struct accept_data *data;
-    struct sockaddr *dirp;
-
-    data = (struct accept_data *)ri->data;
-    data->type = 1;
-
-    dirp = (void __user *)p_get_arg2_syscall(regs);
-    if(IS_ERR_OR_NULL(dirp))
-        return -EINVAL;
-    data->accept_dirp = dirp;
-
-    return 0;
-}
-
-int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
-{
-    struct accept_data *data;
     struct socket *sock = NULL;
 
-    int sport = 0;
-    int dport = 0;
-    int retval, err = 0;
+    char *exe_path = DEFAULT_RET_STR;
+    struct smith_tid *tid = NULL;
+
+    union {
+        struct sockaddr    sa;
+        struct sockaddr_in si4;
+        struct sockaddr_in6 si6;
+        /* to avoid overflow access of kernel_getsockname */
+        struct __kernel_sockaddr_storage kss;
+    } sa;
+    int err, dport, sport;
+
+    sock = sockfd_lookup(sockfd, &err);
+    if (IS_ERR_OR_NULL(sock))
+        goto out;
+
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+    }
+
+    if (AF_INET == sock->sk->sk_family) {
+        __be32 dip4, sip4;
+
+        if (smith_get_sock_v4(sock, &sa.sa) < 0)
+            goto out;
+        sip4 = sa.si4.sin_addr.s_addr;
+        sport = ntohs(sa.si4.sin_port);
+
+        if (smith_get_peer_v4(sock, &sa.sa) < 0)
+            goto out;
+        dip4 = sa.si4.sin_addr.s_addr;
+        dport = ntohs(sa.si4.sin_port);
+        connect4_print(dport, dip4, exe_path, sip4, sport, retval);
+
+#if IS_ENABLED(CONFIG_IPV6)
+    } else if (AF_INET6 == sock->sk->sk_family) {
+        struct in6_addr sip6, *dip6;
+
+        if (smith_get_sock_v6(sock, &sa.sa) < 0)
+            goto out;
+        sport = ntohs(sa.si6.sin6_port);
+        memcpy(&sip6, &sa.si6.sin6_addr, sizeof(struct in6_addr));
+
+        if (smith_get_sock_v6(sock, &sa.sa) < 0)
+            goto out;
+        dport = ntohs(sa.si6.sin6_port);
+        dip6 = &sa.si6.sin6_addr;
+        connect6_print(dport, dip6, exe_path, &sip6, sport, retval);
+#endif
+    }
+
+out:
+    if (!IS_ERR_OR_NULL(sock))
+        sockfd_put(sock);
+    if (tid)
+        smith_put_tid(tid);
+
+    return;
+}
+
+static void smith_trace_sysret_accept(long sockfd)
+{
+    struct socket *sock = NULL;
+
+    union {
+        struct sockaddr    sa;
+        struct sockaddr_in si4;
+        struct sockaddr_in6 si6;
+        /* to avoid overflow access of kernel_getsockname */
+        struct __kernel_sockaddr_storage kss;
+    } sa;
+    int sport = 0, dport = 0, err = 0;
 
     char *exe_path = DEFAULT_RET_STR;
     struct smith_tid *tid = NULL;
 
-    data = (struct accept_data *)ri->data;
-    retval = regs_return_value(regs);
-    sock = sockfd_lookup(retval, &err);
+    sock = sockfd_lookup(sockfd, &err);
     if (IS_ERR_OR_NULL(sock))
         goto out;
 
@@ -1094,47 +796,46 @@ int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     }
 
     //only get AF_INET/AF_INET6 accept info
-    if (data->si4.sin_family == AF_INET) {
+    if (AF_INET == sock->sk->sk_family) {
         __be32 sip4, dip4;
 
-        if (smith_get_sock_v4(sock, &data->sa) < 0)
+        if (smith_get_sock_v4(sock, &sa.sa) < 0)
             goto out;
-        dip4 = data->si4.sin_addr.s_addr;
-        dport = ntohs(data->si4.sin_port);
+        dip4 = sa.si4.sin_addr.s_addr;
+        dport = ntohs(sa.si4.sin_port);
 
-        if (smith_get_peer_v4(sock, &data->sa) < 0)
+        if (smith_get_peer_v4(sock, &sa.sa) < 0)
             goto out;
-        sip4 = (data->si4.sin_addr.s_addr);
-        sport = ntohs(data->si4.sin_port);
-        accept_print(dport, dip4, exe_path, sip4, sport, retval);
+        sip4 = sa.si4.sin_addr.s_addr;
+        sport = ntohs(sa.si4.sin_port);
+        accept_print(dport, dip4, exe_path, sip4, sport, sockfd);
         // printk("accept4_handler: %d.%d.%d.%d/%d -> %d.%d.%d.%d/%d rc=%d\n",
-        //         NIPQUAD(sip4), sport, NIPQUAD(dip4), dport, retval);
-    }
+        //         NIPQUAD(sip4), sport, NIPQUAD(dip4), dport, sockfd);
 #if IS_ENABLED(CONFIG_IPV6)
-    else if (data->si4.sin_family == AF_INET6) {
+    } else if (AF_INET6 == sock->sk->sk_family) {
         struct in6_addr *sip6, dip6;
 
-        if (smith_get_sock_v6(sock, &data->sa) < 0)
+        if (smith_get_sock_v6(sock, &sa.sa) < 0)
             goto out;
-        dip6 = data->si6.sin6_addr;
-        dport = ntohs(data->si6.sin6_port);
+        dip6 = sa.si6.sin6_addr;
+        dport = ntohs(sa.si6.sin6_port);
 
-        if (smith_get_peer_v6(sock, &data->sa) < 0)
+        if (smith_get_peer_v6(sock, &sa.sa) < 0)
             goto out;
-        sport = ntohs(data->si6.sin6_port);
-        sip6 = &(data->si6.sin6_addr);
-        accept6_print(dport, &dip6, exe_path, sip6, sport, retval);
-        // printk("accept6_handler: %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d -> %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d rc=%d\n",
-        //         NIP6(*sip6), sport, NIP6(dip6), dport, retval);
-    }
+        sport = ntohs(sa.si6.sin6_port);
+        sip6 = &(sa.si6.sin6_addr);
+        accept6_print(dport, &dip6, exe_path, sip6, sport, sockfd);
+        // printk("accept6_handler: %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d"
+        //        " -> %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d rc=%d\n",
+        //         NIP6(*sip6), sport, NIP6(dip6), dport, sockfd);
 #endif
+    }
 
 out:
     if (!IS_ERR_OR_NULL(sock))
         sockfd_put(sock);
     if (tid)
         smith_put_tid(tid);
-    return 0;
 }
 
 /*
@@ -1459,6 +1160,22 @@ out:
     if (tid)
         smith_put_tid(tid);
 }
+
+struct udp_recvmsg_data {
+    int sport;
+    int dport;
+    int sa_family;
+
+    __be32 dip4;
+    __be32 sip4;
+
+    struct in6_addr *dip6;
+    struct in6_addr *sip6;
+    struct msghdr *msg;
+
+    void __user *iov_base;
+    __kernel_size_t iov_len;
+};
 
 void dns_data_transport(char *query, __be32 dip, __be32 sip, int dport,
                         int sport, int opcode, int rcode, int type)
@@ -3265,6 +2982,14 @@ out:
     return 0;
 }
 
+struct update_cred_data {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
+    uid_t old_uid;
+#else
+    int old_uid;
+#endif
+};
+
 int update_cred_entry_handler(struct kretprobe_instance *ri,
                               struct pt_regs *regs)
 {
@@ -3343,68 +3068,6 @@ out:
     return NOTIFY_OK;
 }
 
-int connect_syscall_entry_handler(struct kretprobe_instance *ri,
-                                  struct pt_regs *regs)
-{
-    struct connect_syscall_data *data;
-    data = (struct connect_syscall_data *)ri->data;
-    data->fd = p_get_arg1_syscall(regs);
-    data->dirp = (struct sockaddr *)p_get_arg2_syscall(regs);
-    return 0;
-}
-
-int tcp_v4_connect_entry_handler(struct kretprobe_instance *ri,
-                                 struct pt_regs *regs)
-{
-    struct connect_data *data;
-    data = (struct connect_data *)ri->data;
-    data->sa_family = AF_INET;
-    // type 1 for TCPv4
-    data->type = 1;
-    data->sk = (struct sock *)p_regs_get_arg1(regs);
-    return 0;
-}
-
-#if IS_ENABLED(CONFIG_IPV6)
-int tcp_v6_connect_entry_handler(struct kretprobe_instance *ri,
-				 struct pt_regs *regs)
-{
-	struct connect_data *data;
-	data = (struct connect_data *)ri->data;
-	data->sa_family = AF_INET6;
-	// type 2 for TCPv6
-	data->type = 2;
-	data->sk = (struct sock *)p_regs_get_arg1(regs);
-	return 0;
-}
-#endif
-
-int ip4_datagram_connect_entry_handler(struct kretprobe_instance *ri,
-                                       struct pt_regs *regs)
-{
-    struct connect_data *data;
-    data = (struct connect_data *)ri->data;
-    data->sa_family = AF_INET;
-    // type 3 for UDPv4
-    data->type = 3;
-    data->sk = (struct sock *)p_regs_get_arg1(regs);
-    return 0;
-}
-
-#if IS_ENABLED(CONFIG_IPV6)
-int ip6_datagram_connect_entry_handler(struct kretprobe_instance *ri,
-				       struct pt_regs *regs)
-{
-	struct connect_data *data;
-	data = (struct connect_data *)ri->data;
-	data->sa_family = AF_INET6;
-	// type 4 for UDPv6
-	data->type = 4;
-	data->sk = (struct sock *)p_regs_get_arg1(regs);
-	return 0;
-}
-#endif
-
 struct kprobe call_usermodehelper_exec_kprobe = {
         .symbol_name = "call_usermodehelper_exec",
         .pre_handler = call_usermodehelper_exec_pre_handler,
@@ -3439,56 +3102,7 @@ struct kretprobe udpv6_recvmsg_kretprobe = {
 	    .handler = udp_recvmsg_handler,
 	    .entry_handler = udpv6_recvmsg_entry_handler,
 };
-
-struct kretprobe ip6_datagram_connect_kretprobe = {
-	    .kp.symbol_name = "ip6_datagram_connect",
-	    .data_size = sizeof(struct connect_data),
-	    .handler = connect_handler,
-	    .entry_handler = ip6_datagram_connect_entry_handler,
-};
-
-struct kretprobe tcp_v6_connect_kretprobe = {
-	    .kp.symbol_name = "tcp_v6_connect",
-	    .data_size = sizeof(struct connect_data),
-	    .handler = connect_handler,
-	    .entry_handler = tcp_v6_connect_entry_handler,
-};
 #endif
-
-struct kretprobe ip4_datagram_connect_kretprobe = {
-        .kp.symbol_name = "ip4_datagram_connect",
-        .data_size = sizeof(struct connect_data),
-        .handler = connect_handler,
-        .entry_handler = ip4_datagram_connect_entry_handler,
-};
-
-struct kretprobe tcp_v4_connect_kretprobe = {
-        .kp.symbol_name = "tcp_v4_connect",
-        .data_size = sizeof(struct connect_data),
-        .handler = connect_handler,
-        .entry_handler = tcp_v4_connect_entry_handler,
-};
-
-struct kretprobe connect_syscall_kretprobe = {
-        .kp.symbol_name = P_GET_SYSCALL_NAME(connect),
-        .data_size = sizeof(struct connect_syscall_data),
-        .handler = connect_syscall_handler,
-        .entry_handler = connect_syscall_entry_handler,
-};
-
-struct kretprobe accept_kretprobe = {
-        .kp.symbol_name = P_GET_SYSCALL_NAME(accept),
-        .data_size = sizeof(struct accept_data),
-        .handler = accept_handler,
-        .entry_handler = accept_entry_handler,
-};
-
-struct kretprobe accept4_kretprobe = {
-        .kp.symbol_name = P_GET_SYSCALL_NAME(accept4),
-        .data_size = sizeof(struct accept_data),
-        .handler = accept_handler,
-        .entry_handler = accept4_entry_handler,
-};
 
 struct kprobe do_init_module_kprobe = {
         .symbol_name = "do_init_module",
@@ -3505,13 +3119,6 @@ struct kretprobe update_cred_kretprobe = {
 struct kprobe security_inode_create_kprobe = {
         .symbol_name = "security_inode_create",
         .pre_handler = security_inode_create_pre_handler,
-};
-
-struct kretprobe bind_kretprobe = {
-        .kp.symbol_name = P_GET_SYSCALL_NAME(bind),
-        .data_size = sizeof(struct bind_data),
-        .handler = bind_handler,
-        .entry_handler = bind_entry_handler,
 };
 
 struct kprobe mprotect_kprobe = {
@@ -3589,22 +3196,6 @@ static void smith_unregister_kretprobe(struct kretprobe *kr)
 
     /* set addr to NULL to enable re-registeration */
     kr->kp.addr = NULL;
-}
-
-int register_bind_kprobe(void)
-{
-    int ret;
-    ret = smith_register_kretprobe(&bind_kretprobe);
-
-    if (ret == 0)
-        bind_kprobe_state = 0x1;
-
-    return ret;
-}
-
-void unregister_bind_kprobe(void)
-{
-    smith_unregister_kretprobe(&bind_kretprobe);
 }
 
 int register_call_usermodehelper_exec_kprobe(void)
@@ -3721,119 +3312,7 @@ void unregister_udpv6_recvmsg_kprobe(void)
 	smith_unregister_kretprobe(&udpv6_recvmsg_kretprobe);
     udpv6_recvmsg_kprobe_state = 0;
 }
-
-int register_ip6_datagram_connect_kprobe(void)
-{
-	int ret;
-	ret = smith_register_kretprobe(&ip6_datagram_connect_kretprobe);
-
-	if (ret == 0)
-		ip6_datagram_connect_kprobe_state = 0x1;
-
-	return ret;
-}
-
-void unregister_ip6_datagram_connect_kprobe(void)
-{
-	smith_unregister_kretprobe(&ip6_datagram_connect_kretprobe);
-}
-
-int register_tcp_v6_connect_kprobe(void)
-{
-	int ret;
-	ret = smith_register_kretprobe(&tcp_v6_connect_kretprobe);
-
-	if (ret == 0)
-		tcp_v6_connect_kprobe_state = 0x1;
-
-	return ret;
-}
-
-void unregister_tcp_v6_connect_kprobe(void)
-{
-	smith_unregister_kretprobe(&tcp_v6_connect_kretprobe);
-}
 #endif
-
-int register_ip4_datagram_connect_kprobe(void)
-{
-    int ret;
-    ret = smith_register_kretprobe(&ip4_datagram_connect_kretprobe);
-
-    if (ret == 0)
-        ip4_datagram_connect_kprobe_state = 0x1;
-
-    return ret;
-}
-
-void unregister_ip4_datagram_connect_kprobe(void)
-{
-    smith_unregister_kretprobe(&ip4_datagram_connect_kretprobe);
-}
-
-int register_tcp_v4_connect_kprobe(void)
-{
-    int ret;
-    ret = smith_register_kretprobe(&tcp_v4_connect_kretprobe);
-
-    if (ret == 0)
-        tcp_v4_connect_kprobe_state = 0x1;
-
-    return ret;
-}
-
-void unregister_tcp_v4_connect_kprobe(void)
-{
-    smith_unregister_kretprobe(&tcp_v4_connect_kretprobe);
-}
-
-int register_connect_syscall_kprobe(void)
-{
-    int ret;
-    ret = smith_register_kretprobe(&connect_syscall_kretprobe);
-
-    if (ret == 0)
-        connect_syscall_kprobe_state = 0x1;
-
-    return ret;
-}
-
-void unregister_connect_syscall_kprobe(void)
-{
-    smith_unregister_kretprobe(&connect_syscall_kretprobe);
-}
-
-int register_accept_kprobe(void)
-{
-    int ret;
-    ret = smith_register_kretprobe(&accept_kretprobe);
-
-    if (ret == 0)
-        accept_kretprobe_state = 0x1;
-
-    return ret;
-}
-
-void unregister_accept_kprobe(void)
-{
-    smith_unregister_kretprobe(&accept_kretprobe);
-}
-
-int register_accept4_kprobe(void)
-{
-    int ret;
-    ret = smith_register_kretprobe(&accept4_kretprobe);
-
-    if (ret == 0)
-        accept4_kretprobe_state = 0x1;
-
-    return ret;
-}
-
-void unregister_accept4_kprobe(void)
-{
-    smith_unregister_kretprobe(&accept4_kretprobe);
-}
 
 int register_create_file_kprobe(void)
 {
@@ -4027,12 +3506,6 @@ void uninstall_kprobe(void)
         }
     }
 
-    if (bind_kprobe_state == 0x1)
-        unregister_bind_kprobe();
-
-    if (connect_syscall_kprobe_state == 0x1)
-        unregister_connect_syscall_kprobe();
-
     if (call_usermodehelper_exec_kprobe_state == 0x1)
         unregister_call_usermodehelper_exec_kprobe();
 
@@ -4054,18 +3527,6 @@ void uninstall_kprobe(void)
     if (update_cred_kprobe_state == 0x1)
         unregister_update_cred_kprobe();
 
-    if (tcp_v4_connect_kprobe_state == 0x1)
-        unregister_tcp_v4_connect_kprobe();
-
-    if (tcp_v6_connect_kprobe_state == 0x1)
-        unregister_tcp_v6_connect_kprobe();
-
-    if (ip4_datagram_connect_kprobe_state == 0x1)
-        unregister_ip4_datagram_connect_kprobe();
-
-    if (ip6_datagram_connect_kprobe_state == 0x1)
-        unregister_ip6_datagram_connect_kprobe();
-
     if (mount_kprobe_state == 0x1)
         unregister_mount_kprobe();
 
@@ -4074,12 +3535,6 @@ void uninstall_kprobe(void)
 
     if (rename_kprobe_state == 0x1)
         unregister_rename_kprobe();
-
-    if (accept_kretprobe_state == 0x1)
-        unregister_accept_kprobe();
-
-    if (accept4_kretprobe_state == 0x1)
-        unregister_accept4_kprobe();
 
     if (open_kprobe_state == 0x1)
         unregister_open_kprobe();
@@ -4156,16 +3611,6 @@ void install_kprobe(void)
             printk(KERN_INFO "[ELKEID] security_path_unlink register_kprobe failed, returned %d\n", ret);
     }
 
-    if (ACCEPT_HOOK == 1) {
-        ret = register_accept_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] open accept_kprobe failed, returned %d\n", ret);
-
-        ret = register_accept4_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] open accept4_kprobe failed, returned %d\n", ret);
-    }
-
     if (OPEN_HOOK == 1) {
         ret = register_open_kprobe();
         if (ret < 0)
@@ -4202,40 +3647,10 @@ void install_kprobe(void)
             printk(KERN_INFO "[ELKEID] exit_group register_kprobe failed, returned %d\n", ret);
     }
 
-    if (CONNECT_HOOK == 1) {
-        ret = register_connect_syscall_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] connect register_kprobe failed, returned %d\n", ret);
-
-//            ret = register_tcp_v4_connect_kprobe();
-//            if (ret < 0)
-//                printk(KERN_INFO "[ELKEID] connect register_kprobe failed, returned %d\n", ret);
-//
-//            ret = register_ip4_datagram_connect_kprobe();
-//            if (ret < 0) {
-//                printk(KERN_INFO "[ELKEID] ip4_datagram_connect register_kprobe failed, returned %d\n", ret);
-//
-//    #if IS_ENABLED(CONFIG_IPV6)
-//            ret = register_tcp_v6_connect_kprobe();
-//            if (ret < 0) {
-//                printk(KERN_INFO "[ELKEID] tcp_v6_connect register_kprobe failed, returned %d\n", ret);
-//
-//            ret = register_ip6_datagram_connect_kprobe();
-//            if (ret < 0) {
-//                printk(KERN_INFO "[ELKEID] ip6_datagram_connect register_kprobe failed, returned %d\n", ret);
-//    #endif
-    }
-
     if (MPROTECT_HOOK == 1) {
         ret = register_mprotect_kprobe();
         if (ret < 0)
             printk(KERN_INFO "[ELKEID] mprotect register_kprobe failed, returned %d\n", ret);
-    }
-
-    if (BIND_HOOK == 1) {
-        ret = register_bind_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] bind register_kprobe failed, returned %d\n", ret);
     }
 
     if (MOUNT_HOOK == 1) {
@@ -5070,6 +4485,42 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
 
                 break;
 
+            /*
+             * socket related
+             */
+
+            case 102 /* __NR_ia32_socketcall */:
+                if (CONNECT_HOOK && SYS_CONNECT == regs->bx) {
+                    int32_t sockfd;
+                    if (copy_from_user(&sockfd, (void *)regs->cx, sizeof(sockfd)))
+                        break;
+                    smith_trace_sysret_connect(sockfd, ret);
+                } else if (BIND_HOOK && SYS_BIND == regs->bx) {
+                    int32_t sockfd;
+                    if (copy_from_user(&sockfd, (void *)regs->cx, sizeof(sockfd)))
+                        break;
+                    smith_trace_sysret_bind(sockfd, ret);
+                } else if (ACCEPT_HOOK && (SYS_ACCEPT == regs->bx ||
+                                           SYS_ACCEPT4 == regs->bx)) {
+                    smith_trace_sysret_accept(ret);
+                }
+                break;
+
+            case 361 /* __NR_ia32_bind */:
+                if (BIND_HOOK)
+                    smith_trace_sysret_bind(regs->bx, ret);
+                break;
+
+            case 362 /* __NR_ia32_connect */:
+                if (CONNECT_HOOK)
+                    smith_trace_sysret_connect(regs->bx, ret);
+                break;
+
+            case 364 /* __NR_ia32_accept4 */:
+                if (ACCEPT_HOOK)
+                    smith_trace_sysret_accept(ret);
+                break;
+
             default:
                 break;
         }
@@ -5202,6 +4653,46 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
                     p_regs_get_arg2_syscall(regs), ret);
             break;
 #endif
+
+        /*
+         * socket related
+         */
+
+#ifdef       __NR_socketcall
+        case __NR_socketcall:
+            if (CONNECT_HOOK && SYS_CONNECT == p_regs_get_arg1_of_syscall(regs)) {
+                long sockfd;
+                if (copy_from_user(&sockfd, p_regs_get_arg2_syscall(regs), sizeof(sockfd)))
+                    break;
+                smith_trace_sysret_connect(sockfd, ret);
+            } else if (BIND_HOOK && SYS_BIND == p_regs_get_arg1_of_syscall(regs)) {
+                long sockfd;
+                if (copy_from_user(&sockfd, p_regs_get_arg2_syscall(regs), sizeof(sockfd)))
+                    break;
+                smith_trace_sysret_bind(sockfd, ret);
+            } else if (ACCEPT_HOOK && (SYS_ACCEPT == p_regs_get_arg1_of_syscall(regs) ||
+                                       SYS_ACCEPT4 == p_regs_get_arg1_syscall(regs))) {
+                smith_trace_sysret_accept(ret);
+            }
+
+            break;
+#endif
+
+        case __NR_bind:
+            if (BIND_HOOK)
+                smith_trace_sysret_bind(p_regs_get_arg1_of_syscall(regs), ret);
+            break;
+
+        case __NR_accept:
+        case __NR_accept4:
+            if (ACCEPT_HOOK)
+                smith_trace_sysret_accept(ret);
+            break;
+
+        case __NR_connect:
+            if (CONNECT_HOOK)
+                smith_trace_sysret_connect(p_regs_get_arg1_of_syscall(regs), ret);
+            break;
 
         default:
             break;
