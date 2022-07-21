@@ -85,8 +85,6 @@ char accept4_kretprobe_state = 0x0;
 char open_kprobe_state = 0x0;
 char openat_kprobe_state = 0x0;
 char nanosleep_kprobe_state = 0x0;
-char kill_kprobe_state = 0x0;
-char tkill_kprobe_state = 0x0;
 char exit_kprobe_state = 0x0;
 char exit_group_kprobe_state = 0x0;
 char security_path_rmdir_kprobe_state = 0x0;
@@ -3053,7 +3051,7 @@ out:
     return 0;
 }
 
-void kill_and_tkill_handler(int type, pid_t pid, int sig)
+static void smith_trace_sysret_kill(int pid, int sig, int ret)
 {
     char *exe_path = DEFAULT_RET_STR;
     struct smith_tid *tid = NULL;
@@ -3066,32 +3064,53 @@ void kill_and_tkill_handler(int type, pid_t pid, int sig)
             goto out;
     }
 
-    if (type)
-        kill_print(exe_path, pid, sig);
-    else
-        tkill_print(exe_path, pid, sig);
+    kill_print(exe_path, pid, sig, ret);
 
 out:
     if (tid)
         smith_put_tid(tid);
-    return;
 }
 
-int kill_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static void smith_trace_sysret_tkill(int pid, int sig, int ret)
 {
-    pid_t pid = (pid_t)p_get_arg1_syscall(regs);
-    int sig = (int)p_get_arg2_syscall(regs);
-    kill_and_tkill_handler(0, pid, sig);
-    return 0;
+    char *exe_path = DEFAULT_RET_STR;
+    struct smith_tid *tid = NULL;
+
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+    }
+
+    tkill_print(exe_path, pid, sig, ret);
+
+out:
+    if (tid)
+        smith_put_tid(tid);
 }
 
-int tkill_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static void smith_trace_sysret_tgkill(int tgid, int pid, int sig, int ret)
 {
-    pid_t pid = (pid_t)p_get_arg1_syscall(regs);
-    int sig = (int)p_get_arg2_syscall(regs);
-    kill_and_tkill_handler(1, pid, sig);
-    return 0;
+    char *exe_path = DEFAULT_RET_STR;
+    struct smith_tid *tid = NULL;
+
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+    }
+
+    tgkill_print(exe_path, tgid, pid, sig, ret);
+
+out:
+    if (tid)
+        smith_put_tid(tid);
 }
+
 
 void delete_file_handler(int type, char *path)
 {
@@ -3564,16 +3583,6 @@ struct kprobe file_permission_kprobe = {
 //        .symbol_name = "security_inode_permission",
 //        .pre_handler = inode_permission_handler,
 //};
-
-struct kprobe kill_kprobe = {
-        .symbol_name = P_GET_SYSCALL_NAME(kill),
-        .pre_handler = kill_pre_handler,
-};
-
-struct kprobe tkill_kprobe = {
-        .symbol_name = P_GET_SYSCALL_NAME(tkill),
-        .pre_handler = tkill_pre_handler,
-};
 
 struct kprobe nanosleep_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(nanosleep),
@@ -4091,36 +4100,6 @@ void unregister_security_path_unlink_kprobe(void)
     smith_unregister_kretprobe(&security_path_unlink_kprobe);
 }
 
-int register_kill_kprobe(void)
-{
-    int ret;
-    ret = register_kprobe(&kill_kprobe);
-    if (ret == 0)
-        kill_kprobe_state = 0x1;
-
-    return ret;
-}
-
-void unregister_kill_kprobe(void)
-{
-    unregister_kprobe(&kill_kprobe);
-}
-
-int register_tkill_kprobe(void)
-{
-    int ret;
-    ret = register_kprobe(&tkill_kprobe);
-    if (ret == 0)
-        tkill_kprobe_state = 0x1;
-
-    return ret;
-}
-
-void unregister_tkill_kprobe(void)
-{
-    unregister_kprobe(&tkill_kprobe);
-}
-
 int register_write_kprobe(void)
 {
     int ret;
@@ -4224,12 +4203,6 @@ void uninstall_kprobe(void)
     if (nanosleep_kprobe_state == 0x1)
         unregister_nanosleep_kprobe();
 
-    if (kill_kprobe_state == 0x1)
-        unregister_kill_kprobe();
-
-    if (tkill_kprobe_state == 0x1)
-        unregister_tkill_kprobe();
-
     if (exit_kprobe_state == 0x1)
         unregister_exit_kprobe();
 
@@ -4330,16 +4303,6 @@ void install_kprobe(void)
             printk(KERN_INFO "[ELKEID] memfd_create register_kprobe failed, returned %d\n", ret);
     }
 #endif
-
-    if (KILL_HOOK == 1) {
-        ret = register_kill_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] kill register_kprobe failed, returned %d\n", ret);
-
-        ret = register_tkill_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] tkill register_kprobe failed, returned %d\n", ret);
-    }
 
     if (WRITE_HOOK == 1) {
         ret = register_write_kprobe();
@@ -5181,6 +5144,22 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
                 break;
 
             /*
+             * task kill / tkill / tgkill
+             */
+            case 37 /* __NR_ia32_kill */:
+                if (KILL_HOOK)
+                    smith_trace_sysret_kill(regs->bx, regs->cx, ret);
+                break;
+            case 238 /* __NR_ia32_tkill */:
+                if (KILL_HOOK)
+                    smith_trace_sysret_tkill(regs->bx, regs->cx, ret);
+                break;
+            case 270 /* __NR_ia32_tgkill */:
+                if (KILL_HOOK)
+                    smith_trace_sysret_tgkill(regs->bx, regs->cx, regs->dx, ret);
+                break;
+
+            /*
              * chmod operations
              */
             case 15 /* __NR_ia32_chmod */:
@@ -5249,6 +5228,29 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
         case __NR_setsid:
             if (SETSID_HOOK)
                 smith_trace_sysret_setsid(ret);
+            break;
+
+        /*
+         * task kill / tkill / tgkill
+         */
+        case __NR_kill:
+            if (KILL_HOOK)
+                smith_trace_sysret_kill(p_regs_get_arg1_of_syscall(regs),
+                                        p_regs_get_arg2_syscall(regs),
+                                        ret);
+            break;
+        case __NR_tkill:
+            if (KILL_HOOK)
+                smith_trace_sysret_tkill(p_regs_get_arg1_of_syscall(regs),
+                                         p_regs_get_arg2_syscall(regs),
+                                         ret);
+            break;
+        case __NR_tgkill:
+            if (KILL_HOOK)
+                smith_trace_sysret_tgkill(p_regs_get_arg1_of_syscall(regs),
+                                          p_regs_get_arg2_syscall(regs),
+                                          p_regs_get_arg3_syscall(regs),
+                                          ret);
             break;
 
         /*

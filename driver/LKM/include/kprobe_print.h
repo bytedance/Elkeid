@@ -520,21 +520,48 @@ SD_XFER_DEFINE( NAME(nanosleep),
 
 SD_XFER_DEFINE( NAME(kill),
 
-                PROT(ELEMENT(char *, exe_path), ELEMENT(pid_t, target_pid), ELEMENT(int, sig)),
+                PROT(ELEMENT(char *, exe_path),
+                     ELEMENT(int, killpid),
+                     ELEMENT(int, killsig),
+                     ELEMENT(int, killret)
+                ),
 
                 XFER(ENTRY_COMMON(62),
-                     ENTRY_U32(target_pid, target_pid),
-                     ENTRY_INT(sig, sig)
+                     ENTRY_INT(killpid, killpid),
+                     ENTRY_INT(killsig, killsig),
+                     ENTRY_INT(killret, killret)
                 )
 )
 
 SD_XFER_DEFINE( NAME(tkill),
 
-                PROT(ELEMENT(char *, exe_path), ELEMENT(pid_t, target_pid), ELEMENT(int, sig)),
+                PROT(ELEMENT(char *, exe_path),
+                     ELEMENT(int, killtid),
+                     ELEMENT(int, killsig),
+                     ELEMENT(int, killret)
+                ),
 
                 XFER(ENTRY_COMMON(200),
-                     ENTRY_U32(target_pid, target_pid),
-                     ENTRY_INT(sig, sig)
+                     ENTRY_INT(killtid, killtid),
+                     ENTRY_INT(killsig, killsig),
+                     ENTRY_INT(killret, killret)
+                )
+)
+
+SD_XFER_DEFINE( NAME(tgkill),
+
+                PROT(ELEMENT(char *, exe_path),
+                     ELEMENT(int, kiltgid),
+                     ELEMENT(int, killtid),
+                     ELEMENT(int, killsig),
+                     ELEMENT(int, killret)
+                ),
+
+                XFER(ENTRY_COMMON(201),
+                     ENTRY_INT(kiltgid, kiltgid),
+                     ENTRY_INT(killtid, killtid),
+                     ENTRY_INT(killsig, killsig),
+                     ENTRY_INT(killret, killret)
                 )
 )
 
