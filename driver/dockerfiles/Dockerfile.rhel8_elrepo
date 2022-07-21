@@ -23,4 +23,4 @@ RUN rm -rf /root/headers/*
 =======
 >>>>>>> d9a3610 (update elrepo logic)
 
-RUN RUN bash ./batch_compile_elrepo7.sh
+RUN bash ./batch_compile_elrepo7.sh
