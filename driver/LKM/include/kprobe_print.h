@@ -699,7 +699,6 @@ SD_XFER_DEFINE( NAME(privilege_escalation),
                 )
 )
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
 SD_XFER_DEFINE( NAME(memfd_create),
 
                 PROT(ELEMENT(char *, exe_path),
@@ -712,4 +711,3 @@ SD_XFER_DEFINE( NAME(memfd_create),
                      ENTRY_INT(flags, flags)
                 )
 )
-#endif

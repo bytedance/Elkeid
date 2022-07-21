@@ -78,7 +78,6 @@ char mprotect_kprobe_state = 0x0;
 char mount_kprobe_state = 0x0;
 char rename_kprobe_state = 0x0;
 char link_kprobe_state = 0x0;
-char memfd_create_kprobe_state = 0x0;
 char accept_kretprobe_state = 0x0;
 char accept4_kretprobe_state = 0x0;
 char open_kprobe_state = 0x0;
@@ -2436,16 +2435,18 @@ out:
         smith_put_tid(tid);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
-int memfd_create_kprobe_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static void smith_trace_sysret_memfd_create(char __user *name, long flags, long ret)
 {
-    int len;
-    unsigned long flags;
-
-    char *fdname = NULL;
-    char __user *fdname_ori;
     char *exe_path = DEFAULT_RET_STR;
     struct smith_tid *tid = NULL;
+    char *fdname = NULL;
+    int len;
+
+    if (IS_ERR_OR_NULL(name))
+        goto out;
+    len = smith_strnlen_user((char __user *)name, PATH_MAX);
+    if (!len || len > PATH_MAX)
+        goto out;
 
     tid = smith_lookup_tid(current);
     if (tid) {
@@ -2455,36 +2456,21 @@ int memfd_create_kprobe_pre_handler(struct kprobe *p, struct pt_regs *regs)
             goto out;
     }
 
-    fdname_ori = (void *)p_get_arg1_syscall(regs);
-    if (IS_ERR_OR_NULL(fdname_ori))
-        goto out;
-
-    len = smith_strnlen_user((char __user *)fdname_ori, PATH_MAX);
-    if (!len || len > PATH_MAX)
-        goto out;
-
     fdname = smith_kmalloc((len + 1) * sizeof(char), GFP_ATOMIC);
-    if(!fdname)
+    if (!fdname)
         goto out;
-
-    if(smith_copy_from_user(fdname, (char __user *)fdname_ori, len))
+    if(smith_copy_from_user(fdname, name, len))
         goto out;
-
     fdname[len] = '\0';
 
-    flags = (unsigned long)p_get_arg2_syscall(regs);
     memfd_create_print(exe_path, fdname, flags);
 
 out:
     if (tid)
         smith_put_tid(tid);
-
     if (fdname)
         smith_kfree(fdname);
-
-    return 0;
 }
-#endif
 
 int open_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
@@ -3533,13 +3519,6 @@ struct kprobe mprotect_kprobe = {
         .pre_handler = mprotect_pre_handler,
 };
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
-struct kprobe memfd_create_kprobe = {
-        .symbol_name = P_GET_SYSCALL_NAME(memfd_create),
-        .pre_handler = memfd_create_kprobe_pre_handler,
-};
-#endif
-
 struct kprobe open_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(open),
         .pre_handler = open_pre_handler,
@@ -3902,24 +3881,6 @@ void unregister_do_init_module_kprobe(void)
     unregister_kprobe(&do_init_module_kprobe);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
-int register_memfd_create_kprobe(void)
-{
-    int ret;
-    ret = register_kprobe(&memfd_create_kprobe);
-
-    if (ret == 0)
-        memfd_create_kprobe_state = 0x1;
-
-    return ret;
-}
-
-void unregister_memfd_create_kprobe(void)
-{
-    unregister_kprobe(&memfd_create_kprobe);
-}
-#endif
-
 int register_update_cred_kprobe(void)
 {
     int ret;
@@ -4114,11 +4075,6 @@ void uninstall_kprobe(void)
     if (rename_kprobe_state == 0x1)
         unregister_rename_kprobe();
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
-    if (memfd_create_kprobe_state == 0x1)
-        unregister_memfd_create_kprobe();
-#endif
-
     if (accept_kretprobe_state == 0x1)
         unregister_accept_kprobe();
 
@@ -4229,14 +4185,6 @@ void install_kprobe(void)
 //        if (ret < 0)
 //            printk(KERN_INFO "[ELKEID] inode_permission register_kprobe failed, returned %d\n", ret);
     }
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
-    if (MEMFD_CREATE_HOOK == 1) {
-        ret = register_memfd_create_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] memfd_create register_kprobe failed, returned %d\n", ret);
-    }
-#endif
 
     if (WRITE_HOOK == 1) {
         ret = register_write_kprobe();
@@ -5113,6 +5061,15 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
                     smith_trace_sysent_prctl(regs->bx, (char *)regs->cx);
                 break;
 
+            /*
+             * memfd_create
+             */
+            case 356 /* __NR_ia32_memfd_create */:
+                if (MEMFD_CREATE_HOOK)
+                    smith_trace_sysret_memfd_create((char __user *)regs->bx, regs->cx, ret);
+
+                break;
+
             default:
                 break;
         }
@@ -5233,6 +5190,18 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
                 smith_trace_sysent_prctl(p_regs_get_arg1_of_syscall(regs),
                                          (char __user *)p_regs_get_arg2_syscall(regs));
             break;
+
+        /*
+         * memfd_create
+         */
+#ifdef       __NR_memfd_create /* introduced by 3.17 */
+        case __NR_memfd_create:
+            if (MEMFD_CREATE_HOOK)
+                smith_trace_sysret_memfd_create(
+                    (char __user *)p_regs_get_arg1_of_syscall(regs),
+                    p_regs_get_arg2_syscall(regs), ret);
+            break;
+#endif
 
         default:
             break;
