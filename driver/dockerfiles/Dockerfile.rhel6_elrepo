@@ -9,13 +9,13 @@ RUN sed -e "s|^mirrorlist=|#mirrorlist=|g" \
 RUN yum install -y wget perl gcc make tree elfutils-libelf-devel unzip yum-utils; 
 RUN yum groupinstall -y  "Development Tools"; 
 
-RUN sed -i "s/enabled=0/enabled=1/g" /etc/yum.repos.d/*.repo
+RUN rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
 
 RUN mkdir /root/headers
-RUN for each_tag in `yum --showduplicates list kernel-devel | grep kernel-devel | awk  '{print $2}'`; do yumdownloader  --destdir /root/headers kernel-devel-$each_tag.x86_64; done
+RUN cd /root/headers; wget -q -c -r -np -nd -nH -A 'kernel*devel*x86_64.rpm' 'http://mirrors.coreix.net/elrepo-archive-archive/kernel/el6/x86_64/RPMS/'
 
 RUN rpm --force -ivh /root/headers/*.rpm || true
-RUN rpm -ivh https://raw.githubusercontent.com/xiaomatech/lvs/master/kernel-devel-2.6.32-279.22.1.el6.lvs.x86_64.rpm --force || true
+
 
 ADD . /elkeid
 WORKDIR /elkeid/driver

@@ -304,6 +304,36 @@ jobs:
       with:
         name: elkeid_driver_rhel6
         path: ${{steps.extract-rhel6.outputs.destination}}
+  build_rhel6_elrepo:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx rhel6_elrepo
+      uses: docker/setup-buildx-action@v1
+    - name: Build rhel6_elrepo
+      uses: docker/build-push-action@v2
+      with:
+        file: driver/dockerfiles/Dockerfile.rhel6_elrepo
+        push: true
+        tags: elkeidteam/elkeid_driver_rhel6_elrepo:latest
+    - name: Extract rhel6_elrepo
+      id: extract-rhel6_elrepo
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeidteam/elkeid_driver_rhel6_elrepo:latest
+        path: /ko_output/.
+    - name: Upload rhel6_elrepo
+      uses: actions/upload-artifact@v3
+      with:
+        name: elkeid_driver_rhel6_elrepo
+        path: ${{steps.extract-rhel6_elrepo.outputs.destination}}
   build_rhel7:
     runs-on: ubuntu-latest
     steps:
@@ -334,6 +364,36 @@ jobs:
       with:
         name: elkeid_driver_rhel7
         path: ${{steps.extract-rhel7.outputs.destination}}
+  build_rhel7_elrepo:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx rhel7_elrepo
+      uses: docker/setup-buildx-action@v1
+    - name: Build rhel7_elrepo
+      uses: docker/build-push-action@v2
+      with:
+        file: driver/dockerfiles/Dockerfile.rhel7_elrepo
+        push: true
+        tags: elkeidteam/elkeid_driver_rhel7_elrepo:latest
+    - name: Extract rhel7_elrepo
+      id: extract-rhel7_elrepo
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeidteam/elkeid_driver_rhel7_elrepo:latest
+        path: /ko_output/.
+    - name: Upload rhel7_elrepo
+      uses: actions/upload-artifact@v3
+      with:
+        name: elkeid_driver_rhel7_elrepo
+        path: ${{steps.extract-rhel7_elrepo.outputs.destination}}
   build_rhel8:
     runs-on: ubuntu-latest
     steps:
@@ -364,6 +424,36 @@ jobs:
       with:
         name: elkeid_driver_rhel8
         path: ${{steps.extract-rhel8.outputs.destination}}
+  build_rhel8_elrepo:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx rhel8_elrepo
+      uses: docker/setup-buildx-action@v1
+    - name: Build rhel8_elrepo
+      uses: docker/build-push-action@v2
+      with:
+        file: driver/dockerfiles/Dockerfile.rhel8_elrepo
+        push: true
+        tags: elkeidteam/elkeid_driver_rhel8_elrepo:latest
+    - name: Extract rhel8_elrepo
+      id: extract-rhel8_elrepo
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeidteam/elkeid_driver_rhel8_elrepo:latest
+        path: /ko_output/.
+    - name: Upload rhel8_elrepo
+      uses: actions/upload-artifact@v3
+      with:
+        name: elkeid_driver_rhel8_elrepo
+        path: ${{steps.extract-rhel8_elrepo.outputs.destination}}
   build_tlinux24:
     runs-on: ubuntu-latest
     steps:
@@ -936,9 +1026,11 @@ jobs:
     needs:
     - build_ubuntu2004_azure
     - build_amazonlinux
+    - build_rhel6_elrepo
     - build_ubuntu1404_k4
     - build_tlinux24
     - build_ubuntu1404_k3
+    - build_rhel8_elrepo
     - build_ubuntu1204
     - build_ubuntu1804
     - build_ubuntu2004
@@ -951,6 +1043,7 @@ jobs:
     - build_aliyun_linux2
     - build_debian11
     - build_debian8
+    - build_rhel7_elrepo
     - build_ubuntu1804_azure
     - build_debian10
     - build_debian9
