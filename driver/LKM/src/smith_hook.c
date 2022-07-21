@@ -83,7 +83,6 @@ char accept_kretprobe_state = 0x0;
 char accept4_kretprobe_state = 0x0;
 char open_kprobe_state = 0x0;
 char openat_kprobe_state = 0x0;
-char nanosleep_kprobe_state = 0x0;
 char exit_kprobe_state = 0x0;
 char exit_group_kprobe_state = 0x0;
 char security_path_rmdir_kprobe_state = 0x0;
@@ -2990,7 +2989,7 @@ out:
     return 0;
 }
 
-int nanosleep_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static void smith_trace_sysent_nanosleep(long tsu)
 {
     char *exe_path = DEFAULT_RET_STR;
     struct smith_tid *tid = NULL;
@@ -3000,24 +2999,21 @@ int nanosleep_pre_handler(struct kprobe *p, struct pt_regs *regs)
 #else
     struct timespec tu = {0, 0};
 #endif
-    void *tmp;
-
-    tmp = (void *)p_get_arg1_syscall(regs);
-    if (IS_ERR_OR_NULL(tmp))
-        return 0;
+    if (IS_ERR_OR_NULL((void *)tsu))
+        return;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
-    ts = (struct __kernel_timespec __user *)tmp;
+    ts = (struct __kernel_timespec __user *)tsu;
     if (get_timespec64(&tu, ts))
-        return 0;
+        return;
 
     if (!timespec64_valid(&tu))
-        return 0;
+        return;
 #else
-    if (smith_copy_from_user(&tu, (void __user *)tmp, sizeof(tu)))
-        return 0;
+    if (smith_copy_from_user(&tu, (void __user *)tsu, sizeof(tu)))
+        return;
     if (!timespec_valid(&tu))
-        return 0;
+        return;
 #endif
 
     tid = smith_lookup_tid(current);
@@ -3034,8 +3030,6 @@ int nanosleep_pre_handler(struct kprobe *p, struct pt_regs *regs)
 out:
     if (tid)
         smith_put_tid(tid);
-
-    return 0;
 }
 
 static void smith_trace_sysret_kill(int pid, int sig, int ret)
@@ -3566,11 +3560,6 @@ struct kprobe file_permission_kprobe = {
 //        .pre_handler = inode_permission_handler,
 //};
 
-struct kprobe nanosleep_kprobe = {
-        .symbol_name = P_GET_SYSCALL_NAME(nanosleep),
-        .pre_handler = nanosleep_pre_handler,
-};
-
 struct kprobe write_kprobe = {
         .symbol_name = "vfs_write",
         .pre_handler = write_pre_handler,
@@ -4021,21 +4010,6 @@ void unregister_file_permission_kprobe(void)
 //    unregister_kprobe(&inode_permission_kprobe);
 //}
 
-int register_nanosleep_kprobe(void)
-{
-    int ret;
-    ret = register_kprobe(&nanosleep_kprobe);
-    if (ret == 0)
-        nanosleep_kprobe_state = 0x1;
-
-    return ret;
-}
-
-void unregister_nanosleep_kprobe(void)
-{
-    unregister_kprobe(&nanosleep_kprobe);
-}
-
 int register_security_path_rmdir_kprobe(void)
 {
     int ret;
@@ -4163,9 +4137,6 @@ void uninstall_kprobe(void)
 //    if (inode_permission_kprobe_state == 0x1)
 //        unregister_inode_permission_kprobe();
 
-    if (nanosleep_kprobe_state == 0x1)
-        unregister_nanosleep_kprobe();
-
     if (exit_kprobe_state == 0x1)
         unregister_exit_kprobe();
 
@@ -4281,12 +4252,6 @@ void install_kprobe(void)
         ret = register_exit_group_kprobe();
         if (ret < 0)
             printk(KERN_INFO "[ELKEID] exit_group register_kprobe failed, returned %d\n", ret);
-    }
-
-    if (NANOSLEEP_HOOK == 1) {
-        ret = register_nanosleep_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] nanosleep register_kprobe failed, returned %d\n", ret);
     }
 
     if (CONNECT_HOOK == 1) {
@@ -5133,6 +5098,14 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
                 break;
 
             /*
+             * nanosleep
+             */
+            case 162 /* __NR_ia32_nanosleep */:
+                if (NANOSLEEP_HOOK)
+                    smith_trace_sysent_nanosleep(regs->bx);
+                break;
+
+            /*
              * prctl: PR_SET_NAME
              */
             case 172 /* __NR_ia32_prctl */:
@@ -5243,6 +5216,14 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
                                             p_regs_get_arg3_syscall(regs), ret);
             break;
 #endif
+
+        /*
+         * nanosleep
+         */
+        case __NR_nanosleep:
+            if (NANOSLEEP_HOOK)
+                smith_trace_sysent_nanosleep(p_regs_get_arg1_of_syscall(regs));
+            break;
 
         /*
          * prctl: PR_SET_NAME
