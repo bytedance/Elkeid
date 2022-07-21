@@ -587,6 +587,24 @@ SD_XFER_DEFINE( NAME(file_permission_read),
                 XFER(ENTRY_COMMON(609), ENTRY_STR(file, file), ENTRY_STR(s_id, s_id))
 )
 
+SD_XFER_DEFINE( NAME(chmod),
+                PROT(ELEMENT(char *, exe_path),
+                     ELEMENT(char *, pid_tree),
+                     ELEMENT(char *, file_path),
+                     ELEMENT(char *, fsid),
+                     ELEMENT(int, mode),
+                     ELEMENT(int, retval)
+                ),
+
+                XFER(ENTRY_COMMON(90),
+                     ENTRY_STR(pid_tree, pid_tree),
+                     ENTRY_STR(file_path, file_path),
+                     ENTRY_STL(fsid, fsid, 32),
+                     ENTRY_INT(mode, mode),
+                     ENTRY_INT(retval, retval)
+                )
+)
+
 SD_XFER_DEFINE( NAME(mount),
                 PROT(ELEMENT(char *, exe_path),
                      ELEMENT(char *, pid_tree),

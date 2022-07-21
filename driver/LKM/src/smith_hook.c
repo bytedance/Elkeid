@@ -44,6 +44,7 @@ int MOUNT_HOOK = 1;
 int DNS_HOOK = 1;
 int CALL_USERMODEHELPER = 1;
 int UDEV_NOTIFIER = 1;
+int CHMOD_HOOK = 1;
 
 int WRITE_HOOK = 0;
 int ACCEPT_HOOK = 0;
@@ -282,6 +283,28 @@ static __always_inline char *smith_get_exe_file(char *buffer, int size)
     }
 
     return exe_file_str;
+}
+
+static char *smith_get_pwd_path(char *buffer, int size)
+{
+    if (!current->fs)
+        return buffer;
+
+    return smith_d_path(&current->fs->pwd, buffer, size);
+}
+
+static char *smith_get_file_path(int fd, char *buffer, int size)
+{
+    struct file *filp = smith_fget_raw(fd);
+    char *path;
+
+    if (!filp)
+        return buffer;
+
+    path = smith_d_path(&filp->f_path, buffer, size);
+    fput(filp);
+
+    return path;
 }
 
 /*
@@ -2801,6 +2824,124 @@ out:
 //    return 0;
 //}
 
+
+static void smith_trace_sysret_chmod_comm(char *file_path, mode_t mode, int ret)
+{
+    struct smith_tid *tid = NULL;
+    char *exe_path = DEFAULT_RET_STR;
+    char *pid_tree = NULL;
+    char *id;
+
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+        pid_tree = tid->st_pid_tree;
+    }
+
+    /* query s_id of pwd's filesystem super_block */
+    if (current->fs && current->fs->pwd.dentry &&
+        current->fs->pwd.dentry->d_sb)
+        id = current->fs->pwd.dentry->d_sb->s_id;
+    else
+        id = NULL;
+
+    chmod_print(exe_path, pid_tree, file_path, id, mode, ret);
+
+out:
+    if (tid)
+        smith_put_tid(tid);
+}
+
+#if defined(__NR_chmod) || IS_ENABLED(CONFIG_IA32_EMULATION)
+static void smith_trace_sysret_chmod(char __user *fn, mode_t mode, int ret)
+{
+    char *buffer = NULL;
+    char *file_path;
+    int s;
+
+    if (!(mode & (S_IXUSR | S_ISUID)))
+        return;
+
+    s = smith_strnlen_user(fn, PATH_MAX);
+    if (s <= 0 || s > PATH_MAX)
+        return;
+
+    buffer = smith_kzalloc(PATH_MAX + s + 2, GFP_ATOMIC);
+    if (buffer) {
+        file_path = smith_get_pwd_path(buffer, PATH_MAX);
+        if (file_path >= buffer && file_path < buffer + PATH_MAX) {
+            int l = strlen(file_path);
+            file_path[l++] = '/';
+            l = smith_copy_from_user(&file_path[l], fn, s);
+        }
+    } else {
+        file_path = NULL;
+    }
+
+    smith_trace_sysret_chmod_comm(file_path, mode, ret);
+
+    if (buffer)
+        smith_kfree(buffer);
+}
+#endif
+
+static void smith_trace_sysret_fchmod(int fd, mode_t mode, int ret)
+{
+    char *buffer = NULL;
+    char *file_path;
+
+    if (!(mode & (S_IXUSR | S_ISUID)))
+        return;
+
+    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
+    if (buffer) {
+        file_path = smith_get_file_path(fd, buffer, PATH_MAX);
+    } else {
+        file_path = NULL;
+    }
+    smith_trace_sysret_chmod_comm(file_path, mode, ret);
+
+    if (buffer)
+        smith_kfree(buffer);
+}
+
+static void smith_trace_sysret_fchmodat(int dfd, char __user *fn, mode_t mode, int ret)
+{
+    char *buffer = NULL;
+    char *file_path;
+    int s;
+
+    if (!(mode & (S_IXUSR | S_ISUID)))
+        return;
+
+    s = smith_strnlen_user(fn, PATH_MAX);
+    if (s <= 0 || s > PATH_MAX)
+        return;
+
+    buffer = smith_kzalloc(PATH_MAX + s + 2, GFP_ATOMIC);
+    if (buffer) {
+        if (AT_FDCWD == dfd)
+            file_path = smith_get_pwd_path(buffer, PATH_MAX);
+        else
+            file_path = smith_get_file_path(dfd, buffer, PATH_MAX);
+        if (file_path >= buffer && file_path < buffer + PATH_MAX) {
+            int l = strlen(file_path);
+            file_path[l++] = '/';
+            l = smith_copy_from_user(&file_path[l], fn, s);
+        }
+    } else {
+        file_path = NULL;
+    }
+
+    smith_trace_sysret_chmod_comm(file_path, mode, ret);
+
+    if (buffer)
+        smith_kfree(buffer);
+}
+
 /*
  * data contains the mount options specified by user. It
  * could containbinary chars or utf8/unicode, depending
@@ -5055,7 +5196,6 @@ TRACEPOINT_PROBE(smith_trace_proc_exit, struct task_struct *task)
 #include <asm/syscall.h> /* syscall_get_nr() */
 #include <asm/unistd.h> /* __NR_syscall defintions */
 
-
 TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
 {
     long id = syscall_get_nr(current, regs);
@@ -5093,6 +5233,22 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
                     smith_trace_sysret_exec(ret);
                 break;
 
+            /*
+             * chmod operations
+             */
+            case 15 /* __NR_ia32_chmod */:
+                if (CHMOD_HOOK)
+                    smith_trace_sysret_chmod((char __user *)regs->bx, regs->cx, ret);
+                break;
+            case 94 /* __NR_ia32_fchmod */:
+                if (CHMOD_HOOK)
+                    smith_trace_sysret_fchmod(regs->bx, regs->cx, ret);
+                break;
+            case 306 /* __NR_ia32_fchmodat */:
+                if (CHMOD_HOOK)
+                    smith_trace_sysret_fchmodat(regs->bx, (char *)regs->cx, regs->dx, ret);
+                break;
+
             default:
                 break;
         }
@@ -5128,6 +5284,32 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
             if (EXECVE_HOOK)
                 smith_trace_sysret_exec(ret);
             break;
+
+        /*
+         * chmod operations
+         */
+#ifdef       __NR_chmod
+        case __NR_chmod:
+            if (CHMOD_HOOK)
+                smith_trace_sysret_chmod((char __user *)p_regs_get_arg1_of_syscall(regs),
+                                         p_regs_get_arg2_syscall(regs), ret);
+            break;
+#endif
+#ifdef       __NR_fchmod
+        case __NR_fchmod:
+            if (CHMOD_HOOK)
+                smith_trace_sysret_fchmod(p_regs_get_arg1_of_syscall(regs),
+                                          p_regs_get_arg2_syscall(regs), ret);
+            break;
+#endif
+#ifdef       __NR_fchmodat
+        case __NR_fchmodat:
+            if (CHMOD_HOOK)
+                smith_trace_sysret_fchmodat(p_regs_get_arg1_of_syscall(regs),
+                                            (char *)p_regs_get_arg2_syscall(regs),
+                                            p_regs_get_arg3_syscall(regs), ret);
+            break;
+#endif
 
         default:
             break;
@@ -5339,12 +5521,12 @@ static int __init kprobe_hook_init(void)
     printk(KERN_INFO
     "[ELKEID] register_kprobe success: connect_hook: %d,load_module_hook:"
     " %d,execve_hook: %d,call_usermodehekoer_hook: %d,bind_hook: %d,create_file_hook: %d,file_permission_hook: %d, ptrace_hook: %d, update_cred_hook:"
-    " %d, dns_hook: %d, accept_hook:%d, mprotect_hook: %d, mount_hook: %d, link_hook: %d, memfd_create: %d, rename_hook: %d,"
+    " %d, dns_hook: %d, accept_hook:%d, mprotect_hook: %d, chmod_hook: %d, mount_hook: %d, link_hook: %d, memfd_create: %d, rename_hook: %d,"
     "setsid_hook:%d, prctl_hook:%d, open_hook:%d, udev_notifier:%d, nanosleep_hook:%d, kill_hook: %d, rm_hook: %d, "
     " exit_hook: %d, write_hook: %d, EXIT_PROTECT: %d\n",
             CONNECT_HOOK, DO_INIT_MODULE_HOOK, EXECVE_HOOK, CALL_USERMODEHELPER, BIND_HOOK,
             CREATE_FILE_HOOK, FILE_PERMISSION_HOOK, PTRACE_HOOK, UPDATE_CRED_HOOK, DNS_HOOK,
-            ACCEPT_HOOK, MPROTECT_HOOK, MOUNT_HOOK, LINK_HOOK, MEMFD_CREATE_HOOK, RENAME_HOOK, SETSID_HOOK,
+            ACCEPT_HOOK, MPROTECT_HOOK, CHMOD_HOOK, MOUNT_HOOK, LINK_HOOK, MEMFD_CREATE_HOOK, RENAME_HOOK, SETSID_HOOK,
             PRCTL_HOOK, OPEN_HOOK, UDEV_NOTIFIER, NANOSLEEP_HOOK, KILL_HOOK, RM_HOOK, EXIT_HOOK, WRITE_HOOK,
             EXIT_PROTECT);
 

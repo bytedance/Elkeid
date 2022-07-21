@@ -2,7 +2,9 @@
 
 #ifndef __STRUCT_WRAP_H_
 #define __STRUCT_WRAP_H_
+
 #ifdef CONFIG_X86
+
 static inline void smith_regs_set_return_value(struct pt_regs *regs, unsigned long rc)
 {
 	regs->ax = rc;
@@ -31,7 +33,9 @@ static inline unsigned long p_regs_get_arg5(struct pt_regs *p_regs) {
 static inline unsigned long p_regs_get_arg6(struct pt_regs *p_regs) {
    return p_regs->r9;
 }
+
 #elif defined(CONFIG_ARM64)
+
 static inline void smith_regs_set_return_value(struct pt_regs *regs, unsigned long rc)
 {
 	regs->regs[0] = rc;
@@ -89,10 +93,16 @@ static inline unsigned long p_regs_get_arg5(struct pt_regs *p_regs) {
 static inline unsigned long p_regs_get_arg6(struct pt_regs *p_regs) {
    return p_regs->a5;
 }
+
 #endif
 
 #ifdef CONFIG_X86
+
 static inline unsigned long p_regs_get_arg1_syscall(struct pt_regs *p_regs) {
+   return p_regs->di;
+}
+
+static inline unsigned long p_regs_get_arg1_of_syscall(struct pt_regs *p_regs) {
    return p_regs->di;
 }
 
@@ -115,9 +125,14 @@ static inline unsigned long p_regs_get_arg5_syscall(struct pt_regs *p_regs) {
 static inline unsigned long p_regs_get_arg6_syscall(struct pt_regs *p_regs) {
    return p_regs->r9;
 }
+
 #elif defined(CONFIG_ARM64)
+
 static inline unsigned long p_regs_get_arg1_syscall(struct pt_regs *p_regs) {
    return p_regs->regs[0];
+}
+static inline unsigned long p_regs_get_arg1_of_syscall(struct pt_regs *p_regs) {
+   return p_regs->orig_x0;
 }
 
 static inline unsigned long p_regs_get_arg2_syscall(struct pt_regs *p_regs) {
@@ -139,9 +154,15 @@ static inline unsigned long p_regs_get_arg5_syscall(struct pt_regs *p_regs) {
 static inline unsigned long p_regs_get_arg6_syscall(struct pt_regs *p_regs) {
    return p_regs->regs[5];
 }
+
 #elif defined(CONFIG_ARCH_RV64I)
+
 static inline unsigned long p_regs_get_arg1_syscall(struct pt_regs *p_regs) {
    return p_regs->a0;
+}
+
+static inline unsigned long p_regs_get_arg1_of_syscall(struct pt_regs *p_regs) {
+   return p_regs->orig_a0;
 }
 
 static inline unsigned long p_regs_get_arg2_syscall(struct pt_regs *p_regs) {
