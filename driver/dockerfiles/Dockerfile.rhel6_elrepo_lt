@@ -12,7 +12,7 @@ RUN yum groupinstall -y  "Development Tools";
 RUN rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
 
 RUN mkdir /root/headers
-RUN cd /root/headers; wget -q -c -r -np -nd -nH -A 'kernel*devel*x86_64.rpm' 'http://mirrors.coreix.net/elrepo-archive-archive/kernel/el6/x86_64/RPMS/'
+RUN cd /root/headers; wget -q -c -r -np -nd -nH -A 'kernel-lt-devel*x86_64.rpm' 'http://mirrors.coreix.net/elrepo-archive-archive/kernel/el6/x86_64/RPMS/'
 
 RUN rpm --force -ivh /root/headers/*.rpm || true
 
