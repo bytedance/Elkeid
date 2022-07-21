@@ -151,6 +151,4 @@ int smith_put_tid(struct smith_tid *tid);
 int smith_drop_tid(struct task_struct *task);
 void smith_enum_tid(void);
 
-void smith_trace_proc_execve(struct task_struct *task);
-
 #endif /* SMITH_HOOK_H */

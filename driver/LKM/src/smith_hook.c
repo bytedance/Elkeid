@@ -63,9 +63,7 @@ int EXECVE_GET_SOCK_PID_LIMIT = 4;
 int EXECVE_GET_SOCK_FD_LIMIT = 12;  /* maximum fd numbers to be queried */
 
 char connect_syscall_kprobe_state = 0x0;
-char execve_kretprobe_state = 0x0;
 char bind_kprobe_state = 0x0;
-char compat_execve_kretprobe_state = 0x0;
 char create_file_kprobe_state = 0x0;
 char ptrace_kprobe_state = 0x0;
 int  udp_recvmsg_kprobe_state = 0x0;
@@ -99,26 +97,8 @@ char file_permission_kprobe_state = 0x0;
 char inode_permission_kprobe_state = 0x0;
 char write_kprobe_state = 0x0;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-char execveat_kretprobe_state = 0x0;
-char compat_execveat_kretprobe_state = 0x0;
-#endif
-
 module_param(udp_recvmsg_kprobe_state, int, S_IRUSR|S_IRGRP|S_IROTH);
 module_param(udpv6_recvmsg_kprobe_state, int, S_IRUSR|S_IRGRP|S_IROTH);
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)
-struct user_arg_ptr {
-#ifdef CONFIG_COMPAT
-	bool is_compat;
-#endif
-	union {
-		const char __user *const __user *native;
-#ifdef CONFIG_COMPAT
-		const compat_uptr_t __user *compat;
-#endif
-	} ptr;
-};
 
 #if (EXIT_PROTECT == 1) && defined(MODULE)
 void exit_protect_action(void)
@@ -126,48 +106,6 @@ void exit_protect_action(void)
 	__module_get(THIS_MODULE);
 }
 #endif
-
-const char __user *get_user_arg_ptr(struct user_arg_ptr argv, int nr)
-{
-	const char __user *native;
-
-#ifdef CONFIG_COMPAT
-	if (argv.is_compat) {
-		compat_uptr_t compat;
-
-		if (smith_get_user(compat, argv.ptr.compat + nr))
-		    return ERR_PTR(-EFAULT);
-
-		return compat_ptr(compat);
-	}
-#endif
-
-	if (smith_get_user(native, argv.ptr.native + nr))
-	    return ERR_PTR(-EFAULT);
-
-	return native;
-}
-
-//count execve argv num
-int count(struct user_arg_ptr argv, int max)
-{
-	int i = 0;
-	if (argv.ptr.native != NULL) {
-		for (;;) {
-			const char __user *p = get_user_arg_ptr(argv, i);
-			if (!p)
-				break;
-			if (IS_ERR(p))
-				return -EFAULT;
-			if (++i >= max)
-				break;
-			if (fatal_signal_pending(current))
-				return -ERESTARTNOHAND;
-		}
-	}
-	return i;
-}
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0) */
 
 /*
  * task_lock() is required to avoid races with process termination
@@ -197,7 +135,7 @@ static void smith_put_files_struct(struct files_struct *files)
 #define smith_lookup_fd          fcheck_files
 #endif
 
-struct file *smith_fget_raw(unsigned int fd)
+static struct file *smith_fget_raw(unsigned int fd)
 {
 	struct file *file;
 	struct files_struct *files;
@@ -745,18 +683,6 @@ struct bind_data {
     };
 };
 
-struct execve_data {
-    char *argv;
-    char *ssh_connection;
-    char *ld_preload;
-    char *ld_library_path;
-
-    int free_argv;
-    int free_ssh_connection;
-    int free_ld_preload;
-    int free_ld_library_path;
-};
-
 struct update_cred_data {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
     uid_t old_uid;
@@ -1195,13 +1121,22 @@ out:
     return 0;
 }
 
-int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+/*
+ * support routines for execve/execveat tracepoints
+ */
+
+struct execve_data {
+    char *argv;
+    char *env;
+    char *ssh_connection;
+    char *ld_preload;
+    char *ld_library_path;
+};
+
+static int smith_trace_process_exec(struct execve_data *data, int rc)
 {
     int sa_family = -1, dport = 0, sport = 0;
-    int rc = regs_return_value(regs);
-
-    __be32 dip4;
-    __be32 sip4;
+    __be32 dip4, sip4;
     pid_t socket_pid = -1;
 
     char *pname = DEFAULT_RET_STR;
@@ -1218,30 +1153,15 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     struct in6_addr dip6;
     struct in6_addr sip6;
     struct file *file;
-    struct execve_data *data;
     struct tty_struct *tty = NULL;
-
-    /* query kretprobe instance for current call */
-    data = (struct execve_data *)ri->data;
-
-    /* ignore the failures that target doesn't exist */
-    if (rc == -ENOENT)
-        goto release_data;
-
-    /*
-     * sched_process_exec emulation for earlier kernels (3.4).
-     * execve returns -1 on error
-     */
-    if (rc >= 0)
-        smith_trace_proc_execve(current);
-
-    tty = get_current_tty();
-    if(tty && strlen(tty->name) > 0)
-        tty_name = tty->name;
 
     // argv filter check
     if (execve_argv_check(data->argv))
         goto out;
+
+    tty = get_current_tty();
+    if(tty && strlen(tty->name) > 0)
+        tty_name = tty->name;
 
     tid = smith_lookup_tid(current);
     if (tid) {
@@ -1290,21 +1210,19 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
                      data->ld_preload,
                      data->ld_library_path,
                      rc);
-    }
 #if IS_ENABLED(CONFIG_IPV6)
-    else if (sa_family == AF_INET6) {
-		execve6_print(pname,
-			      exe_path, data->argv,
-			      tmp_stdin, tmp_stdout,
-			      &dip6, dport, &sip6, sport,
-			      pid_tree, tty_name, socket_pid,
-			      data->ssh_connection,
-			      data->ld_preload,
-			      data->ld_library_path,
-			      rc);
-	}
+    } else if (sa_family == AF_INET6) {
+        execve6_print(pname,
+                      exe_path, data->argv,
+                      tmp_stdin, tmp_stdout,
+                      &dip6, dport, &sip6, sport,
+                      pid_tree, tty_name, socket_pid,
+                      data->ssh_connection,
+                      data->ld_preload,
+                      data->ld_library_path,
+                      rc);
 #endif
-    else {
+    } else {
         execve_nosocket_print(pname,
                               exe_path, data->argv,
                               tmp_stdin, tmp_stdout,
@@ -1327,416 +1245,93 @@ out:
     if (tid)
         smith_put_tid(tid);
 
-release_data:
-    if (data->free_argv)
+    if (data->argv)
         smith_kfree(data->argv);
-    if (data->free_ld_preload)
-        smith_kfree(data->ld_preload);
-    if (data->free_ld_library_path)
-        smith_kfree(data->ld_library_path);
-    if (data->free_ssh_connection)
-        smith_kfree(data->ssh_connection);
+    if (data->env)
+        smith_kfree(data->env);
 
     return 0;
-}
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)
-//get execve syscall argv/LD_PRELOAD && SSH_CONNECTION && LD_LIBRARY_PATH env info
-void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
-		     struct execve_data *data)
-{
-	int argv_len = 0, argv_res_len = 0, i = 0, len = 0, offset = 0;
-	int env_len = 0, free_argv = 0, res = 0;
-	int ssh_connection_flag = 0, ld_preload_flag = 0, ld_library_path_flag = 0;
-	int free_ld_preload = 1, free_ssh_connection = 1, free_ld_library_path = 1;
-
-	char *argv_res = NULL;
-	char *ssh_connection = NULL;
-	char *ld_preload = NULL;
-	char *ld_library_path = NULL;
-	const char __user *native;
-
-	env_len = count(env_ptr, MAX_ARG_STRINGS);
-	argv_len = count(argv_ptr, SMITH_MAX_ARG_STRINGS);
-	argv_res_len = 256 * argv_len;
-
-	if (argv_len > 0) {
-		argv_res = smith_kmalloc(argv_res_len + 1, GFP_ATOMIC);
-		if (!argv_res) {
-			argv_res = "-1";
-		} else {
-			free_argv = 1;
-			for (i = 0; i < argv_len; i++) {
-				native = get_user_arg_ptr(argv_ptr, i);
-				if (IS_ERR(native))
-					continue;
-
-				len = smith_strnlen_user(native, MAX_ARG_STRLEN);
-				if (!len)
-					continue;
-
-				if (offset + len > argv_res_len) {
-				    res = argv_res_len - offset;
-				    offset += res - smith_copy_from_user(argv_res + offset, native, res);
-				    break;
-				}
-
-				res = smith_copy_from_user(argv_res + offset, native, len);
-				offset += len - res;
-				if (res)
-					continue;
-				*(argv_res + offset - 1) = ' ';
-			}
-			if (offset > 0)
-				*(argv_res + offset) = '\0';
-			else
-				strcpy(argv_res, "<FAIL>");
-		}
-	}
-
-	ssh_connection = smith_kmalloc(255, GFP_ATOMIC);
-	ld_preload = smith_kmalloc(255, GFP_ATOMIC);
-	ld_library_path = smith_kmalloc(255, GFP_ATOMIC);
-
-	if (!ssh_connection)
-		free_ssh_connection = 0;
-
-	if (!ld_preload)
-		free_ld_preload = 0;
-
-	if (!ld_library_path)
-		free_ld_library_path = 0;
-
-	//get SSH_CONNECTION and LD_PRELOAD and LD_LIBRARY_PATH env info
-	if (env_len > 0) {
-		char buf[256];
-		for (i = 0; i < env_len; i++) {
-			if (ld_preload_flag == 1 && ssh_connection_flag == 1 && ld_library_path_flag == 1)
-				break;
-
-			native = get_user_arg_ptr(env_ptr, i);
-			if (IS_ERR(native))
-				continue;
-
-			len = smith_strnlen_user(native, MAX_ARG_STRLEN);
-			if (len > 11) {
-				if (len > 255)
-					len = 255;
-				memset(buf, 0, 256);
-				if (smith_copy_from_user(buf, native, len))
-					break;
-				else {
-					if (strncmp("SSH_CONNECTION=", buf, 15) == 0) {
-						ssh_connection_flag = 1;
-						if (free_ssh_connection == 1) {
-							strcpy(ssh_connection, buf + 15);
-						} else {
-							ssh_connection = "-1";
-						}
-					} else if (strncmp("LD_PRELOAD=", buf, 11) == 0) {
-						ld_preload_flag = 1;
-						if (free_ld_preload == 1) {
-							strcpy(ld_preload, buf + 11);
-						} else {
-							ld_preload = "-1";
-						}
-					} else if (strncmp("LD_LIBRARY_PATH=", buf, 16) == 0) {
-						ld_library_path_flag = 1;
-						if (free_ld_library_path == 1) {
-							strcpy(ld_library_path, buf + 16);
-						} else {
-							ld_library_path = "-1";
-						}
-					}
-				}
-			}
-		}
-	}
-
-	if (ssh_connection_flag == 0) {
-		if (free_ssh_connection == 0)
-			ssh_connection = "-1";
-		else
-			strcpy(ssh_connection, "-1");
-	}
-	data->ssh_connection = ssh_connection;
-	data->free_ssh_connection = free_ssh_connection;
-
-	if (ld_preload_flag == 0) {
-		if (free_ld_preload == 0)
-			ld_preload = "-1";
-		else
-			strcpy(ld_preload, "-1");
-	}
-	data->ld_preload = ld_preload;
-	data->free_ld_preload = free_ld_preload;
-
-	if (ld_library_path_flag == 0) {
-		if (free_ld_library_path == 0)
-			ld_library_path = "-1";
-		else
-			strcpy(ld_library_path, "-1");
-	}
-	data->ld_library_path = ld_library_path;
-	data->free_ld_library_path = free_ld_library_path;
-
-	data->argv = argv_res;
-	data->free_argv = free_argv;
-}
-
-#ifdef CONFIG_COMPAT
-int compat_execve_entry_handler(struct kretprobe_instance *ri,
-			      struct pt_regs *regs)
-{
-	struct user_arg_ptr argv_ptr;
-	struct user_arg_ptr env_ptr;
-	struct execve_data *data;
-	data = (struct execve_data *)ri->data;
-
-	argv_ptr.is_compat = true;
-	argv_ptr.ptr.compat = (const compat_uptr_t __user *)p_get_arg2_syscall(regs);
-
-	env_ptr.is_compat = true;
-	env_ptr.ptr.compat = (const compat_uptr_t __user *)p_get_arg3_syscall(regs);
-
-	get_execve_data(argv_ptr, env_ptr, data);
-	return 0;
-}
-
-int compat_execveat_entry_handler(struct kretprobe_instance *ri,
-				struct pt_regs *regs)
-{
-	struct user_arg_ptr argv_ptr;
-	struct user_arg_ptr env_ptr;
-	struct execve_data *data;
-	data = (struct execve_data *)ri->data;
-
-	argv_ptr.is_compat = true;
-	argv_ptr.ptr.compat = (const compat_uptr_t __user *)p_get_arg3_syscall(regs);
-
-	env_ptr.is_compat = true;
-	env_ptr.ptr.compat = (const compat_uptr_t __user *)p_get_arg4_syscall(regs);
-
-	get_execve_data(argv_ptr, env_ptr, data);
-	return 0;
-}
-#endif
-
-int execveat_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
-{
-	struct user_arg_ptr argv_ptr;
-	struct user_arg_ptr env_ptr;
-	struct execve_data *data;
-	data = (struct execve_data *)ri->data;
-
-	argv_ptr.ptr.native = (const char *const *)p_get_arg3_syscall(regs);
-	env_ptr.ptr.native = (const char *const *)p_get_arg4_syscall(regs);
-
-	get_execve_data(argv_ptr, env_ptr, data);
-	return 0;
-}
-
-int execve_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
-{
-	struct user_arg_ptr argv_ptr;
-	struct user_arg_ptr env_ptr;
-	struct execve_data *data;
-	data = (struct execve_data *)ri->data;
-
-	argv_ptr.ptr.native = (const char *const *)p_get_arg2_syscall(regs);
-	env_ptr.ptr.native = (const char *const *)p_get_arg3_syscall(regs);
-
-	get_execve_data(argv_ptr, env_ptr, data);
-	return 0;
-}
-
-#else
-
-//count execve argv num
-static int execve_count(char __user * __user * argv, int max)
-{
-    int i = 0;
-
-    if (argv != NULL) {
-        for (;;) {
-            char __user *p;
-            if (smith_get_user(p, argv))
-                return -EFAULT;
-            if (!p)
-                break;
-            argv++;
-            if (++i >= max)
-                break;
-            if (fatal_signal_pending(current))
-                return -ERESTARTNOHAND;
-        }
-    }
-    return i;
 }
 
 //get execve syscall argv/LD_PRELOAD && SSH_CONNECTION && LD_LIB_PATH env info
-void get_execve_data(char **argv, char **env, struct execve_data *data)
+static void smith_trace_prepare_exec(struct execve_data *data)
 {
-    int argv_len = 0, argv_res_len = 0, i = 0, len = 0, offset = 0, res = 0;
-    int env_len = 0, free_argv = 0, ssh_connection_flag = 0, ld_preload_flag = 0, ld_library_path_flag = 0;
-    int free_ssh_connection = 1, free_ld_preload = 1, free_ld_library_path = 1;
+    struct task_struct *task = current;
+    unsigned long args, envs, larg, lenv, i;
+    char *parg = NULL, *penv = NULL;
 
-    char *argv_res = NULL;
-    char *ssh_connection = NULL;
-    char *ld_preload = NULL;
-    char *ld_library_path = NULL;
-    const char __user * native;
+    /* query arg and env mmap sections */
+    if (!task->mm)
+        return;
+    task_lock(task);
+    args = task->mm->arg_start;
+    larg = task->mm->arg_end - args;
+    envs = task->mm->env_start;
+    lenv = task->mm->env_end - envs;
+    task_unlock(task);
 
-    env_len = execve_count(env, MAX_ARG_STRINGS);
-    argv_len = execve_count(argv, SMITH_MAX_ARG_STRINGS);
-    argv_res_len = 256 * argv_len;
-
-    //get execve args data
-    if (argv_len > 0) {
-        argv_res = smith_kmalloc(argv_res_len + 1, GFP_ATOMIC);
-        if (!argv_res) {
-            argv_res = "-1";
-        } else {
-            free_argv = 1;
-            for (i = 0; i < argv_len; i++) {
-                if (smith_get_user(native, argv + i))
-                    continue;
-
-                len = smith_strnlen_user(native, MAX_ARG_STRLEN);
-                if (!len)
-                    continue;
-
-                if (offset + len > argv_res_len) {
-                    res = argv_res_len - offset;
-                    offset += res - smith_copy_from_user(argv_res + offset, native, res);
-                    break;
-                }
-
-                res = smith_copy_from_user(argv_res + offset, native, len);
-                offset += len - res;
-                if (res)
-                    continue;
-                *(argv_res + offset - 1) = ' ';
-            }
-            if (offset > 0)
-                *(argv_res + offset) = '\0';
-            else
-                strcpy(argv_res, "<FAIL>");
-        }
+    /* query argv of current task */
+    if (larg > 1024)
+        larg = 1024;
+    if (!larg || !args)
+        goto proc_env;
+    parg = smith_kzalloc(larg, GFP_ATOMIC);
+    if (!parg)
+        goto proc_env;
+    data->argv= parg;
+    i = larg - 1 - smith_copy_from_user(parg, (void *)args, larg - 1);
+    if (i <= 1) {
+        strcpy(parg, "-1");
+    } else {
+        while(--i > 0)
+            if (!parg[i]) parg[i] = ' ';
     }
 
-    ssh_connection = smith_kmalloc(255, GFP_ATOMIC);
-    ld_preload = smith_kmalloc(255, GFP_ATOMIC);
-    ld_library_path = smith_kmalloc(255, GFP_ATOMIC);
+proc_env:
 
-    if (!ssh_connection)
-        free_ssh_connection = 0;
-
-    if (!ld_preload)
-        free_ld_preload = 0;
-
-    if (!ld_library_path)
-        free_ld_library_path = 0;
-
-    //get SSH_CONNECTION and LD_PRELOAD and LD_LIBRARY_PATH env info
-    if (env_len > 0) {
-        char buf[256];
-        for (i = 0; i < argv_len; i++) {
-            if (ld_preload_flag == 1 && ssh_connection_flag == 1 && ld_library_path_flag == 1)
-                break;
-
-            if (smith_get_user(native, env + i))
-                break;
-
-            len = smith_strnlen_user(native, MAX_ARG_STRLEN);
-            if (!len || len > MAX_ARG_STRLEN)
-                break;
-            else if (len > 10 && len < 256) {
-                memset(buf, 0, 256);
-                if (smith_copy_from_user(buf, native, len))
-                    break;
-                else {
-                    if (strncmp("SSH_CONNECTION=", buf, 11) == 0) {
-                        ssh_connection_flag = 1;
-                        if (free_ssh_connection == 1) {
-                            strcpy(ssh_connection, buf + 15);
-                        } else {
-                            ssh_connection = "-1";
-                        }
-                    } else if (strncmp("LD_PRELOAD=", buf, 11) == 0) {
-                        ld_preload_flag = 1;
-                        if (free_ld_preload == 1) {
-                            strcpy(ld_preload, buf + 11);
-                        } else {
-                            ld_preload = "-1";
-                        }
-                    } else if (strncmp("LD_LIBRARY_PATH=", buf, 11) == 0) {
-                        ld_library_path_flag = 1;
-                        if (free_ld_library_path == 1) {
-                            strcpy(ld_library_path, buf + 16);
-                        } else {
-                            ld_library_path = "-1";
-                        }
-                    }
-                }
-            }
-        }
+    /* now query envion of current task */
+    if (lenv > PAGE_SIZE)
+        lenv = PAGE_SIZE;
+    if (!lenv || !envs)
+        goto errorout;
+    penv = smith_kzalloc(lenv, GFP_ATOMIC);
+    if (!penv)
+        goto errorout;
+    data->env = penv;
+    if (smith_copy_from_user(penv, (void *)envs, lenv - 1)) {
+        if (!strlen(penv))
+            goto errorout;
     }
 
-    if (ssh_connection_flag == 0) {
-        if (free_ssh_connection == 0)
-            ssh_connection = "-1";
-        else
-            strcpy(ssh_connection, "-1");
-    }
-    data->ssh_connection = ssh_connection;
-    data->free_ssh_connection = free_ssh_connection;
+    data->ssh_connection = strnstr(penv, "SSH_CONNECTION=", lenv);
+    if (data->ssh_connection)
+        data->ssh_connection += 15;
+    data->ld_preload = strnstr(penv, "LD_PRELOAD=", lenv);
+    if (data->ld_preload)
+        data->ld_preload += 11;
+    data->ld_library_path = strnstr(penv, "LD_LIBRARY_PATH=", lenv);
+    if (data->ld_library_path)
+        data->ld_library_path += 16;
 
-    if (ld_preload_flag == 0) {
-        if (free_ld_preload == 0)
-            ld_preload = "-1";
-        else
-            strcpy(ld_preload, "-1");
-    }
-    data->ld_preload = ld_preload;
-    data->free_ld_preload = free_ld_preload;
+errorout:
 
-    if (ld_library_path_flag == 0) {
-        if (free_ld_library_path == 0)
-            ld_library_path = "-1";
-        else
-            strcpy(ld_library_path, "-1");
-    }
-    data->ld_library_path = ld_library_path;
-    data->free_ld_library_path = free_ld_library_path;
-
-    data->argv = argv_res;
-    data->free_argv = free_argv;
+    return;
 }
 
-int compat_execve_entry_handler(struct kretprobe_instance *ri,
-                              struct pt_regs *regs)
+static void smith_trace_sysret_exec(int rc)
 {
-    struct execve_data *data;
-    char **argv = (char **)p_get_arg2_syscall(regs);
-    char **env = (char **)p_get_arg3_syscall(regs);
+    struct execve_data data = {0};
 
-    data = (struct execve_data *)ri->data;
-    get_execve_data(argv, env, data);
-    return 0;
+    /* ignore the failures that target doesn't exist */
+    if (rc == -ENOENT)
+        return;
+
+    /* prepare data: args & environment elements */
+    smith_trace_prepare_exec(&data);
+
+    /* process execve and generate tracelog */
+    smith_trace_process_exec(&data, rc);
 }
-
-int execve_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
-{
-    struct execve_data *data;
-    char **argv = (char **)p_get_arg2_syscall(regs);
-    char **env = (char **)p_get_arg3_syscall(regs);
-    data = (struct execve_data *)ri->data;
-    get_execve_data(argv, env, data);
-    return 0;
-}
-
-#endif
 
 //get create file info
 int security_inode_create_pre_handler(struct kprobe *p, struct pt_regs *regs)
@@ -3693,40 +3288,6 @@ int ip6_datagram_connect_entry_handler(struct kretprobe_instance *ri,
 }
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-struct kretprobe execveat_kretprobe = {
-	    .kp.symbol_name = P_GET_SYSCALL_NAME(execveat),
-	    .entry_handler = execveat_entry_handler,
-	    .data_size = sizeof(struct execve_data),
-	    .handler = execve_handler,
-};
-#endif
-
-struct kretprobe execve_kretprobe = {
-        .kp.symbol_name = P_GET_SYSCALL_NAME(execve),
-        .entry_handler = execve_entry_handler,
-        .data_size = sizeof(struct execve_data),
-        .handler = execve_handler,
-};
-
-#ifdef CONFIG_COMPAT
-struct kretprobe compat_execve_kretprobe = {
-	    .kp.symbol_name = P_GET_COMPAT_SYSCALL_NAME(execve),
-	    .entry_handler = compat_execve_entry_handler,
-	    .data_size = sizeof(struct execve_data),
-	    .handler = execve_handler,
-};
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0)
-struct kretprobe compat_execveat_kretprobe = {
-	    .kp.symbol_name = P_GET_COMPAT_SYSCALL_NAME(execveat),
-	    .entry_handler = compat_execveat_entry_handler,
-	    .data_size = sizeof(struct execve_data),
-	    .handler = execve_handler,
-};
-#endif
-#endif
-
 struct kprobe call_usermodehelper_exec_kprobe = {
         .symbol_name = "call_usermodehelper_exec",
         .pre_handler = call_usermodehelper_exec_pre_handler,
@@ -4045,74 +3606,6 @@ void unregister_link_kprobe(void)
 {
     unregister_kprobe(&link_kprobe);
 }
-
-int register_execve_kprobe(void)
-{
-    int ret;
-    ret = smith_register_kretprobe(&execve_kretprobe);
-    if (ret == 0)
-        execve_kretprobe_state = 0x1;
-
-    return ret;
-}
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-int register_execveat_kprobe(void)
-{
-	int ret;
-	ret = smith_register_kretprobe(&execveat_kretprobe);
-	if (ret == 0)
-		execveat_kretprobe_state = 0x1;
-
-	return ret;
-}
-#endif
-
-#ifdef CONFIG_COMPAT
-int register_compat_execve_kprobe(void)
-{
-	int ret;
-	ret = smith_register_kretprobe(&compat_execve_kretprobe);
-	if (ret == 0)
-		compat_execve_kretprobe_state = 0x1;
-
-	return ret;
-}
-
-void unregister_compat_execve_kprobe(void)
-{
-	smith_unregister_kretprobe(&compat_execve_kretprobe);
-}
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-int register_compat_execveat_kprobe(void)
-{
-	int ret;
-	ret = smith_register_kretprobe(&compat_execveat_kretprobe);
-	if (ret == 0)
-		compat_execveat_kretprobe_state = 0x1;
-
-	return ret;
-}
-
-void unregister_compat_execveat_kprobe(void)
-{
-	smith_unregister_kretprobe(&compat_execveat_kretprobe);
-}
-#endif
-#endif
-
-void unregister_execve_kprobe(void)
-{
-    smith_unregister_kretprobe(&execve_kretprobe);
-}
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-void unregister_execveat_kprobe(void)
-{
-	smith_unregister_kretprobe(&execveat_kretprobe);
-}
-#endif
 
 int register_ptrace_kprobe(void)
 {
@@ -4577,9 +4070,6 @@ void uninstall_kprobe(void)
     if (mprotect_kprobe_state == 0x1)
         unregister_mprotect_kprobe();
 
-    if (execve_kretprobe_state == 0x1)
-        unregister_execve_kprobe();
-
     if (ptrace_kprobe_state == 0x1)
         unregister_ptrace_kprobe();
 
@@ -4671,21 +4161,6 @@ void uninstall_kprobe(void)
 
     if (link_kprobe_state == 0x1)
         unregister_link_kprobe();
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-    if (execveat_kretprobe_state == 0x1)
-		unregister_execveat_kprobe();
-#endif
-
-#ifdef CONFIG_COMPAT
-    if (compat_execve_kretprobe_state == 0x1)
-        unregister_compat_execve_kprobe();
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-    if (compat_execveat_kretprobe_state == 0x1)
-	    unregister_compat_execveat_kprobe();
-#endif
-#endif
-
 }
 
 void install_kprobe(void)
@@ -4875,30 +4350,6 @@ void install_kprobe(void)
         ret = register_create_file_kprobe();
         if (ret < 0)
             printk(KERN_INFO "[ELKEID] create_file register_kprobe failed, returned %d\n", ret);
-    }
-
-    if (EXECVE_HOOK == 1) {
-        ret = register_execve_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] execve register_kprobe failed, returned %d\n", ret);
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-        ret = register_execveat_kprobe();
-		if (ret < 0)
-			printk(KERN_INFO "[ELKEID] execveat register_kprobe failed, returned %d\n", ret);
-#endif
-
-#ifdef CONFIG_COMPAT
-        ret = register_compat_execve_kprobe();
-		if (ret < 0)
-			printk(KERN_INFO "[ELKEID] compat_sys_execve register_kprobe failed, returned %d\n", ret);
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-		ret = register_compat_execveat_kprobe();
-		if (ret < 0)
-			printk(KERN_INFO "[ELKEID] compat_sys_execveat register_kprobe failed, returned %d\n", ret);
-#endif
-#endif
     }
 
     if (CALL_USERMODEHELPER == 1) {
@@ -5556,13 +5007,34 @@ errorout:
         smith_put_img(img);
     if (tid)
         smith_put_tid(tid);
+
+/*
+ * Workaround for ARM64:
+ *
+ * sys_exit tracepoint events for successful execve or execveat syscalls will be
+ * bypassed. Failed execve or execveat still have notification callbacks.
+ *
+ * Here we are using process_exec tracepoint as a suppliment to handle exec events.
+ * Lucily that kernels with ARM64 support are newer than 3.4.
+ *
+ * This bug is to be fixed in 5.20 and later, more details:
+ * 1) https://git.kernel.org/pub/scm/linux/kernel/git/arm64/linux.git/commit/?id=de6921856f99
+ * 2) https://github.com/iovisor/bcc/pull/3982
+ */
+
+#if defined(CONFIG_ARM64) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 20, 0)
+    /* Workaround for ARM64: lack of sys_exit tracing for execve */
+    if (EXECVE_HOOK)
+        smith_trace_sysret_exec(0);
+#endif
+
     return;
 }
 
 /*
  * Process exec notifier: workaround for earlier kernels (< 3.4)
  */
-void smith_trace_proc_execve(struct task_struct *task)
+static void smith_trace_proc_execve(struct task_struct *task)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
     smith_trace_proc_exec(NULL, task, task->pid, NULL);
@@ -5579,12 +5051,102 @@ TRACEPOINT_PROBE(smith_trace_proc_exit, struct task_struct *task)
     smith_drop_tid(task);
 }
 
+#include <linux/thread_info.h>
+#include <asm/syscall.h> /* syscall_get_nr() */
+#include <asm/unistd.h> /* __NR_syscall defintions */
+
+
+TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
+{
+    long id = syscall_get_nr(current, regs);
+
+#if IS_ENABLED(CONFIG_IA32_EMULATION)
+    /*
+     * Parameters passing for x86-32 syscall:
+     * 1) %eax for syscall_number
+     * 2) %ebx, %ecx, %edx, %esi, %edi, %ebp are used for passing 6 parameters
+     * 3) if there are more than 6 arguments (very unlikely), %ebx must contain
+     *    the user memory location where the list of arguments is stored
+     */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+    /* in_ia32_syscall(): introduced after 4.7.0 */
+    if (unlikely(in_ia32_syscall())) {
+#else
+    if (unlikely(current_thread_info()->status & TS_COMPAT)) {
+#endif
+
+        switch (id) {
+
+            /*
+             * exec related: context of execved task
+             */
+            case 11 /* __NR_ia32_execve */ :
+            case 358 /* __NR_ia32_execveat */:
+                /*
+                 * sched_process_exec emulation for earlier kernels (3.4).
+                 * execve returns -1 on error
+                 */
+                if (ret >= 0)
+                    smith_trace_proc_execve(current);
+
+                if (EXECVE_HOOK)
+                    smith_trace_sysret_exec(ret);
+                break;
+
+            default:
+                break;
+        }
+
+        return;
+    }
+#endif
+
+#if defined(CONFIG_ARM64) && defined(CONFIG_COMPAT)
+    if (ESR_ELx_EC_SVC32 == ESR_ELx_EC(read_sysreg(esr_el1))) {
+        /* just ignore syscalls from ARM32 apps for now */
+        return;
+    }
+#endif
+
+    /* 64-bit native mode: HIDS doesn't support 32bit OS */
+    switch (id) {
+
+        /*
+         * exec related: context of execved task
+         */
+#ifdef       __NR_execveat
+        case __NR_execveat:
+#endif
+        case __NR_execve:
+            /*
+             * sched_process_exec emulation for earlier kernels (3.4).
+             * execve returns -1 on error
+             */
+            if (ret >= 0)
+                smith_trace_proc_execve(current);
+
+            if (EXECVE_HOOK)
+                smith_trace_sysret_exec(ret);
+            break;
+
+        default:
+            break;
+    }
+}
+
 struct smith_tracepoint {
     const char *name;
     void *handler;
     void *data;
     struct tracepoint *control;
 } g_smith_tracepoints[] = {
+
+    /*
+     * only hook sys_exit tracepoint, since sys_enter or sys_exit will
+     * affect all syscalls, and could lead performance drop of about 3
+     * - 5%, even with noop-processing in the hookpoint callback
+     */
+    {.name = "sys_exit", .handler = smith_trace_sys_exit},
 
     {.name = "sched_process_exit", .handler = smith_trace_proc_exit},
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
