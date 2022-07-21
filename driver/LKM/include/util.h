@@ -283,14 +283,6 @@ static inline void *__get_dns_query(unsigned char *data, int query_len, char *re
     return 0;
 }
 
-static inline unsigned int __get_sessionid(void) {
-    unsigned int sessionid = 0;
-#ifdef CONFIG_AUDITSYSCALL
-    sessionid = current->sessionid;
-#endif
-    return sessionid;
-}
-
 static inline unsigned int __get_pid_ns_inum(void) {
     unsigned int inum;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
