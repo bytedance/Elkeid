@@ -471,9 +471,9 @@ SD_XFER_DEFINE( NAME(mprotect),
 
 SD_XFER_DEFINE( NAME(setsid),
 
-                PROT(ELEMENT(char *, exe_path)),
+                PROT(ELEMENT(char *, exe_path), ELEMENT(int, newsid)),
 
-                XFER(ENTRY_COMMON(112))
+                XFER(ENTRY_COMMON(112), ENTRY_INT(newsid, newsid))
 
 )
 

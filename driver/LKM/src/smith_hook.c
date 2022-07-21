@@ -78,7 +78,6 @@ char mprotect_kprobe_state = 0x0;
 char mount_kprobe_state = 0x0;
 char rename_kprobe_state = 0x0;
 char link_kprobe_state = 0x0;
-char setsid_kprobe_state = 0x0;
 char prctl_kprobe_state = 0x0;
 char memfd_create_kprobe_state = 0x0;
 char accept_kretprobe_state = 0x0;
@@ -2373,7 +2372,8 @@ int link_pre_handler(struct kprobe *p, struct pt_regs *regs)
     return 0;
 }
 
-int setsid_pre_handler(struct kprobe *p, struct pt_regs *regs)
+/* create new session id (-1 if got errors) */
+static void smith_trace_sysret_setsid(int ret)
 {
     char *exe_path = DEFAULT_RET_STR;
     struct smith_tid *tid = NULL;
@@ -2386,13 +2386,11 @@ int setsid_pre_handler(struct kprobe *p, struct pt_regs *regs)
             goto out;
     }
 
-    setsid_print(exe_path);
+    setsid_print(exe_path, ret);
 
 out:
     if (tid)
         smith_put_tid(tid);
-
-    return 0;
 }
 
 int prctl_pre_handler(struct kprobe *p, struct pt_regs *regs)
@@ -3535,11 +3533,6 @@ struct kprobe mprotect_kprobe = {
         .pre_handler = mprotect_pre_handler,
 };
 
-struct kprobe setsid_kprobe = {
-        .symbol_name = P_GET_SYSCALL_NAME(setsid),
-        .pre_handler = setsid_pre_handler,
-};
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
 struct kprobe memfd_create_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(memfd_create),
@@ -3929,22 +3922,6 @@ void unregister_do_init_module_kprobe(void)
     unregister_kprobe(&do_init_module_kprobe);
 }
 
-int register_setsid_kprobe(void)
-{
-    int ret;
-    ret = register_kprobe(&setsid_kprobe);
-
-    if (ret == 0)
-        setsid_kprobe_state = 0x1;
-
-    return ret;
-}
-
-void unregister_setsid_kprobe(void)
-{
-    unregister_kprobe(&setsid_kprobe);
-}
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
 int register_memfd_create_kprobe(void)
 {
@@ -4197,9 +4174,6 @@ void uninstall_kprobe(void)
     if (update_cred_kprobe_state == 0x1)
         unregister_update_cred_kprobe();
 
-    if (setsid_kprobe_state == 0x1)
-        unregister_setsid_kprobe();
-
     if (tcp_v4_connect_kprobe_state == 0x1)
         unregister_tcp_v4_connect_kprobe();
 
@@ -4423,12 +4397,6 @@ void install_kprobe(void)
         ret = register_prctl_kprobe();
         if (ret < 0)
             printk(KERN_INFO "[ELKEID] prctl register_kprobe failed, returned %d\n", ret);
-    }
-
-    if (SETSID_HOOK == 1) {
-        ret = register_setsid_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] setsid register_kprobe failed, returned %d\n", ret);
     }
 
     if (BIND_HOOK == 1) {
@@ -5205,6 +5173,14 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
                 break;
 
             /*
+             * create new session id
+             */
+            case 66 /*__NR_ia32_setsid */:
+                if (SETSID_HOOK)
+                    smith_trace_sysret_setsid(ret);
+                break;
+
+            /*
              * chmod operations
              */
             case 15 /* __NR_ia32_chmod */:
@@ -5265,6 +5241,14 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
                                           p_regs_get_arg2_syscall(regs),
                                           (void *)p_regs_get_arg3_syscall(regs),
                                           ret);
+            break;
+
+        /*
+         * create new session id
+         */
+        case __NR_setsid:
+            if (SETSID_HOOK)
+                smith_trace_sysret_setsid(ret);
             break;
 
         /*
