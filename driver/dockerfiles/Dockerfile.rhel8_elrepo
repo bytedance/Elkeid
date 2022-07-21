@@ -3,15 +3,8 @@ FROM cern/c8-base:latest AS rhel8
 RUN yum install -y wget perl gcc make tree elfutils-libelf-devel; 
 RUN yum groupinstall -y  "Development Tools"; 
 RUN mkdir /root/headers
-
-RUN cd /tmp; \
-wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/cc/8.0/BaseOS/x86_64/os/Packages/'; \
-wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/cc/8.1/BaseOS/x86_64/os/Packages/'; \
-wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/cc/8.2/BaseOS/x86_64/os/Packages/'; \
-wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/cc/8.3/BaseOS/x86_64/os/Packages/';  \
-wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/cc/8.4/BaseOS/x86_64/os/Packages/';  \
-wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/cc/8.5/BaseOS/x86_64/os/Packages/';
-RUN rpm -ivh /tmp/*.rpm || true
+RUN cd /root/headers; wget -q -c -r -np -nd -nH -A 'kernel*devel*x86_64.rpm' 'http://mirrors.coreix.net/elrepo-archive-archive/kernel/el8/x86_64/RPMS/'
+RUN rpm --force -ivh /root/headers/*.rpm || true
 
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -26,4 +19,5 @@ ADD . /elkeid
 WORKDIR /elkeid/driver
 >>>>>>> 6fc7695 (fix docker path)
 RUN bash ./batch_compile.sh
+RUN rm -rf /root/headers/*
 

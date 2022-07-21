@@ -3,13 +3,14 @@ FROM cern/cc7-base:latest AS rhel7
 RUN yum install -y wget perl gcc make tree elfutils-libelf-devel yumdownloader; 
 RUN yum groupinstall -y  "Development Tools"; 
 RUN mkdir /root/headers
-RUN for each_tag in `yum --showduplicates list kernel-devel | grep kernel-devel | awk -c '{print $2}'`; do yumdownloader  --destdir /root/headers kernel-devel-$each_tag.x86_64; done
+RUN cd /root/headers; wget -q -c -r -np -nd -nH -A 'kernel*devel*x86_64.rpm' 'http://mirrors.coreix.net/elrepo-archive-archive/kernel/el7/x86_64/RPMS/'
 RUN rpm --force -ivh /root/headers/*.rpm || true
 
 <<<<<<< HEAD
 <<<<<<< HEAD
 ADD . /elkeid
 WORKDIR /elkeid/driver
+<<<<<<< HEAD
 =======
 ADD . /elkeid_driver
 WORKDIR /elkeid_driver
@@ -19,3 +20,7 @@ ADD . /elkeid
 WORKDIR /elkeid/driver
 >>>>>>> 6fc7695 (fix docker path)
 RUN bash ./batch_compile.sh
+=======
+RUN bash ./batch_compile.sh
+RUN rm -rf /root/headers/*
+>>>>>>> 388a69d (add centos elrepo)
