@@ -385,7 +385,7 @@ struct sd_type_ent {
 int tb_unpack(void *de, int sde, void *se, int *rec)
 {
     struct sd_item_ent *it;
-    int in = 0, i = 1, out, sse;
+    int in = 0, i = 1, out = 0, sse;
 
     if (*rec <= sizeof(u64) + sizeof(*it) * 2)
         return 0;
@@ -397,10 +397,13 @@ int tb_unpack(void *de, int sde, void *se, int *rec)
     /* skip ts + head + meta */
     in += sizeof(u64) + sizeof(*it) + sizeof(uint32_t);
 
+#if 0
     /* timestamp */
     out = sd_u64toa(*((uint64_t *)se), de, sde);
     if (out <= 0)
         return 0;
+#endif
+
     while (in < sse && out < sde) {
         int rc, ri = 0;
         uint8_t t = (uint8_t)it[++i].item;
