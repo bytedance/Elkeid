@@ -2,7 +2,7 @@ name: Elkeid_driver
 on:
   push:
     branches:
-    - main
+    - main/driver_compile
   schedule:
   - cron : 0 3 1 * *
 jobs:
@@ -546,6 +546,36 @@ jobs:
       with:
         name: elkeid_driver_rhel8_elrepo_ml
         path: ${{steps.extract-rhel8_elrepo_ml.outputs.destination}}
+  build_rhel8_plus:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx rhel8_plus
+      uses: docker/setup-buildx-action@v1
+    - name: Build rhel8_plus
+      uses: docker/build-push-action@v2
+      with:
+        file: driver/dockerfiles/Dockerfile.rhel8_plus
+        push: true
+        tags: elkeidteam/elkeid_driver_rhel8_plus:latest
+    - name: Extract rhel8_plus
+      id: extract-rhel8_plus
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeidteam/elkeid_driver_rhel8_plus:latest
+        path: /ko_output/.
+    - name: Upload rhel8_plus
+      uses: actions/upload-artifact@v3
+      with:
+        name: elkeid_driver_rhel8_plus
+        path: ${{steps.extract-rhel8_plus.outputs.destination}}
   build_tlinux24:
     runs-on: ubuntu-latest
     steps:
