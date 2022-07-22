@@ -4,7 +4,7 @@ BUILD_VERSION=$(cat LKM/src/init.c | grep MODULE_VERSION | awk -F '"' '{print $2
 KO_NAME=$(grep "MODULE_NAME" ./LKM/Makefile | grep -m 1 ":=" | awk '{print $3}')
 
 
-for each_tag in `yum --disablerepo=* --enablerepo=centosplus --showduplicates list kernel-devel | grep kernel-plus-devel | awk -c '{print $2}'`
+for each_tag in `yum --disablerepo=* --enablerepo=centosplus --showduplicates list kernel-plus-devel | grep kernel-plus-devel | awk -c '{print $2}'`
 do 
     yum remove -y kernel-plus-devel kernel-plus-tools kernel-plus-tools-libs kernel-devel kernel-tools kernel-tools-libs
     yumdownloader  --disablerepo=* --enablerepo=centosplus --destdir /root/headers kernel-plus-devel-$each_tag.x86_64 kernel-plus-tools-$each_tag.x86_64 kernel-plus-tools-libs-$each_tag.x86_64
