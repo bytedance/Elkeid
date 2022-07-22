@@ -6,7 +6,7 @@ RUN mkdir /root/headers
 
 RUN cd /root/headers; \
 wget -q -c -r -np -nd -nH -A 'kernel-plus-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/cc/8/centosplus/x86_64/os/Packages/'; \
-wget -q -c -r -np -nd -nH -A 'kernel-plus-tools*x86_64.rpm' 'https://mirrors.nju.edu.cn/cc/8/centosplus/x86_64/os/Packages/'; \
+wget -q -c -r -np -nd -nH -A 'kernel-plus-tools*x86_64.rpm' 'https://mirrors.nju.edu.cn/cc/8/centosplus/x86_64/os/Packages/'
 
 ADD . /elkeid
 WORKDIR /elkeid/driver
