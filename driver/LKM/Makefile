@@ -59,6 +59,12 @@ ifneq ($(TRACE_SEQ_SEQ),)
 ccflags-y += -D SMITH_TRACE_SEQ
 endif
 
+USER_MSGHDR_FILES := $(shell find -L $(K_I_PATH) -path \*/linux/socket.h) /dev/null
+USER_MSGHDR_STRUT := $(shell sh -c "grep -sE struct[[:space:]]\+user_msghdr[[:space:]]\+\{ $(USER_MSGHDR_FILES)")
+ifeq ($(USER_MSGHDR_STRUT),)
+ccflags-y += -D USER_MSGHDR_SUPPORT
+endif
+
 else
 
 MODULE_DIR		:= $(shell pwd)
