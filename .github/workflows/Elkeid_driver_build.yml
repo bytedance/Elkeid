@@ -366,7 +366,7 @@ jobs:
       with:
         name: elkeid_driver_rhel7
         path: ${{steps.extract-rhel7.outputs.destination}}
-  build_rhel7_elrepo:
+  build_rhel7_centosplus:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -377,25 +377,85 @@ jobs:
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
-    - name: Set up Docker Buildx rhel7_elrepo
+    - name: Set up Docker Buildx rhel7_centosplus
       uses: docker/setup-buildx-action@v1
-    - name: Build rhel7_elrepo
+    - name: Build rhel7_centosplus
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.rhel7_elrepo
+        file: driver/dockerfiles/Dockerfile.rhel7_centosplus
         push: true
-        tags: elkeidteam/elkeid_driver_rhel7_elrepo:latest
-    - name: Extract rhel7_elrepo
-      id: extract-rhel7_elrepo
+        tags: elkeidteam/elkeid_driver_rhel7_centosplus:latest
+    - name: Extract rhel7_centosplus
+      id: extract-rhel7_centosplus
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_rhel7_elrepo:latest
+        image: elkeidteam/elkeid_driver_rhel7_centosplus:latest
         path: /ko_output/.
-    - name: Upload rhel7_elrepo
+    - name: Upload rhel7_centosplus
       uses: actions/upload-artifact@v3
       with:
-        name: elkeid_driver_rhel7_elrepo
-        path: ${{steps.extract-rhel7_elrepo.outputs.destination}}
+        name: elkeid_driver_rhel7_centosplus
+        path: ${{steps.extract-rhel7_centosplus.outputs.destination}}
+  build_rhel7_elrepo_lt:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx rhel7_elrepo_lt
+      uses: docker/setup-buildx-action@v1
+    - name: Build rhel7_elrepo_lt
+      uses: docker/build-push-action@v2
+      with:
+        file: driver/dockerfiles/Dockerfile.rhel7_elrepo_lt
+        push: true
+        tags: elkeidteam/elkeid_driver_rhel7_elrepo_lt:latest
+    - name: Extract rhel7_elrepo_lt
+      id: extract-rhel7_elrepo_lt
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeidteam/elkeid_driver_rhel7_elrepo_lt:latest
+        path: /ko_output/.
+    - name: Upload rhel7_elrepo_lt
+      uses: actions/upload-artifact@v3
+      with:
+        name: elkeid_driver_rhel7_elrepo_lt
+        path: ${{steps.extract-rhel7_elrepo_lt.outputs.destination}}
+  build_rhel7_elrepo_ml:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx rhel7_elrepo_ml
+      uses: docker/setup-buildx-action@v1
+    - name: Build rhel7_elrepo_ml
+      uses: docker/build-push-action@v2
+      with:
+        file: driver/dockerfiles/Dockerfile.rhel7_elrepo_ml
+        push: true
+        tags: elkeidteam/elkeid_driver_rhel7_elrepo_ml:latest
+    - name: Extract rhel7_elrepo_ml
+      id: extract-rhel7_elrepo_ml
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeidteam/elkeid_driver_rhel7_elrepo_ml:latest
+        path: /ko_output/.
+    - name: Upload rhel7_elrepo_ml
+      uses: actions/upload-artifact@v3
+      with:
+        name: elkeid_driver_rhel7_elrepo_ml
+        path: ${{steps.extract-rhel7_elrepo_ml.outputs.destination}}
   build_rhel8:
     runs-on: ubuntu-latest
     steps:
@@ -426,7 +486,7 @@ jobs:
       with:
         name: elkeid_driver_rhel8
         path: ${{steps.extract-rhel8.outputs.destination}}
-  build_rhel8_elrepo:
+  build_rhel8_elrepo_lt:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -437,25 +497,55 @@ jobs:
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
-    - name: Set up Docker Buildx rhel8_elrepo
+    - name: Set up Docker Buildx rhel8_elrepo_lt
       uses: docker/setup-buildx-action@v1
-    - name: Build rhel8_elrepo
+    - name: Build rhel8_elrepo_lt
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.rhel8_elrepo
+        file: driver/dockerfiles/Dockerfile.rhel8_elrepo_lt
         push: true
-        tags: elkeidteam/elkeid_driver_rhel8_elrepo:latest
-    - name: Extract rhel8_elrepo
-      id: extract-rhel8_elrepo
+        tags: elkeidteam/elkeid_driver_rhel8_elrepo_lt:latest
+    - name: Extract rhel8_elrepo_lt
+      id: extract-rhel8_elrepo_lt
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_rhel8_elrepo:latest
+        image: elkeidteam/elkeid_driver_rhel8_elrepo_lt:latest
         path: /ko_output/.
-    - name: Upload rhel8_elrepo
+    - name: Upload rhel8_elrepo_lt
       uses: actions/upload-artifact@v3
       with:
-        name: elkeid_driver_rhel8_elrepo
-        path: ${{steps.extract-rhel8_elrepo.outputs.destination}}
+        name: elkeid_driver_rhel8_elrepo_lt
+        path: ${{steps.extract-rhel8_elrepo_lt.outputs.destination}}
+  build_rhel8_elrepo_ml:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx rhel8_elrepo_ml
+      uses: docker/setup-buildx-action@v1
+    - name: Build rhel8_elrepo_ml
+      uses: docker/build-push-action@v2
+      with:
+        file: driver/dockerfiles/Dockerfile.rhel8_elrepo_ml
+        push: true
+        tags: elkeidteam/elkeid_driver_rhel8_elrepo_ml:latest
+    - name: Extract rhel8_elrepo_ml
+      id: extract-rhel8_elrepo_ml
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeidteam/elkeid_driver_rhel8_elrepo_ml:latest
+        path: /ko_output/.
+    - name: Upload rhel8_elrepo_ml
+      uses: actions/upload-artifact@v3
+      with:
+        name: elkeid_driver_rhel8_elrepo_ml
+        path: ${{steps.extract-rhel8_elrepo_ml.outputs.destination}}
   build_tlinux24:
     runs-on: ubuntu-latest
     steps:

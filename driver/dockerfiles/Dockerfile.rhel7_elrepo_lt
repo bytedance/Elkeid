@@ -7,4 +7,4 @@ RUN mkdir -p /ko_output
 ADD . /elkeid
 WORKDIR /elkeid/driver
 
-RUN bash ./batch_compile_elrepo7.sh
+RUN bash ./batch_compile_elrepo7_lt.sh
