@@ -2,7 +2,7 @@ name: Elkeid_driver
 on:
   push:
     branches:
-    - main_driver_compile
+    - main
   schedule:
   - cron : 0 3 1 * *
 jobs:
