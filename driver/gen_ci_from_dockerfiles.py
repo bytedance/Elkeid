@@ -78,7 +78,7 @@ yaml_cfg_build = OrderedDict(
         "on": {
             "push": {
                 "branches": [
-                    "main/driver_compile",
+                    "main_driver_compile",
                 ]
             },
             "schedule": ["cron : '0 3 1 * *'"]
