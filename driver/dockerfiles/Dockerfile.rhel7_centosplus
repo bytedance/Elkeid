@@ -1,7 +1,7 @@
 FROM cern/cc7-base:latest AS rhel7
 
 
-RUN yum install -y wget perl gcc make tree elfutils-libelf-devel yumdownloader; 
+RUN yum install -y wget perl gcc make tree elfutils-libelf-devel yumdownloader pciutils-libs; 
 RUN yum groupinstall -y  "Development Tools"; 
 RUN mkdir /root/headers
 

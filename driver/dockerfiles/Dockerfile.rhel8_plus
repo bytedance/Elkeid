@@ -1,6 +1,6 @@
 FROM cern/c8-base:latest AS rhel8
 
-RUN yum install -y wget perl gcc make tree elfutils-libelf-devel; 
+RUN yum install -y wget perl gcc make tree elfutils-libelf-devel pciutils-libs; 
 RUN yum groupinstall -y  "Development Tools"; 
 RUN mkdir /root/headers
 
@@ -10,7 +10,7 @@ wget -q -c -r -np -nd -nH -A 'kernel-plus-tools*x86_64.rpm' 'https://mirrors.nju
 
 ADD . /elkeid
 WORKDIR /elkeid/driver
-RUN bash ./batch_compile_elrepo8_plus.sh
+RUN bash ./batch_compile_el8_plus.sh
 RUN rm -rf /root/headers/*.rpm 
 
 
