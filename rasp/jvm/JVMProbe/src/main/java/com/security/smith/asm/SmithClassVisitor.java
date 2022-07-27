@@ -8,6 +8,10 @@ import org.objectweb.asm.Type;
 import java.util.Map;
 
 public class SmithClassVisitor extends ClassVisitor {
+    private final int classID;
+    private final Type classType;
+    private final Map<String, SmithMethod> methodMap;
+
     public SmithClassVisitor(int api, ClassVisitor classVisitor, int classID, Type classType, Map<String, SmithMethod> methodMap) {
         super(api, classVisitor);
 
@@ -27,8 +31,4 @@ public class SmithClassVisitor extends ClassVisitor {
 
         return new SmithMethodVisitor(this.api, classType, classID, smithMethod.getId(), smithMethod.isBlock(), methodVisitor, access, name, descriptor);
     }
-
-    private final int classID;
-    private final Type classType;
-    private final Map<String, SmithMethod> methodMap;
 }

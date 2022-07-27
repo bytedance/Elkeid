@@ -1,6 +1,11 @@
 package com.security.smith.type;
 
 public class SmithMethod {
+    private int id;
+    private String name;
+    private String desc;
+    private boolean block;
+
     public int getId() {
         return id;
     }
@@ -32,9 +37,4 @@ public class SmithMethod {
     public void setBlock(boolean block) {
         this.block = block;
     }
-
-    private int id;
-    private String name;
-    private String desc;
-    private boolean block;
 }
