@@ -45,6 +45,18 @@ def gen_job(vmname):
                         "tags": "elkeidteam/elkeid_driver_"+vmname+":latest"
                     }
                 }),
+
+                OrderedDict({
+                    "name": "Docker Hub Description "+vmname,
+                    "uses": "peter-evans/dockerhub-description@v3",
+                    "with": {
+                        "username": "${{secrets.DOCKERHUB_USERNAME}}",
+                        "password": "${{secrets.DOCKERHUB_TOKEN}}",
+                        "repository": "elkeidteam/elkeid_driver_"+vmname,
+                        "short-description": "${{github.event.repository.description}}",
+                    }
+                }),
+
                 OrderedDict({
                     "name": "Extract "+vmname,
                     "id": "extract-"+vmname,

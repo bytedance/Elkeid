@@ -5,15 +5,15 @@ KO_NAME=$(grep "MODULE_NAME" ./LKM/Makefile | grep -m 1 ":=" | awk '{print $3}')
 
 for each_ml_version in `curl http://mirrors.coreix.net/elrepo-archive-archive/kernel/el8/x86_64/RPMS/ | grep el8.elrepo.x86_64.rpm | grep kernel-ml-devel | sed -r 's/.*href="([^"]+).*/\1/g' | sed -r 's/kernel-ml-devel-([^"]+).el8.elrepo.x86_64.rpm/\1/g'`
 do 
-    wget "http://mirrors.coreix.net/elrepo-archive-archive/kernel/el8/x86_64/RPMS/kernel-ml-devel"-$each_ml_version.el8.elrepo.x86_64.rpm
-    wget "http://mirrors.coreix.net/elrepo-archive-archive/kernel/el8/x86_64/RPMS/kernel-ml-tools"-$each_ml_version.el8.elrepo.x86_64.rpm
-    wget "http://mirrors.coreix.net/elrepo-archive-archive/kernel/el8/x86_64/RPMS/kernel-ml-tools-libs"-$each_ml_version.el8.elrepo.x86_64.rpm
+    wget -q "http://mirrors.coreix.net/elrepo-archive-archive/kernel/el8/x86_64/RPMS/kernel-ml-devel"-$each_ml_version.el8.elrepo.x86_64.rpm
+    wget -q "http://mirrors.coreix.net/elrepo-archive-archive/kernel/el8/x86_64/RPMS/kernel-ml-tools"-$each_ml_version.el8.elrepo.x86_64.rpm
+    wget -q "http://mirrors.coreix.net/elrepo-archive-archive/kernel/el8/x86_64/RPMS/kernel-ml-tools-libs"-$each_ml_version.el8.elrepo.x86_64.rpm
     
-    yum remove -y kernel-devel kernel-lt-devel kernel-ml-devel 
-    yum remove -y kernel-tools kernel-lt-tools kernel-ml-tools 
-    yum remove -y kernel-tools-libs kernel-lt-tools-libs kernel-ml-tools-libs
+    yum remove -y kernel-devel kernel-lt-devel kernel-ml-devel &> /dev/null
+    yum remove -y kernel-tools kernel-lt-tools kernel-ml-tools &> /dev/null
+    yum remove -y kernel-tools-libs kernel-lt-tools-libs kernel-ml-tools-libs &> /dev/null
 
-    rpm -ivh --force ./kernel*.rpm 
+    rpm -i --force ./kernel*.rpm
     rm -f ./kernel*.rpm 
     KV=$each_ml_version.el8.elrepo.x86_64
     KVERSION=$KV make -C ./LKM clean || true 

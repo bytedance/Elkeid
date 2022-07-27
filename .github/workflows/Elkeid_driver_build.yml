@@ -25,6 +25,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.aliyun_linux2
         push: true
         tags: elkeidteam/elkeid_driver_aliyun_linux2:latest
+    - name: Docker Hub Description aliyun_linux2
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_aliyun_linux2
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract aliyun_linux2
       id: extract-aliyun_linux2
       uses: shrink/actions-docker-extract@v1
@@ -55,6 +62,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.aliyun_linux3
         push: true
         tags: elkeidteam/elkeid_driver_aliyun_linux3:latest
+    - name: Docker Hub Description aliyun_linux3
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_aliyun_linux3
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract aliyun_linux3
       id: extract-aliyun_linux3
       uses: shrink/actions-docker-extract@v1
@@ -85,6 +99,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.amazonlinux
         push: true
         tags: elkeidteam/elkeid_driver_amazonlinux:latest
+    - name: Docker Hub Description amazonlinux
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_amazonlinux
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract amazonlinux
       id: extract-amazonlinux
       uses: shrink/actions-docker-extract@v1
@@ -115,6 +136,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.amazonlinux510
         push: true
         tags: elkeidteam/elkeid_driver_amazonlinux510:latest
+    - name: Docker Hub Description amazonlinux510
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_amazonlinux510
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract amazonlinux510
       id: extract-amazonlinux510
       uses: shrink/actions-docker-extract@v1
@@ -145,6 +173,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.amazonlinux54
         push: true
         tags: elkeidteam/elkeid_driver_amazonlinux54:latest
+    - name: Docker Hub Description amazonlinux54
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_amazonlinux54
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract amazonlinux54
       id: extract-amazonlinux54
       uses: shrink/actions-docker-extract@v1
@@ -175,6 +210,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.debian10
         push: true
         tags: elkeidteam/elkeid_driver_debian10:latest
+    - name: Docker Hub Description debian10
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_debian10
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract debian10
       id: extract-debian10
       uses: shrink/actions-docker-extract@v1
@@ -205,6 +247,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.debian11
         push: true
         tags: elkeidteam/elkeid_driver_debian11:latest
+    - name: Docker Hub Description debian11
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_debian11
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract debian11
       id: extract-debian11
       uses: shrink/actions-docker-extract@v1
@@ -235,6 +284,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.debian8
         push: true
         tags: elkeidteam/elkeid_driver_debian8:latest
+    - name: Docker Hub Description debian8
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_debian8
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract debian8
       id: extract-debian8
       uses: shrink/actions-docker-extract@v1
@@ -265,6 +321,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.debian9
         push: true
         tags: elkeidteam/elkeid_driver_debian9:latest
+    - name: Docker Hub Description debian9
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_debian9
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract debian9
       id: extract-debian9
       uses: shrink/actions-docker-extract@v1
@@ -295,6 +358,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.rhel6
         push: true
         tags: elkeidteam/elkeid_driver_rhel6:latest
+    - name: Docker Hub Description rhel6
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_rhel6
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel6
       id: extract-rhel6
       uses: shrink/actions-docker-extract@v1
@@ -325,6 +395,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.rhel6_elrepo
         push: true
         tags: elkeidteam/elkeid_driver_rhel6_elrepo:latest
+    - name: Docker Hub Description rhel6_elrepo
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_rhel6_elrepo
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel6_elrepo
       id: extract-rhel6_elrepo
       uses: shrink/actions-docker-extract@v1
@@ -355,6 +432,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.rhel7
         push: true
         tags: elkeidteam/elkeid_driver_rhel7:latest
+    - name: Docker Hub Description rhel7
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_rhel7
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7
       id: extract-rhel7
       uses: shrink/actions-docker-extract@v1
@@ -385,6 +469,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.rhel7_centosplus
         push: true
         tags: elkeidteam/elkeid_driver_rhel7_centosplus:latest
+    - name: Docker Hub Description rhel7_centosplus
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_rhel7_centosplus
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7_centosplus
       id: extract-rhel7_centosplus
       uses: shrink/actions-docker-extract@v1
@@ -415,6 +506,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.rhel7_elrepo_lt
         push: true
         tags: elkeidteam/elkeid_driver_rhel7_elrepo_lt:latest
+    - name: Docker Hub Description rhel7_elrepo_lt
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_rhel7_elrepo_lt
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7_elrepo_lt
       id: extract-rhel7_elrepo_lt
       uses: shrink/actions-docker-extract@v1
@@ -445,6 +543,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.rhel7_elrepo_ml
         push: true
         tags: elkeidteam/elkeid_driver_rhel7_elrepo_ml:latest
+    - name: Docker Hub Description rhel7_elrepo_ml
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_rhel7_elrepo_ml
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7_elrepo_ml
       id: extract-rhel7_elrepo_ml
       uses: shrink/actions-docker-extract@v1
@@ -475,6 +580,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.rhel8
         push: true
         tags: elkeidteam/elkeid_driver_rhel8:latest
+    - name: Docker Hub Description rhel8
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_rhel8
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel8
       id: extract-rhel8
       uses: shrink/actions-docker-extract@v1
@@ -505,6 +617,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.rhel8_elrepo_lt
         push: true
         tags: elkeidteam/elkeid_driver_rhel8_elrepo_lt:latest
+    - name: Docker Hub Description rhel8_elrepo_lt
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_rhel8_elrepo_lt
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel8_elrepo_lt
       id: extract-rhel8_elrepo_lt
       uses: shrink/actions-docker-extract@v1
@@ -535,6 +654,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.rhel8_elrepo_ml
         push: true
         tags: elkeidteam/elkeid_driver_rhel8_elrepo_ml:latest
+    - name: Docker Hub Description rhel8_elrepo_ml
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_rhel8_elrepo_ml
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel8_elrepo_ml
       id: extract-rhel8_elrepo_ml
       uses: shrink/actions-docker-extract@v1
@@ -565,6 +691,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.rhel8_plus
         push: true
         tags: elkeidteam/elkeid_driver_rhel8_plus:latest
+    - name: Docker Hub Description rhel8_plus
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_rhel8_plus
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel8_plus
       id: extract-rhel8_plus
       uses: shrink/actions-docker-extract@v1
@@ -595,6 +728,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.tlinux24
         push: true
         tags: elkeidteam/elkeid_driver_tlinux24:latest
+    - name: Docker Hub Description tlinux24
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_tlinux24
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract tlinux24
       id: extract-tlinux24
       uses: shrink/actions-docker-extract@v1
@@ -625,6 +765,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.tlinux31
         push: true
         tags: elkeidteam/elkeid_driver_tlinux31:latest
+    - name: Docker Hub Description tlinux31
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_tlinux31
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract tlinux31
       id: extract-tlinux31
       uses: shrink/actions-docker-extract@v1
@@ -655,6 +802,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.ubuntu1204
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1204:latest
+    - name: Docker Hub Description ubuntu1204
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu1204
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1204
       id: extract-ubuntu1204
       uses: shrink/actions-docker-extract@v1
@@ -685,6 +839,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.ubuntu1404_k3
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1404_k3:latest
+    - name: Docker Hub Description ubuntu1404_k3
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu1404_k3
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1404_k3
       id: extract-ubuntu1404_k3
       uses: shrink/actions-docker-extract@v1
@@ -715,6 +876,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.ubuntu1404_k4
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1404_k4:latest
+    - name: Docker Hub Description ubuntu1404_k4
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu1404_k4
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1404_k4
       id: extract-ubuntu1404_k4
       uses: shrink/actions-docker-extract@v1
@@ -745,6 +913,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.ubuntu1604_auzre
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_auzre:latest
+    - name: Docker Hub Description ubuntu1604_auzre
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu1604_auzre
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_auzre
       id: extract-ubuntu1604_auzre
       uses: shrink/actions-docker-extract@v1
@@ -775,6 +950,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.ubuntu1604_aws
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_aws:latest
+    - name: Docker Hub Description ubuntu1604_aws
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu1604_aws
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_aws
       id: extract-ubuntu1604_aws
       uses: shrink/actions-docker-extract@v1
@@ -805,6 +987,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.ubuntu1604_k410
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_k410:latest
+    - name: Docker Hub Description ubuntu1604_k410
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu1604_k410
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_k410
       id: extract-ubuntu1604_k410
       uses: shrink/actions-docker-extract@v1
@@ -835,6 +1024,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.ubuntu1604_k413
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_k413:latest
+    - name: Docker Hub Description ubuntu1604_k413
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu1604_k413
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_k413
       id: extract-ubuntu1604_k413
       uses: shrink/actions-docker-extract@v1
@@ -865,6 +1061,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.ubuntu1604_k44
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_k44:latest
+    - name: Docker Hub Description ubuntu1604_k44
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu1604_k44
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_k44
       id: extract-ubuntu1604_k44
       uses: shrink/actions-docker-extract@v1
@@ -895,6 +1098,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.ubuntu1604_k48
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_k48:latest
+    - name: Docker Hub Description ubuntu1604_k48
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu1604_k48
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_k48
       id: extract-ubuntu1604_k48
       uses: shrink/actions-docker-extract@v1
@@ -925,6 +1135,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.ubuntu1804
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1804:latest
+    - name: Docker Hub Description ubuntu1804
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu1804
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1804
       id: extract-ubuntu1804
       uses: shrink/actions-docker-extract@v1
@@ -955,6 +1172,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.ubuntu1804_aws
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1804_aws:latest
+    - name: Docker Hub Description ubuntu1804_aws
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu1804_aws
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1804_aws
       id: extract-ubuntu1804_aws
       uses: shrink/actions-docker-extract@v1
@@ -985,6 +1209,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.ubuntu1804_azure
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1804_azure:latest
+    - name: Docker Hub Description ubuntu1804_azure
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu1804_azure
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1804_azure
       id: extract-ubuntu1804_azure
       uses: shrink/actions-docker-extract@v1
@@ -1015,6 +1246,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.ubuntu2004
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2004:latest
+    - name: Docker Hub Description ubuntu2004
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu2004
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2004
       id: extract-ubuntu2004
       uses: shrink/actions-docker-extract@v1
@@ -1045,6 +1283,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.ubuntu2004_aws
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2004_aws:latest
+    - name: Docker Hub Description ubuntu2004_aws
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu2004_aws
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2004_aws
       id: extract-ubuntu2004_aws
       uses: shrink/actions-docker-extract@v1
@@ -1075,6 +1320,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.ubuntu2004_azure
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2004_azure:latest
+    - name: Docker Hub Description ubuntu2004_azure
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu2004_azure
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2004_azure
       id: extract-ubuntu2004_azure
       uses: shrink/actions-docker-extract@v1
@@ -1105,6 +1357,13 @@ jobs:
         file: driver/dockerfiles/Dockerfile.ubuntu2204
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2204:latest
+    - name: Docker Hub Description ubuntu2204
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu2204
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2204
       id: extract-ubuntu2204
       uses: shrink/actions-docker-extract@v1

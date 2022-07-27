@@ -5,11 +5,11 @@ KO_NAME=$(grep "MODULE_NAME" ./LKM/Makefile | grep -m 1 ":=" | awk '{print $3}')
 
 for each_ml_version in `curl http://mirrors.coreix.net/elrepo-archive-archive/kernel/el6/x86_64/RPMS/ | grep el6.elrepo.x86_64.rpm | grep kernel-ml-devel | sed -r 's/.*href="([^"]+).*/\1/g' | sed -r 's/kernel-ml-devel-([^"]+).el6.elrepo.x86_64.rpm/\1/g'`
 do 
-    wget "http://mirrors.coreix.net/elrepo-archive-archive/kernel/el6/x86_64/RPMS/kernel-ml-devel"-$each_ml_version.el6.elrepo.x86_64.rpm
+    wget -q "http://mirrors.coreix.net/elrepo-archive-archive/kernel/el6/x86_64/RPMS/kernel-ml-devel"-$each_ml_version.el6.elrepo.x86_64.rpm
     
-    yum remove -y kernel-devel kernel-ml-devel kernel-lt-devel
+    yum remove -y kernel-devel kernel-ml-devel kernel-lt-devel &> /dev/null
     
-    rpm -ivh --force ./kernel*.rpm 
+    rpm -i --force ./kernel*.rpm 
     rm -f ./kernel*.rpm 
     KV=$each_ml_version.el6.elrepo.x86_64
     KVERSION=$KV make -C ./LKM clean || true 

@@ -6,10 +6,10 @@ KO_NAME=$(grep "MODULE_NAME" ./LKM/Makefile | grep -m 1 ":=" | awk '{print $3}')
 
 for each_tag in `yum --disablerepo=* --enablerepo=centosplus --showduplicates list kernel-plus-devel | grep kernel-plus-devel | awk -c '{print $2}'`
 do 
-    yum remove -y kernel-plus-devel kernel-plus-tools kernel-plus-tools-libs kernel-devel kernel-tools kernel-tools-libs
-    yumdownloader  --disablerepo=* --enablerepo=centosplus --destdir /root/headers kernel-plus-devel-$each_tag.x86_64 kernel-plus-tools-$each_tag.x86_64 kernel-plus-tools-libs-$each_tag.x86_64
+    yum remove -y kernel-plus-devel kernel-plus-tools kernel-plus-tools-libs kernel-devel kernel-tools kernel-tools-libs &> /dev/null
+    yumdownloader  --disablerepo=* --enablerepo=centosplus --destdir /root/headers kernel-plus-devel-$each_tag.x86_64 kernel-plus-tools-$each_tag.x86_64 kernel-plus-tools-libs-$each_tag.x86_64 > /dev/null
 
-    rpm --force -ivh /root/headers/kernel-plus-*.rpm || true
+    rpm --force -i /root/headers/kernel-plus-*.rpm || true
     KV=$each_tag.x86_64
     
     KVERSION=$KV make -C ./LKM clean || true 
