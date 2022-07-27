@@ -394,7 +394,7 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify, EventHandl
                 smithPatches.put(smithPatch.getClassName(), patch);
             } catch (IOException | ClassNotFoundException | NoSuchMethodException | InvocationTargetException |
                      InstantiationException | IllegalAccessException e) {
-                throw new RuntimeException(e);
+                SmithLogger.exception(e);
             }
         }
 
