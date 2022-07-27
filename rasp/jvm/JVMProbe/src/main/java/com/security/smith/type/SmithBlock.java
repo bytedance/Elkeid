@@ -1,6 +1,10 @@
 package com.security.smith.type;
 
 public class SmithBlock {
+    private int classID;
+    private int methodID;
+    private SmithMatchRule[] rules;
+
     public int getClassID() {
         return classID;
     }
@@ -24,8 +28,4 @@ public class SmithBlock {
     public void setRules(SmithMatchRule[] rules) {
         this.rules = rules;
     }
-
-    private int classID;
-    private int methodID;
-    private SmithMatchRule[] rules;
 }

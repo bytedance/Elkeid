@@ -1,6 +1,9 @@
 package com.security.smith.type;
 
 public class SmithMatchRule {
+    private int index;
+    private String regex;
+
     public int getIndex() {
         return index;
     }
@@ -16,7 +19,4 @@ public class SmithMatchRule {
     public void setRegex(String regex) {
         this.regex = regex;
     }
-
-    private int index;
-    private String regex;
 }

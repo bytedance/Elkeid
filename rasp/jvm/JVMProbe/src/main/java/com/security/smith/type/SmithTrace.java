@@ -6,6 +6,19 @@ import com.fasterxml.jackson.databind.util.StdConverter;
 import java.util.Arrays;
 
 public class SmithTrace {
+    private int classID;
+    private int methodID;
+    private boolean blocked;
+
+    @JsonSerialize(converter = RetConverter.class)
+    private Object ret;
+
+    @JsonSerialize(converter = ArgsConverter.class)
+    private Object[] args;
+
+    @JsonSerialize(converter = StackTraceConverter.class)
+    private StackTraceElement[] stackTrace;
+
     public int getClassID() {
         return classID;
     }
@@ -53,19 +66,6 @@ public class SmithTrace {
     public void setStackTrace(StackTraceElement[] stackTrace) {
         this.stackTrace = stackTrace;
     }
-
-    private int classID;
-    private int methodID;
-    private boolean blocked;
-
-    @JsonSerialize(converter = RetConverter.class)
-    private Object ret;
-
-    @JsonSerialize(converter = ArgsConverter.class)
-    private Object[] args;
-
-    @JsonSerialize(converter = StackTraceConverter.class)
-    private StackTraceElement[] stackTrace;
 }
 
 class RetConverter extends StdConverter<Object, String> {

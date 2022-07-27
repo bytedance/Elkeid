@@ -1,6 +1,12 @@
 package com.security.smith.type;
 
 public class SmithJar {
+    private String path;
+    private String implementationTitle;
+    private String implementationVersion;
+    private String specificationTitle;
+    private String specificationVersion;
+
     @Override
     public int hashCode() {
         return path.hashCode();
@@ -58,10 +64,4 @@ public class SmithJar {
     public void setSpecificationVersion(String specificationVersion) {
         this.specificationVersion = specificationVersion;
     }
-
-    private String path;
-    private String implementationTitle;
-    private String implementationVersion;
-    private String specificationTitle;
-    private String specificationVersion;
 }
