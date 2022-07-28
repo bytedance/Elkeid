@@ -39,11 +39,11 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no
 ADD . /Elkeid
 WORKDIR /Elkeid/plugins/scanner
 
+ENV PATH="/opt/rust/bin:/opt/x86_64-linux-musl/bin:${PATH}"
 RUN bash ./libclamav.sh
 
 RUN source /opt/rust/env
 RUN source ~/.bashrc
-ENV PATH="/opt/rust/bin:/opt/x86_64-linux-musl/bin:${PATH}"
 ENV STDLIBCXX_STATIC_PATH=/opt/x86_64-linux-musl/x86_64-linux-musl/lib
 RUN rustup target add x86_64-unknown-linux-musl
 RUN CC="x86_64-linux-musl-gcc" CXX="x86_64-linux-musl-c++" RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --bin scanner_plugin --target x86_64-unknown-linux-musl
