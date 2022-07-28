@@ -27,7 +27,9 @@ export CLAMAV_DEPENDENCIES="$(pwd)/clamav-mussels-cookbook/mussels/install/"
 cd clamav/build 
 
 cmake .. -G Ninja                                                      \
-    -DCMAKE_BUILD_TYPE="RelWithDebInfo"                                       \
+    -DCMAKE_BUILD_TYPE="RelWithDebInfo"                                \
+    -DCMAKE_C_COMPILER=x86_64-linux-musl-gcc                           \
+    -DCMAKE_CXX_COMPILER=x86_64-linux-musl-g++                         \
     -DJSONC_INCLUDE_DIR="$CLAMAV_DEPENDENCIES/include/json-c"          \
     -DJSONC_LIBRARY="$CLAMAV_DEPENDENCIES/lib/libjson-c.a"             \
     -DBZIP2_INCLUDE_DIR="$CLAMAV_DEPENDENCIES/include"                 \
@@ -59,8 +61,6 @@ cmake .. -G Ninja                                                      \
     -DENABLE_CLAMONACC=OFF                                             \
     -DENABLE_MILTER=OFF                                                \
     -DENABLE_MAN_PAGES=OFF                                             \
-    -DMAINTAINER_MODE=ON                                               \
-    -DRUST_COMPILER_TARGET="x86_64-unknown-linux-gnu"                  \
     -DCMAKE_INSTALL_PREFIX=install 
 
 if [ $? -ne 0 ]; then

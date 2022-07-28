@@ -62,6 +62,7 @@ mod bindings {
             "cl_yr_hit_cb_ctx_init",
             "cl_yr_hit_cb_ctx_free",
             "cl_scanmap_callback",
+            "cl_scanfile",
             "cl_scanfile_callback",
         ];
 
@@ -69,7 +70,7 @@ mod bindings {
             println!("{}{}", RUSTC_STATIC_LINK_LIB, each_lib);
         }
         println!("{}{}", RUSTC_LINK_SEARCH, CLAMAV_MUSSELS);
-        llet mut builder = bindgen::builder()
+        let mut builder = bindgen::builder()
             .raw_line("#![allow(non_snake_case, non_camel_case_types, non_upper_case_globals)]")
             .header("wrapper.h")
             .clang_arg("-I./opt/x86_64-linux-musl/include")
@@ -95,7 +96,8 @@ mod bindings {
             builder = builder.allowlist_type(c_type);
         }
 
-        builder.generate()
+        builder
+            .generate()
             .unwrap()
             .write_to_file("src/model/engine/clamav/clamav.rs")
             .unwrap();

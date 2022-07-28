@@ -1,15 +1,14 @@
 use crate::{
     configs, get_file_btime, get_file_md5, get_file_md5_fast, get_file_xhash,
     model::engine::{
-        clamav::{self, updater, Clamav, get_hit_data},
+        clamav::{self, get_hit_data, updater, Clamav},
         ScanEngine,
     },
     model::functional::{
         anti_ransom::HoneyPot,
         fulldiskscan::{
             FullScan, MAX_SCAN_CPU_100, MAX_SCAN_ENGINES, MAX_SCAN_MEM_MB, SCAN_MODE_FULL,
-                SCAN_MODE_QUICK,
-
+            SCAN_MODE_QUICK,
         },
     },
     ToAgentRecord,
@@ -23,6 +22,7 @@ use std::{collections::HashMap, path::Path, thread, time};
 
 use serde::{self, Deserialize, Serialize};
 use serde_json;
+use walkdir::WalkDir;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ScanFinished {
@@ -909,14 +909,14 @@ impl Detector {
                                 let target_p = Path::new(&target_path);
                                 if !target_p.exists() {
                                     let end_flag = ScanFinished {
-                                            data: "failed".to_string(),
-                                            error: format!("6053 target not exists:{}", &target_path),
-                                        };
-                                        if let Err(e) = r_client.send_record(
-                                            &end_flag.to_record_token(&t.get_token()),
-                                        ) {
-                                            warn!("send err, should exit : {:?}", e);
-                                        };
+                                        data: "failed".to_string(),
+                                        error: format!("6053 target not exists:{}", &target_path),
+                                    };
+                                    if let Err(e) = r_client
+                                        .send_record(&end_flag.to_record_token(&t.get_token()))
+                                    {
+                                        warn!("send err, should exit : {:?}", e);
+                                    };
                                     continue;
                                 }
                                 if target_p.is_dir() {

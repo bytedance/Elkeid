@@ -1,0 +1,3 @@
+[target."x86_64-unknown-linux-musl"]
+rustflags = ["-C", "linker-flavor=gcc", "-C", "link-self-contained=on"]
+linker = "/opt/x86_64-linux-musl/bin/x86_64-linux-musl-g++"
