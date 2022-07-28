@@ -12,7 +12,7 @@ use log::*;
 use walkdir::WalkDir;
 
 use crate::{
-    configs, detector::DetectTask, filter::Filter, get_file_btime,
+    configs, detector::DetectTask, filter::Filter, get_file_btime, is_filetype_filter_skipped,
     model::engine::clamav::config::CLAMAV_MAX_FILESIZE,
 };
 
@@ -49,6 +49,7 @@ impl Cronjob {
             for conf in configs::SCAN_DIR_CONFIG {
                 let mut w_dir = WalkDir::new(conf.fpath)
                     .max_depth(conf.max_depth)
+                    .same_file_system(true)
                     .follow_links(false)
                     .into_iter();
                 loop {
@@ -85,6 +86,14 @@ impl Cronjob {
                     if fsize <= 1 || fsize > CLAMAV_MAX_FILESIZE {
                         continue;
                     }
+                    let fpath_str = fp.to_string_lossy().to_string();
+                    if let Ok(t) = is_filetype_filter_skipped(&fpath_str) {
+                        if t {
+                            continue;
+                        }
+                    } else {
+                        continue;
+                    }
                     // send to scan
                     let task = DetectTask {
                         task_type: "6051".to_string(),
@@ -96,6 +105,7 @@ impl Cronjob {
                         mtime: btime.1,
                         token: "".to_string(),
                         add_ons: None,
+                        finished: None,
                     };
 
                     while sender_proc.len() > 2 {
@@ -174,6 +184,7 @@ impl Cronjob {
                     mtime: btime.1,
                     token: "".to_string(),
                     add_ons: None,
+                    finished: None,
                 };
                 while sender.len() > 8 {
                     std::thread::sleep(Duration::from_secs(8));

@@ -176,7 +176,7 @@ impl FileMonitor {
 
                         let event_fpath = &each_metadata.fd;
                         let fpstr: &str = &format!("/proc/{}/fd/{}", pid, event_fpath);
-                        let fpath_fp = Path::new(pstr);
+                        let fpath_fp = Path::new(fpstr);
                         let fpath_real = match std::fs::read_link(fpath_fp) {
                             Ok(pf) => pf.to_string_lossy().to_string(),
                             Err(e) => {
@@ -187,11 +187,11 @@ impl FileMonitor {
                                 "".to_string()
                             }
                         };
+                        safe_close(each_metadata.fd);
 
                         let fpath_real_sha256 = get_file_sha256(&fpath_real);
                         if let Some(fhash) = HONEYPOTSSHA256.get(&fpath_real) {
                             if fhash == &fpath_real_sha256 {
-                                safe_close(each_metadata.fd);
                                 continue;
                             }
                         }
@@ -199,7 +199,6 @@ impl FileMonitor {
                         let (fsize, btime) = match rfp.metadata() {
                             Ok(p) => {
                                 if p.is_dir() {
-                                    safe_close(each_metadata.fd);
                                     continue;
                                 }
                                 let fsize = p.len() as usize;
@@ -208,7 +207,6 @@ impl FileMonitor {
                             }
                             Err(e) => {
                                 error!("error {}, while get exe realpath metadata", &exe_real);
-                                safe_close(each_metadata.fd);
                                 continue;
                             }
                         };
@@ -216,7 +214,6 @@ impl FileMonitor {
                         if fsize <= 0
                             || fsize > crate::model::engine::clamav::config::CLAMAV_MAX_FILESIZE
                         {
-                            safe_close(each_metadata.fd);
                             continue;
                         }
                         let default_mask_set: u64 =
@@ -236,6 +233,7 @@ impl FileMonitor {
                                 mtime: btime.1,
                                 token: fpath_real_sha256.to_string(),
                                 add_ons: None,
+                                finished: None,
                             };
                             debug!("fanotify event {:?}", task);
 
@@ -246,7 +244,6 @@ impl FileMonitor {
                                 Ok(_) => {}
                                 Err(e) => {
                                     error!("internal send task err : {:?}", e);
-                                    safe_close(each_metadata.fd);
                                     s_locker.send(()).unwrap();
                                     break;
                                 }

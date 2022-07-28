@@ -15,7 +15,7 @@ use crate::{
     configs,
     detector::{self, DetectFileEvent, DetectProcEvent, DetectTask, Scanner},
     filter::Filter,
-    get_file_btime,
+    get_file_btime, is_filetype_filter_skipped,
     model::engine::clamav::{updater, Clamav},
     ToAgentRecord,
 };
@@ -25,40 +25,12 @@ use super::cronjob::get_pid_live_time;
 use serde::{self, Deserialize, Serialize};
 use serde_json;
 
-// fullscan finished datatype
-#[derive(Serialize, Debug)]
-pub struct FulllScanFinished {}
-
 pub const MAX_SCAN_ENGINES: u32 = 4;
 pub const MAX_SCAN_CPU_100: u32 = 4;
 pub const MAX_SCAN_MEM_MB: u32 = 2048;
+pub const SCAN_MODE_FULL: &str = "full";
+pub const SCAN_MODE_QUICK: &str = "quick";
 
-impl ToAgentRecord for FulllScanFinished {
-    fn to_record(&self) -> plugins::Record {
-        let mut r = plugins::Record::new();
-        let mut pld = plugins::Payload::new();
-        r.set_data_type(6000);
-        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
-        let mut hmp = HashMap::with_capacity(4);
-        hmp.insert("data".to_string(), "FullScan Finished".to_string());
-        pld.set_fields(hmp);
-        r.set_data(pld);
-        return r;
-    }
-
-    fn to_record_token(&self, token: &str) -> plugins::Record {
-        let mut r = plugins::Record::new();
-        let mut pld = plugins::Payload::new();
-        r.set_data_type(6000);
-        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
-        let mut hmp = HashMap::with_capacity(4);
-        hmp.insert("token".to_string(), token.to_string());
-        hmp.insert("data".to_string(), "FullScan Finished".to_string());
-        pld.set_fields(hmp);
-        r.set_data(pld);
-        return r;
-    }
-}
 
 pub struct SuperDetector {
     pub client: plugins::Client,
@@ -188,6 +160,7 @@ pub fn FullScan(
     cpu: u32,
     mem: u32,
     engine: &detector::Scanner,
+    mode: String,
 ) -> (JoinHandle<()>, Vec<JoinHandle<()>>) {
     // unlimit_cgroup
     info!("[FullScan] init: bankai");
@@ -253,6 +226,7 @@ pub fn FullScan(
                 mtime: btime.1,
                 token: "".to_string(),
                 add_ons: None,
+                finished: None,
             };
             match sender.send(task) {
                 Ok(_) => {}
@@ -264,63 +238,145 @@ pub fn FullScan(
 
         // step-2
         info!("[FullScan] step-2: fulldisk");
-        filter.add("/proc");
-        // scan config dirs
-        let mut w_dir = WalkDir::new("/").follow_links(false).into_iter();
-        loop {
-            let entry = match w_dir.next() {
-                None => break,
-                Some(Err(_err)) => {
-                    break;
-                }
-                Some(Ok(entry)) => entry,
-            };
-            let filter_flag = filter.catch(&entry.path());
-            if filter_flag == 1 {
-                continue;
-            } else if filter_flag == 2 {
-                w_dir.skip_current_dir();
-                debug!("skip cur dir{:?}", &entry.path());
-                continue;
-            }
-
-            let fp = entry.path();
-            let (fsize, btime) = match fp.metadata() {
-                Ok(p) => {
-                    //if p.is_dir() {
-                    if !p.is_file() {
+        match mode.as_str() {
+            SCAN_MODE_FULL => {
+                filter.add("/proc");
+                // scan full mode
+                let mut w_dir = WalkDir::new("/").follow_links(false).into_iter();
+                loop {
+                    let entry = match w_dir.next() {
+                        None => break,
+                        Some(Err(_err)) => {
+                            break;
+                        }
+                        Some(Ok(entry)) => entry,
+                    };
+                    let filter_flag = filter.catch(&entry.path());
+                    if filter_flag == 1 {
+                        continue;
+                    } else if filter_flag == 2 {
+                        w_dir.skip_current_dir();
+                        debug!("skip cur dir{:?}", &entry.path());
                         continue;
                     }
-                    let fsize = p.len() as usize;
-                    let btime = get_file_btime(&p);
-                    (fsize, btime)
+                    let fp = entry.path();
+                    let (fsize, btime) = match fp.metadata() {
+                        Ok(p) => {
+                            //if p.is_dir() {
+                            if !p.is_file() {
+                                continue;
+                            }
+                            let fsize = p.len() as usize;
+                            let btime = get_file_btime(&p);
+                            (fsize, btime)
+                        }
+                        Err(_) => {
+                            continue;
+                        }
+                    };
+                    if fsize <= 4 || fsize > 1024 * 1024 * 100 {
+                        continue;
+                    }
+                    let fpath_str = fp.to_string_lossy().to_string();
+                    if let Ok(t) = is_filetype_filter_skipped(&fpath_str) {
+                        if t {
+                            continue;
+                        }
+                    } else {
+                        continue;
+                    }
+                    // send to scan
+                    let task = DetectTask {
+                        task_type: "6051".to_string(),
+                        pid: -1,
+                        path: fpath_str.to_string(),
+                        rpath: fpath_str,
+                        size: fsize,
+                        btime: btime.0,
+                        mtime: btime.1,
+                        token: "".to_string(),
+                        add_ons: None,
+                        finished: None,
+                    };
+                    match sender.send(task) {
+                        Ok(_) => {}
+                        Err(e) => {
+                            error!("internal task send err {:?}", e);
+                        }
+                    };
                 }
-                Err(_) => {
-                    continue;
-                }
-            };
-            if fsize <= 4 || fsize > 1024 * 1024 * 100 {
-                continue;
             }
-            // send to scan
-            let task = DetectTask {
-                task_type: "6051".to_string(),
-                pid: -1,
-                path: fp.to_string_lossy().to_string(),
-                rpath: fp.to_string_lossy().to_string(),
-                size: fsize,
-                btime: btime.0,
-                mtime: btime.1,
-                token: "".to_string(),
-                add_ons: None,
-            };
-            match sender.send(task) {
-                Ok(_) => {}
-                Err(e) => {
-                    error!("internal task send err {:?}", e);
+            SCAN_MODE_QUICK | _ => {
+                for conf in configs::SCAN_DIR_CONFIG {
+                    let mut w_dir = WalkDir::new(conf.fpath)
+                        .same_file_system(true)
+                        .follow_links(false)
+                        .into_iter();
+                    loop {
+                        let entry = match w_dir.next() {
+                            None => break,
+                            Some(Err(_err)) => {
+                                break;
+                            }
+                            Some(Ok(entry)) => entry,
+                        };
+                        let filter_flag = filter.catch(&entry.path());
+                        if filter_flag == 1 {
+                            continue;
+                        } else if filter_flag == 2 {
+                            w_dir.skip_current_dir();
+                            debug!("skip cur dir{:?}", &entry.path());
+                            continue;
+                        }
+
+                        let fp = entry.path();
+                        let (fsize, btime) = match fp.metadata() {
+                            Ok(p) => {
+                                if p.is_dir() {
+                                    continue;
+                                }
+                                let fsize = p.len() as usize;
+                                let btime = get_file_btime(&p);
+                                (fsize, btime)
+                            }
+                            Err(_) => {
+                                continue;
+                            }
+                        };
+                        if fsize <= 4 || fsize > 1024 * 1024 * 100 {
+                            continue;
+                        }
+                        let fpath_str = fp.to_string_lossy().to_string();
+                        if let Ok(t) = is_filetype_filter_skipped(&fpath_str) {
+                            if t {
+                                continue;
+                            }
+                        } else {
+                            continue;
+                        }
+                        // send to scan
+                        let task = DetectTask {
+                            task_type: "6051".to_string(),
+                            pid: -1,
+                            path: fp.to_string_lossy().to_string(),
+                            rpath: fp.to_string_lossy().to_string(),
+                            size: fsize,
+                            btime: btime.0,
+                            mtime: btime.1,
+                            token: "".to_string(),
+                            add_ons: None,
+                            finished: None,
+                        };
+                        match sender.send(task) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                error!("internal task send err {:?}", e);
+                            }
+                        };
+                    }
                 }
-            };
-        }
+            }
+        };
         info!("[FullScan] finished");
     });
 

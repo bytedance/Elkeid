@@ -7,7 +7,9 @@ use crate::{
     model::functional::{
         anti_ransom::HoneyPot,
         fulldiskscan::{
-            FullScan, FulllScanFinished, MAX_SCAN_CPU_100, MAX_SCAN_ENGINES, MAX_SCAN_MEM_MB,
+            FullScan, MAX_SCAN_CPU_100, MAX_SCAN_ENGINES, MAX_SCAN_MEM_MB, SCAN_MODE_FULL,
+                SCAN_MODE_QUICK,
+
         },
     },
     ToAgentRecord,
@@ -21,6 +23,43 @@ use std::{collections::HashMap, path::Path, thread, time};
 
 use serde::{self, Deserialize, Serialize};
 use serde_json;
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ScanFinished {
+    data: String,
+    error: String,
+}
+
+impl ToAgentRecord for ScanFinished {
+    fn to_record(&self) -> plugins::Record {
+        let mut r = plugins::Record::new();
+        let mut pld = plugins::Payload::new();
+        r.set_data_type(6000);
+        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
+        let mut hmp = HashMap::with_capacity(4);
+        hmp.insert("status".to_string(), self.data.to_string());
+        hmp.insert("msg".to_string(), self.error.to_string());
+
+        pld.set_fields(hmp);
+        r.set_data(pld);
+        return r;
+    }
+
+    fn to_record_token(&self, token: &str) -> plugins::Record {
+        let mut r = plugins::Record::new();
+        let mut pld = plugins::Payload::new();
+        r.set_data_type(6000);
+        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
+        let mut hmp = HashMap::with_capacity(4);
+        hmp.insert("token".to_string(), token.to_string());
+        hmp.insert("status".to_string(), self.data.to_string());
+        hmp.insert("msg".to_string(), self.error.to_string());
+
+        pld.set_fields(hmp);
+        r.set_data(pld);
+        return r;
+    }
+}
 
 // DetectFileEvent = Static file detect event
 #[derive(Serialize, Debug)]
@@ -455,6 +494,7 @@ pub struct DetectTask {
     pub mtime: u64,
     pub token: String,
     pub add_ons: Option<HashMap<String, String>>,
+    pub finished: Option<ScanFinished>,
 }
 
 #[derive(Serialize, Debug, Default)]
@@ -865,6 +905,86 @@ impl Detector {
                                 } else {
                                     continue;
                                 }
+
+                                let target_p = Path::new(&target_path);
+                                if !target_p.exists() {
+                                    let end_flag = ScanFinished {
+                                            data: "failed".to_string(),
+                                            error: format!("6053 target not exists:{}", &target_path),
+                                        };
+                                        if let Err(e) = r_client.send_record(
+                                            &end_flag.to_record_token(&t.get_token()),
+                                        ) {
+                                            warn!("send err, should exit : {:?}", e);
+                                        };
+                                    continue;
+                                }
+                                if target_p.is_dir() {
+                                    let mut w_dir = WalkDir::new(&target_path)
+                                        .max_depth(2)
+                                        .follow_links(true)
+                                        .into_iter();
+                                    loop {
+                                        let entry = match w_dir.next() {
+                                            None => {
+                                                let task = DetectTask {
+                                                    task_type: "6053".to_string(),
+                                                    pid: 1,
+                                                    path: "".to_string(),
+                                                    rpath: "".to_string(),
+                                                    token: t.get_token().to_string(),
+                                                    btime: 0,
+                                                    mtime: 0,
+                                                    size: 0,
+                                                    add_ons: None,
+                                                    finished: Some(ScanFinished {
+                                                        data: "succeed".to_string(),
+                                                        error: "".to_string(),
+                                                    }),
+                                                };
+                                                if let Err(e) = task_sender.try_send(task) {
+                                                    error!("internal send task err : {:?}", e);
+                                                    break;
+                                                }
+                                                break;
+                                            }
+                                            Some(Err(_err)) => {
+                                                let end_flag = ScanFinished {
+                                                    data: "failed".to_string(),
+                                                    error: _err.to_string(),
+                                                };
+                                                if let Err(e) = r_client.send_record(
+                                                    &end_flag.to_record_token(&t.get_token()),
+                                                ) {
+                                                    warn!("send err, should exit : {:?}", e);
+                                                };
+                                                break;
+                                            }
+                                            Some(Ok(entry)) => entry,
+                                        };
+                                        let fp = entry.path();
+                                        if fp.is_dir() {
+                                            continue;
+                                        }
+                                        let task = DetectTask {
+                                            task_type: "6053".to_string(),
+                                            pid: 0,
+                                            path: fp.to_string_lossy().to_string(),
+                                            rpath: "".to_string(),
+                                            token: t.get_token().to_string(),
+                                            btime: 0,
+                                            mtime: 0,
+                                            size: 0,
+                                            add_ons: Some(task_map.clone()),
+                                            finished: None,
+                                        };
+                                        if let Err(e) = task_sender.try_send(task) {
+                                            error!("internal send task err : {:?}", e);
+                                            break;
+                                        }
+                                    }
+                                    continue;
+                                }
                                 let task = DetectTask {
                                     task_type: "6053".to_string(),
                                     pid: 0,
@@ -875,6 +995,10 @@ impl Detector {
                                     mtime: 0,
                                     size: 0,
                                     add_ons: Some(task_map),
+                                    finished: Some(ScanFinished {
+                                        data: "succeed".to_string(),
+                                        error: "".to_string(),
+                                    }),
                                 };
 
                                 if let Err(e) = task_sender.try_send(task) {
@@ -943,6 +1067,7 @@ impl Detector {
                                     mtime: 0,
                                     size: 0,
                                     add_ons: None,
+                                    finished: None,
                                 };
                                 if let Err(e) = task_sender.try_send(task) {
                                     error!("internal send task err : {:?}", e);
@@ -961,6 +1086,7 @@ impl Detector {
                                     mtime: 0,
                                     size: 0,
                                     add_ons: None,
+                                    finished: None,
                                 };
                                 if let Err(e) = task_sender.try_send(task) {
                                     error!("internal send task err : {:?}", e);
@@ -982,6 +1108,7 @@ impl Detector {
                                 let mut worker_count = MAX_SCAN_ENGINES;
                                 let mut worker_cpu = MAX_SCAN_CPU_100;
                                 let mut worker_mem = MAX_SCAN_MEM_MB;
+                                let mut worker_mode = SCAN_MODE_FULL;
 
                                 if let Some(worker_c) = task_map.get("worker") {
                                     let worker_cu32: u32 = worker_c.parse().unwrap_or_default();
@@ -1004,17 +1131,27 @@ impl Detector {
                                     }
                                 }
 
+                                if let Some(worker_c) = task_map.get("mode") {
+                                    match worker_c.as_str() {
+                                        SCAN_MODE_FULL | SCAN_MODE_QUICK => {
+                                            worker_mode = worker_c;
+                                        }
+                                        _ => {}
+                                    };
+                                }
+
                                 // supper mode for fulldisk scan
                                 let task = DetectTask {
                                     task_type: "6057".to_string(),
                                     pid: ppid as i32,
-                                    path: "".to_string(),
+                                    path: worker_mode.to_string(),
                                     rpath: "".to_string(),
                                     token: t.get_token().to_string(),
                                     btime: worker_count as u64,
                                     mtime: worker_cpu as u64,
                                     size: worker_mem as usize,
                                     add_ons: None,
+                                    finished: None,
                                 };
                                 if let Err(e) = task_sender.try_send(task) {
                                     error!("internal send task err : {:?}", e);
@@ -1223,6 +1360,14 @@ impl Detector {
                         "6053" =>{
                             debug!("recv work 6053");
                             // TODO. CUSTOM RULES TO USED HERE
+                            if let Some(finished) = &task.finished{
+                                if let Err(e) = self.client.send_record(
+                                    &finished.to_record_token(&task.token),
+                                    ) {
+                                        warn!("send err, should exit : {:?}", e);
+                                    };
+                            }
+
                             let fp = Path::new(&task.path);
                             let meta = match fp.metadata(){
                                 Ok(m)=>m,
@@ -1362,6 +1507,7 @@ impl Detector {
                                     task.mtime as u32,
                                     task.size as u32,
                                     &t,
+                                    task.path.to_string(),
                                 );
                                 fullscan_job.join();
                                 for each_job in worker_jobs {
@@ -1369,7 +1515,11 @@ impl Detector {
                                 }
                                 self.scanner = None;
                                 info!("[FullScan] All job Cleaned.");
-                                let end_flag = FulllScanFinished {};
+                                let end_flag = ScanFinished {
+                                    data: "succeed".to_string(),
+                                    error:"".to_string(),
+                                };
+
                                 if let Err(e) =
                                     self.client.send_record(&end_flag.to_record_token(&task.token))
                                 {

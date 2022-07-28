@@ -11,12 +11,14 @@ use sha2::{Digest, Sha256};
 use std::{
     ffi::{c_void, CStr, CString},
     hash::Hasher,
-    io::Read,
+    io::{ErrorKind, Read, Seek, SeekFrom},
     path::Path,
     ptr, thread, time,
 };
 
 use cgroups_rs::{self, Controller};
+use infer::MatcherType;
+
 
 pub mod configs;
 pub mod detector;
@@ -176,4 +178,38 @@ pub fn setup_cgroup(pid: u32, mem: i64, cpu: i64) {
     let cpus: &cgroups_rs::cpu::CpuController = cpu_cg.controller_of().unwrap();
     cpus.add_task(&cgroups_rs::CgroupPid::from(pid as u64))
         .unwrap();
+}
+
+pub fn is_filetype_filter_skipped(fpath: &str) -> Result<bool> {
+    /*
+        App,
+        Archive, // skipped
+        Audio,   // skipped
+        Book,    // skipped
+        Doc,     // skipped
+        Font,    // skipped
+        Image,   // skipped
+        Text,
+        Video,   // skipped
+    */
+    let mut f = std::fs::File::open(fpath)?;
+    f.seek(SeekFrom::Start(0))?;
+    let mut buffer = [0 as u8; 64];
+    let _readsize = f.read(&mut buffer)?;
+
+    if let Some(kind) = infer::get(&buffer) {
+        match kind.matcher_type() {
+            MatcherType::Image
+            | MatcherType::Audio
+            | MatcherType::Book
+            | MatcherType::Doc
+            | MatcherType::Font
+            | MatcherType::Video
+            | MatcherType::Archive => {
+                return Ok(true);
+            }
+            _ => return Ok(false),
+        }
+    }
+    return Ok(false);
 }

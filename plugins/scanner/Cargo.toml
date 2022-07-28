@@ -50,6 +50,9 @@ phf = { version = "0.10", features = ["macros"] }
 regex = "1.5"
 base64 = "0.13"
 
+infer = { version = "0.9", default-features = false }
+
+
 [dev-dependencies]
 crossbeam = "0.8"
 

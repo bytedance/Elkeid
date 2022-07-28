@@ -88,4 +88,5 @@ pub const SCAN_DIR_FILTER: &[&str] = &[
     "/boot",
     "/sys",
     "/usr/src",
+    "/usr/local/src"
 ];
