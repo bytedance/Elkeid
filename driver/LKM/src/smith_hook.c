@@ -370,6 +370,18 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
                         __be32 * dip4, struct in6_addr *dip6, int *dport,
                         pid_t * socket_pid, int *sa_family)
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)
+
+    /* fput() can not be called in atomic context */
+    *sip4 = *dip4 = 0;
+    *sport = *dport = 0;
+    memset(sip6, 0, sizeof(*sip6));
+    memset(dip6, 0, sizeof(*dip6));
+    *socket_pid = 0;
+    *sa_family = 0;
+
+#else
+
     int it = 0, socket_check = 0;
 
     char fd_buff[24];
@@ -494,6 +506,8 @@ next_task:
 
     if (task)
         smith_put_task_struct(task);
+
+#endif
 
     return;
 }
