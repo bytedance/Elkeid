@@ -1,6 +1,10 @@
 package com.security.smith.type;
 
 public class SmithLimit {
+    private int classID;
+    private int methodID;
+    private int quota;
+
     public int getClassID() {
         return classID;
     }
@@ -24,8 +28,4 @@ public class SmithLimit {
     public void setQuota(int quota) {
         this.quota = quota;
     }
-
-    private int classID;
-    private int methodID;
-    private int quota;
 }

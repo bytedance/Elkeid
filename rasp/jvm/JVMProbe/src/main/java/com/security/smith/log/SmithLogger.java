@@ -5,6 +5,7 @@ import com.security.smith.common.ProcessHelper;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.time.Instant;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
@@ -17,7 +18,7 @@ public class SmithLogger {
 
         try {
             int pid = ProcessHelper.getCurrentPID();
-            String filename = String.format("/tmp/JVMProbe.%d.log", pid);
+            String filename = String.format("/tmp/JVMProbe.%d.%d.log", pid, Instant.now().getEpochSecond());
 
             FileHandler handler = new FileHandler(filename, true);
             logger.addHandler(handler);

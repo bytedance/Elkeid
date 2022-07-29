@@ -7,6 +7,7 @@ import com.security.smith.log.SmithLogger;
 import com.security.smith.type.SmithBlock;
 import com.security.smith.type.SmithFilter;
 import com.security.smith.type.SmithLimit;
+import com.security.smith.type.SmithPatch;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.epoll.EpollDomainSocketChannel;
@@ -109,30 +110,30 @@ public class ProbeClient implements ProbeClientHandlerNotify {
     @Override
     public void onMessage(ProtocolBuffer protocolBuffer) {
         switch (protocolBuffer.getOperate()) {
-            case exitOperate:
+            case EXIT:
                 SmithLogger.logger.info("exit");
                 break;
 
-            case heartBeatsOperate:
+            case HEARTBEAT:
                 SmithLogger.logger.info("heartbeat");
                 break;
 
-            case configOperate:
+            case CONFIG:
                 SmithLogger.logger.info("config");
                 probeNotify.onConfig(protocolBuffer.getData().get("config").asText());
                 break;
 
-            case controlOperate:
+            case CONTROL:
                 SmithLogger.logger.info("control");
                 probeNotify.onControl(protocolBuffer.getData().get("action").asInt());
                 break;
 
-            case detectOperate:
+            case DETECT:
                 SmithLogger.logger.info("detect");
                 probeNotify.onDetect();
                 break;
 
-            case filterOperate: {
+            case FILTER: {
                 SmithLogger.logger.info("filter");
 
                 ObjectMapper objectMapper = new ObjectMapper()
@@ -152,7 +153,7 @@ public class ProbeClient implements ProbeClientHandlerNotify {
                 break;
             }
 
-            case blockOperate: {
+            case BLOCK: {
                 SmithLogger.logger.info("block");
 
                 ObjectMapper objectMapper = new ObjectMapper()
@@ -172,7 +173,7 @@ public class ProbeClient implements ProbeClientHandlerNotify {
                 break;
             }
 
-            case limitOperate: {
+            case LIMIT: {
                 SmithLogger.logger.info("limit");
 
                 ObjectMapper objectMapper = new ObjectMapper()
@@ -183,6 +184,26 @@ public class ProbeClient implements ProbeClientHandlerNotify {
                             objectMapper.treeToValue(
                                     protocolBuffer.getData().get("limits"),
                                     SmithLimit[].class
+                            )
+                    );
+                } catch (JsonProcessingException e) {
+                    e.printStackTrace();
+                }
+
+                break;
+            }
+
+            case PATCH: {
+                SmithLogger.logger.info("patch");
+
+                ObjectMapper objectMapper = new ObjectMapper()
+                        .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+
+                try {
+                    probeNotify.onPatch(
+                            objectMapper.treeToValue(
+                                    protocolBuffer.getData().get("patches"),
+                                    SmithPatch[].class
                             )
                     );
                 } catch (JsonProcessingException e) {
@@ -221,7 +242,7 @@ public class ProbeClient implements ProbeClientHandlerNotify {
 
                     ProtocolBuffer protocolBuffer = new ProtocolBuffer();
 
-                    protocolBuffer.setOperate(Operate.heartBeatsOperate);
+                    protocolBuffer.setOperate(Operate.HEARTBEAT);
                     ctx.writeAndFlush(protocolBuffer);
                 }
             }

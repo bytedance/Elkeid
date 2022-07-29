@@ -1,6 +1,11 @@
 package com.security.smith.type;
 
 public class SmithFilter {
+    private int classID;
+    private int methodID;
+    private SmithMatchRule[] include;
+    private SmithMatchRule[] exclude;
+
     public int getClassID() {
         return classID;
     }
@@ -32,9 +37,4 @@ public class SmithFilter {
     public void setExclude(SmithMatchRule[] exclude) {
         this.exclude = exclude;
     }
-
-    private int classID;
-    private int methodID;
-    private SmithMatchRule[] include;
-    private SmithMatchRule[] exclude;
 }

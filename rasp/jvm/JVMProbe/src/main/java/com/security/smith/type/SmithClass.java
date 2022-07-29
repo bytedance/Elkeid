@@ -3,6 +3,10 @@ package com.security.smith.type;
 import java.util.List;
 
 public class SmithClass {
+    private String name;
+    private int id;
+    private List<SmithMethod> methods;
+
     public String getName() {
         return name;
     }
@@ -26,8 +30,4 @@ public class SmithClass {
     public void setMethods(List<SmithMethod> methods) {
         this.methods = methods;
     }
-
-    private String name;
-    private int id;
-    private List<SmithMethod> methods;
 }

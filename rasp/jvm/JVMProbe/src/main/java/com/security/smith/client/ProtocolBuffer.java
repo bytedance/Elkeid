@@ -29,6 +29,9 @@ class ProtocolBuffer {
     static final int PROTOCOL_HEADER_SIZE = 4;
     static final int MAX_PAYLOAD_SIZE = 10240;
 
+    private Operate operate;
+    private JsonNode data;
+
     Operate getOperate() {
         return operate;
     }
@@ -44,9 +47,6 @@ class ProtocolBuffer {
     public void setData(JsonNode data) {
         this.data = data;
     }
-
-    private Operate operate;
-    private JsonNode data;
 }
 
 class ProtocolBufferSerializer extends StdSerializer<ProtocolBuffer> {
