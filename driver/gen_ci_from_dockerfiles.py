@@ -6,6 +6,7 @@ from collections import OrderedDict
 all_dockers = os.listdir("driver/dockerfiles")
 
 black_list = []
+white_list = ["rhel6", "rhel6_elrepo"]
 
 all_vms = []
 
@@ -171,12 +172,18 @@ total_jobs_release = OrderedDict({})
 
 
 all_vms.sort()
-
-for each in all_vms:
-    if each not in black_list:
-        tmp_job = gen_job(each)
-        total_jobs_build.update({"build_"+each: tmp_job})
-        total_jobs_release.update({"build_"+each: tmp_job})
+if len(white_list) != 0:
+    for each in all_vms:
+        if each in white_list:
+            tmp_job = gen_job(each)
+            total_jobs_build.update({"build_"+each: tmp_job})
+            total_jobs_release.update({"build_"+each: tmp_job})
+else:
+    for each in all_vms:
+        if each not in black_list:
+            tmp_job = gen_job(each)
+            total_jobs_build.update({"build_"+each: tmp_job})
+            total_jobs_release.update({"build_"+each: tmp_job})
 
 total_jobs_release.update({"release_all": create_release_job})
 
