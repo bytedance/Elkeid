@@ -897,7 +897,19 @@ impl Detector {
 
                                 if let Some(task_exe_scan) = task_map.get("exe") {
                                     if !task_exe_scan.starts_with("/") {
-                                        info!("recv 6053 but not a fullpath {:?}", t.data);
+                                        warn!("recv 6053 but not a fullpath {:?}", t.data);
+                                        let end_flag = ScanFinished {
+                                            data: "failed".to_string(),
+                                            error: format!(
+                                                "recv 6053 but not a fullpath {:?}",
+                                                t.data
+                                            ),
+                                        };
+                                        if let Err(e) = r_client
+                                            .send_record(&end_flag.to_record_token(&t.get_token()))
+                                        {
+                                            warn!("send err, should exit : {:?}", e);
+                                        };
                                         continue;
                                         // ignored if not a fullpath from root /
                                     }
@@ -1070,7 +1082,7 @@ impl Detector {
                                     finished: None,
                                 };
                                 if let Err(e) = task_sender.try_send(task) {
-                                    error!("internal send task err : {:?}", e);
+                                    warn!("internal send task err : {:?}", e);
                                     continue;
                                 }
                             }
@@ -1089,7 +1101,7 @@ impl Detector {
                                     finished: None,
                                 };
                                 if let Err(e) = task_sender.try_send(task) {
-                                    error!("internal send task err : {:?}", e);
+                                    warn!("internal send task err : {:?}", e);
                                     continue;
                                 }
                                 crate::setup_cgroup(ppid, 1024 * 1024 * 180, 10000);
@@ -1154,17 +1166,17 @@ impl Detector {
                                     finished: None,
                                 };
                                 if let Err(e) = task_sender.try_send(task) {
-                                    error!("internal send task err : {:?}", e);
+                                    warn!("internal send task err : {:?}", e);
                                     continue;
                                 }
                             }
                             _ => {
-                                error!("unknown data_type {:?} with tash {:?}", t.data_type, t.data)
+                                error!("unknown data_type {:?} with task {:?}", t.data_type, t.data)
                             }
                         }
                     }
                     Err(e) => {
-                        error!("{}", e);
+                        warn!("{}", e);
                         recv_worker_s_locker.send(()).unwrap();
                         // Exit if plugin recive task failed.
                         return;

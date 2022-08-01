@@ -114,7 +114,7 @@ impl Cronjob {
                     match sender_proc.send(task) {
                         Ok(_) => {}
                         Err(e) => {
-                            error!("internal task send err {:?}", e);
+                            warn!("internal task send err {:?}", e);
                             s_locker_proc.send(()).unwrap();
                         }
                     };
@@ -192,7 +192,7 @@ impl Cronjob {
                 match sender.send(task) {
                     Ok(_) => {}
                     Err(e) => {
-                        error!("internal task send err {:?}", e);
+                        warn!("internal task send err {:?}", e);
                         s_locker.send(()).unwrap();
                     }
                 };

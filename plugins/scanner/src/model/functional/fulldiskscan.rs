@@ -135,7 +135,7 @@ impl SuperDetector {
                                     }
                                 },
                                 Err(e) => {
-                                    error!("error {:?} while scann {:?}",e,&task.path);
+                                    warn!("error {:?} while scann {:?}",e,&task.path);
                                 },
                             };
                         },
@@ -230,7 +230,7 @@ pub fn FullScan(
             match sender.send(task) {
                 Ok(_) => {}
                 Err(e) => {
-                    error!("internal task send err {:?}", e);
+                    warn!("internal task send err {:?}", e);
                 }
             };
         }
@@ -300,7 +300,7 @@ pub fn FullScan(
                     match sender.send(task) {
                         Ok(_) => {}
                         Err(e) => {
-                            error!("internal task send err {:?}", e);
+                            warn!("internal task send err {:?}", e);
                         }
                     };
                 }
@@ -369,7 +369,7 @@ pub fn FullScan(
                         match sender.send(task) {
                             Ok(_) => {}
                             Err(e) => {
-                                error!("internal task send err {:?}", e);
+                                warn!("internal task send err {:?}", e);
                             }
                         };
                     }

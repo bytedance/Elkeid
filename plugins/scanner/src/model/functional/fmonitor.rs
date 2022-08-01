@@ -84,7 +84,7 @@ impl Drop for FileMonitor {
     fn drop(&mut self) {
         let rcode = unsafe { libc::close(self.fd) };
         if rcode != 0 {
-            error!("self close fd :{}; return:{}.", self.fd, rcode);
+            warn!("self close fd :{}; return:{}.", self.fd, rcode);
         } else {
             info!("self close fd :{}; success", self.fd);
         }
@@ -206,7 +206,7 @@ impl FileMonitor {
                                 (fsize, btime)
                             }
                             Err(e) => {
-                                error!("error {}, while get exe realpath metadata", &exe_real);
+                                warn!("error {}, while get exe realpath metadata", &exe_real);
                                 continue;
                             }
                         };
@@ -243,7 +243,7 @@ impl FileMonitor {
                             match sender.try_send(task) {
                                 Ok(_) => {}
                                 Err(e) => {
-                                    error!("internal send task err : {:?}", e);
+                                    warn!("internal send task err : {:?}", e);
                                     s_locker.send(()).unwrap();
                                     break;
                                 }
@@ -347,6 +347,6 @@ fn safe_close(fd: i32) {
         retc
     };
     if rcode != 0 {
-        error!("close fd :{}; return:{}.", fd, rcode);
+        warn!("close fd :{}; return:{}.", fd, rcode);
     };
 }
