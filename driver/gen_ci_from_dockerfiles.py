@@ -6,7 +6,7 @@ from collections import OrderedDict
 all_dockers = os.listdir("driver/dockerfiles")
 
 black_list = []
-white_list = ["rhel6", "rhel6_elrepo"]
+white_list = []
 
 all_vms = []
 
