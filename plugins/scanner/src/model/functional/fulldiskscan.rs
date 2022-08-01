@@ -25,12 +25,11 @@ use super::cronjob::get_pid_live_time;
 use serde::{self, Deserialize, Serialize};
 use serde_json;
 
-pub const MAX_SCAN_ENGINES: u32 = 4;
-pub const MAX_SCAN_CPU_100: u32 = 4;
-pub const MAX_SCAN_MEM_MB: u32 = 2048;
+pub const MAX_SCAN_ENGINES: u32 = 6;
+pub const MAX_SCAN_CPU_100: u32 = 600;
+pub const MAX_SCAN_MEM_MB: u32 = 512;
 pub const SCAN_MODE_FULL: &str = "full";
 pub const SCAN_MODE_QUICK: &str = "quick";
-
 
 pub struct SuperDetector {
     pub client: plugins::Client,

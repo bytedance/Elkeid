@@ -877,7 +877,7 @@ impl Detector {
                             6053 => {
                                 // Scan task
                                 if task_sender.len() >= 250 {
-                                    error!(
+                                    warn!(
                                             "recv too many task, drop one : data_type:{},token:{},data:{}",
                                             t.data_type,
                                             t.get_token(),
@@ -889,7 +889,7 @@ impl Detector {
                                     match serde_json::from_str(&t.data) {
                                         Ok(data) => data,
                                         Err(e) => {
-                                            error!("error decode &t.data {:?}", &t.data);
+                                            warn!("error decode &t.data {:?}", &t.data);
                                             continue;
                                         }
                                     };
@@ -943,7 +943,7 @@ impl Detector {
                                                     }),
                                                 };
                                                 if let Err(e) = task_sender.try_send(task) {
-                                                    error!("internal send task err : {:?}", e);
+                                                    warn!("internal send task err : {:?}", e);
                                                     break;
                                                 }
                                                 break;
@@ -979,7 +979,7 @@ impl Detector {
                                             finished: None,
                                         };
                                         if let Err(e) = task_sender.try_send(task) {
-                                            error!("internal send task err : {:?}", e);
+                                            warn!("internal send task err : {:?}", e);
                                             break;
                                         }
                                     }
@@ -1002,7 +1002,7 @@ impl Detector {
                                 };
 
                                 if let Err(e) = task_sender.try_send(task) {
-                                    error!("internal send task err : {:?}", e);
+                                    warn!("internal send task err : {:?}", e);
                                     continue;
                                 }
                             }
@@ -1012,7 +1012,7 @@ impl Detector {
                                 match s.send(t.data) {
                                     Ok(_) => {}
                                     Err(e) => {
-                                        error!("{}", e);
+                                        warn!("{}", e);
                                         recv_worker_s_locker.send(()).unwrap();
                                         // Exit if plugin recive task failed.
                                         return;
@@ -1316,44 +1316,43 @@ impl Detector {
                             debug!("recv work 6052");
                             if let Some(t) =  &mut self.scanner{
                                 debug!("scan {:?}",task.path);
-                                match t.scan(&task.path){
-                                    Ok((ftype,fclass,fname,xhash,md5sum,matched_data)) => {
-                                        let t = DetectProcEvent::new(
-                                            task.pid,
+                                if let Ok((ftype,fclass,fname,xhash,md5sum,matched_data)) = t.scan(&task.path){
+                                    let t = match DetectProcEvent::new(
+                                        task.pid,
+                                        &ftype,
+                                        &fclass,
+                                        &fname,
+                                        &task.rpath,
+                                        &xhash,
+                                        &md5sum,
+                                        task.size,
+                                        task.btime,
+                                        task.mtime,
+                                        matched_data,
+                                    ){
+                                        Ok(pt)=>pt,
+                                        Err(_)=>{
+                                            continue;
+                                        }
+                                    };
+                                    if &ftype != "not_detected"{
+                                        info!("filepath:{} filesize:{} md5sum:{} create_at:{} motidy_at:{} types:{} class:{} name:{}",
+                                            &task.path,
+                                            &task.size,
+                                            &md5sum,
+                                            &task.btime,
+                                            &task.mtime,
                                             &ftype,
                                             &fclass,
-                                            &fname,
-                                            &task.rpath,
-                                            &xhash,
-                                            &md5sum,
-                                            task.size,
-                                            task.btime,
-                                            task.mtime,
-                                            matched_data,
-                                        ).unwrap_or_default();
-
-                                        if &ftype != "not_detected"{
-                                            info!("filepath:{} filesize:{} md5sum:{} create_at:{} motidy_at:{} types:{} class:{} name:{}",
-                                                &task.path,
-                                                &task.size,
-                                                &md5sum,
-                                                &task.btime,
-                                                &task.mtime,
-                                                &ftype,
-                                                &fclass,
-                                                &fname
-                                            );
-                                            if let Err(e) = self.client.send_record(&t.to_record()) {
-                                                warn!("send err, should exit : {:?}",e);
-                                                work_s_locker.send(()).unwrap();
-                                                return
-                                            };
-                                        }
-                                    },
-                                    Err(e) => {
-                                        error!("error {:?} while scann {:?}",e,&task.path);
-                                    },
-                                };
+                                            &fname
+                                        );
+                                        if let Err(e) = self.client.send_record(&t.to_record()) {
+                                            warn!("send err, should exit : {:?}",e);
+                                            work_s_locker.send(()).unwrap();
+                                            return
+                                        };
+                                    }
+                                }
                             }
                         }, // proc
 
@@ -1446,45 +1445,38 @@ impl Detector {
                             debug!("recv work 6054");
                             if let Some(t) =  &mut self.scanner{
                                 debug!("scan {:?}",task.path);
-                                match t.scan(&task.path){
-                                    Ok((ftype,fclass,fname,xhash,md5sum,matched_data)) => {
-                                        let mut event = AntiRansomEvent::new(
-                                            task.pid,
-                                            &ftype,
-                                            "anti_ransom",
-                                            &fname,
-                                            &task.path,
-                                            &xhash,
-                                            &md5sum,
-                                            task.size,
-                                            task.btime,
-                                            task.mtime,
-                                            &task.rpath,
-                                            &task.token,
-                                            matched_data,
-                                        ).unwrap_or_default();
-
-                                        info!("filepath:{} filesize:{} md5sum:{} create_at:{} motidy_at:{} types:{} class:{} name:{}",
-                                                &task.path,
-                                                &task.size,
-                                                &md5sum,
-                                                &task.btime,
-                                                &task.mtime,
-                                                &ftype,
-                                                &fclass,
-                                                &fname
-                                            );
-
-                                        if let Err(e) = self.client.send_record(&event.to_record()) {
-                                            warn!("send err, should exit : {:?}",e);
-                                            work_s_locker.send(()).unwrap();
-                                            return
-                                        };
-                                    },
-                                    Err(e) => {
-                                        error!("error {:?} while scann {:?}",e,&task.path);
-                                    },
-                                };
+                                if let Ok((ftype,fclass,fname,xhash,md5sum,matched_data)) = t.scan(&task.path){
+                                    let mut event = AntiRansomEvent::new(
+                                        task.pid,
+                                        &ftype,
+                                        "anti_ransom",
+                                        &fname,
+                                        &task.path,
+                                        &xhash,
+                                        &md5sum,
+                                        task.size,
+                                        task.btime,
+                                        task.mtime,
+                                        &task.rpath,
+                                        &task.token,
+                                        matched_data,
+                                    ).unwrap_or_default();
+                                    info!("filepath:{} filesize:{} md5sum:{} create_at:{} motidy_at:{} types:{} class:{} name:{}",
+                                        &task.path,
+                                        &task.size,
+                                        &md5sum,
+                                        &task.btime,
+                                        &task.mtime,
+                                        &ftype,
+                                        &fclass,
+                                        &fname
+                                        );
+                                    if let Err(e) = self.client.send_record(&event.to_record()) {
+                                        warn!("send err, should exit : {:?}",e);
+                                        work_s_locker.send(()).unwrap();
+                                        return
+                                    };
+                                }
                             }
                         }, // anti_ransom
                         "6055" =>{
