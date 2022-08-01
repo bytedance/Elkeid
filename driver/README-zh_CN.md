@@ -636,8 +636,7 @@ Testing Load:
 
 ## 已知问题
 * 内核模块 hook 点初始化失败 : do_init_module
-<br>
-在一些老版本的 Ubuntu / CentOS 内核中出现，dmesg 会有如下输出:<br>
+<br>在一些老版本的 Ubuntu / CentOS 内核中出现，dmesg 会有如下输出:<br>
 do_init_module register_kprobe failed, returned -2.<br>
 内核模块仍然可以使用，但没有 do_init_module 数据
 
