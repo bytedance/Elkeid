@@ -146,17 +146,17 @@ create_release_job = OrderedDict(
 
             OrderedDict({
                 "name": "Prepare artifact 2-1 ko",
-                "run": "cp -f ~/all_elkeid_drivers/*/*.ko elkeid_driver/ko"
+                "run": "mv -f ~/all_elkeid_drivers/*/*.ko elkeid_driver/ko"
             }),
 
             OrderedDict({
                 "name": "Prepare artifact 2-2 sign",
-                "run": "cp -f ~/all_elkeid_drivers/*/*.sign elkeid_driver/sign"
+                "run": "mv -f ~/all_elkeid_drivers/*/*.sign elkeid_driver/sign"
             }),
 
             OrderedDict({
                 "name": "Prepare artifact 2-3 log",
-                "run": "cp -f ~/all_elkeid_drivers/*/*.log elkeid_driver/log"
+                "run": "mv -f ~/all_elkeid_drivers/*/*.log elkeid_driver/log"
             }),
 
             OrderedDict({
