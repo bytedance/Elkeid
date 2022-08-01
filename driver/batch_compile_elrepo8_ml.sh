@@ -17,8 +17,16 @@ do
     rm -f ./kernel*.rpm 
     KV=$each_ml_version.el8.elrepo.x86_64
     KVERSION=$KV make -C ./LKM clean || true 
-    BATCH=true KVERSION=$KV make -C ./LKM -j all || true 
-     sha256sum  ./LKM/${KO_NAME}.ko | awk '{print $1}' > /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.sign  || true  
+    BATCH=true KVERSION=$KV make -C ./LKM -j all | tee /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.log || true 
+    sha256sum  ./LKM/${KO_NAME}.ko | awk '{print $1}' > /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.sign  || true  
+
+    if [ -s /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.sign ]; then
+        # The file is not-empty.
+        echo ok > /dev/null
+    else
+        # The file is empty.
+        rm -f /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.sign
+    fi
     mv ./LKM/${KO_NAME}.ko /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.ko || true 
     KVERSION=$KV  make -C ./LKM clean || true
 done

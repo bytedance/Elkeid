@@ -138,9 +138,30 @@ create_release_job = OrderedDict(
                     "path": "~/all_elkeid_drivers"
                 }
             }),
+
             OrderedDict({
-                "name": "Pack artifact ",
-                "run": "zip -r elkeid_driver.zip ~/all_elkeid_drivers"
+                "name": "Prepare artifact 1 mkdir",
+                "run": "mkdir -p elkeid_driver/ko elkeid_driver/sign elkeid_driver/log"
+            }),
+
+            OrderedDict({
+                "name": "Prepare artifact 2-1 ko",
+                "run": "cp -f ~/all_elkeid_drivers/*/*.ko elkeid_driver/ko"
+            }),
+
+            OrderedDict({
+                "name": "Prepare artifact 2-2 sign",
+                "run": "cp -f ~/all_elkeid_drivers/*/*.sign elkeid_driver/sign"
+            }),
+
+            OrderedDict({
+                "name": "Prepare artifact 2-3 log",
+                "run": "cp -f ~/all_elkeid_drivers/*/*.log elkeid_driver/log"
+            }),
+
+            OrderedDict({
+                "name": "Pack artifact",
+                "run": "zip -r elkeid_driver.zip elkeid_driver"
             }),
 
             OrderedDict({

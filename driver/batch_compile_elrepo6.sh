@@ -13,8 +13,18 @@ do
     rm -f ./kernel*.rpm 
     KV=$each_ml_version.el6.elrepo.x86_64
     KVERSION=$KV make -C ./LKM clean || true 
-    BATCH=true KVERSION=$KV make -C ./LKM -j all || true 
-     sha256sum  ./LKM/${KO_NAME}.ko | awk '{print $1}' > /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.sign  || true  
+    
+    BATCH=true KVERSION=$KV make -C ./LKM -j all | tee /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.log || true 
+    sha256sum  ./LKM/${KO_NAME}.ko | awk '{print $1}' > /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.sign  || true  
+
+    if [ -s /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.sign ]; then
+        # The file is not-empty.
+        echo ok > /dev/null
+    else
+        # The file is empty.
+        rm -f /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.sign
+    fi
+
     mv ./LKM/${KO_NAME}.ko /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.ko || true 
     KVERSION=$KV  make -C ./LKM clean || true
 done
@@ -24,13 +34,23 @@ do
     wget "http://mirrors.coreix.net/elrepo-archive-archive/kernel/el6/x86_64/RPMS/kernel-lt-devel"-$each_lt_version.el6.elrepo.x86_64.rpm
     
     yum remove -y kernel-devel kernel-ml-devel kernel-lt-devel
-    rpm -ivh --force ./kernel*.rpm 
+    rpm -i --force ./kernel*.rpm 
 
     rm -f ./kernel*.rpm 
     KV=$each_lt_version.el6.elrepo.x86_64
     KVERSION=$KV make -C ./LKM clean || true 
-    BATCH=true KVERSION=$KV make -C ./LKM -j all || true 
-     sha256sum  ./LKM/${KO_NAME}.ko | awk '{print $1}' > /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.sign  || true  
+
+    BATCH=true KVERSION=$KV make -C ./LKM -j all | tee /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.log || true 
+    sha256sum  ./LKM/${KO_NAME}.ko | awk '{print $1}' > /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.sign  || true  
+
+    if [ -s /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.sign ]; then
+        # The file is not-empty.
+        echo ok > /dev/null
+    else
+        # The file is empty.
+        rm -f /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.sign
+    fi
+
     mv ./LKM/${KO_NAME}.ko /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.ko || true 
     KVERSION=$KV  make -C ./LKM clean || true
 done

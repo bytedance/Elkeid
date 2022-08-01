@@ -95,8 +95,16 @@ jobs:
     - uses: actions/download-artifact@v3
       with:
         path: ~/all_elkeid_drivers
-    - name: Pack artifact 
-      run: zip -r elkeid_driver.zip ~/all_elkeid_drivers
+    - name: Prepare artifact 1 mkdir
+      run: mkdir -p elkeid_driver/ko elkeid_driver/sign elkeid_driver/log
+    - name: Prepare artifact 2-1 ko
+      run: cp -f ~/all_elkeid_drivers/*/*.ko elkeid_driver/ko
+    - name: Prepare artifact 2-2 sign
+      run: cp -f ~/all_elkeid_drivers/*/*.sign elkeid_driver/sign
+    - name: Prepare artifact 2-3 log
+      run: cp -f ~/all_elkeid_drivers/*/*.log elkeid_driver/log
+    - name: Pack artifact
+      run: zip -r elkeid_driver.zip elkeid_driver
     - name: Upload Release Asset 
       id: upload-release-asset
       uses: actions/upload-release-asset@v1
