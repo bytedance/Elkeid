@@ -10,9 +10,6 @@
 [submodule "rasp/jvm/jattach"]
 	path = rasp/jvm/jattach
 	url = https://github.com/apangin/jattach.git
-[submodule "rasp/util-linux"]
-	path = rasp/util-linux
-	url = https://github.com/karelzak/util-linux.git
 [submodule "rasp/golang/tiny-regex-c"]
 	path = rasp/golang/tiny-regex-c
 	url = https://github.com/Hackerl/tiny-regex-c
