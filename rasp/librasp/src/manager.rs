@@ -9,6 +9,7 @@ use crate::{
     comm::{Control, RASPServerManager},
     process::ProcessInfo,
 };
+use crate::php::{PHPProbeState, php_attach};
 use crate::cpython::{CPythonProbeState, python_attach};
 use crate::golang::{golang_attach, GolangProbeState};
 use crate::jvm::java_attach;
@@ -203,6 +204,10 @@ impl RASPManager {
                     let pid = process_info.pid;
                     let environ = process_info.environ.clone().unwrap();
                     nodejs_attach(pid, &environ, &process_exe_file)
+                }
+                "PHP" => match PHPProbeState::inspect_process(&process_info)? {
+                    ProbeState::Attached => Ok(true),
+                    ProbeState::NotAttach => php_attach(&process_info, runtime_info.version.clone())
                 }
                 _ => {
                     let msg = format!("can not attach to runtime: `{}`", runtime_info.name);

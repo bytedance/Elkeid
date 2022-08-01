@@ -17,6 +17,7 @@ pub fn generate_heartbeat(watched_process: &ProcessInfo) -> HashMap<&'static str
     message.insert("pid", watched_process.pid.to_string());
     message.insert("cmdline", watched_process.cmdline.clone().unwrap_or("".to_string()));
     message.insert("exe_name", watched_process.exe_name.clone().unwrap_or("".to_string()));
+    message.insert("current_config_hash", watched_process.current_config_hash.clone());
     let environ = watched_process.environ.clone().unwrap_or(HashMap::new());
     let mut environ_string = HashMap::new();
     for (k, v) in environ.iter() {

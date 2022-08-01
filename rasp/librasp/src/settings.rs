@@ -9,3 +9,33 @@ pub const RASP_NODE_MODULE: &'static str = "lib/node/smith";
 pub const RASP_NODE_INJECTOR: &'static str = "lib/node/injector.js";
 pub const RASP_PYTHON_ENTRY: &'static str = "lib/python/entry.py";
 pub const RASP_PYTHON_LOADER: &'static str = "lib/python_loader";
+
+#[allow(non_snake_case)]
+pub fn RASP_PHP_PROBE(major: &str, miner: &str) -> Option<String> {
+    if match major {
+        "5" => match miner {
+            "3" => true,
+            "4" => true,
+            "5" => true,
+            "6" => true,
+            _ => false
+        },
+        "7" => match miner {
+            "0" => true,
+            "2" => true,
+            "3" => true,
+            "4" => true,
+            _ => false
+        },
+        "8" => match miner {
+            "0" => true,
+            "1" => true,
+            _ => false
+        },
+        _ => false
+    } {
+        Some(format!("lib/php_probe.{}.{}.so", major, miner))
+    } else {
+        None
+    }
+}

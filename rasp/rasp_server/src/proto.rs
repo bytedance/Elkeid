@@ -124,6 +124,7 @@ pub struct ProbeConfigData {
     pub blocks: Option<Vec<ProbeConfigBlock>>,
     pub filters: Option<Vec<ProbeConfigFilter>>,
     pub limits: Option<Vec<ProbeConfigLimit>>,
+    pub patch: Option<Vec<ProbeConfigPatch>>
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -152,6 +153,15 @@ pub struct ProbeConfigLimit {
     pub class_id: i32,
     pub method_id: i32,
     pub quota: i32,
+}
+
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ProbeConfigPatch {
+    pub class_name: String,
+    pub path: String,
+    pub file_download_url: Option<Vec<String>>,
+    pub sum_hash: Option<String>,
 }
 
 pub fn message_handle(message: &String) -> Result<String, String> {

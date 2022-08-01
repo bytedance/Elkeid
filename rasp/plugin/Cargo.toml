@@ -41,9 +41,19 @@ parking_lot = "0.11"
 md5 = "0.7"
 # lru
 uluru = "3.0.0"
+# base64
+base64 = "0.13.0"
+# http client
+reqwest = { version = "0.11.11", default-features = false, features=["blocking", "rustls-tls"]}
+
+# sha256
+sha256 = "1.0.3"
 
 [dependencies.librasp]
 path = "../librasp"
+
+[dependencies.rasp_server]
+path = "../rasp_server"
 
 [lib]
 name = "elkeid_rasp"

@@ -278,7 +278,7 @@ fn internal_main(
             let seq_id = generate_seq_id();
             for (_pid, process) in watched_process_cloned.iter() {
                 let mut message = generate_heartbeat(&process);
-                message.insert("data_type", "2999".to_string());
+                message.insert("data_type", "2997".to_string());
                 message.insert("package_seq", seq_id.clone());
                 debug!("sending heartbeat: {:?}", &message);
                 let _ = reporter_sender.send(message);
@@ -358,7 +358,7 @@ fn internal_main(
             };
             // handle operation
             info!("starting operation: {:?}", operation_message);
-            match operator.op(&mut process, state.clone(), probe_message) {
+            match operator.op(&mut process, state.clone(), probe_message.clone()) {
                 Ok(_) => {
                     info!("operation success: {:?}", operation_message);
                     let report = make_report(&process.clone(), "attach_success", String::new());
@@ -380,6 +380,14 @@ fn internal_main(
             match state.as_str() {
                 "WAIT_ATTACH" => {
                     process.tracing_state = Some(TracingState::ATTACHED);
+                    // update config hash
+                    let probe_config_hash = if !probe_message.clone().is_empty() {
+                        // calc_hash
+                        format!("{:x}", md5::compute(probe_message.clone()))
+                    } else {
+                        String::new()
+                    };
+                    process.current_config_hash = probe_config_hash;
                     (*opp).insert(process.pid, process);
                 }
                 "MISSING" => {

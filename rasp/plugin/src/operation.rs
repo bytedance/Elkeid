@@ -106,8 +106,7 @@ impl Operator {
             Some((s, r)) => (s, r),
             None => {
                 return Err(anyhow!(
-                    "can not find probe comm in command channel, pid: {}",
-                    pid
+                    "can not find probe comm in command channel, pid: {}", pid
                 ));
             }
         };
@@ -126,9 +125,20 @@ impl Operator {
             }
             "WAIT_ATTACH" => {
                 info!("attaching process: {:?}", process);
-                self.attach_process(process)?;
-                if probe_message != "" {
-                    self.send_probe_message(process.pid, &probe_message)?;
+                if let Some(process_state) = process.tracing_state.as_ref() {
+                    match process_state.to_string().as_str() {
+                        "WAIT_ATTACH" => {
+                            if probe_message != "" {
+                                self.send_probe_message(process.pid, &probe_message)?;
+                            }
+                        }
+                        _ => {
+                            self.attach_process(process)?;
+                            if probe_message != "" {
+                                self.send_probe_message(process.pid, &probe_message)?;
+                            }
+                        }
+                    }
                 }
             }
             "CLOSING" => {

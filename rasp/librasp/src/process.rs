@@ -8,7 +8,6 @@ use std::io::BufRead;
 
 use crate::runtime::Runtime;
 use coarsetime::Clock;
-use libc::stat;
 use procfs::process::{Namespaces, Process};
 use serde::{Deserialize, Serialize};
 
@@ -35,6 +34,8 @@ pub struct ProcessInfo {
     pub tracing_state: Option<TracingState>,
     pub auto_attach: bool,
     pub runtime: Option<Runtime>,
+
+    pub current_config_hash: String,
 
     pub attach_start_time: Option<String>,
     pub attach_end_time: Option<String>,
