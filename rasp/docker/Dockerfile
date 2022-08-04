@@ -17,4 +17,4 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no
 COPY . /Elkeid
 WORKDIR /Elkeid/rasp
 
-RUN make build STATIC=TRUE -j8
+RUN make build STATIC=TRUE -j$(nproc)
