@@ -94,6 +94,31 @@ impl Client {
             w.write_all(b"}\n")
         }
     }
+    pub fn send_records(&mut self, recs: &Vec<Record>) -> Result<(), Error> {
+        let mut w = self.writer.lock();
+        #[cfg(not(feature = "debug"))]
+        {
+            for rec in recs.iter() {
+                w.write_all(&rec.compute_size().to_le_bytes()[..])?;
+                rec.write_to_writer(&mut (*w))
+                    .map_err(|err| -> std::io::Error { err.into() })?;
+            }
+            Ok(())
+        }
+        #[cfg(feature = "debug")]
+        {
+            for rec in recs.iter() {
+                w.write_all(b"{\"data_type\":")?;
+                w.write_all(rec.data_type.to_string().as_bytes())?;
+                w.write_all(b",\"timestamp\":")?;
+                w.write_all(rec.timestamp.to_string().as_bytes())?;
+                w.write_all(b",\"data\":")?;
+                serde_json::to_writer(w.by_ref(), rec.get_data().get_fields())?;
+                w.write_all(b"}\n")?
+            }
+            Ok(())
+        }
+    }
     pub fn receive(&mut self) -> Result<Task, std::io::Error> {
         let mut r = self.reader.lock();
         let mut bytes = [0; 4];
