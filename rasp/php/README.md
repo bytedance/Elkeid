@@ -1,9 +1,9 @@
 <!-- PROJECT LOGO -->
 <p align="center">
-  <h3 align="center">go-probe</h3>
+  <h3 align="center">php-probe</h3>
 
   <p align="center">
-    Golang runtime application self-protection.
+    PHP runtime application self-protection.
     <br />
     <br />
     <a href="https://github.com/bytedance/Elkeid/issues">Report Bug</a>
@@ -45,7 +45,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-Resolve golang symbol table from ```gopclntab``` section, then inline hook api, transfer api call arguments/stacktrace by unix socket, support golang 1.2 and above.
+Hook `functions` and `opcodes` of PHP, transfer api call arguments/stacktrace by unix socket, support PHP 5.3 and above.
 
 ### Built With
 
@@ -75,9 +75,13 @@ Resolve golang symbol table from ```gopclntab``` section, then inline hook api, 
    ```sh
    git submodule update --init --recursive
    ```
-3. Build
+3. Build with `php-config`
    ```sh
-   mkdir -p build && cd build && cmake .. && make
+   mkdir -p build && cmake -B build -DCMAKE_MODULE_PATH=$(pwd)/cmake && cmake --build build -j$(nproc)
+   ```
+4. Build with include path
+   ```sh
+   mkdir -p build && cmake -B build -DPHP_EXTENSIONS_INCLUDE_DIR=/path/php/include && cmake --build build -j$(nproc)
    ```
 
 
@@ -91,14 +95,9 @@ Start server:
 socat UNIX-LISTEN:"/var/run/smith_agent.sock" -
 ```
 
-Loader mode:
+Start PHP:
 ```sh
-./go_loader go-program
-```
-
-Attach mode by using [pangolin](https://github.com/Hackerl/pangolin):
-```sh
-./pangolin -c $(pwd)/go_probe -p $(pidof go-program) --daemon
+php -d 'extension=$(pwd)/lib/libphp_probe.so' -r "shell_exec('ls'); sleep(60);"
 ```
 
 
@@ -141,8 +140,5 @@ Project Link: [https://github.com/bytedance/Elkeid](https://github.com/bytedance
 
 <!-- ACKNOWLEDGEMENTS -->
 ## Acknowledgements
-* [zydis](https://github.com/zyantific/zydis)
 * [libevent](https://github.com/libevent/libevent)
-* [ELFIO](https://github.com/serge1/ELFIO)
 * [json](https://github.com/nlohmann/json)
-* [printf](https://github.com/mpaland/printf)
