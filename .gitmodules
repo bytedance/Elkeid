@@ -4,9 +4,6 @@
 [submodule "rasp/pangolin"]
 	path = rasp/pangolin
 	url = https://github.com/Hackerl/pangolin
-[submodule "rasp/python/python-inject/cmake"]
-	path = rasp/python/python-inject/cmake
-	url = https://github.com/Hackerl/cmake-3rd
 [submodule "rasp/jvm/jattach"]
 	path = rasp/jvm/jattach
 	url = https://github.com/apangin/jattach.git

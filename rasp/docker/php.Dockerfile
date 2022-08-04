@@ -1,6 +1,6 @@
 FROM hackerl/centos-cpp:latest
 
-COPY . /Elkeid
+COPY . /Elkeid/rasp/php
 WORKDIR /Elkeid/rasp/php
 
 RUN curl -fsSL https://lf3-static.bytednsdoc.com/obj/eden-cn/laahweh7uhwbps/php-headers.tar.gz | tar -xz
