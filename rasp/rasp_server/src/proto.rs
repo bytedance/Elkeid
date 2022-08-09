@@ -121,10 +121,34 @@ pub struct PidMissingProbeConfig {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ProbeConfigData {
-    pub blocks: Option<Vec<ProbeConfigBlock>>,
-    pub filters: Option<Vec<ProbeConfigFilter>>,
-    pub limits: Option<Vec<ProbeConfigLimit>>,
-    pub patch: Option<Vec<ProbeConfigPatch>>
+    pub blocks: Option<ProbeConfigBlocks>,
+    pub filters: Option<ProbeConfigFilters>,
+    pub limits: Option<ProbeConfigLimits>,
+    pub patch: Option<ProbeConfigPatches>
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ProbeConfigBlocks {
+    uuid: String,
+    blocks: Vec<ProbeConfigBlock>
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ProbeConfigFilters {
+    uuid: String,
+    filters: Vec<ProbeConfigFilter>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ProbeConfigLimits {
+    uuid: String,
+    limits: Vec<ProbeConfigLimit>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ProbeConfigPatches{
+    uuid: String,
+    pub patches: Vec<ProbeConfigPatch>
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]

@@ -8,7 +8,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::utils::Control;
+use crate::utils::{generate_patch, time, Control};
 use crate::{RASPPair, RASPSock};
 
 use crossbeam::channel::{Sender, TryRecvError};
@@ -136,7 +136,12 @@ pub async fn start_bind(sock: RASPSock) -> Result<(), String> {
                 }
             };
             // println!("send to pair: {} {}", pid, message);
-            pair.probe_message_sender.send(message).await.unwrap();
+            match pair.probe_message_sender.send(message).await {
+                Ok(_) => {}
+                Err(e) => {
+                    error!("tokio mpsc send failed: {}", e);
+                }
+            };
             sleep(Duration::from_secs(1)).await;
         }
     });
@@ -158,9 +163,12 @@ pub async fn start_bind(sock: RASPSock) -> Result<(), String> {
                 let sock_rx = sock.tx_channel.clone();
                 let rx_ctrl = ctrl.clone();
                 let tx_ctrl = ctrl.clone();
+                // let patches = sock.patches.clone();
                 spawn(async move {
                     let (rx, tx) = stream.into_split();
-                    looping(rx, tx, sock_rx, sock_tx, rx_ctrl, tx_ctrl).await;
+                    let mut stop_ctrl = ctrl.clone();
+                    looping(rx, tx, sock_rx, sock_tx, rx_ctrl, tx_ctrl, pid).await;
+                    let _ = stop_ctrl.stop();
                 });
             }
             Err(e) => {
@@ -174,10 +182,12 @@ pub async fn start_bind(sock: RASPSock) -> Result<(), String> {
 pub async fn looping(
     rx: OwnedReadHalf,
     tx: OwnedWriteHalf,
-    sock_rx: Sender<String>,
+    sock_rx: Sender<plugins::Record>,
     mut sock_tx: Receiver<String>,
     mut rx_ctrl: Control,
     mut tx_ctrl: Control,
+    pid: i32,
+    // patch_data: Arc<dashmap::DashMap<i32, dashmap::DashMap<String, String>>>,
 ) {
     let mut framed_rx = tokio_util::codec::LengthDelimitedCodec::builder()
         .length_field_offset(0)
@@ -191,17 +201,32 @@ pub async fn looping(
         .length_adjustment(0)
         .num_skip(0)
         .new_write(tx);
+    let patch_w = Arc::new(tokio::sync::RwLock::new(HashMap::new()));
+    let patch_r = Arc::clone(&patch_w);
+    let mut final_patch = HashMap::new();
+    spawn(async move {
+        let patch = match generate_patch(pid) {
+            Ok(p) => p,
+            Err(e) => {
+                warn!("can not found process information: {} {}", pid, e);
+                return;
+            }
+        };
+        let mut p = patch_w.write().await;
+        p.extend(patch);
+        drop(p)
+    });
     loop {
         tokio::select! {
             x = sock_tx.recv() => {
                 match x {
                     Some(s) => {
-                        println!("send message to probe: {}", s);
+                        // println!("send message to probe: {}", s);
                         let bytes = Bytes::copy_from_slice(s.as_bytes());
                         match framed_tx.send(bytes).await {
                            Ok(_) => {}
                             Err(e) => {
-                                println!("send failed: {}", e);
+                                warn!("send failed: {}", e);
                                 return;
                             }
                         }
@@ -209,6 +234,8 @@ pub async fn looping(
                     None => {
                         log::warn!("tx recv ctrl stop: ");
                         let _ = tx_ctrl.stop();
+                        drop(framed_rx.get_mut());
+                        return
                     }
 
                 }
@@ -218,7 +245,25 @@ pub async fn looping(
                    Ok(Some(buf)) => {
                         let message = String::from_utf8_lossy(&*buf).to_string();
                         log::debug!("RECV: {}", &message.clone());
-                        if let Err(e) = sock_rx.send(message) {
+                        let mut record = plugins::Record::new();
+                        record.data_type = 2439;
+                        record.timestamp = time();
+                        if final_patch.len() != 0 {
+                            record.mut_data().set_fields(final_patch.clone());
+                        } else {
+                            let pr = patch_r.read().await;
+                            if pr.len() > 0 {
+                                log::info!("found patch from patch_r");
+                                final_patch.extend(pr.clone());
+                                record.mut_data().set_fields(final_patch.clone());
+                            }
+                            drop(pr);
+                        }
+                        let fields = record.mut_data().mut_fields();
+                        fields.insert("pid".to_string(), pid.to_string());
+                        fields.insert("RASP_DATA".to_string(), message);
+
+                        if let Err(e) = sock_rx.send(record) {
                             log::warn!("rx recv ctrl stop: {}", e);
                             let _ = rx_ctrl.stop();
                             return;
@@ -231,6 +276,8 @@ pub async fn looping(
                     }
                     Err(e) => {
                         error!("frame_rx got err: {}", e);
+                        let _ = rx_ctrl.stop();
+                        return
                     }
                 }
             },

@@ -16,8 +16,9 @@ clap = "2.33.3"
 # json
 serde = "1.0.117"
 serde_json = "1.0.59"
-# singal
-signal-hook = "0.3.9"
+## singal
+#signal-hook = "0.3.9"
+fs_extra = "1.2.0"
 # process
 procfs = { git = "https://github.com/AlkenePan/procfs.git" }
 # static config

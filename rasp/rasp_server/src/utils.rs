@@ -1,6 +1,11 @@
+use anyhow::Result as AnyhowResult;
+use procfs::process;
+use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::{SystemTime, UNIX_EPOCH};
+
 
 pub fn four_bytes_to_num(array: [u8; 4]) -> usize {
     let res = ((array[0] as u32) << 24)
@@ -72,4 +77,25 @@ impl Control {
             }
         };
     }
+}
+
+pub fn time() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64
+}
+
+pub fn generate_patch(pid: i32) -> AnyhowResult<HashMap<String, String>> {
+    let proc = process::Process::new(pid)?;
+    let mut res = HashMap::new();
+    let sid = proc.stat.session;
+    res.insert("sid".to_string(), sid.to_string());
+    let envs = proc.environ()?;
+    let psm = match envs.get(OsStr::new("TCE_PSM")) {
+        Some(p) => p.to_string_lossy().to_string(),
+        None => "".to_string(),
+    };
+    res.insert("psm".to_string(), psm);
+    Ok(res)
 }

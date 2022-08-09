@@ -46,6 +46,10 @@ pub trait ProbeStateInspect {
     fn inspect_process(process_info: &ProcessInfo) -> Result<ProbeState>;
 }
 
+pub trait ProbeCopy {
+    fn names() -> (Vec<String>, Vec<String>);
+}
+
 pub trait RuntimeInspect {
     fn inspect_from_process_info(process_info: &mut ProcessInfo) -> Result<Option<Runtime>> {
         let process_exe_file = process_info.exe_name.clone().unwrap();

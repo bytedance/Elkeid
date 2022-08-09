@@ -7,8 +7,8 @@ use memmap::MmapOptions;
 use std::fs::File;
 
 use crate::process::ProcessInfo;
-use crate::runtime::{ProbeState, ProbeStateInspect};
-use crate::settings::{RASP_GOLANG_BIN, RASP_PANGOLIN_BIN};
+use crate::runtime::{ProbeState, ProbeStateInspect, ProbeCopy};
+use crate::settings::{RASP_GOLANG, RASP_PANGOLIN, RASP_GOLANG_BOE};
 
 pub struct GolangProbeState {}
 
@@ -22,6 +22,21 @@ impl ProbeStateInspect for GolangProbeState {
             _ => {}
         };
         search_proc_map(process_info)
+    }
+}
+
+pub struct GolangProbe {}
+impl ProbeCopy for GolangProbe {
+    fn names() -> (Vec<String>, Vec<String>) {
+        (
+            [
+                RASP_GOLANG_BOE(),
+                RASP_GOLANG(),
+                // RASP_PANGOLIN.to_string(),
+            ]
+                .to_vec(),
+            [].to_vec(),
+        )
     }
 }
 
@@ -68,8 +83,8 @@ pub fn golang_attach(pid: i32) -> Result<bool> {
     debug!("golang attach: {}", pid);
     let cwd_path = std::env::current_dir()?;
     let cwd = cwd_path.to_str().unwrap();
-    let golang_probe = format!("{}/{}", cwd, RASP_GOLANG_BIN);
-    let pangolin = format!("{}/{}", cwd, RASP_PANGOLIN_BIN);
+    let golang_probe = format!("{}/{}", cwd, RASP_GOLANG());
+    let pangolin = format!("{}/{}", cwd, RASP_PANGOLIN());
     let daemon = "--daemon";
     let pid_string = pid.clone().to_string();
     let args = &[daemon, pid_string.as_str(), golang_probe.as_str()];
@@ -89,7 +104,7 @@ pub fn golang_bin_inspect(bin_file: PathBuf) -> Result<bool> {
     };
     // file size <= 100M
     let size = metadata.len();
-    if size >= (100 * 1024 * 1024) {
+    if size >= (500 * 1024 * 1024) {
         return Err(anyhow!("bin file oversize"));
     }
     /*

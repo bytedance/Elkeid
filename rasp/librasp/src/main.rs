@@ -46,7 +46,13 @@ fn main() -> anyhow::Result<()> {
     env_logger::init();
     // grab process info
     let process_id = parse_arg();
-    let mut rasp_manager = RASPManager::init()?;
+    let ctrl = Control::new();
+    let (result_sender, result_receiver) = unbounded();
+
+    let mut rasp_manager = RASPManager::init(
+        "process", "debug".to_string(),
+        ctrl.clone(), result_sender.clone()
+    )?;
     let mut process_info = ProcessInfo::from_pid(process_id)?;
     match rasp_manager.inspect(&mut process_info) {
         Ok(pi) => pi,
@@ -58,7 +64,7 @@ fn main() -> anyhow::Result<()> {
         Ok(_) => {}
         Err(e) => {
             error!("inspect runtime failed: {}", e);
-            return Err(anyhow::anyhow!(""))
+            return Err(anyhow::anyhow!(""));
         }
     };
     let runtime = match process_info.runtime.clone() {
@@ -74,29 +80,27 @@ fn main() -> anyhow::Result<()> {
         runtime.clone()
     );
     debug!("start comm server");
-    let ctrl = Control::new();
-    let (result_sender, result_receiver) = unbounded();
     match rasp_manager
         .start_comm(
             &process_info.clone(),
             result_sender,
             String::from("DEBUG"),
             ctrl,
-        ){
-            Ok(_) => {},
-            Err(e) => {
-                error!("start comm failed: {}", e);
-                return Err(anyhow::anyhow!(""));
-            }
-        };
+        ) {
+        Ok(_) => {}
+        Err(e) => {
+            error!("start comm failed: {}", e);
+            return Err(anyhow::anyhow!(""));
+        }
+    };
     debug!("ready to attach");
     match rasp_manager.attach(&mut process_info) {
         Ok(_) => {
             info!("attach process success");
-        },
+        }
         Err(e) => {
             error!("attach process failed: {}", e);
-            return Err(anyhow::anyhow!(""))
+            return Err(anyhow::anyhow!(""));
         }
     };
     loop {
@@ -104,7 +108,7 @@ fn main() -> anyhow::Result<()> {
             Ok(m) => m,
             Err(e) => {
                 error!("recv msg failed: {}", e);
-                return Err(anyhow::anyhow!(""))
+                return Err(anyhow::anyhow!(""));
             }
         };
         println!("{:?}", msg);

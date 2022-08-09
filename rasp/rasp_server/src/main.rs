@@ -67,13 +67,14 @@ fn main() -> AnyHowResult<()> {
     let mut rasp_server = RASPServer {
         config: server_config.clone(),
         global_signal: global_ctrl.clone(),
-        probe_to_agent_rx: probe_to_agent_receiver,
-        agent_to_probe_tx: agent_to_probe_sender,
+        probe_to_agent_rx: Some(probe_to_agent_receiver),
+        agent_to_probe_tx: Some(agent_to_probe_sender),
     };
     let sock = RASPSock {
         server_addr: server_config.sock_path,
         tx_channel: probe_to_agent_sender,
         rx_channel: agent_to_probe_receiver,
+        // patches: Arc::new(DashMap::new()),
         ctrl: global_ctrl.clone(),
     };
     rasp_server.start(sock);

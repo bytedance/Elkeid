@@ -1,31 +1,40 @@
-use std::collections::HashMap;
-
 use anyhow::{anyhow, Result as AnyhowResult};
-use crossbeam::channel::{Receiver, Sender};
+use crossbeam::channel::{Sender};
 use librasp::manager::RASPManager;
 use log::*;
 
 use crate::{utils::Control};
 use librasp::process::ProcessInfo;
+use crate::config::settings_string;
 
 pub struct Operator {
     rasp_manager: RASPManager,
-    message_sender: Sender<HashMap<&'static str, String>>,
-    command_channel_map: HashMap<i32, (Sender<String>, Receiver<String>)>,
+    message_sender: Sender<plugins::Record>,
     comm_ctrl: Control,
 }
 
 impl Operator {
     pub fn new(
-        message_sender: Sender<HashMap<&'static str, String>>,
+        message_sender: Sender<plugins::Record>,
         comm_ctrl: Control,
     ) -> AnyhowResult<Self> {
-        debug!("rasp manager initing");
-        let rasp_manager = RASPManager::init()?;
+        debug!("rasp manager init");
+        let comm_mode = settings_string("server", "mode")?;
+        let log_level = settings_string("service", "log_level")?;
+        let bind_path = settings_string("server", "bind_path")?;
+        let linking_to = match settings_string("server", "linking_to") {
+            Ok(s) => Some(s),
+            Err(_) => None,
+        };
+        let rasp_manager = RASPManager::init(
+            comm_mode.as_str(), log_level,
+            comm_ctrl.clone(), message_sender.clone(),
+            bind_path, linking_to
+        )?;
+
         Ok(Self {
             rasp_manager,
             message_sender,
-            command_channel_map: HashMap::new(),
             comm_ctrl,
         })
     }
@@ -35,10 +44,6 @@ impl Operator {
         Ok(())
     }
     pub fn new_comm(&mut self, process: &ProcessInfo) -> AnyhowResult<()> {
-        if self.command_channel_map.get(&process.pid).is_some() {
-            debug!("deplicated attach");
-            return Ok(());
-        }
         let message_sender_clone = self.message_sender.clone();
         self.rasp_manager
             .start_comm(&process, message_sender_clone, "info".to_string(), self.comm_ctrl.clone())?;
@@ -46,7 +51,6 @@ impl Operator {
     }
     pub fn stop_comm(&mut self, process: &ProcessInfo) -> AnyhowResult<()> {
         self.rasp_manager.stop_comm(&process)?;
-        let _ = self.command_channel_map.remove(&process.pid);
         Ok(())
     }
     pub fn attach_process(&mut self, process: &mut ProcessInfo) -> AnyhowResult<()> {
@@ -89,6 +93,7 @@ impl Operator {
         }
         Ok(())
     }
+
     pub fn handle_missing(&mut self, process: &mut ProcessInfo) -> AnyhowResult<()> {
         if process
             .tracing_state
@@ -101,18 +106,16 @@ impl Operator {
         self.stop_comm(&process)?;
         return Ok(());
     }
-    pub fn send_probe_message(&mut self, pid: i32, probe_message: &String) -> AnyhowResult<()> {
-        let (sc, _) = match self.command_channel_map.get_mut(&pid) {
-            Some((s, r)) => (s, r),
-            None => {
-                return Err(anyhow!(
-                    "can not find probe comm in command channel, pid: {}", pid
-                ));
-            }
-        };
-        sc.send(probe_message.to_string())?;
-        Ok(())
+
+    pub fn send_probe_message(&mut self, process_info: &ProcessInfo, probe_message: &String) -> AnyhowResult<()> {
+        let pid = process_info.pid;
+        let mnt_namespace = process_info
+            .namespace_info.clone().ok_or(anyhow!("unable fetch namespace"))?
+            .mnt.ok_or(anyhow!("unable fetch namespace"))?;
+        // self.rasp_manager.write_message_to_config_file(pid, process_info.nspid, probe_message.clone());
+        self.rasp_manager.send_message_to_probe(pid, &mnt_namespace, probe_message)
     }
+
     pub fn op(
         &mut self,
         process: &mut ProcessInfo,
@@ -129,13 +132,13 @@ impl Operator {
                     match process_state.to_string().as_str() {
                         "WAIT_ATTACH" => {
                             if probe_message != "" {
-                                self.send_probe_message(process.pid, &probe_message)?;
+                                self.send_probe_message(&process, &probe_message)?;
                             }
                         }
                         _ => {
                             self.attach_process(process)?;
                             if probe_message != "" {
-                                self.send_probe_message(process.pid, &probe_message)?;
+                                self.send_probe_message(&process, &probe_message)?;
                             }
                         }
                     }

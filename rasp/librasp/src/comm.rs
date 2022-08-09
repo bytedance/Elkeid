@@ -1,17 +1,14 @@
 use std::collections::HashMap;
-use std::fmt::{Display, Formatter, Result as FmtResult};
+// use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 
-use crossbeam::channel::{bounded, Receiver, Sender};
+use crossbeam::channel::{bounded, Receiver, Sender, SendError};
 use log::*;
 
-use super::process::ProcessInfo;
+// use super::process::ProcessInfo;
 use anyhow::{anyhow, Result as AnyhowResult};
-pub struct RASPServerManager {
-    pub mnt_namespace_server_map: HashMap<String, libraspserver::process_mode::RASPServerProcess>,
-    pub mnt_namespace_comm_pair: HashMap<String, (Sender<String>, Receiver<String>)>,
-}
+use crate::settings;
 
 // https://stackoverflow.com/questions/35883390/how-to-check-if-a-thread-has-finished-in-rust
 // https://stackoverflow.com/a/39615208
@@ -47,85 +44,162 @@ impl Control {
     }
 }
 
-pub enum ServerStatus {
-    WORKING,
-    // not exitst
-    NULL,
-    // alived, but can not `wait` on child process
-    MISSING,
-}
-
-impl Display for ServerStatus {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        match self {
-            ServerStatus::WORKING => write!(f, "WORKING"),
-            ServerStatus::NULL => write!(f, "NULL"),
-            ServerStatus::MISSING => write!(f, "MISSING"),
-        }
-    }
-}
-
-impl RASPServerManager {
-    pub fn new() -> Result<Self, String> {
-        let new_manager = Self {
-            mnt_namespace_server_map: HashMap::new(),
-            mnt_namespace_comm_pair: HashMap::new(),
-        };
-        Ok(new_manager)
-    }
-    pub fn send_to_probe(&self, mnt_namespace: &String, message: &String) -> Result<(), String> {
-        if let Some(p) = self.mnt_namespace_comm_pair.get(mnt_namespace) {
-            if let Err(e) = p.0.send(message.clone()) {
-                return Err(format!("send probe config failed: {}", e.to_string()));
-            }
-        }
-        Ok(())
-    }
-
-    pub fn start_new_rasp_server(
+pub trait RASPComm {
+    fn start_comm(
         &mut self,
-        process_info: &ProcessInfo,
-        message_sender: Sender<HashMap<&'static str, String>>,
-        log_level: String,
-        ctrl: Control,
-        patch_field: HashMap<&'static str, String>,
-    ) -> AnyhowResult<()> {
-        let mnt_namespace = process_info.get_mnt_ns()?;
-        let (_, r) = if let Some(p) = self.mnt_namespace_comm_pair.get(&mnt_namespace) {
-            (p.0.clone(), p.1.clone())
-        } else {
-            let (s, r) = bounded(50);
-            self.mnt_namespace_comm_pair
-                .insert(mnt_namespace.clone(), (s.clone(), r.clone()));
-            (s, r)
-        };
-        let runner = match libraspserver::process_mode::RASPServerProcess::new(
-            process_info.pid,
-            message_sender,
-            r,
-            log_level,
-            patch_field,
+        pid: i32,
+        mnt_namespace: &String,
+        probe_report_sender: Sender<plugins::Record>,
+        patch_filed: HashMap<&'static str, String>,
+    ) -> AnyhowResult<()>;
+    fn stop_comm(
+        &mut self,
+        pid: i32,
+        mnt_namespace: &String,
+    ) -> AnyhowResult<()>;
+    fn send_message_to_probe(
+        &mut self, pid: i32, mnt_namespace: &String, message: &String,
+    ) -> AnyhowResult<()>;
+}
+
+pub struct ThreadMode {
+    pub ctrl: Control,
+    pub log_level: String,
+    pub bind_path: String,
+    pub linking_to: Option<String>,
+    pub agent_to_probe_sender: Sender<(i32, String)>,
+}
+
+impl ThreadMode {
+    pub fn new(log_level: String, ctrl: Control,
+               probe_report_sender: Sender<plugins::Record>,
+               bind_path: String, linking_to: Option<String>
+    ) -> AnyhowResult<Self> {
+        let (sender, receiver) = bounded(50);
+        libraspserver::thread_mode::start(
+            bind_path.clone(),
+            20,
             libraspserver::utils::Control {
                 working_atomic: ctrl.working_atomic.clone(),
                 control: ctrl.control.clone(),
             },
-        ) {
-            Err(e) => {
-                return Err(anyhow!("{}", e.to_string()));
-            }
-            Ok(runner) => runner,
-        };
-        self.mnt_namespace_server_map
-            .insert(mnt_namespace.clone(), runner);
+            probe_report_sender,
+            receiver,
+        );
+        Ok(Self {
+            ctrl,
+            log_level,
+            bind_path: bind_path,
+            linking_to: linking_to,
+            agent_to_probe_sender: sender,
+        })
+    }
+}
+
+pub struct ProcessMode {
+    pub ctrl: Control,
+    pub log_level: String,
+    pub mnt_namesapce_server_map: HashMap<String, libraspserver::process_mode::RASPServerProcess>,
+    pub mnt_namespace_comm_pair: HashMap<String, (Sender<String>, Receiver<String>)>,
+}
+
+impl ProcessMode {
+    pub fn new(log_level: String, ctrl: Control) -> Self {
+        Self {
+            ctrl,
+            log_level,
+            mnt_namesapce_server_map: HashMap::new(),
+            mnt_namespace_comm_pair: HashMap::new(),
+        }
+    }
+}
+
+impl RASPComm for ProcessMode {
+    fn start_comm(&mut self, pid: i32, mnt_namespace: &String, probe_report_sender: Sender<plugins::Record>, patch_field: HashMap<&'static str, String>) -> AnyhowResult<()> {
+        let (probe_mesasge_sender, probe_message_receiver) = bounded(50);
+        let mut server_process =
+            libraspserver::process_mode::RASPServerProcess::new(
+                pid,
+                probe_report_sender,
+                probe_message_receiver.clone(),
+                self.log_level.clone(),
+                patch_field,
+                libraspserver::utils::Control {
+                    working_atomic: self.ctrl.working_atomic.clone(),
+                    control: self.ctrl.control.clone(),
+                },
+            )?;
+        server_process.spawn("RASP_SERVER_PATH")?;
+        self.mnt_namesapce_server_map.insert(mnt_namespace.clone(), server_process);
+        self.mnt_namespace_comm_pair.insert(mnt_namespace.clone(), (probe_mesasge_sender, probe_message_receiver));
         Ok(())
     }
-    pub fn stop_rasp_server(&mut self, mnt_ns: &String) -> Result<(), String> {
-        info!("stop server: {}", mnt_ns.clone());
-        return if let Some(mut runner) = self.mnt_namespace_server_map.remove(mnt_ns) {
+
+    fn stop_comm(&mut self, _pid: i32, mnt_namespace: &String) -> AnyhowResult<()> {
+        info!("stop server: {}", mnt_namespace.clone());
+        return if let Some(mut runner) = self.mnt_namesapce_server_map.remove(mnt_namespace) {
             runner.kill();
             Ok(())
         } else {
-            Err(format!("didn't start server for pid: {}", mnt_ns.clone()))
+            Err(anyhow!("didn't start server for mnt namespace: {}", mnt_namespace.clone()))
         };
+    }
+    fn send_message_to_probe(&mut self, _pid: i32, mnt_namespace: &String, message: &String) -> AnyhowResult<()> {
+        if let Some(p) = self.mnt_namespace_comm_pair.get(mnt_namespace) {
+            if let Err(e) = p.0.send(message.clone()) {
+                return Err(anyhow!("send to probe failed: {}", e.to_string()));
+            }
+        }
+        Ok(())
+    }
+}
+
+impl RASPComm for ThreadMode {
+    fn start_comm(
+        &mut self,
+        pid: i32, _mnt_namespace: &String,
+        _probe_report_sender: Sender<plugins::Record>,
+        _patch_filed: HashMap<&'static str, String>,
+    ) -> AnyhowResult<()> {
+        if let Some(linking_to) = self.linking_to.clone() {
+            match std::process::Command::new(settings::RASP_NS_ENTER_BIN())
+                .args([
+                    "-t",
+                    pid.to_string().as_str(),
+                    "-m",
+                    "-i",
+                    "-n",
+                    "-p",
+                    "/bin/ln",
+                    "-sf",
+                    self.bind_path.as_str(),
+                    linking_to.as_str(),
+                ])
+                .output()
+            {
+                Ok(o) => {
+                    info!("LN {} {:?} {:?}", o.status, o.stdout, o.stderr);
+                }
+                Err(e) => {
+                    error!("LN can not run: {}", e);
+                    return Err(anyhow!("link bind path failed: {}", e));
+                }
+            };
+        }
+        Ok(())
+    }
+    fn stop_comm(&mut self, _pid: i32, _mnt_namespace: &String) -> AnyhowResult<()> {
+        Ok(())
+    }
+    fn send_message_to_probe(&mut self, pid: i32, _mnt_namespace: &String, message: &String) -> AnyhowResult<()> {
+        match self.agent_to_probe_sender.send((pid, message.clone())) {
+            Ok(_) => {}
+            Err(SendError(e)) => {
+                error!("send error: {:?}", e);
+                let _ = self.ctrl.stop();
+                return Err(anyhow!("send message to probe failed: {} {}", e.0, e.1));
+            }
+        }
+        Ok(())
     }
 }

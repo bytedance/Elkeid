@@ -88,6 +88,9 @@ impl ProcessInfo {
         let mills = Clock::now_since_epoch().as_secs().to_string();
         mills
     }
+    pub fn update_nspid(&mut self) {
+        todo!()
+    }
     pub fn update_attach_end_time(&mut self) {
         self.attach_end_time = Some(self.current_time());
     }

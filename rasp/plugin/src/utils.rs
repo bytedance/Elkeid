@@ -6,6 +6,7 @@ use librasp::runtime::Runtime;
 use serde_json::json;
 use librasp::process::{ProcessInfo, TracingState};
 use log::error;
+use plugins::Record;
 
 pub fn generate_seq_id() -> String {
     let timestamp = Clock::now_since_epoch().as_secs();
@@ -41,12 +42,12 @@ pub fn generate_heartbeat(watched_process: &ProcessInfo) -> HashMap<&'static str
     message.insert("missing_time", watched_process.missing_time.clone().unwrap_or("".to_string()));
     message.insert("try_attach_count", watched_process.try_attach_count.to_string());
     message.insert("attached_count", watched_process.attached_count.to_string());
-    message.insert("uptime", match count_uptime(watched_process.start_time.unwrap_or(0 as f32)){
+    message.insert("uptime", match count_uptime(watched_process.start_time.unwrap_or(0 as f32)) {
         Ok(t) => t.to_string(),
         Err(e) => {
             error!("count uptime failed: {}", e);
             0.to_string()
-        },
+        }
     });
 
 
@@ -66,6 +67,16 @@ pub fn count_uptime(start_time: f32) -> AnyhowResult<u64> {
         );
     }
     return Ok(uptime);
+}
+
+pub fn hashmap_to_record(hashmap: HashMap<&'static str, String>) -> Record {
+    let mut rec = Record::new();
+
+    let muted_rec = rec.mut_data().mut_fields();
+    for (k, v) in hashmap.iter() {
+        muted_rec.insert(k.to_string(), v.clone());
+    }
+    rec
 }
 
 

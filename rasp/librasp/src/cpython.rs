@@ -5,7 +5,7 @@ use std::process::Command;
 
 use crate::{process::ProcessInfo, settings};
 
-use crate::runtime::{ProbeState, ProbeStateInspect};
+use crate::runtime::{ProbeState, ProbeStateInspect, ProbeCopy};
 
 pub struct CPythonProbeState {}
 
@@ -34,11 +34,23 @@ fn search_proc_map(process_info: &ProcessInfo) -> Result<ProbeState> {
     Ok(ProbeState::NotAttach)
 }
 
+
+pub struct CPythonProbe {}
+
+impl ProbeCopy for CPythonProbe {
+    fn names() -> (Vec<String>, Vec<String>) {
+        (
+            [settings::RASP_PYTHON_LOADER()].to_vec(),
+            [settings::RASP_PYTHON_DIR()].to_vec(),
+        )
+    }
+}
+
 pub fn python_attach(pid: i32) -> Result<bool> {
     debug!("python attach: {}", pid);
     let cwd_path = std::env::current_dir()?;
     let cwd = cwd_path.to_str().unwrap();
-    let entry = format!("{}/{}", cwd, settings::RASP_PYTHON_ENTRY);
+    let entry = format!("{}/{}", cwd, settings::RASP_PYTHON_ENTRY());
     // pangolin inject
     pangolin_inject_file(pid, entry.as_str())
 }
@@ -48,8 +60,8 @@ pub fn pangolin_inject_file(pid: i32, file_path: &str) -> Result<bool> {
     // let nsenter = settings::RASP_NS_ENTER_BIN.to_string();
     let cwd_path = std::env::current_dir()?;
     let cwd = cwd_path.to_str().unwrap();
-    let python_loader = format!("{}/{}", cwd, settings::RASP_PYTHON_LOADER);
-    let pangolin = format!("{}/{}", cwd, settings::RASP_PANGOLIN_BIN);
+    let python_loader = format!("{}/{}", cwd, settings::RASP_PYTHON_LOADER());
+    let pangolin = format!("{}/{}", cwd, settings::RASP_PANGOLIN());
     let file = "--file";
     let extra = "--";
     let pid_string = pid.clone().to_string();

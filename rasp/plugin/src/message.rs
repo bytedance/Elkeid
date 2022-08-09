@@ -113,8 +113,8 @@ pub fn parse_message(task: &plugins::Task) -> Anyhow<RASPMessage> {
     Ok(rasp_message)
 }
 
-pub fn parse_patch_message(pid: String, patches: Vec<libraspserver::proto::ProbeConfigPatch>) -> Anyhow<()> {
-    for patch in patches.iter() {
+pub fn parse_patch_message(pid: String, patches: libraspserver::proto::ProbeConfigPatches) -> Anyhow<()> {
+    for patch in patches.patches.iter() {
         let patch_path = String::from(patch.path.clone());
         if let Some(download_urls) = patch.file_download_url.as_ref() {
             for download_url in download_urls.iter() {
@@ -132,6 +132,10 @@ pub fn parse_patch_message(pid: String, patches: Vec<libraspserver::proto::Probe
         let ipid = pid.parse::<i32>()?;
         let dest_dir = librasp::manager::RASPManager::root_dir(ipid);
         // TODO copy to dest dir
+        let dest_path = format!("{}/{}", dest_dir, patch_path);
+        let mut option = fs_extra::file::CopyOptions::new();
+        option.skip_exist = true;
+        fs_extra::file::copy(patch_path, dest_path, &option)?;
     }
     Ok(())
 }

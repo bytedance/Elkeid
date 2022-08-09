@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, stdout, Write};
 use std::process::{ChildStdin, ChildStdout, Stdio};
 use std::sync::Arc;
 use std::time::Duration;
@@ -20,7 +20,7 @@ use crate::{Control, RASPServer, RASPServerRun};
 impl RASPServerRun for RASPServer {
     fn start(&mut self, sock: RASPSock) {
         // stdout thread
-        let rx = self.probe_to_agent_rx.clone();
+        let rx = self.probe_to_agent_rx.clone().unwrap();
         let mut rx_ctrl = self.global_signal.clone();
         let _rx_thread = Builder::new().name("global_rx".to_string()).spawn(move || {
             debug!("global_rx thread started, received message will print to stdout");
@@ -31,9 +31,18 @@ impl RASPServerRun for RASPServer {
                 }
                 match rx.try_recv() {
                     Ok(m) => {
-                        println!("probe_report: {}", m);
+                        println!("probe_report: {:?}", m);
+                        match stdout().flush() {
+                            Ok(_) => {}
+                            Err(e) => {
+                                error!("stdout flush with error: {}", e);
+                                let _ = rx_ctrl.stop();
+                                break;
+                            }
+                        };
                     }
                     Err(TryRecvError::Disconnected) => {
+                        let _ = rx_ctrl.stop();
                         break;
                     }
                     Err(TryRecvError::Empty) => {
@@ -44,7 +53,7 @@ impl RASPServerRun for RASPServer {
             }
         });
         // stdin thread
-        let tx = self.agent_to_probe_tx.clone();
+        let tx = self.agent_to_probe_tx.clone().unwrap();
         let _tx_thread = Builder::new().name("global_tx".to_string()).spawn(move || {
             debug!("global_tx thread started, listening message from stdin");
             listen_stdin(tx.clone());
@@ -55,6 +64,7 @@ impl RASPServerRun for RASPServer {
         core_loop(sock, self.config.max_thread.clone());
     }
 }
+
 pub fn listen_stdin(sender: Sender<(i32, String)>) {
     let stdin = std::io::stdin();
     let handle = stdin.lock();
@@ -113,23 +123,42 @@ pub fn spawn(
 }
 
 pub struct RASPServerProcess {
-    child_id: u32,
-    patch_field: Arc<parking_lot::RwLock<HashMap<String, HashMap<&'static str, String>>>>, // child_ctrl: Control,
+    pub child_id: u32,
+    patch_field: Arc<parking_lot::RwLock<HashMap<String, HashMap<&'static str, String>>>>,
+    pub pid: i32,
+    message_sender: Sender<plugins::Record>,
+    message_receiver: Receiver<String>,
+    log_level: String,
+    ctrl: Control,
 }
 
 impl RASPServerProcess {
     pub fn new(
         pid: i32,
-        message_sender: Sender<HashMap<&'static str, String>>,
+        message_sender: Sender<plugins::Record>,
         message_receiver: Receiver<String>,
         log_level: String,
         patch_field: HashMap<&'static str, String>,
         ctrl: Control,
     ) -> AnyhowResult<Self> {
-        pub const RASP_SERVER_BIN: &'static str =
-            "/etc/sysop/mongoosev3-agent/plugin/rasp/lib/rasp_server";
+        // pub const RASP_SERVER_BIN: &'static str =
+        //     "/etc/sysop/mongoosev3-agent/plugin/rasp/lib/rasp_server";
+        let patch_rw = Arc::new(parking_lot::RwLock::new(HashMap::new()));
 
-        let mut child = match spawn(RASP_SERVER_BIN, pid, log_level) {
+        let mut server_process = Self {
+            child_id: 0,
+            patch_field: patch_rw,
+            pid,
+            message_sender: message_sender.clone(),
+            message_receiver: message_receiver.clone(),
+            log_level: log_level.clone(),
+            ctrl: ctrl.clone(),
+        };
+        server_process.update_patch_field(patch_field);
+        Ok(server_process)
+    }
+    pub fn spawn(&mut self, rasp_server_path: &str) -> AnyhowResult<()> {
+        let mut child = match spawn(rasp_server_path, self.pid, self.log_level.clone()) {
             Ok(child) => child,
             Err(e) => {
                 let msg = format!("spawn command failed: {}", e);
@@ -156,6 +185,7 @@ impl RASPServerProcess {
         };
         let child_ctrl = Control::new();
         let mut wait_child_ctrl = child_ctrl.clone();
+
         // wait child in new thread
         thread::Builder::new()
             .name(format!("comm_wait_{}", child.id()))
@@ -178,24 +208,19 @@ impl RASPServerProcess {
                 sleep(Duration::from_secs(3));
             })
             .unwrap();
-        let patch_rw = Arc::new(parking_lot::RwLock::new(HashMap::new()));
-        let patch_r = patch_rw.clone();
-        let mut server_process = Self {
-            child_id,
-            patch_field: patch_rw,
-        };
-        server_process.update_patch_field(patch_field);
+        // let patch_rw = Arc::new(parking_lot::RwLock::new(HashMap::new()));
+        let patch_r = self.patch_field.clone();
         let _ = process_comm(
             child_id,
-            message_sender.clone(),
-            message_receiver.clone(),
-            ctrl.clone(),
+            self.message_sender.clone(),
+            self.message_receiver.clone(),
+            self.ctrl.clone(),
             child_ctrl.clone(),
             stdin,
             stdout,
             patch_r,
         );
-        Ok(server_process)
+        Ok(())
     }
     pub fn update_patch_field(&mut self, patch_field: HashMap<&'static str, String>) {
         let nspid = if let Some(nspid) = patch_field.get("nspid") {
@@ -219,7 +244,7 @@ impl RASPServerProcess {
 
 pub fn process_comm(
     child_id: u32,
-    sender: Sender<HashMap<&'static str, String>>,
+    sender: Sender<plugins::Record>,
     receiver: Receiver<String>,
     ctrl: Control,
     child_ctrl: Control,
@@ -336,7 +361,12 @@ pub fn process_comm(
                     };
                     drop(patch_r);
                     // send to agent though queue
-                    match sender.send(message_from_probe) {
+                    let mut rec = plugins::Record::new();
+                    let rec_mut = rec.mut_data().mut_fields();
+                    for (k, v) in message_from_probe.iter() {
+                        rec_mut.insert(k.to_string(), v.clone());
+                    }
+                    match sender.send(rec) {
                         Ok(_) => {}
                         Err(e) => {
                             let msg = format!("send failed: {}", e.to_string());

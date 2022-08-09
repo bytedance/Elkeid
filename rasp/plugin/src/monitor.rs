@@ -8,7 +8,7 @@ use std::{
 use crate::{
     config::*,
     filter::load_local_filter,
-    message::{make_record, parse_message, RASPCommand},
+    message::{parse_message, RASPCommand},
     process::{poll_pid_func, process_health},
     report::make_report,
     utils::Control,
@@ -19,24 +19,29 @@ use librasp::{
     process::{ProcessInfo, TracingState},
     runtime::{Runtime, RuntimeInspect},
 };
-use log::*;
+use log::{debug, info, warn, error};
 use parking_lot::RwLock;
-use plugins::Client;
-use crate::utils::{generate_heartbeat, generate_seq_id};
+use plugins::{Client, Record};
+use crate::utils::{generate_heartbeat, generate_seq_id, hashmap_to_record};
 
-pub fn rasp_monitor_start() -> Anyhow<()> {
-    let client = Client::new(false);
+pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
+    debug!("monitor start");
     let mut ctrl = Control::new();
-    /* data collection thread */
     let (internal_message_sender, internal_message_receiver): (
-        Sender<HashMap<&'static str, String>>,
-        Receiver<HashMap<&'static str, String>>,
+        Sender<Record>,
+        Receiver<Record>,
     ) = bounded(settings_int("internal", "internal_message_capability")? as usize);
-    let mut collect_ctrl = ctrl.clone();
-    let mut collect_client = client.clone();
-    let collect_thread =
-        Builder::new()
-            .name("collect".to_string())
+
+    /* data collection thread */
+    let collect_thread_limit = settings_int("internal", "collect_thread_limit")? as usize;
+    let mut collect_threads = Vec::new();
+    let collect_thread_wait_message_duration = settings_int("internal", "collect_thread_wait_message_duration")? as u64;
+    for collect_thread_n in 0..collect_thread_limit {
+        let internal_message_receiver_clone = internal_message_receiver.clone();
+        let mut collect_ctrl = ctrl.clone();
+        let mut client_clone = client.clone();
+        let collect_thread_ = match Builder::new()
+            .name(format!("collect_{}", collect_thread_n))
             .spawn(move || -> Anyhow<()> {
                 loop {
                     debug!("collect thread looping");
@@ -44,31 +49,38 @@ pub fn rasp_monitor_start() -> Anyhow<()> {
                         warn!("collect thread receive stop signal, quiting");
                         break;
                     }
-                    let mut internal_message = match internal_message_receiver.recv() {
-                        Ok(m) => m,
-                        Err(e) => {
-                            let _ = collect_ctrl.stop();
-                            debug!("internal message channel recv failed: {}", e);
-                            return Err(anyhow!("recv internal channel failed: {}", e));
-                        }
-                    };
-                    let record = make_record(&mut internal_message);
-                    debug!("collect message: {:?}", record);
-                    match collect_client.send_record(&record) {
+                    let message_queue_length = internal_message_receiver_clone.len();
+                    if message_queue_length < 1 {
+                        sleep(Duration::from_millis(collect_thread_wait_message_duration));
+                        continue;
+                    }
+                    if message_queue_length > 300 {
+                        info!("collect thread: {} internal message len: {}", collect_thread_n, message_queue_length)
+                    }
+                    let bundle: Vec<Record> = internal_message_receiver_clone.try_iter().collect();
+                    match client_clone.send_records(&bundle) {
                         Ok(_) => {}
                         Err(e) => {
-                            let _ = collect_ctrl.stop();
-                            return Err(anyhow!("send record failed: {}", e));
+                            error!("can not send data to agent, stop the world: {}", e);
+                            break;
                         }
                     }
                 }
                 let _ = collect_ctrl.stop();
                 Ok(())
-            })?;
+            }) {
+            Ok(t) => t,
+            Err(e) => {
+                error!("during collect thread starting, something wrong founded: {}", e);
+                return Err(anyhow!(e));
+            }
+        };
+        collect_threads.push(collect_thread_);
+    }
     let (external_message_sender, external_message_receiver): (
         Sender<RASPCommand>,
         Receiver<RASPCommand>,
-    ) = bounded(settings_int("internal", "external_message_capablility")? as usize);
+    ) = bounded(settings_int("internal", "external_message_capability")? as usize);
     let external_message_sender_clone = external_message_sender.clone();
     let mut external_ctrl = ctrl.clone();
     let mut external_client = client.clone();
@@ -141,18 +153,20 @@ pub fn rasp_monitor_start() -> Anyhow<()> {
     // WAIT until quit
     loop {
         if !ctrl.check() {
-            let _ = collect_thread.join().unwrap();
+            for collect_thread in collect_threads.into_iter() {
+                let _ = collect_thread.join().unwrap();
+            }
             let _ = external_thread.join().unwrap();
             let _ = internal_thread.join().unwrap();
             break;
         }
-        sleep(Duration::from_secs(20));
+        sleep(Duration::from_secs(60));
     }
     Ok(())
 }
 
 fn internal_main(
-    internal_message_sender: Sender<HashMap<&'static str, String>>,
+    internal_message_sender: Sender<Record>,
     external_message_receiver: Receiver<RASPCommand>,
     external_message_sender: Sender<RASPCommand>,
     mut ctrl: Control,
@@ -241,7 +255,7 @@ fn internal_main(
                     continue;
                 }
             };
-            info!("found process: {} runtime: {}", process.pid, runtime);
+            info!("found process: {} runtime: {}", process.pid, runtime,);
             process.tracing_state = Some(TracingState::INSPECTED);
             process.runtime = Some(runtime.clone());
             for rt in local_filters.auto_attach_runtime.iter() {
@@ -257,13 +271,16 @@ fn internal_main(
             }
             let mut ip = inspected_process_rw.write();
             let report = make_report(&process.clone(), "inspected", String::new());
-            let _ = inspect_reportor.send(report);
+            let _ = inspect_reportor.send(
+                hashmap_to_record(report)
+            );
             (*ip).insert(pid, process);
             drop(ip);
             sleep(Duration::from_millis(100));
         })?;
     let mut reporter_ctrl = ctrl.clone();
     let reporter_sender = internal_message_sender.clone();
+    let report_heartbeat_data_type = settings_string("data_type", "report_heartbeat")?;
     let reporter_thread = Builder::new()
         .name("reporter".to_string())
         .spawn(move || loop {
@@ -278,10 +295,12 @@ fn internal_main(
             let seq_id = generate_seq_id();
             for (_pid, process) in watched_process_cloned.iter() {
                 let mut message = generate_heartbeat(&process);
-                message.insert("data_type", "2997".to_string());
+                message.insert("data_type", report_heartbeat_data_type.clone());
                 message.insert("package_seq", seq_id.clone());
                 debug!("sending heartbeat: {:?}", &message);
-                let _ = reporter_sender.send(message);
+                let _ = reporter_sender.send(
+                    hashmap_to_record(message)
+                );
             }
         })?;
     /* clean missing process */
@@ -315,7 +334,7 @@ fn internal_main(
     let mut operation_ctrl = ctrl.clone();
     let operation_reporter = internal_message_sender.clone();
     let mut operator = crate::operation::Operator::new(internal_message_sender, ctrl.clone())?;
-    operator.host_rasp_server()?;
+    // operator.host_rasp_server()?;
     let operation_thread = Builder::new()
         .name("operation".to_string())
         .spawn(move || loop {
@@ -362,7 +381,9 @@ fn internal_main(
                 Ok(_) => {
                     info!("operation success: {:?}", operation_message);
                     let report = make_report(&process.clone(), "attach_success", String::new());
-                    let _ = operation_reporter.send(report);
+                    let _ = operation_reporter.send(
+                        hashmap_to_record(report)
+                    );
                 }
                 Err(e) => {
                     warn!("operation failed: {:?} {}", operation_message, e);
@@ -371,8 +392,10 @@ fn internal_main(
                         format!("{}_failed", state.clone()).as_str(),
                         e.to_string(),
                     );
-                    let _ = operation_reporter.send(report);
-                    continue
+                    let _ = operation_reporter.send(
+                            hashmap_to_record(report)
+                    );
+                    continue;
                 }
             };
             // update

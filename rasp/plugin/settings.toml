@@ -37,12 +37,12 @@ auto_attach_runtime = [
 ]
 
 
-[report_and_command]
+[data_type]
 ### recv command from Elkeid agent
 ### recommand for large scale deployment
 ### `data_type` field
 data_type = "2999"
-
+report_heartbeat = "2997"
 
 [attach]
 ### handle probe message in thread/sub-process mode.
@@ -54,6 +54,16 @@ golang_probe_path = ""
 jvm_jattach_path = ""
 jvm_probe_path = ""
 
+[server]
+# process mode will start new unix-socket server for every namespace
+# mode = "process"
+# process_mode_bind_path = "/var/run"
+# host_bind = true
+mode = "thread"
+bind_path = "/tmp/smith_agent.sock"
+link_to = "/var/run/smith_agent.sock"
+
+
 
 [service]
 ### create flock path
@@ -64,14 +74,20 @@ cgroup_name = "elkeid_rasp"
 cgroup_mem_limit = 300
 ### log
 log_level = "debug"
+log_path = "."
+remote_log_level = ""
+max_backups = 20
 
 
 # ==== internal config ====
 # !!!! edit carefully !!!!
 [internal]
 internal_message_capability = 1000
-external_message_capablility = 50
+collect_thread_limit = 10
+collect_thread_wait_message_duration = 400
+
+external_message_capability = 50
 pid_queue_length = 1000
 pid_poll_interval = 60
 clean_up_interval = 60
-report_interval = 120
+report_interval = 300

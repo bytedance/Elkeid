@@ -1,9 +1,7 @@
-use std::{
-    collections::HashMap, ffi::OsString, process::Command, thread::sleep,
-    time::Duration,
-};
+use std::{collections::HashMap, ffi::OsString, process::Command, thread::sleep, time::Duration};
 
 use crate::process::ProcessInfo;
+use crate::runtime::ProbeCopy;
 use crate::settings;
 
 use anyhow::{anyhow, Result};
@@ -12,6 +10,13 @@ use log::*;
 use regex::Regex;
 // use version_compare::{CompOp, VersionCompare};
 
+pub struct NodeJSProbe {}
+
+impl ProbeCopy for NodeJSProbe {
+    fn names() -> (Vec<String>, Vec<String>) {
+        ([].to_vec(), [settings::RASP_NODEJS_DIR()].to_vec())
+    }
+}
 
 pub fn nodejs_attach(
     pid: i32,
@@ -21,16 +26,16 @@ pub fn nodejs_attach(
     debug!("node attach: {}", pid);
     let cwd_path = std::env::current_dir()?;
     let cwd = cwd_path.to_str().unwrap();
-    let smith_module_path = format!("{}/{}", cwd, settings::RASP_NODE_MODULE);
+    let smith_module_path = format!("{}/{}", cwd, settings::RASP_NODEJS_DIR());
     nodejs_run(pid, node_path, smith_module_path.as_str())
 }
 
 pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str) -> Result<bool> {
     let pid_string = pid.to_string();
-    let nsenter = settings::RASP_NS_ENTER_BIN.to_string();
+    let nsenter = settings::RASP_NS_ENTER_BIN();
     let cwd_path = std::env::current_dir()?;
     let cwd = cwd_path.to_str().unwrap();
-    let inject_script_path = format!("{}/{}", cwd, settings::RASP_NODE_INJECTOR);
+    let inject_script_path = format!("{}/{}", cwd, settings::RASP_NODEJS_INJECTOR());
     let nspid = match ProcessInfo::read_nspid(pid) {
         Ok(nspid_option) => {
             if let Some(nspid) = nspid_option {
@@ -68,16 +73,16 @@ pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str) -> Result<
 
 pub fn nodejs_version(pid: i32, nodejs_bin_path: &String) -> Result<(u32, u32, String)> {
     // exec nodejs
-    let nsenter = settings::RASP_NS_ENTER_BIN.to_string();
+    let nsenter = settings::RASP_NS_ENTER_BIN();
     let pid_string = pid.to_string();
     let args = [
-	"-m",
-	"-n",
-	"-p",
-	"-t",
-	pid_string.as_str(),
-	nodejs_bin_path,
-	"-v"
+        "-m",
+        "-n",
+        "-p",
+        "-t",
+        pid_string.as_str(),
+        nodejs_bin_path,
+        "-v",
     ];
     let output = match Command::new(nsenter).args(&args).output() {
         Ok(s) => s,
