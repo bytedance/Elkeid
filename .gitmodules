@@ -19,3 +19,6 @@
 [submodule "rasp/php/tiny-regex-c"]
 	path = rasp/php/tiny-regex-c
 	url = https://github.com/Hackerl/tiny-regex-c
+[submodule "rasp/util-linux"]
+	path = rasp/util-linux
+	url = https://github.com/karelzak/util-linux.git
