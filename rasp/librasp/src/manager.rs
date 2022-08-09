@@ -357,6 +357,7 @@ impl RASPManager {
         let dir = Path::new(&from).parent().unwrap();
         self.create_dir_if_not_exist(dir.to_str().unwrap().to_string(), dest_root.clone())?;
         let options = FileCopyOptions::new();
+        debug!("copy file: {} {}", from.clone(), format!("{}/{}", dest_root, from));
         return match file_copy(from.clone(), format!("{}/{}", dest_root, from), &options) {
             Ok(_) => Ok(()),
             Err(e) => {
@@ -379,6 +380,7 @@ impl RASPManager {
         self.create_dir_if_not_exist(dir.to_str().unwrap().to_string(), dest_root.clone())?;
         let mut options = CopyOptions::new();
         options.copy_inside = true;
+        debug!("copy dir: {} {}", from.clone(), format!("{}/{}", dest_root, from));
         return match copy(from.clone(), format!("{}/{}", dest_root, from), &options) {
             Ok(_) => Ok(()),
             Err(e) => {

@@ -86,6 +86,7 @@ pub fn golang_attach(pid: i32) -> Result<bool> {
     let daemon = "--daemon";
     let pid_string = pid.clone().to_string();
     let args = &[daemon, pid_string.as_str(), golang_probe.as_str()];
+    debug!("golang attach: {:?}", args);
     return match Command::new(pangolin).args(args).status() {
         Ok(st) => Ok(st.success()),
         Err(e) => Err(anyhow!(e.to_string())),

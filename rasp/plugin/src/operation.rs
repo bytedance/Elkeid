@@ -55,13 +55,13 @@ impl Operator {
     }
     pub fn attach_process(&mut self, process: &mut ProcessInfo) -> AnyhowResult<()> {
         info!("process: {:?}", process);
-        /* stage one: copy probe binary to process namespace file path via /proc/<pid>/root */
-        let proc_root = RASPManager::root_dir(process.pid);
-        let namespace = process.namespace_info.as_ref().unwrap();
-        let mnt_namespace = namespace.mnt.as_ref().unwrap();
-        info!("copy rasp probe binary to: {}", proc_root);
-        self.rasp_manager
-            .copy_to_target_dir(process.pid, &mnt_namespace)?;
+        // /* stage one: copy probe binary to process namespace file path via /proc/<pid>/root */
+        // let proc_root = RASPManager::root_dir(process.pid);
+        // let namespace = process.namespace_info.as_ref().unwrap();
+        // let mnt_namespace = namespace.mnt.as_ref().unwrap();
+        // info!("copy rasp probe binary to: {}", proc_root);
+        // self.rasp_manager
+        //     .copy_to_target_dir(process.pid, &mnt_namespace)?;
         /* stage two: spawn comm server waiting probe start */
         self.new_comm(&process.clone())?;
         /* stage three: attach process, inject probe */
