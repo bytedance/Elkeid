@@ -1,7 +1,7 @@
 use std::env::current_dir;
 // use anyhow::{Result as AnyhowResult, anyhow};
 
-pub const RASP_VERSION: &'static str = "1.9.1.0";
+pub const RASP_VERSION: &'static str = "1.0.0.1";
 // pub const RASP_SERVER_ADDR: &'static str = "/var/run/smith_agent.sock";
 
 pub fn RASP_BASE_DIR() -> String {
