@@ -57,7 +57,7 @@ module_init(kprobes_init);
 module_exit(kprobes_exit);
 
 MODULE_INFO(homepage, "driver");
-MODULE_VERSION("1.7.0.5");
+MODULE_VERSION("1.8.0.0");
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Will Chen <chenyue.will@bytedance.com>;Ping Shen <shenping.matt@bytedance.com>");
