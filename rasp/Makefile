@@ -1,5 +1,7 @@
 PREFIX ?= /etc/elkeid/plugin/rasp
 STATIC ?= "FALSE"
+VERSION ?= 1.9.1.0
+PERV_LIB ?= "lib"
 
 .PHONY: help
 help:
@@ -10,6 +12,13 @@ help:
 	@echo "make build && sudo make install"
 	@echo "---"
 	@grep -hE '##' Makefile  | grep -v grep | sed -e 's/\\$$//' | sed -e 's/##/,/'  | sed -e 's/:.*,/ ,/' | column -t -c2 -s,
+
+update_version: ## patch version VERSION=x.x.x.x
+	sed -i "s/1.0.0.1/${VERSION}/g" "librasp/src/settings.rs"
+	sed -i "s/1.0.0/${VERSION}/g" "node/client.js"
+	sed -i "s/1.0.0/${VERSION}/g" "python/python-probe/rasp/client.py"
+	sed -i "s/1.0.0/${VERSION}/g" "golang/client/smith_message.cpp"
+
 
 rasp: ## build elkeid_rasp bin file
 	mkdir -p output
@@ -146,7 +155,10 @@ else
 endif
 
 build: agent_plugin nsenter process_injector java python go node rasp server ## build all
-	cd output && tar -czvf rasp.tar.gz ./* && sha256sum rasp.tar.gz && sha256sum rasp
+	cd output && mv lib "lib-${VERSION}"
+	cd output && mkdir "${PERV_LIB}"
+	cd output && tar -czvf "rasp_${VERSION}.tar.gz" ./* && sha256sum "rasp_${VERSION}.tar.gz" && sha256sum rasp
+	mv "output/rasp_${VERSION}.tar.gz" .
 
 
 install: ## install to $PREFIX default: /etc/elkeid/plugin/rasp

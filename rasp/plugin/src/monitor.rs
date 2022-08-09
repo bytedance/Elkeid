@@ -154,10 +154,25 @@ pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
     loop {
         if !ctrl.check() {
             for collect_thread in collect_threads.into_iter() {
-                let _ = collect_thread.join().unwrap();
+                match collect_thread.join() {
+                    Ok(_) => {},
+                    Err(e) => {
+                        warn!("from collect thread report a warn: {:?}", e);
+                    }
+                };
             }
-            let _ = external_thread.join().unwrap();
-            let _ = internal_thread.join().unwrap();
+            match external_thread.join() {
+                Ok(_) => {},
+                Err(e) => {
+                    warn!("from external thread report a warn: {:?}", e);
+                }
+            };
+            match internal_thread.join() {
+                Ok(_) => {},
+                Err(e) => {
+                    warn!("from internal thread report a warn: {:?}", e);
+                }
+            };
             break;
         }
         sleep(Duration::from_secs(60));

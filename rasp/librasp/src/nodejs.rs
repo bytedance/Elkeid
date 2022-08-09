@@ -24,18 +24,14 @@ pub fn nodejs_attach(
     node_path: &str,
 ) -> Result<bool> {
     debug!("node attach: {}", pid);
-    let cwd_path = std::env::current_dir()?;
-    let cwd = cwd_path.to_str().unwrap();
-    let smith_module_path = format!("{}/{}", cwd, settings::RASP_NODEJS_DIR());
+    let smith_module_path =  settings::RASP_NODEJS_DIR();
     nodejs_run(pid, node_path, smith_module_path.as_str())
 }
 
 pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str) -> Result<bool> {
     let pid_string = pid.to_string();
     let nsenter = settings::RASP_NS_ENTER_BIN();
-    let cwd_path = std::env::current_dir()?;
-    let cwd = cwd_path.to_str().unwrap();
-    let inject_script_path = format!("{}/{}", cwd, settings::RASP_NODEJS_INJECTOR());
+    let inject_script_path = settings::RASP_NODEJS_INJECTOR();
     let nspid = match ProcessInfo::read_nspid(pid) {
         Ok(nspid_option) => {
             if let Some(nspid) = nspid_option {

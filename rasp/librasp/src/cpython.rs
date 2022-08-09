@@ -48,20 +48,39 @@ impl ProbeCopy for CPythonProbe {
 
 pub fn python_attach(pid: i32) -> Result<bool> {
     debug!("python attach: {}", pid);
-    let cwd_path = std::env::current_dir()?;
-    let cwd = cwd_path.to_str().unwrap();
-    let entry = format!("{}/{}", cwd, settings::RASP_PYTHON_ENTRY());
+    write_python_entry(pid)?;
+    let entry = settings::RASP_PYTHON_ENTRY();
     // pangolin inject
     pangolin_inject_file(pid, entry.as_str())
+}
+
+pub fn write_python_entry(pid: i32) -> Result<()> {
+    let content = format!(r#"import os
+import sys
+
+name = 'rasp'
+path = '{}/rasp/__init__.py'
+
+if sys.version_info >= (3, 3):
+    from importlib.machinery import SourceFileLoader
+    SourceFileLoader(name, path).load_module()
+elif sys.version_info >= (2, 7):
+    import imp
+    imp.load_module(name, None, os.path.dirname(path), ('', '', imp.PKG_DIRECTORY))
+
+"#, settings::RASP_PYTHON_DIR());
+    let path = settings::RASP_PYTHON_ENTRY();
+    let dest_dir = format!("/proc/{}/root{}",pid, path);
+    fs_extra::file::write_all(dest_dir, content.as_str())?;
+    Ok(())
+
 }
 
 pub fn pangolin_inject_file(pid: i32, file_path: &str) -> Result<bool> {
     debug!("pangolin inject: {}", pid);
     // let nsenter = settings::RASP_NS_ENTER_BIN.to_string();
-    let cwd_path = std::env::current_dir()?;
-    let cwd = cwd_path.to_str().unwrap();
-    let python_loader = format!("{}/{}", cwd, settings::RASP_PYTHON_LOADER());
-    let pangolin = format!("{}/{}", cwd, settings::RASP_PANGOLIN());
+    let python_loader = settings::RASP_PYTHON_LOADER();
+    let pangolin = settings::RASP_PANGOLIN();
     let file = "--file";
     let extra = "--";
     let pid_string = pid.clone().to_string();

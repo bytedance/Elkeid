@@ -81,10 +81,8 @@ fn search_thread(process_info: &ProcessInfo) -> Result<ProbeState> {
 
 pub fn golang_attach(pid: i32) -> Result<bool> {
     debug!("golang attach: {}", pid);
-    let cwd_path = std::env::current_dir()?;
-    let cwd = cwd_path.to_str().unwrap();
-    let golang_probe = format!("{}/{}", cwd, RASP_GOLANG());
-    let pangolin = format!("{}/{}", cwd, RASP_PANGOLIN());
+    let golang_probe = RASP_GOLANG();
+    let pangolin = RASP_PANGOLIN();
     let daemon = "--daemon";
     let pid_string = pid.clone().to_string();
     let args = &[daemon, pid_string.as_str(), golang_probe.as_str()];
