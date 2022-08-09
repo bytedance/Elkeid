@@ -75,7 +75,7 @@ cgroup_mem_limit = 300
 ### log
 log_level = "debug"
 log_path = "."
-remote_log_level = ""
+remote_log_level = "error"
 max_backups = 20
 
 

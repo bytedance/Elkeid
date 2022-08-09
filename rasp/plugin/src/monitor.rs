@@ -44,7 +44,7 @@ pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
             .name(format!("collect_{}", collect_thread_n))
             .spawn(move || -> Anyhow<()> {
                 loop {
-                    debug!("collect thread looping");
+                    // debug!("collect thread looping");
                     if !collect_ctrl.check() {
                         warn!("collect thread receive stop signal, quiting");
                         break;
