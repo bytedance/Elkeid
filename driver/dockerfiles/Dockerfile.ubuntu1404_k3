@@ -1,11 +1,16 @@
 FROM ubuntu:trusty AS trusty
 
 RUN apt update;
-RUN apt install -y wget curl tree git gcc build-essential kbuild libelf-dev;
+RUN apt install -y wget curl tree git gcc build-essential kbuild libelf-dev python-pip;
 
 ADD . /elkeid
-WORKDIR /elkeid/driver
 
+WORKDIR /elkeid/driver/tools
+RUN python ubuntu14_k3_headers.py
+RUN dpkg -i ./*.deb
+RUN rm -f ./*.deb
+
+WORKDIR /elkeid/driver
 
 RUN apt-get -y install linux-headers-3.13.*-generic || true
 RUN bash ./batch_compile.sh

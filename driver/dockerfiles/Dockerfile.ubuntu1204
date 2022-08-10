@@ -9,15 +9,18 @@ deb http://old-releases.ubuntu.com/ubuntu/ precise-backports main restricted uni
 ' > /etc/apt/sources.list;
 
 RUN apt-get update;
-RUN apt-get install -y gcc build-essential dkms git wget || true;
+RUN apt-get install -y gcc build-essential dkms git wget python-pip || true;
 RUN apt-get -y install linux-headers-3.2.*-generic || true
 RUN apt-get -y install linux-headers-3.5.*-generic || true
 RUN apt-get -y install linux-headers-3.8.*-generic || true
 RUN apt-get -y install linux-headers-3.11.*-generic || true
 RUN apt-get -y install linux-headers-3.13.*-generic || true
 
-
-
 ADD . /elkeid
+WORKDIR /elkeid/driver/tools
+RUN python ubuntu12_headers.py
+RUN dpkg -i ./*.deb
+RUN rm -f ./*.deb
+
 WORKDIR /elkeid/driver
 RUN bash ./batch_compile.sh

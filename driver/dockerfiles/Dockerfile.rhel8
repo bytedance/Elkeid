@@ -10,8 +10,10 @@ wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.
 wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/cc/8.2/BaseOS/x86_64/os/Packages/'; \
 wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/cc/8.3/BaseOS/x86_64/os/Packages/';  \
 wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/cc/8.4/BaseOS/x86_64/os/Packages/';  \
-wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/cc/8.5/BaseOS/x86_64/os/Packages/';
-RUN rpm --force -ivh /root/headers/*.rpm || true
+wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/cc/8.5/BaseOS/x86_64/os/Packages/'; \
+wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'http://repos-va.psychz.net/centos/8-stream/BaseOS/x86_64/os/Packages/';
+
+RUN rpm --force -i /root/headers/*.rpm || true
 
 ADD . /elkeid
 WORKDIR /elkeid/driver
