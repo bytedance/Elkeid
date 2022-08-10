@@ -6,9 +6,7 @@ import requests
 import re
 
 version_list = [
-    r"3.16.0",
-    r"3.19.0",
-    r"4.2.0"
+    r"4.18.0",
 ]
 
 
