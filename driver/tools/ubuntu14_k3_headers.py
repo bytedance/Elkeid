@@ -21,7 +21,7 @@ def find_all_childs(version_list, data):
 
 def download(url, filename):
     with open(filename, 'wb') as f:
-        response = requests.get(url)
+        response = requests.get(url, verify=False)
         raw_data = response.content
         f.write(raw_data)
         f.close()
@@ -29,7 +29,7 @@ def download(url, filename):
 
 ubuntu_kernel_header_url = "https://old-releases.ubuntu.com/ubuntu/pool/main/l/linux/"
 
-response = requests.get(url=ubuntu_kernel_header_url)
+response = requests.get(url=ubuntu_kernel_header_url, verify=False)
 page_info = str(response.content)
 
 all_versions = find_all_childs(version_list, page_info)
