@@ -4,6 +4,7 @@
 
 import requests
 import re
+import os
 
 version_list = [
     r"4.18.0",
@@ -18,11 +19,7 @@ def find_all_childs(version_list, data):
 
 
 def download(url, filename):
-    with open(filename, 'wb') as f:
-        response = requests.get(url, verify=False)
-        raw_data = response.content
-        f.write(raw_data)
-        f.close()
+    os.system("wget -q "+url)
 
 
 ubuntu_kernel_header_url = "https://old-releases.ubuntu.com/ubuntu/pool/main/l/linux/"
