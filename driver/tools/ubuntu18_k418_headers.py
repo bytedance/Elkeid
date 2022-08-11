@@ -19,7 +19,7 @@ def find_all_childs(version_list, data):
 
 
 def download(url, filename):
-    os.system("wget -q "+url)
+    os.system("wget -q --no-check-certificate "+url)
 
 
 ubuntu_kernel_header_url = "https://old-releases.ubuntu.com/ubuntu/pool/main/l/linux/"
