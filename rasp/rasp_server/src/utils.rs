@@ -1,11 +1,9 @@
 use anyhow::Result as AnyhowResult;
 use procfs::process;
 use std::collections::HashMap;
-use std::ffi::OsStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::{SystemTime, UNIX_EPOCH};
-
 
 pub fn four_bytes_to_num(array: [u8; 4]) -> usize {
     let res = ((array[0] as u32) << 24)
@@ -91,11 +89,33 @@ pub fn generate_patch(pid: i32) -> AnyhowResult<HashMap<String, String>> {
     let mut res = HashMap::new();
     let sid = proc.stat.session;
     res.insert("sid".to_string(), sid.to_string());
-    let envs = proc.environ()?;
-    let psm = match envs.get(OsStr::new("TCE_PSM")) {
-        Some(p) => p.to_string_lossy().to_string(),
-        None => "".to_string(),
-    };
-    res.insert("psm".to_string(), psm);
+    res.insert("ppid".to_string(), proc.stat.ppid.to_string());
+    res.insert("tgid".to_string(), proc.stat.tpgid.to_string());
+    res.insert(
+        "exe".to_string(),
+        match proc.exe() {
+            Ok(p) => String::from(p.to_string_lossy()),
+            Err(_) => String::new(),
+        },
+    );
+    res.insert(
+        "argv".to_string(),
+        match proc.cmdline() {
+            Ok(cv) => cv.join(" "),
+            Err(_) => String::new(),
+        },
+    );
+    let status_result = proc.status();
+    if let Ok(status) = status_result {
+        res.insert("ruid".to_string(), status.ruid.to_string());
+        res.insert("rgid".to_string(), status.rgid.to_string());
+        res.insert("euid".to_string(), status.euid.to_string());
+        res.insert("egid".to_string(), status.egid.to_string());
+        res.insert("suid".to_string(), status.suid.to_string());
+        res.insert("sgid".to_string(), status.sgid.to_string());
+        res.insert("fuid".to_string(), status.fuid.to_string());
+        res.insert("fgid".to_string(), status.fgid.to_string());
+    }
+    // debug!("update patch_field: {:?}", patch_field);
     Ok(res)
 }
