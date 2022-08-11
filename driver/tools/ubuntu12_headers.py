@@ -27,10 +27,9 @@ def download(url, filename):
 
 ubuntu_kernel_header_url = "https://old-releases.ubuntu.com/ubuntu/pool/main/l/linux/"
 
-response = requests.get(url=ubuntu_kernel_header_url, verify=False)
+response = requests.get(url=ubuntu_kernel_header_url)
 page_info = str(response.content)
 
 all_versions = find_all_childs(version_list, page_info)
 for each in all_versions:
     download(ubuntu_kernel_header_url+each, each)
-    break

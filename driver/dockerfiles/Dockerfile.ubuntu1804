@@ -14,9 +14,9 @@ RUN apt clean all
 
 ADD . /elkeid
 WORKDIR /elkeid/driver/tools
-RUN python ubuntu18_k418_headers.py
-RUN dpkg -i ./*.deb
-RUN rm -f ./*.deb
+RUN python ubuntu18_k418_headers.py  || true
+RUN dpkg -i ./*.deb  || true
+RUN rm -f ./*.deb  || true
 
 WORKDIR /elkeid/driver
 RUN bash ./batch_compile.sh

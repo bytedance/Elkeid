@@ -6,9 +6,9 @@ RUN apt install -y wget curl tree git gcc build-essential kbuild libelf-dev pyth
 ADD . /elkeid
 
 WORKDIR /elkeid/driver/tools
-RUN python ubuntu14_k3_headers.py
-RUN dpkg -i ./*.deb
-RUN rm -f ./*.deb
+RUN python ubuntu14_k3_headers.py  || true
+RUN dpkg -i ./*.deb  || true
+RUN rm -f ./*.deb  || true
 
 WORKDIR /elkeid/driver
 
