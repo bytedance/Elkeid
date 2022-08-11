@@ -19,8 +19,9 @@ RUN apt-get -y install linux-headers-3.13.*-generic || true
 ADD . /elkeid
 WORKDIR /elkeid/driver/tools
 RUN python ubuntu12_headers.py  || true
+RUN ls ./
 RUN dpkg -i ./*.deb  || true
-RUN rm -f ./*.deb
+RUN rm -f ./*.deb  || true
 
 WORKDIR /elkeid/driver
 RUN bash ./batch_compile.sh

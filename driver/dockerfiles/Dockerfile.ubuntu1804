@@ -6,7 +6,7 @@ deb http://security.ubuntu.com/ubuntu bionic-security main\n\
 ' > /etc/apt/sources.list;
 
 RUN apt update;
-RUN apt install -y gcc build-essential dkms python python-pip python-requests;
+RUN apt install -y gcc build-essential dkms python python-requests;
 RUN apt-get -y install linux-headers-4.15.*-generic || true
 RUN apt-get -y install linux-headers-4.18.*-generic || true
 
@@ -15,6 +15,7 @@ RUN apt clean all
 ADD . /elkeid
 WORKDIR /elkeid/driver/tools
 RUN python ubuntu18_k418_headers.py  || true
+RUN ls ./
 RUN dpkg -i ./*.deb  || true
 RUN rm -f ./*.deb  || true
 

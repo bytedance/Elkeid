@@ -7,6 +7,7 @@ ADD . /elkeid
 
 WORKDIR /elkeid/driver/tools
 RUN python ubuntu14_k3_headers.py  || true
+RUN ls ./
 RUN dpkg -i ./*.deb  || true
 RUN rm -f ./*.deb  || true
 

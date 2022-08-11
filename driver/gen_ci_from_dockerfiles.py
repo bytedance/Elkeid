@@ -6,7 +6,7 @@ from collections import OrderedDict
 all_dockers = os.listdir("driver/dockerfiles")
 
 black_list = []
-white_list = []
+white_list = ["ubuntu1204", "ubuntu1404_k3", "ubuntu1804"]
 
 all_vms = []
 
