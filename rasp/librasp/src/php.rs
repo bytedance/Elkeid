@@ -72,12 +72,15 @@ pub fn php_attach(process_info: &ProcessInfo, version: String) -> AnyhowResult<b
     let splited: Vec<&str> = version.split(".").collect();
     let major = splited.get(0);
     let miner = splited.get(1);
+    let (probe_path, probe_name) = RASP_PHP_PROBE(major.unwrap(), miner.unwrap()).unwrap();
+
     match locate_extension_dir(&process) {
         Ok(path) => {
             match copy_so_to_extension_dir(
                 format!("/proc/{}/root", process_info.pid),
                 path,
-                RASP_PHP_PROBE(major.unwrap(), miner.unwrap()).unwrap()
+                probe_path.clone(),
+                probe_name.clone(),
             ) {
                 Ok(_) => {
                     reload_phpfpm(process_info.pid)?;
@@ -97,7 +100,8 @@ pub fn php_attach(process_info: &ProcessInfo, version: String) -> AnyhowResult<b
             match write_conf_to_cond_dir(
                 format!("/proc/{}/root", process_info.pid),
                 path,
-                RASP_PHP_PROBE(major.unwrap(), miner.unwrap()).unwrap()
+                probe_path,
+                probe_name,
             ) {
                 Ok(_) => {
                     reload_phpfpm(process_info.pid)?;
@@ -171,10 +175,10 @@ pub fn locate_confd_dir(process: &Process) -> AnyhowResult<String> {
     Err(anyhow!("can nout found phpfpm confd dir"))
 }
 
-pub fn copy_so_to_extension_dir(root_dir: String, extension_dir: String, probe_path: String) -> AnyhowResult<()> {
-    let target_path = format!("{}/{}/{}", root_dir, extension_dir, probe_path);
+pub fn copy_so_to_extension_dir(root_dir: String, extension_dir: String, probe_path: String, probe_name: String) -> AnyhowResult<()> {
+    let target_path = format!("{}/{}/{}", root_dir, extension_dir, probe_name);
     if std::path::Path::new(&target_path).exists() {
-        return Ok(())
+        return Ok(());
     }
     debug!("{} -> {}", probe_path, target_path);
     // create path
@@ -182,24 +186,24 @@ pub fn copy_so_to_extension_dir(root_dir: String, extension_dir: String, probe_p
     fs_extra::file::copy(
         probe_path,
         target_path,
-        &copy_options
+        &copy_options,
     )?;
     Ok(())
 }
 
-pub fn write_conf_to_cond_dir(root_dir: String, confd_dir: String, probe_path: String) -> AnyhowResult<()> {
+pub fn write_conf_to_cond_dir(root_dir: String, confd_dir: String, probe_path: String, _probe_name: String) -> AnyhowResult<()> {
     let so_target_path = format!("{}/{}", root_dir, probe_path);
     debug!("{} -> {}", probe_path, so_target_path);
     if !std::path::Path::new(&so_target_path).exists() {
         let copy_options = fs_extra::file::CopyOptions::default();
         fs_extra::file::copy(
             &probe_path,
-            so_target_path,
+            so_target_path.clone(),
             &copy_options,
         )?;
     }
     let conf_path = format!("{}/{}/{}", root_dir, confd_dir, "999-php_probe.ini");
-    debug!("{} -> {}", so_target_path, conf_path);
+    debug!("{} -> {}", so_target_path.clone(), conf_path);
     let mut file = std::fs::File::open(std::path::Path::new(&conf_path))?;
     file.write_all(format!("extension={}", probe_path).as_str().as_bytes())?;
     Ok(())
@@ -214,7 +218,7 @@ fn reload_phpfpm(pid: i32) -> AnyhowResult<()> {
                 return Err(anyhow!("restart phpfpm failed: {} {}", pid, -1));
             }
             _ => {
-                return Ok(())
+                return Ok(());
             }
         }
     }
@@ -240,7 +244,7 @@ mod php_test {
                 Ok(pi) => pi,
                 Err(e) => {
                     println!("{} can not fetch info {}", process.pid, e);
-                    continue
+                    continue;
                 }
             };
             println!("{} fetched", process_info.pid);
@@ -248,7 +252,7 @@ mod php_test {
                 Ok(ir) => ir,
                 Err(e) => {
                     println!("{} inspect failed: {}", process.pid, e);
-                    continue
+                    continue;
                 }
             };
             if inspect_result {
@@ -257,7 +261,7 @@ mod php_test {
                 match inspect_phpfpm_version(&process_info) {
                     Ok(v) => {
                         println!("{} phpfpm version: {}", process_info.pid, v);
-                    },
+                    }
                     Err(e) => {
                         println!("{} inspect version failed: {}", process_info.pid, e);
                     }
@@ -292,11 +296,9 @@ mod php_test {
                         println!("php confd failed: {}", e);
                     }
                 }
-
             } else {
                 println!("{} not php", process.pid);
             }
         }
     }
-
 }
