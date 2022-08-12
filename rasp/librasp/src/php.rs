@@ -1,4 +1,3 @@
-use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
 use crate::process::ProcessInfo;
@@ -204,7 +203,7 @@ pub fn write_conf_to_cond_dir(root_dir: String, confd_dir: String, probe_path: S
     }
     let conf_path = format!("{}/{}/{}", root_dir, confd_dir, "999-php_probe.ini");
     debug!("{} -> {}", probe_path.clone(), conf_path);
-    fs_extra::file::write_all(conf_path, format!("extension={}", probe_path))?;
+    fs_extra::file::write_all(conf_path, format!("extension={}", probe_path).as_str())?;
     Ok(())
 }
 

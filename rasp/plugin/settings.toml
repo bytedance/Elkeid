@@ -58,7 +58,7 @@ jvm_probe_path = ""
 # host_bind = true
 mode = "thread"
 bind_path = "/tmp/smith_agent.sock"
-link_to = "/var/run/smith_agent.sock"
+linking_to = "/var/run/smith_agent.sock"
 
 
 
