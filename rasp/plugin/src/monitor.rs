@@ -22,7 +22,7 @@ use librasp::{
 use log::{debug, info, warn, error};
 use parking_lot::RwLock;
 use plugins::{Client, Record};
-use crate::utils::{generate_heartbeat, generate_seq_id, hashmap_to_record};
+use crate::utils::{generate_heartbeat, generate_seq_id, hashmap_to_record, time};
 
 pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
     debug!("monitor start");
@@ -58,6 +58,7 @@ pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
                         info!("collect thread: {} internal message len: {}", collect_thread_n, message_queue_length)
                     }
                     let bundle: Vec<Record> = internal_message_receiver_clone.try_iter().collect();
+                    debug!("sending bundle: {:?}", bundle);
                     match client_clone.send_records(&bundle) {
                         Ok(_) => {}
                         Err(e) => {
@@ -155,20 +156,20 @@ pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
         if !ctrl.check() {
             for collect_thread in collect_threads.into_iter() {
                 match collect_thread.join() {
-                    Ok(_) => {},
+                    Ok(_) => {}
                     Err(e) => {
                         warn!("from collect thread report a warn: {:?}", e);
                     }
                 };
             }
             match external_thread.join() {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(e) => {
                     warn!("from external thread report a warn: {:?}", e);
                 }
             };
             match internal_thread.join() {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(e) => {
                     warn!("from internal thread report a warn: {:?}", e);
                 }
@@ -230,6 +231,7 @@ fn internal_main(
     let operation_process_rw = Arc::clone(&tracing_process_arcrw);
     let inspect_reportor = internal_message_sender.clone();
     let external_message_sender_for_inspected = external_message_sender.clone();
+    let report_heartbeat_data_type = settings_int("data_type", "report_heartbeat")?;
     let inspect_thread = Builder::new()
         .name("inspect".to_string())
         .spawn(move || loop {
@@ -286,8 +288,11 @@ fn internal_main(
             }
             let mut ip = inspected_process_rw.write();
             let report = make_report(&process.clone(), "inspected", String::new());
+            let mut record = hashmap_to_record(report);
+            record.data_type = report_heartbeat_data_type.clone() as i32;
+            record.timestamp = time();
             let _ = inspect_reportor.send(
-                hashmap_to_record(report)
+                record
             );
             (*ip).insert(pid, process);
             drop(ip);
@@ -295,7 +300,6 @@ fn internal_main(
         })?;
     let mut reporter_ctrl = ctrl.clone();
     let reporter_sender = internal_message_sender.clone();
-    let report_heartbeat_data_type = settings_string("data_type", "report_heartbeat")?;
     let reporter_thread = Builder::new()
         .name("reporter".to_string())
         .spawn(move || loop {
@@ -310,11 +314,13 @@ fn internal_main(
             let seq_id = generate_seq_id();
             for (_pid, process) in watched_process_cloned.iter() {
                 let mut message = generate_heartbeat(&process);
-                message.insert("data_type", report_heartbeat_data_type.clone());
                 message.insert("package_seq", seq_id.clone());
                 debug!("sending heartbeat: {:?}", &message);
+                let mut record = hashmap_to_record(message);
+                record.data_type = report_heartbeat_data_type.clone() as i32;
+                record.timestamp = time();
                 let _ = reporter_sender.send(
-                    hashmap_to_record(message)
+                    record
                 );
             }
         })?;
@@ -396,8 +402,11 @@ fn internal_main(
                 Ok(_) => {
                     info!("operation success: {:?}", operation_message);
                     let report = make_report(&process.clone(), "attach_success", String::new());
+                    let mut record = hashmap_to_record(report);
+                    record.data_type = report_heartbeat_data_type.clone() as i32;
+                    record.timestamp = time();
                     let _ = operation_reporter.send(
-                        hashmap_to_record(report)
+                        record
                     );
                 }
                 Err(e) => {
@@ -407,8 +416,11 @@ fn internal_main(
                         format!("{}_failed", state.clone()).as_str(),
                         e.to_string(),
                     );
+                    let mut record = hashmap_to_record(report);
+                    record.data_type = report_heartbeat_data_type.clone() as i32;
+                    record.timestamp = time();
                     let _ = operation_reporter.send(
-                            hashmap_to_record(report)
+                        record
                     );
                     continue;
                 }

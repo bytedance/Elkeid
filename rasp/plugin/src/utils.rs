@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::time::{SystemTime, UNIX_EPOCH};
 pub use librasp::comm::Control;
 use anyhow::Result as AnyhowResult;
 use coarsetime::Clock;
@@ -53,6 +54,14 @@ pub fn generate_heartbeat(watched_process: &ProcessInfo) -> HashMap<&'static str
 
     message
 }
+
+pub fn time() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64
+}
+
 
 pub fn count_uptime(start_time: f32) -> AnyhowResult<u64> {
     let ticks = procfs::ticks_per_second()? as f32;

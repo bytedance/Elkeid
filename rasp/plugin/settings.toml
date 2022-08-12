@@ -3,8 +3,6 @@
 ignore_exe_path = [
     "/opt/trash/",
     "/opt/tiger",
-    "/sbin",
-    "/usr/sbin",
     "/etc/sysop",
     "/etc/elkeid",
     "/opt/elkeid",
@@ -41,8 +39,7 @@ auto_attach_runtime = [
 ### recv command from Elkeid agent
 ### recommand for large scale deployment
 ### `data_type` field
-data_type = "2999"
-report_heartbeat = "2997"
+report_heartbeat = 2997
 
 [attach]
 ### handle probe message in thread/sub-process mode.
@@ -90,4 +87,4 @@ external_message_capability = 50
 pid_queue_length = 1000
 pid_poll_interval = 60
 clean_up_interval = 60
-report_interval = 300
+report_interval = 120
