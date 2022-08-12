@@ -88,7 +88,7 @@ pub fn RASP_PHP_PROBE(major: &str, miner: &str) -> Option<String> {
         },
         _ => false
     } {
-        Some(format!("lib/php_probe.{}.{}.so", major, miner))
+        Some(format!("{}/lib/libphp_probe-{}.{}.so", RASP_LIB_DIR(), major, miner))
     } else {
         None
     }
