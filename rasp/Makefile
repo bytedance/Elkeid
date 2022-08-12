@@ -160,9 +160,12 @@ else
 endif
 
 build: agent_plugin nsenter process_injector java python go node php_probe rasp server ## build all
-	cd output && rm -r "${PERV_LIB}"
+	if [ -a output/${PERV_LIB} ] ; \
+	then \
+		rm -r output/${PERV_LIB}; \
+		cd output && mkdir "${PERV_LIB}"; \
+	fi;
 	cd output && mv lib "lib-${VERSION}"
-	cd output && mkdir "${PERV_LIB}"
 	cd output && tar -czvf "rasp_${VERSION}.tar.gz" ./* && sha256sum "rasp_${VERSION}.tar.gz" && sha256sum rasp
 	cd output && rm -r "${PERV_LIB}"
 	mv "output/rasp_${VERSION}.tar.gz" .

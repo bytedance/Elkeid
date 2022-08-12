@@ -8,7 +8,7 @@ pub fn RASP_BASE_DIR() -> String {
     match current_dir() {
         Ok(p) => match p.to_str() {
             Some(p) => String::from(p),
-            None =>  {
+            None => {
                 panic!("can not fetch current dir from env");
             }
         }
@@ -65,7 +65,7 @@ pub fn RASP_NODEJS_ENTRY_BOE() -> String { format!("{}{}", RASP_NODEJS_DIR_BOE()
 pub fn RASP_NODEJS_ENTRY() -> String { format!("{}{}", RASP_NODEJS_DIR_BOE(), "/smith") }
 
 #[allow(non_snake_case)]
-pub fn RASP_PHP_PROBE(major: &str, miner: &str) -> Option<String> {
+pub fn RASP_PHP_PROBE(major: &str, miner: &str) -> Option<(String, String)> {
     if match major {
         "5" => match miner {
             "3" => true,
@@ -88,7 +88,12 @@ pub fn RASP_PHP_PROBE(major: &str, miner: &str) -> Option<String> {
         },
         _ => false
     } {
-        Some(format!("{}/php/libphp_probe-{}.{}.so", RASP_LIB_DIR(), major, miner))
+        Some(
+            (
+                format!("{}/php/libphp_probe-{}.{}.so", RASP_LIB_DIR(), major, miner),
+                format!("libphp_probe-{}.{}.so", major, miner)
+            )
+        )
     } else {
         None
     }

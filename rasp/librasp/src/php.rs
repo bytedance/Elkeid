@@ -74,27 +74,27 @@ pub fn php_attach(process_info: &ProcessInfo, version: String) -> AnyhowResult<b
     let miner = splited.get(1);
     let (probe_path, probe_name) = RASP_PHP_PROBE(major.unwrap(), miner.unwrap()).unwrap();
 
-    match locate_extension_dir(&process) {
-        Ok(path) => {
-            match copy_so_to_extension_dir(
-                format!("/proc/{}/root", process_info.pid),
-                path,
-                probe_path.clone(),
-                probe_name.clone(),
-            ) {
-                Ok(_) => {
-                    reload_phpfpm(process_info.pid)?;
-                    return Ok(true);
-                }
-                Err(e) => {
-                    warn!("can copy probe failed: {}", e);
-                }
-            }
-        }
-        Err(e) => {
-            warn!("can nout locate php extension dir: {}", e);
-        }
-    }
+    // match locate_extension_dir(&process) {
+    //     Ok(path) => {
+    //         match copy_so_to_extension_dir(
+    //             format!("/proc/{}/root", process_info.pid),
+    //             path,
+    //             probe_path.clone(),
+    //             probe_name.clone(),
+    //         ) {
+    //             Ok(_) => {
+    //                 reload_phpfpm(process_info.pid)?;
+    //                 return Ok(true);
+    //             }
+    //             Err(e) => {
+    //                 warn!("can copy probe failed: {}", e);
+    //             }
+    //         }
+    //     }
+    //     Err(e) => {
+    //         warn!("can nout locate php extension dir: {}", e);
+    //     }
+    // }
     match locate_confd_dir(&process) {
         Ok(path) => {
             match write_conf_to_cond_dir(
@@ -172,7 +172,7 @@ pub fn locate_confd_dir(process: &Process) -> AnyhowResult<String> {
             }
         }
     }
-    Err(anyhow!("can nout found phpfpm confd dir"))
+    Err(anyhow!("can not found phpfpm confd dir"))
 }
 
 pub fn copy_so_to_extension_dir(root_dir: String, extension_dir: String, probe_path: String, probe_name: String) -> AnyhowResult<()> {
