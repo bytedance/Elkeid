@@ -66,7 +66,7 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 					metricsAgentHeartBeat(req.AgentID, name, detail)
 				}
 			}
-		case 2001, 2003, 6003, 5100, 5101, 8010:
+		case 2001, 2003, 6000, 5100, 5101, 8010:
 			// Asynchronously pushed to the remote end for reconciliation.
 
 			//5100: 主动触发资产数据扫描
