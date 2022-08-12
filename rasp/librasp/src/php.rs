@@ -176,6 +176,7 @@ pub fn copy_so_to_extension_dir(root_dir: String, extension_dir: String, probe_p
     if std::path::Path::new(&target_path).exists() {
         return Ok(())
     }
+    debug!("{} -> {}", probe_path, target_path);
     // create path
     let copy_options = fs_extra::file::CopyOptions::default();
     fs_extra::file::copy(
@@ -188,6 +189,7 @@ pub fn copy_so_to_extension_dir(root_dir: String, extension_dir: String, probe_p
 
 pub fn write_conf_to_cond_dir(root_dir: String, confd_dir: String, probe_path: String) -> AnyhowResult<()> {
     let so_target_path = format!("{}/{}", root_dir, probe_path);
+    debug!("{} -> {}", probe_path, so_target_path);
     if !std::path::Path::new(&so_target_path).exists() {
         let copy_options = fs_extra::file::CopyOptions::default();
         fs_extra::file::copy(
@@ -197,6 +199,7 @@ pub fn write_conf_to_cond_dir(root_dir: String, confd_dir: String, probe_path: S
         )?;
     }
     let conf_path = format!("{}/{}/{}", root_dir, confd_dir, "999-php_probe.ini");
+    debug!("{} -> {}", so_target_path, conf_path);
     let mut file = std::fs::File::open(std::path::Path::new(&conf_path))?;
     file.write_all(format!("extension={}", probe_path).as_str().as_bytes())?;
     Ok(())
