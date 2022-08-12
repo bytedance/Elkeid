@@ -203,9 +203,8 @@ pub fn write_conf_to_cond_dir(root_dir: String, confd_dir: String, probe_path: S
         )?;
     }
     let conf_path = format!("{}/{}/{}", root_dir, confd_dir, "999-php_probe.ini");
-    debug!("{} -> {}", so_target_path.clone(), conf_path);
-    let mut file = std::fs::File::open(std::path::Path::new(&conf_path))?;
-    file.write_all(format!("extension={}", probe_path).as_str().as_bytes())?;
+    debug!("{} -> {}", probe_path.clone(), conf_path);
+    fs_extra::file::write_all(conf_path, format!("extension={}", probe_path))?;
     Ok(())
 }
 
