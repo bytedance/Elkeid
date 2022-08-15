@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	"github.com/levigross/grequests"
 	"time"
@@ -16,7 +17,7 @@ type ResTaskConf struct {
 }
 
 func PostTask(postList []map[string]string) {
-	resp, err := grequests.Post(fmt.Sprintf(TaskUrl, getRandomManageAddr()), &grequests.RequestOptions{
+	resp, err := grequests.Post(fmt.Sprintf(TaskUrl, common.GetRandomManageAddr()), &grequests.RequestOptions{
 		JSON:           postList,
 		RequestTimeout: 2 * time.Second,
 	})

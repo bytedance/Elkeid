@@ -6,7 +6,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"github.com/bytedance/Elkeid/server/agent_center/common/utils"
+	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/bytedance/Elkeid/server/agent_center/httptrans/client"
@@ -27,7 +27,7 @@ type TosResult struct {
 }
 
 func (h *FileExtHandler) Init() {
-	if !utils.IsFileExist(h.FileBaseDir) {
+	if !common.IsFileExist(h.FileBaseDir) {
 		err := os.MkdirAll(h.FileBaseDir, os.ModePerm)
 		if err != nil {
 			ylog.Errorf("FileExtHandler_Init", "FileExtHandler create dir %s, error %s", h.FileBaseDir, err.Error())

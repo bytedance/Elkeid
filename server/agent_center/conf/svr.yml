@@ -21,6 +21,7 @@ kafka:
   addrs:
     - 127.0.0.1:9092
   topic: hids_svr
+  rawdata_topic: k8s
   sasl:
     enable: true
     username: user
@@ -76,3 +77,6 @@ server:
   pprof:
     enable: true
     port: 6753
+
+  rawdata:
+    port: 6754

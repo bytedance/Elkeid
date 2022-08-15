@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/levigross/grequests"
@@ -43,7 +44,7 @@ type ResAgentTags struct {
 }
 
 func GetConfigFromRemote(agentID string) ([]*pb.ConfigItem, error) {
-	resp, err := grequests.Get(fmt.Sprintf(ConfigUrl, getRandomManageAddr(), agentID), nil)
+	resp, err := grequests.Get(fmt.Sprintf(ConfigUrl, common.GetRandomManageAddr(), agentID), nil)
 	if err != nil {
 		ylog.Errorf("GetConfigFromRemote", "error %s %s", agentID, err.Error())
 		return nil, err
@@ -82,7 +83,7 @@ func GetConfigFromRemote(agentID string) ([]*pb.ConfigItem, error) {
 
 func GetExtraInfoFromRemote(idList []string) (map[string]AgentExtraInfo, error) {
 	res := map[string]AgentExtraInfo{}
-	resp, err := grequests.Post(fmt.Sprintf(TagsUrl, getRandomManageAddr()),
+	resp, err := grequests.Post(fmt.Sprintf(TagsUrl, common.GetRandomManageAddr()),
 		&grequests.RequestOptions{JSON: map[string][]string{"id_list": idList}})
 	if err != nil {
 		ylog.Errorf("GetExtraInfoFromRemote", "GetExtraInfoFromRemote Post Error, %s", err.Error())

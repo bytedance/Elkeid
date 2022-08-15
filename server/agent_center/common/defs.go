@@ -9,8 +9,9 @@ import (
 var (
 	Sig = make(chan os.Signal, 1)
 
-	UserConfig    *viper.Viper
-	KafkaProducer *kafka.Producer // send agent raw data
+	UserConfig           *viper.Viper
+	KafkaProducer        *kafka.Producer // send agent raw data
+	KafkaRawDataProducer *kafka.Producer // k8s audit log
 
 	ConfPath string
 	LocalIP  string //server本地IP
@@ -36,4 +37,6 @@ var (
 
 	PProfEnable bool
 	PProfPort   int //pprof
+
+	RawDataPort int
 )
