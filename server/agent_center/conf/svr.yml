@@ -59,6 +59,8 @@ server:
   ssl:
     keyfile: ./conf/server.key
     certfile: ./conf/server.crt
+    rawdata_keyfile: ./conf/rd_server.key
+    rawdata_certfile: ./conf/rd_server.crt
     cafile: ./conf/ca.crt
 
   grpc:

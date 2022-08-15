@@ -17,7 +17,7 @@ import (
 
 func Run() {
 	go runAPIServer(common.HttpPort, common.HttpSSLEnable, common.HttpAuthEnable, common.SSLCertFile, common.SSLKeyFile)
-	runRawDataServer(common.RawDataPort, common.SSLCaFile, common.SSLCertFile, common.SSLKeyFile)
+	runRawDataServer(common.RawDataPort, common.SSLCaFile, common.SSLRawDataCertFile, common.SSLRawDataKeyFile)
 }
 
 func runAPIServer(port int, enableSSL, enableAuth bool, certFile, keyFile string) {
@@ -77,7 +77,7 @@ func runRawDataServer(port int, caFile, certFile, keyFile string) {
 		TLSConfig: tlsConfig,
 	}
 
-	fmt.Printf("RunRawDataServer ####RAW_DATA_HTTP_LISTEN_ON:%d\n", port)
+	ylog.Infof("RunRawDataServer", "####RAW_DATA_HTTP_LISTEN_ON:%d", port)
 	err = server.ListenAndServeTLS("", "")
 	if err != nil {
 		ylog.Errorf("RunRawDataServer", "####raw_data http run error: %v", err)
@@ -88,19 +88,19 @@ func runRawDataServer(port int, caFile, certFile, keyFile string) {
 func credential(crtFile, keyFile, caFile string) *tls.Config {
 	cert, err := tls.LoadX509KeyPair(crtFile, keyFile)
 	if err != nil {
-		fmt.Printf("Credential LOAD_X509_ERROR:%s crtFile:%s keyFile:%s \n", err.Error(), crtFile, keyFile)
+		ylog.Errorf("Credential", "LOAD_X509_ERROR:%s crtFile:%s keyFile:%s", err.Error(), crtFile, keyFile)
 		return nil
 	}
 
 	caBytes, err := ioutil.ReadFile(caFile)
 	if err != nil {
-		fmt.Printf("Credential READ_CAFILE_ERROR:%s caFile:%s\n", err.Error(), caFile)
+		ylog.Errorf("Credential", "READ_CAFILE_ERROR:%s caFile:%s", err.Error(), caFile)
 		return nil
 	}
 
 	certPool := x509.NewCertPool()
 	if ok := certPool.AppendCertsFromPEM(caBytes); !ok {
-		fmt.Printf("Credential ####APPEND_CERT_ERROR: %v\n", err)
+		ylog.Errorf("Credential", "####APPEND_CERT_ERROR: %v", err)
 		return nil
 	}
 	return &tls.Config{ClientCAs: certPool, ClientAuth: tls.RequireAndVerifyClientCert, Certificates: []tls.Certificate{cert}}

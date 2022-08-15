@@ -39,9 +39,11 @@ func initDefault() {
 
 	SSLKeyFile = UserConfig.GetString("server.ssl.keyfile")
 	SSLCertFile = UserConfig.GetString("server.ssl.certfile")
+	SSLRawDataKeyFile = UserConfig.GetString("server.ssl.rawdata_keyfile")
+	SSLRawDataCertFile = UserConfig.GetString("server.ssl.rawdata_certfile")
 	SSLCaFile = UserConfig.GetString("server.ssl.cafile")
-	if SSLKeyFile == "" || SSLCertFile == "" || SSLCaFile == "" {
-		ylog.Fatalf("init", "ssl file empty SSLKeyFile:%s SSLCertFile:%s SSLCaFile:%s", SSLKeyFile, SSLCertFile, SSLCaFile)
+	if SSLKeyFile == "" || SSLCertFile == "" || SSLCaFile == "" || SSLRawDataKeyFile == "" || SSLRawDataCertFile == "" {
+		ylog.Fatalf("init", "ssl file empty SSLKeyFile:%s SSLCertFile:%s SSLCaFile:%s SSLRawDataKeyFile:%s SSLRawDataCertFile:%s", SSLKeyFile, SSLCertFile, SSLCaFile, SSLRawDataKeyFile, SSLRawDataCertFile)
 	}
 	SvrName = UserConfig.GetString("sd.name")
 	SdAddrs = UserConfig.GetStringSlice("sd.addrs")

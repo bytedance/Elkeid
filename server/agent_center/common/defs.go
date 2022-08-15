@@ -27,13 +27,15 @@ var (
 	GRPCPort  int //grpc
 	ConnLimit int
 
-	HttpPort       int
-	HttpSSLEnable  bool
-	SSLKeyFile     string
-	SSLCertFile    string
-	SSLCaFile      string
-	HttpAuthEnable bool
-	HttpAkSkMap    map[string]string //access key and secret key list, which used to identify whether the http request comes from a known subject
+	HttpPort           int
+	HttpSSLEnable      bool
+	SSLKeyFile         string
+	SSLCertFile        string
+	SSLRawDataKeyFile  string
+	SSLRawDataCertFile string
+	SSLCaFile          string
+	HttpAuthEnable     bool
+	HttpAkSkMap        map[string]string //access key and secret key list, which used to identify whether the http request comes from a known subject
 
 	PProfEnable bool
 	PProfPort   int //pprof

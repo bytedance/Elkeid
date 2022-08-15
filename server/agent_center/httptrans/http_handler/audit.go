@@ -74,7 +74,7 @@ func init() {
 	clusterMap = &map[string]bool{}
 	ls, err := getClusterIDList()
 	if err != nil {
-		ylog.Errorf("Audit_getClusterIDList %s", err.Error())
+		ylog.Errorf("Audit_getClusterIDList", " %s", err.Error())
 	} else {
 		clsMap := map[string]bool{}
 		for _, v := range ls {
@@ -88,7 +88,7 @@ func init() {
 			time.Sleep(time.Minute)
 			ls, err := getClusterIDList()
 			if err != nil {
-				ylog.Errorf("Audit_getClusterIDList %s", err.Error())
+				ylog.Errorf("Audit_getClusterIDList", " %s", err.Error())
 			} else {
 				clsMap := map[string]bool{}
 				for _, v := range ls {
