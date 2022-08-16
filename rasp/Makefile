@@ -1,5 +1,8 @@
 PREFIX ?= /etc/elkeid/plugin/rasp
 STATIC ?= "FALSE"
+VERSION ?= 1.9.1.0
+PERV_LIB ?= "lib"
+PHP_LIB ?= "php/output"
 
 .PHONY: help
 help:
@@ -10,6 +13,13 @@ help:
 	@echo "make build && sudo make install"
 	@echo "---"
 	@grep -hE '##' Makefile  | grep -v grep | sed -e 's/\\$$//' | sed -e 's/##/,/'  | sed -e 's/:.*,/ ,/' | column -t -c2 -s,
+
+update_version: ## patch version VERSION=x.x.x.x
+	sed -i "s/1.0.0.1/${VERSION}/g" "librasp/src/settings.rs"
+	sed -i "s/1.0.0/${VERSION}/g" "node/client.js"
+	sed -i "s/1.0.0/${VERSION}/g" "python/python-probe/rasp/client.py"
+	sed -i "s/1.0.0/${VERSION}/g" "golang/client/smith_message.cpp"
+
 
 rasp: ## build elkeid_rasp bin file
 	mkdir -p output
@@ -23,13 +33,13 @@ endif
 
 
 server: ## build rasp_server bin file
-	mkdir -p output
+	mkdir -p output/lib
 ifeq ($(STATIC), TRUE)
 	$(MAKE) -C rasp_server build-musl
-	cp rasp_server/target/x86_64-unknown-linux-musl/release/rasp_server output/rasp_server
+	cp rasp_server/target/x86_64-unknown-linux-musl/release/rasp_server output/lib/rasp_server
 else
 	$(MAKE) -C rasp_server build
-	cp rasp_server/target/release/rasp_server output/rasp_server
+	cp rasp_server/target/release/rasp_server output/lib/rasp_server
 endif
 
 
@@ -52,11 +62,13 @@ ifeq ($(STATIC), TRUE)
 	./autogen.sh && \
 	CC=$(CC) CFLAGS="-static" ./configure --enable-static-programs=nsenter --disable-all-programs --enable-nsenter && \
 	make
+	cp util-linux/nsenter.static output/nsenter
 else
 	cd util-linux && \
 	./autogen.sh && \
 	CC=$(CC) ./configure --enable-static-programs=nsenter --disable-all-programs --enable-nsenter && \
 	make
+	cp util-linux/nsenter output/nsenter
 endif
 
 java-attach: ## build jattach using musl-gcc
@@ -79,9 +91,9 @@ java-probe-example: ## build JVM probe example for test
 
 java: java-attach java-probe ## java probe
 	@echo "build JVM probe"
-	mkdir -p output/java
-	cp jvm/JVMProbe/output/SmithAgent.jar output/java/SmithAgent.jar
-	cp jvm/jattach/build/jattach output/java/jattach
+	mkdir -p output/lib/java
+	cp jvm/JVMProbe/output/SmithAgent.jar output/lib/java/SmithAgent.jar
+	cp jvm/jattach/build/jattach output/lib/java/jattach
 
 process_injector: ## build process injector
 	cd pangolin && \
@@ -89,7 +101,8 @@ process_injector: ## build process injector
 	mkdir -p pangolin/build && cd pangolin/build && \
 	CC=$(CC) CXX=$(CXX) \
 	LD=$(LD) cmake -DSTATIC_BUILD=$(STATIC) .. && make
-	cp pangolin/bin/pangolin output/pangolin
+	mkdir -p output/lib
+	cp pangolin/bin/pangolin output/lib/pangolin
 
 python-loader: ## build python loader
 	mkdir -p python/python-loader/build && cd python/python-loader/build && \
@@ -100,11 +113,13 @@ python-probe: python-loader ## install python client so
 
 python: python-probe ## build CPython probe
 	@echo "build CPython probe"
-	mkdir -p output/python
-	cp python/python-loader/bin/* output/
-	cp -r python/python-probe/dist/rasp-1.0.0-py2.py3-none-any.whl output/python/
-	cd output/python/ && unzip -o rasp-1.0.0-py2.py3-none-any.whl
-	cp -r python/entry.py output/python/
+	mkdir -p output/
+	mkdir -p output/lib
+	mkdir -p output/lib/python
+	cp python/python-loader/bin/* output/lib/python/
+	cp -r python/python-probe/dist/rasp-1.0.0-py2.py3-none-any.whl output/lib/python/
+	cd output/lib/python/ && unzip -o rasp-1.0.0-py2.py3-none-any.whl
+	cp -r python/entry.py output/lib/python/
 
 
 go-probe: ## build golang probe
@@ -114,13 +129,22 @@ go-probe: ## build golang probe
 
 go: go-probe ## build go probe
 	@echo "build Golang probe"
-	cp golang/bin/go_probe output/go_probe
+	mkdir -p output
+	mkdir -p output/lib
+	mkdir -p output/lib/golang
+	cp golang/bin/go_probe output/lib/golang/go_probe
+	cp golang/bin/go_loader output/lib/golang/go_loader
 
 
 node: nsenter ## build node probe
 	@echo "build NodeJS probe"
-	mkdir -p output/node
-	cp node/*.js output/node/
+	mkdir -p output/lib/node
+	cp node/*.js output/lib/node/
+
+php_probe: ## build php probe
+	@echo "build PHP probe"
+	mkdir -p output/lib/php
+	cp -r $PHP_LIB output/lib/php
 
 agent_plugin: rasp server ## build Elkeid-RASP plugin for Agent
 	@echo "build plugin"
@@ -129,14 +153,22 @@ agent_plugin: rasp server ## build Elkeid-RASP plugin for Agent
 ifeq ($(STATIC), TRUE)
 	$(MAKE) -C plugin plugin-musl
 	cp plugin/target/x86_64-unknown-linux-musl/release/elkeid_rasp_monitor output/rasp
+	cp plugin/settings.toml output/settings.toml
 else
 	$(MAKE) -C plugin plugin
 	cp plugin/target/release/elkeid_rasp_monitor output/rasp
+	cp plugin/settings.toml output/settings.toml
 endif
 
-build: agent_plugin nsenter process_injector java python go node rasp server ## build all
-	mkdir -p output
-	cp util-linux/nsenter output/
+build: agent_plugin nsenter process_injector java python go node php_probe rasp server ## build all
+	if [ -a output/${PERV_LIB} ] ; \
+	then \
+		rm -r output/${PERV_LIB}; \
+		cd output && mkdir "${PERV_LIB}"; \
+	fi;
+	cd output && mv lib "lib-${VERSION}"
+	cd output && tar -czvf "rasp_${VERSION}.tar.gz" ./* && sha256sum "rasp_${VERSION}.tar.gz" && sha256sum rasp
+	mv "output/rasp_${VERSION}.tar.gz" .
 
 
 install: ## install to $PREFIX default: /etc/elkeid/plugin/rasp

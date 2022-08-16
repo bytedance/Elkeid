@@ -1,9 +1,7 @@
-use std::{
-    collections::HashMap, ffi::OsString, process::Command, thread::sleep,
-    time::Duration,
-};
+use std::{collections::HashMap, ffi::OsString, process::Command, thread::sleep, time::Duration};
 
 use crate::process::ProcessInfo;
+use crate::runtime::ProbeCopy;
 use crate::settings;
 
 use anyhow::{anyhow, Result};
@@ -12,6 +10,13 @@ use log::*;
 use regex::Regex;
 // use version_compare::{CompOp, VersionCompare};
 
+pub struct NodeJSProbe {}
+
+impl ProbeCopy for NodeJSProbe {
+    fn names() -> (Vec<String>, Vec<String>) {
+        ([].to_vec(), [settings::RASP_NODEJS_DIR()].to_vec())
+    }
+}
 
 pub fn nodejs_attach(
     pid: i32,
@@ -19,15 +24,15 @@ pub fn nodejs_attach(
     node_path: &str,
 ) -> Result<bool> {
     debug!("node attach: {}", pid);
-    let smith_module_path = settings::RASP_NODE_MODULE;
-    nodejs_run(pid, node_path, smith_module_path)
+    let smith_module_path =  settings::RASP_NODEJS_DIR();
+    nodejs_run(pid, node_path, smith_module_path.as_str())
 }
 
-pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &'static str) -> Result<bool> {
+pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str) -> Result<bool> {
     let pid_string = pid.to_string();
-    let nsenter = settings::RASP_NS_ENTER_BIN.to_string();
-    let inject_script_path = settings::RASP_NODE_INJECTOR;
-    let nspid = match ProcessInfo::read_ns_pid(pid) {
+    let nsenter = settings::RASP_NS_ENTER_BIN();
+    let inject_script_path = settings::RASP_NODEJS_INJECTOR();
+    let nspid = match ProcessInfo::read_nspid(pid) {
         Ok(nspid_option) => {
             if let Some(nspid) = nspid_option {
                 nspid
@@ -48,7 +53,7 @@ pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &'static str) ->
         "-t",
         pid_string.as_str(),
         node_path,
-        inject_script_path,
+        inject_script_path.as_str(),
         nspid_string.as_str(),
         require_module.as_str(),
     ];
@@ -64,16 +69,16 @@ pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &'static str) ->
 
 pub fn nodejs_version(pid: i32, nodejs_bin_path: &String) -> Result<(u32, u32, String)> {
     // exec nodejs
-    let nsenter = settings::RASP_NS_ENTER_BIN.to_string();
+    let nsenter = settings::RASP_NS_ENTER_BIN();
     let pid_string = pid.to_string();
     let args = [
-	"-m",
-	"-n",
-	"-p",
-	"-t",
-	pid_string.as_str(),
-	nodejs_bin_path,
-	"-v"
+        "-m",
+        "-n",
+        "-p",
+        "-t",
+        pid_string.as_str(),
+        nodejs_bin_path,
+        "-v",
     ];
     let output = match Command::new(nsenter).args(&args).output() {
         Ok(s) => s,

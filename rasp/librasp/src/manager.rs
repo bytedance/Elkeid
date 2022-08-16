@@ -1,35 +1,27 @@
-use anyhow::{anyhow, Result};
-use crossbeam::channel::{Receiver, Sender};
-use fs_extra::dir::{copy, create_all, CopyOptions};
+use std::collections::HashMap;
+use std::path::Path;
+
+use anyhow::{anyhow, Result, Result as AnyhowResult};
+use crossbeam::channel::Sender;
+use fs_extra::dir::{copy, CopyOptions, create_all};
+use fs_extra::file::{copy as file_copy, CopyOptions as FileCopyOptions};
 use log::*;
-use lru_time_cache::LruCache;
 
-use std::collections::VecDeque;
-use std::{
-    collections::HashMap,
-    path::PathBuf,
-    sync::{Arc, Mutex},
-    thread::sleep,
-    time::Duration,
-};
-
-use crate::cpython::{python_attach, CPythonProbeState};
-use crate::golang::{golang_attach, golang_bin_inspect, GolangProbeState};
-use crate::jvm::java_attach;
-use crate::nodejs::nodejs_attach;
-use crate::runtime::Runtime;
-use crate::runtime::RuntimeInspect;
-use crate::runtime::{ProbeState, ProbeStateInspect};
 use crate::{
-    comm::{Control, RASPServerManager},
+    comm::{Control, RASPComm, ThreadMode, ProcessMode},
     process::ProcessInfo,
+    runtime::{ProbeState, ProbeStateInspect, RuntimeInspect, ProbeCopy},
 };
+use crate::php::{PHPProbeState, php_attach};
+use crate::cpython::{CPythonProbe, CPythonProbeState, python_attach};
+use crate::golang::{GolangProbe, golang_attach, GolangProbeState};
+use crate::jvm::{JVMProbe, JVMProbeState, java_attach} ;
+use crate::nodejs::{NodeJSProbe, nodejs_attach};
 
 pub struct RASPManager {
     pub namespace_tracer: MntNamespaceTracer,
-    pub comm_manager: RASPServerManager,
-    pub async_runtime_inspect_task_queue: Arc<Mutex<VecDeque<PathBuf>>>,
-    pub async_runtime_inspect_result: Arc<Mutex<LruCache<PathBuf, Runtime>>>,
+    pub thread_comm: Option<ThreadMode>,
+    pub process_comm: Option<ProcessMode>,
 }
 
 impl RASPManager {
@@ -37,46 +29,73 @@ impl RASPManager {
     pub fn start_comm(
         &mut self,
         process_info: &ProcessInfo,
-        comm: (Sender<HashMap<&'static str, String>>, Receiver<String>),
-        server_log_level: String,
-        server_ctrl: Control,
-    ) -> Result<()> {
-        let mnt_namespace = if let Some(ref ns) = process_info.namespace_info {
-            match ns.mnt.clone() {
-                Some(mnt_ns) => mnt_ns,
-                None => {
-                    return Err(anyhow!("process mnt ns empty: {}", process_info.pid));
+        result_sender: Sender<plugins::Record>,
+        _server_log_level: String,
+        _server_ctrl: Control,
+    ) -> AnyhowResult<()> {
+        debug!("starting comm with probe, target pid: {}", process_info.pid);
+        let mnt_namespace = process_info.get_mnt_ns()?;
+        let nspid = if let Some(nspid) = ProcessInfo::read_nspid(process_info.pid)? {
+            nspid
+        } else {
+            process_info.pid
+        };
+        if let Some(comm) = self.thread_comm.as_mut() {
+            comm.start_comm(
+                process_info.pid, &mnt_namespace,
+                result_sender, HashMap::new(),
+            )?;
+        } else if let Some(comm) = self.process_comm.as_mut() {
+            let mut patch_field = HashMap::new();
+            let sid = process_info.sid;
+            let pid = process_info.pid;
+            let ppid = process_info.ppid;
+            let tgid = process_info.tgid;
+            let exe = process_info.exe_path.clone().unwrap_or("".to_string());
+            let cmdline = process_info.cmdline.clone().unwrap_or("".to_string());
+            patch_field.insert("sid", sid.to_string());
+            patch_field.insert("pid", pid.to_string());
+            patch_field.insert("nspid", nspid.to_string());
+            patch_field.insert("ppid", ppid.to_string());
+            patch_field.insert("tgid", tgid.to_string());
+            patch_field.insert("argv", cmdline);
+            patch_field.insert("exe", exe);
+            patch_field.insert("ruid", process_info.ruid.to_string());
+            patch_field.insert("rgid", process_info.rgid.to_string());
+            patch_field.insert("euid", process_info.euid.to_string());
+            patch_field.insert("egid", process_info.egid.to_string());
+            patch_field.insert("suid", process_info.suid.to_string());
+            patch_field.insert("sgid", process_info.sgid.to_string());
+            patch_field.insert("fuid", process_info.fuid.to_string());
+            patch_field.insert("fgid", process_info.fgid.to_string());
+            debug!("update patch_field: {:?}", patch_field);
+
+            // check reopen
+            if let Some(opened) = self.namespace_tracer.server_state(&mnt_namespace) {
+                if opened {
+                    debug!("reusing stated server, mnt ns: {}", &mnt_namespace);
+                    if let Some(runner) = comm
+                        .mnt_namesapce_server_map
+                        .get_mut(&mnt_namespace) {
+                        runner.update_patch_field(patch_field);
+                    }
+                    return Ok(());
                 }
+            } else {
+                comm.start_comm(
+                    process_info.pid, &mnt_namespace,
+                    result_sender.clone(), patch_field,
+                )?;
             }
         } else {
-            return Err(anyhow!("fetch process ns failed: {}", process_info.pid));
-        };
+            return Err(anyhow!("both thread && process comm mode not init"));
+        }
         self.namespace_tracer
             .add(mnt_namespace.clone(), process_info.pid);
-        if let Some(opened) = self.namespace_tracer.server_state(&mnt_namespace) {
-            if opened {
-                return Ok(());
-            }
-        }
-        let (result_sender, command_receiver) = comm;
-        return match self.comm_manager.start_new_rasp_server(
-            process_info,
-            result_sender,
-            command_receiver,
-            server_log_level,
-            server_ctrl,
-        ) {
-            Ok(_) => {
-                self.namespace_tracer.server_state_on(mnt_namespace);
-                Ok(())
-            }
-            Err(e) => {
-                self.namespace_tracer
-                    .delete_pid(mnt_namespace, process_info.pid);
-                Err(anyhow!(e))
-            }
-        };
+        self.namespace_tracer.server_state_on(mnt_namespace);
+        Ok(())
     }
+
     pub fn stop_comm(&mut self, process_info: &ProcessInfo) -> Result<()> {
         let mnt_namespace = if let Some(ref ns) = process_info.namespace_info {
             match ns.mnt.clone() {
@@ -93,19 +112,27 @@ impl RASPManager {
             .server_state_off(&mnt_namespace, process_info.pid);
         // kill server
         if kill_check {
-            match self.comm_manager.stop_rasp_server(&mnt_namespace) {
-                Ok(_) => {
-                    return Ok(());
-                }
-                Err(e) => {
-                    return Err(anyhow!(e));
-                }
-            };
+            if let Some(comm) = self.thread_comm.as_mut() {
+                comm.stop_comm(process_info.pid, &mnt_namespace)?;
+            }
+            if let Some(comm) = self.process_comm.as_mut() {
+                comm.stop_comm(process_info.pid, &mnt_namespace)?;
+            }
         }
         Ok(())
     }
-    pub fn send_config() {
-        // TODO missing config
+
+    pub fn send_message_to_probe(&mut self, pid: i32, mnt_namespace: &String, message: &String) -> AnyhowResult<()> {
+        // try to write probe to dir
+        let nspid = ProcessInfo::read_nspid(pid)?.ok_or(anyhow!("can not fetch nspid: {}", pid))?;
+        self.write_message_to_config_file(pid, nspid, message.clone())?;
+        if let Some(comm) = self.thread_comm.as_mut() {
+            comm.send_message_to_probe(pid, mnt_namespace, message)
+        } else if let Some(comm) = self.process_comm.as_mut() {
+            comm.send_message_to_probe(pid, mnt_namespace, message)
+        } else {
+            Err(anyhow!("both thread && process comm mode not init"))
+        }
     }
 }
 
@@ -120,260 +147,181 @@ pub const PROCESS_BALACK: &'static [&'static str] = &[
 
 impl RASPManager {
     // Inspect
-    pub fn inspect(&mut self, pid: i32) -> Result<ProcessInfo> {
-        // process dead or live
-        let mut process_info = match ProcessInfo::new(pid) {
-            Ok(pi) => pi,
-            Err(e) => {
-                let msg = format!("process pid: {} seems dead: {}", pid, e.to_string());
-                warn!("{}", msg);
-                return Err(anyhow!(msg));
-            }
+    pub fn inspect(&mut self, process_info: &ProcessInfo) -> Result<()> {
+        let exe_path = if let Some(p) = &process_info.exe_path {
+            p.clone()
+        } else {
+            return Err(anyhow!("missing exe path during inspect: {}", process_info.pid));
         };
-        let exe_path = match process_info.process_self.exe() {
-            Ok(p) => match p.into_os_string().into_string() {
-                Ok(ps) => ps,
-                Err(_) => return Err(anyhow!("convert osstring to string failed")),
-            },
-            Err(e) => {
-                return Err(anyhow!(e));
-            }
-        };
-        info!("process exe: {}", &exe_path);
+        info!("process exe: {}", exe_path);
         for proces_black_name in PROCESS_BALACK.iter() {
             if exe_path.starts_with(proces_black_name) {
                 info!("process hit black list: {}", &proces_black_name);
                 return Err(anyhow!("inspecting process hit black list"));
             }
         }
-        // update namesapce
-        if let Err(e) = process_info.update_ns_info() {
-            return Err(anyhow!(e));
-        };
-        Ok(process_info)
+        Ok(())
     }
     pub fn runtime_inspect(&mut self, process_info: &mut ProcessInfo) -> Result<bool> {
         let runtime = ProcessInfo::inspect_from_process_info(process_info)?;
-        #[cfg(not(feature = "bin_mode"))]
-        if runtime.is_none() {
-            debug!("can not inspect runtime");
-            match self.new_async_inspect(&process_info.clone()) {
-                Ok(option_runtime) => {
-                    // inspecting
-                    if option_runtime.is_none() {
-                        debug!("waiting inspect");
-                        // wait inspect
-                        return Ok(false);
-                    } else {
-                        debug!("inspect done");
-                        // hit result
-                        // update process_info
-                        process_info.runtime_info = option_runtime;
-                        return Ok(true);
-                    }
-                }
-                Err(e) => {
-                    debug!("can not inspect runtime type");
-                    // can not detect
-                    return Err(e);
-                }
-            }
-        }
         // update runtime
-        process_info.runtime_info = runtime;
+        process_info.runtime = runtime;
         Ok(true)
     }
-    pub fn new_async_inspect(&mut self, process_info: &ProcessInfo) -> Result<Option<Runtime>> {
-        let pid = process_info.pid.clone();
-        let exe_path = match process_info.process_self.exe() {
-            Ok(e) => e,
-            Err(e) => {
-                let msg = format!("read exe path failed: {}", e.to_string());
-                return Err(anyhow!(msg));
-            }
-        };
-        // /proc/<pid><exe_path> for process in container
-        let mut path = PathBuf::from(format!("/proc/{}/root/", pid));
-        let exe_path_buf = PathBuf::from(exe_path);
-        if !exe_path_buf.has_root() {
-            path.push(exe_path_buf);
-        } else {
-            for p in exe_path_buf.iter() {
-                if p == std::ffi::OsString::from("/") {
-                    continue;
-                }
-                path.push(p);
-            }
-        }
-        debug!("inspect path: {:?}", path);
-        // search exe cache first
-        let mut async_result = self.async_runtime_inspect_result.lock().unwrap();
-        match async_result.get(&path) {
-            Some(runtime) => {
-                debug!("hit cache, path: {} {:?}", runtime.name, path);
-                if runtime.name == "unknow" {
-                    return Err(anyhow!("unknow runtime"));
-                }
-                if runtime.name == "waiting" {
-                    return Ok(None);
-                }
-                let runtime_result = runtime.clone();
-                async_result.remove(&path);
-                return Ok(Some(runtime_result));
-            }
-            None => {
-                debug!("not hit cache, waiting");
-                async_result.insert(
-                    path.clone(),
-                    Runtime {
-                        name: "waiting",
-                        version: String::new(),
-                    },
-                )
-            }
-        };
-        // add inspect queue
-        let mut queue = self.async_runtime_inspect_task_queue.lock().unwrap();
-        debug!("add async inspect, path: {:?}", path);
-        queue.push_back(path);
-        drop(queue);
-        Ok(None)
-    }
-    pub fn async_inspect_daemon(&mut self) {
-        let task_queue = Arc::clone(&self.async_runtime_inspect_task_queue);
-        let task_result = Arc::clone(&self.async_runtime_inspect_result);
-        let _ = std::thread::Builder::new()
-            .name("async_inspect_daemon".to_string())
-            .spawn(move || {
-                loop {
-                    debug!("async inspect daemon looping");
-                    // pop inspect target
-                    let mut queue = task_queue.lock().unwrap();
-                    let exe = if let Some(e) = queue.pop_front() {
-                        e
-                    } else {
-                        drop(queue);
-                        sleep(Duration::from_secs(5));
-                        continue;
-                    };
-                    debug!("inspect daemon: {:?}", exe.clone());
-                    drop(queue);
-                    // golang inspect
-                    let inspect_result = match golang_bin_inspect(exe.clone()) {
-                        Ok(b) => b,
-                        Err(e) => {
-                            warn!("golang inspect failed: {}", e);
-                            false
-                        }
-                    };
-                    debug!("inspect done: {}", inspect_result);
-                    // lock result
-                    let mut result = task_result.lock().unwrap();
-                    // save inspect result
-                    if inspect_result {
-                        result.insert(
-                            exe.clone(),
-                            Runtime {
-                                name: "Golang",
-                                version: "".to_string(),
-                            },
-                        );
-                    } else {
-                        result.insert(
-                            exe.clone(),
-                            Runtime {
-                                name: "unknow",
-                                version: String::new(),
-                            },
-                        );
-                    }
-                    drop(result);
-                    sleep(Duration::from_secs(5));
-                    continue;
-                }
-            });
-    }
-    pub fn attach(&mut self, process_info: &mut ProcessInfo) -> Result<()> {
-        if let Some(runtime_info) = &process_info.runtime_info {
-            let attach_result = match runtime_info.name {
-                // TODO @Gaba
-                "JVM" => java_attach(process_info.pid),
-                "CPython" => match CPythonProbeState::inspect_process(process_info)? {
-                    ProbeState::Attached => Ok(true),
-                    ProbeState::NotAttach => python_attach(process_info.pid),
-                },
-                "Golang" => match GolangProbeState::inspect_process(process_info)? {
-                    ProbeState::Attached => Ok(true),
-                    ProbeState::NotAttach => golang_attach(process_info.pid),
-                },
-                "NodeJS" => {
-                    let process_exe_file = process_info.update_exe()?;
-                    let process_exe_file_str = match process_exe_file.to_str() {
-                        Some(s) => s,
-                        None => {
-                            error!("nodejs attach failed, convert pathbuf to str failed");
-                            return Err(anyhow!(
-                                "nodejs attach failed, convert pathbuf to str failed"
-                            ));
-                        }
-                    };
-                    let pid = process_info.pid;
-                    let environ = match process_info.update_environ() {
-                        Ok(e) => e,
-                        Err(e) => return Err(anyhow!("can not fetch envrion {}", e)),
-                    };
-                    nodejs_attach(pid, &environ, &process_exe_file_str)
-                }
-                _ => {
-                    let msg = format!("can not attach to runtime: `{}`", runtime_info.name);
-                    error!("{}", msg);
-                    return Err(anyhow!(msg));
-                }
-            };
-            // println!("{:?}", attach_result);
-            return match attach_result {
-                Ok(success) => {
-                    if !success {
-                        let msg = format!("attach failed: {:?}", process_info);
-                        error!("{}", msg);
-                        Err(anyhow!(msg))
-                    } else {
-                        Ok(())
-                    }
-                }
-                Err(e) => Err(anyhow!(e)),
-            };
-        } else {
+    // Attach
+    pub fn attach(&mut self, process_info: &ProcessInfo) -> Result<()> {
+        if process_info.runtime.is_none() {
             let msg = "attaching to unknow runtime process";
             error!("{}", msg);
             return Err(anyhow!(msg));
         }
-    }
-    pub fn pause() {}
-    pub fn resume() {}
-}
+        let environ = match process_info.environ.clone() {
+            Some(e) => e,
+            None => return Err(anyhow!("can not fetch envrion {}", process_info.pid)),
+        };
+        let namespace = process_info.namespace_info.as_ref().unwrap();
+        let mnt_namespace = namespace.mnt.as_ref().unwrap();
+        let runtime_info = &process_info.runtime.clone().unwrap();
+        let root_dir = format!("/proc/{}/root", process_info.pid);
+        let pid = process_info.pid;
+        let nspid = ProcessInfo::read_nspid(pid)?.ok_or(anyhow!("can not read nspid: {}", pid))?;
+        // delete config
+        self.delete_config_file(pid, nspid)?;
+        let attach_result = match runtime_info.name {
+            "JVM" => match JVMProbeState::inspect_process(process_info)? {
+                ProbeState::Attached => {
+                    info!("JVM attached process");
+                    Ok(true)
+                }
+                ProbeState::NotAttach => {
+                    if self.can_copy(mnt_namespace) {
+                        for from in JVMProbe::names().0.iter() {
+                            self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
+                        }
+                        for from in JVMProbe::names().1.iter() {
+                            self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
+                        }
+                    }
+                    java_attach(process_info.pid)
+                }
+            },
+            "CPython" => match CPythonProbeState::inspect_process(process_info)? {
+                ProbeState::Attached => {
+                    info!("CPython attached process");
+                    Ok(true)
+                }
+                ProbeState::NotAttach => {
+                    if self.can_copy(mnt_namespace) {
+                        for from in CPythonProbe::names().0.iter() {
+                            self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
+                        }
+                        for from in CPythonProbe::names().1.iter() {
+                            self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
+                        }
+                    }
+                    python_attach(process_info.pid)
+                }
+            },
+            "Golang" => match GolangProbeState::inspect_process(process_info)? {
+                ProbeState::Attached => {
+                    info!("Golang attached process");
+                    Ok(true)
+                }
+                ProbeState::NotAttach => {
+                    if self.can_copy(mnt_namespace) {
+                        for from in GolangProbe::names().0.iter() {
+                            self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
+                        }
+                        for from in GolangProbe::names().1.iter() {
+                            self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
+                        }
+                    }
 
-impl RASPManager {
-    pub fn init() -> Result<Self> {
-        let time_to_live = Duration::from_secs(300);
-        match RASPServerManager::new() {
-            Ok(server) => Ok(RASPManager {
-                namespace_tracer: MntNamespaceTracer::new(),
-                comm_manager: server,
-                async_runtime_inspect_task_queue: Arc::new(Mutex::new(VecDeque::<PathBuf>::new())),
-                async_runtime_inspect_result: Arc::new(Mutex::new(
-                    LruCache::<PathBuf, Runtime>::with_expiry_duration_and_capacity(
-                        time_to_live,
-                        300,
-                    ),
-                )),
-            }),
+                    golang_attach(pid)
+                }
+            },
+            "NodeJS" => {
+                if self.can_copy(mnt_namespace) {
+                    for from in NodeJSProbe::names().0.iter() {
+                        self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
+                    }
+                    for from in NodeJSProbe::names().1.iter() {
+                        self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
+                    }
+                }
+
+                let process_exe_file = process_info.exe_path.clone().ok_or(
+                    anyhow!("process exe path not found: {}", pid)
+                )?;
+                nodejs_attach(pid, &environ, &process_exe_file)
+            }
+            "PHP" => match PHPProbeState::inspect_process(&process_info)? {
+                ProbeState::Attached => {
+                    info!("PHP attached process");
+                    Ok(true)
+                }
+                ProbeState::NotAttach => {
+                    php_attach(process_info, runtime_info.version.clone())
+                }
+            }
+            _ => {
+                let msg = format!("can not attach to runtime: `{}`", runtime_info.name);
+                error!("{}", msg);
+                return Err(anyhow!(msg));
+            }
+        };
+        match attach_result {
+            Ok(success) => {
+                if !success {
+                    let msg = format!("attach failed: {:?}", process_info);
+                    error!("{}", msg);
+                    Err(anyhow!(msg))
+                } else {
+                    Ok(())
+                }
+            }
             Err(e) => Err(anyhow!(e)),
         }
     }
+}
+
+impl RASPManager {
+    pub fn init(
+        comm_mode: &str,
+        log_level: String,
+        ctrl: Control,
+        message_sender: Sender<plugins::Record>,
+        bind_path: String,
+        linking_to: Option<String>,
+    ) -> AnyhowResult<Self> {
+        match comm_mode {
+            "thread" => {
+                Ok(RASPManager {
+                    thread_comm: Some(ThreadMode::new(log_level, ctrl, message_sender.clone(), bind_path, linking_to)?),
+                    namespace_tracer: MntNamespaceTracer::new(),
+                    process_comm: None,
+                })
+            }
+
+            "server" => {
+                Ok(RASPManager {
+                    process_comm: Some(ProcessMode::new(log_level, ctrl)),
+                    namespace_tracer: MntNamespaceTracer::new(),
+                    thread_comm: None,
+                })
+            }
+            _ => {
+                Err(anyhow!("{} is not a vavild comm mode", comm_mode))
+            }
+        }
+    }
+
     pub fn copy_to_dest(&self, dest_root: String) -> Result<()> {
+        let cwd_path = std::env::current_dir()?;
+        let cwd = cwd_path.to_str().unwrap();
+        debug!("current dir: {}", cwd);
         // check namespace before copy
-        match create_all(format!("{}/etc/elkeid/plugin/RASP/rasp", dest_root), false) {
+        match create_all(format!("{}{}", dest_root, cwd), false) {
             Ok(_) => {}
             Err(e) => {
                 warn!("create failed: {:?}", e);
@@ -382,14 +330,67 @@ impl RASPManager {
         let mut options = CopyOptions::new();
         options.overwrite = true;
         return match copy(
-            "/etc/elkeid/plugin/RASP/rasp",
-            format!("{}/etc/elkeid/plugin/RASP/", dest_root),
+            format!("{}/lib", cwd),
+            format!("{}/{}/", dest_root, cwd),
             &options,
         ) {
             Ok(_) => Ok(()),
             Err(e) => {
                 warn!("can not copy: {}", e);
                 Err(anyhow!("copy failed: {}", dest_root))
+            }
+        };
+    }
+    pub fn create_dir_if_not_exist(&self, dir: String, dest_root: String) -> AnyhowResult<()> {
+        let target = format!("{}{}", dest_root, dir);
+        if Path::new(&target).exists() {
+            return Ok(());
+        }
+        create_all(format!("{}{}", dest_root, dir), true)?;
+        Ok(())
+    }
+    pub fn copy_file_from_to_dest(&self, from: String, dest_root: String) -> AnyhowResult<()> {
+        let target = format!("{}/{}", dest_root, from);
+        if Path::new(&target).exists() {
+            return Ok(());
+        }
+        let dir = Path::new(&from).parent().unwrap();
+        self.create_dir_if_not_exist(dir.to_str().unwrap().to_string(), dest_root.clone())?;
+        let options = FileCopyOptions::new();
+        debug!("copy file: {} {}", from.clone(), format!("{}/{}", dest_root, from));
+        return match file_copy(from.clone(), format!("{}/{}", dest_root, from), &options) {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                warn!("can not copy: {}", e);
+                Err(anyhow!(
+		    "copy failed: from {} to {}: {}",
+		    from,
+		    format!("{}/{}", dest_root, from),
+		    e
+		))
+            }
+        };
+    }
+    pub fn copy_dir_from_to_dest(&self, from: String, dest_root: String) -> AnyhowResult<()> {
+        let target = format!("{}{}", dest_root, from);
+        if Path::new(&target).exists() {
+            return Ok(());
+        }
+        let dir = Path::new(&from).parent().unwrap();
+        self.create_dir_if_not_exist(dir.to_str().unwrap().to_string(), dest_root.clone())?;
+        let mut options = CopyOptions::new();
+        options.copy_inside = true;
+        debug!("copy dir: {} {}", from.clone(), format!("{}/{}", dest_root, from));
+        return match copy(from.clone(), format!("{}/{}", dest_root, from), &options) {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                warn!("can nout copy: {}", e);
+                Err(anyhow!(
+		    "copy failed: from {} to {}: {}",
+		    from,
+		    format!("{}/{}", dest_root, from),
+		    e
+		))
             }
         };
     }
@@ -402,6 +403,9 @@ impl RASPManager {
         }
         let root_dir = format!("/proc/{}/root", pid);
         self.copy_to_dest(root_dir)
+    }
+    pub fn can_copy(&self, mnt_namesapce: &String) -> bool {
+        !self.namespace_tracer.server_state(&mnt_namesapce).is_some()
     }
     pub fn root_dir(pid: i32) -> String {
         format!("/proc/{}/root", pid)
@@ -475,5 +479,22 @@ impl MntNamespaceTracer {
             }
         }
         return false;
+    }
+}
+
+impl RASPManager {
+    pub fn write_message_to_config_file(&self, pid: i32, nspid: i32, message: String) -> AnyhowResult<()> {
+        let config_path = format!("/proc/{}/root/var/run/elkeid_rasp/{}.json", pid, nspid);
+        let config_path_bak = format!("{}.bak", config_path);
+        fs_extra::file::write_all(&config_path_bak, message.as_str())?;
+        let mut option = fs_extra::file::CopyOptions::new();
+        option.overwrite = false;
+        fs_extra::file::move_file(config_path_bak, config_path, &option)?;
+        Ok(())
+    }
+    pub fn delete_config_file(&self, pid: i32, nspid: i32) -> AnyhowResult<()> {
+        let config_path = format!("/proc/{}/root/var/run/elkeid_rasp/{}.json", pid, nspid);
+        fs_extra::file::remove(config_path)?;
+        Ok(())
     }
 }
