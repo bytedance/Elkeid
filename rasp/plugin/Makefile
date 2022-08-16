@@ -1,15 +1,3 @@
-all:
-	@echo standalone service:
-	@echo make build
-	@echo
-	@echo plugin for Elkeid agent:
-	@echo make plugin
-	@echo
-	@echo for debug:
-	@echo make debug
-	@echo
-	@echo cargo clean:
-	@echo make clean
 plugin:
 	cargo build --bin elkeid_rasp_monitor --release
 plugin-musl:
