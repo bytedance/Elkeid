@@ -144,7 +144,7 @@ node: nsenter ## build node probe
 php_probe: ## build php probe
 	@echo "build PHP probe"
 	mkdir -p output/lib/php
-	cp -r $PHP_LIB output/lib/php
+	cp -r ${PHP_LIB} output/lib/php
 
 agent_plugin: rasp server ## build Elkeid-RASP plugin for Agent
 	@echo "build plugin"

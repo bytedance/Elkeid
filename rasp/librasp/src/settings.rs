@@ -31,25 +31,25 @@ pub fn RASP_SERVER_BIN() -> String {
 pub fn RASP_PANGOLIN() -> String { format!("{}{}", RASP_LIB_DIR(), "/pangolin") }
 
 // Golang
-pub fn RASP_GOLANG_BOE() -> String { format!("{}{}", RASP_LIB_DIR(), "/go_probe_boe") }
+pub fn RASP_GOLANG_BOE() -> String { format!("{}{}", RASP_LIB_DIR(), "/golang/go_probe_boe") }
 
-pub fn RASP_GOLANG() -> String { format!("{}{}", RASP_LIB_DIR(), "/go_probe") }
+pub fn RASP_GOLANG() -> String { format!("{}{}", RASP_LIB_DIR(), "/golang/go_probe") }
 
 // Python
-pub fn RASP_PYTHON_LOADER() -> String { format!("{}{}", RASP_LIB_DIR(), "/python_loader") }
+pub fn RASP_PYTHON_LOADER() -> String { format!("{}{}", RASP_LIB_DIR(), "/python/python_loader") }
 
-pub fn RASP_PYTHON_DIR_BOE() -> String { format!("{}{}", RASP_LIB_DIR(), "/python-boe") }
+pub fn RASP_PYTHON_DIR_BOE() -> String { format!("{}{}", RASP_LIB_DIR(), "/python/rasp_boe") }
 
-pub fn RASP_PYTHON_DIR() -> String { format!("{}{}", RASP_LIB_DIR(), "/python") }
+pub fn RASP_PYTHON_DIR() -> String { format!("{}{}", RASP_LIB_DIR(), "/python/rasp") }
 
-pub fn RASP_PYTHON_ENTRY_BOE() -> String { format!("{}{}", RASP_LIB_DIR(), "/python-boe/entry.py") }
+pub fn RASP_PYTHON_ENTRY_BOE() -> String { format!("{}{}", RASP_LIB_DIR(), "/python/entry.py") }
 
 pub fn RASP_PYTHON_ENTRY() -> String { format!("{}{}", RASP_LIB_DIR(), "/python/entry.py") }
 
 // JAVA
-pub fn RASP_JAVA_JATTACH_BIN() -> String { format!("{}{}", RASP_BASE_DIR(), "/jattach") }
+pub fn RASP_JAVA_JATTACH_BIN() -> String { format!("{}{}", RASP_LIB_DIR(), "/java/jattach") }
 
-pub fn RASP_JAVA_PROBE_BIN() -> String { format!("{}{}", RASP_LIB_DIR(), "/SmithAgent.jar") }
+pub fn RASP_JAVA_PROBE_BIN() -> String { format!("{}{}", RASP_LIB_DIR(), "/java/SmithAgent.jar") }
 
 // NodeJS
 pub fn RASP_NODEJS_DIR_BOE() -> String { format!("{}{}", RASP_LIB_DIR(), "/node-boe") }
