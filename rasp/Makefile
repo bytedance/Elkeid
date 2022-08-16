@@ -148,7 +148,6 @@ php_probe: ## build php probe
 agent_plugin: rasp server ## build Elkeid-RASP plugin for Agent
 	@echo "build plugin"
 	mkdir -p output
-	make -C plugin
 ifeq ($(STATIC), TRUE)
 	$(MAKE) -C plugin plugin-musl
 	cp plugin/target/x86_64-unknown-linux-musl/release/elkeid_rasp_monitor output/rasp

@@ -19,4 +19,4 @@ RUN mkdir -p output build; for header in php-headers/*; do cmake -B build -DSTAT
 
 WORKDIR /Elkeid/rasp
 
-RUN CC=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-gcc CXX=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-g++ LD=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-ld make build STATIC=TRUE PHP_LIB=php/output -j$(nproc)
+RUN CC=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-gcc CXX=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-g++ LD=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-ld CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-ld make build STATIC=TRUE PHP_LIB=php/output -j$(nproc)
