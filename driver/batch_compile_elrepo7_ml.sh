@@ -8,13 +8,13 @@ yum remove -y kernel-tools kernel-lt-tools kernel-ml-tools  &> /dev/null
 yum remove -y kernel-tools-libs kernel-lt-tools-libs kernel-ml-tools-libs   &> /dev/null
 
 cd /root
-wget http://mirrors.coreix.net/elrepo-archive-archive/kernel/el7/x86_64/RPMS/kernel-ml-devel-4.15.2-1.el7.elrepo.x86_64.rpm
-wget http://mirrors.coreix.net/elrepo-archive-archive/kernel/el7/x86_64/RPMS/kernel-ml-tools-4.15.2-1.el7.elrepo.x86_64.rpm
-wget http://mirrors.coreix.net/elrepo-archive-archive/kernel/el7/x86_64/RPMS/kernel-ml-tools-libs-4.15.2-1.el7.elrepo.x86_64.rpm
+wget http://mirrors.coreix.net/elrepo-archive-archive/kernel/el7/x86_64/RPMS/kernel-ml-devel-4.15.4-1.el7.elrepo.x86_64.rpm
+wget http://mirrors.coreix.net/elrepo-archive-archive/kernel/el7/x86_64/RPMS/kernel-ml-tools-4.15.4-1.el7.elrepo.x86_64.rpm
+wget http://mirrors.coreix.net/elrepo-archive-archive/kernel/el7/x86_64/RPMS/kernel-ml-tools-libs-4.15.4-1.el7.elrepo.x86_64.rpm
 
-rpm -i --force ./kernel-ml-devel-4.15.2-1.el7.elrepo.x86_64.rpm ./kernel-ml-tools-4.15.2-1.el7.elrepo.x86_64.rpm ./kernel-ml-tools-libs-4.15.2-1.el7.elrepo.x86_64.rpm
+rpm -i --force ./kernel-ml-devel-4.15.4-1.el7.elrepo.x86_64.rpm ./kernel-ml-tools-4.15.4-1.el7.elrepo.x86_64.rpm ./kernel-ml-tools-libs-4.15.4-1.el7.elrepo.x86_64.rpm
 
-cp /usr/src/kernels/4.15.2-1.el7.elrepo.x86_64/tools/objtool/objtool /usr/bin/objtool
+cp /usr/src/kernels/4.15.4-1.el7.elrepo.x86_64/tools/objtool/objtool /usr/bin/objtool
 cp /usr/bin/objtool /bin/objtool
 cd -
 

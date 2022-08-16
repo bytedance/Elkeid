@@ -4,9 +4,9 @@ BUILD_VERSION=$(cat LKM/src/init.c | grep MODULE_VERSION | awk -F '"' '{print $2
 KO_NAME=$(grep "MODULE_NAME" ./LKM/Makefile | grep -m 1 ":=" | awk '{print $3}')
 
 cd /root
-wget http://mirrors.coreix.net/elrepo-archive-archive/kernel/el6/x86_64/RPMS/kernel-ml-devel-4.15.2-1.el6.elrepo.x86_64.rpm
-rpm -i --force ./kernel-ml-devel-4.15.2-1.el6.elrepo.x86_64.rpm
-cp /usr/src/kernels/4.15.2-1.el6.elrepo.x86_64/tools/objtool/objtool /usr/bin/objtool
+wget http://mirrors.coreix.net/elrepo-archive-archive/kernel/el6/x86_64/RPMS/kernel-ml-devel-4.15.4-1.el6.elrepo.x86_64.rpm
+rpm -i --force ./kernel-ml-devel-4.15.4-1.el6.elrepo.x86_64.rpm
+cp /usr/src/kernels/4.15.4-1.el6.elrepo.x86_64/tools/objtool/objtool /usr/bin/objtool
 cp /usr/bin/objtool /bin/objtool
 cd -
 
