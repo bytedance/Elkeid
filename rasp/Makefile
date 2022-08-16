@@ -2,6 +2,7 @@ PREFIX ?= /etc/elkeid/plugin/rasp
 STATIC ?= "FALSE"
 VERSION ?= 1.9.1.0
 PERV_LIB ?= "lib"
+PHP_LIB ?= "php/output"
 
 .PHONY: help
 help:
@@ -143,7 +144,7 @@ node: nsenter ## build node probe
 php_probe: ## build php probe
 	@echo "build PHP probe"
 	mkdir -p output/lib/php
-	cp /home/gaba/dev/php_probe/php-probe/output/*.so output/lib/php/
+	cp -r $PHP_LIB output/lib/php
 
 agent_plugin: rasp server ## build Elkeid-RASP plugin for Agent
 	@echo "build plugin"
@@ -167,7 +168,6 @@ build: agent_plugin nsenter process_injector java python go node php_probe rasp 
 	fi;
 	cd output && mv lib "lib-${VERSION}"
 	cd output && tar -czvf "rasp_${VERSION}.tar.gz" ./* && sha256sum "rasp_${VERSION}.tar.gz" && sha256sum rasp
-	cd output && rm -r "${PERV_LIB}"
 	mv "output/rasp_${VERSION}.tar.gz" .
 
 
