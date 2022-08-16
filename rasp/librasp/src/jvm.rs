@@ -35,10 +35,8 @@ impl ProbeCopy for JVMProbe {
 }
 
 pub fn java_attach(pid: i32) -> Result<bool> {
-    let cwd_path = std::env::current_dir()?;
-    let cwd = cwd_path.to_str().unwrap();
-    let java_attach = format!("{}/{}", cwd, settings::RASP_JAVA_JATTACH_BIN());
-    let probe = format!("{}/{}", cwd, settings::RASP_JAVA_PROBE_BIN());
+    let java_attach = settings::RASP_JAVA_JATTACH_BIN();
+    let probe = settings::RASP_JAVA_PROBE_BIN();
     let status = match Command::new(java_attach)
         .args(&[
             pid.to_string().as_str(),
@@ -58,10 +56,7 @@ pub fn java_attach(pid: i32) -> Result<bool> {
 }
 
 pub fn jcmd(pid: i32, cmd: &'static str) -> Result<Vec<u8>> {
-    let cwd_path = std::env::current_dir()?;
-    let cwd = cwd_path.to_str().unwrap();
-    let java_attach = format!("{}/{}", cwd, settings::RASP_JAVA_JATTACH_BIN());
-    // let probe = format!("{}/{}", cwd, settings::RASP_JAVA_PROBE_BIN);
+    let java_attach = settings::RASP_JAVA_JATTACH_BIN();
 
     let output = match Command::new(java_attach)
         .args(&[pid.to_string().as_str(), "jcmd", cmd])
