@@ -17,18 +17,13 @@ do
     wget -q "http://mirrors.coreix.net/elrepo-archive-archive/kernel/el6/x86_64/RPMS/kernel-ml-devel"-$each_ml_version.el6.elrepo.x86_64.rpm
     
     yum remove -y kernel-devel kernel-ml-devel kernel-lt-devel &> /dev/null
-
-    if [[ $each_ml_version =~ $SPECS_VERSION ]]
-    then
-        wget -q  http://mirrors.coreix.net/elrepo-archive-archive/kernel/el6/x86_64/RPMS/kernel-ml-devel-4.15.2-1.el6.elrepo.x86_64.rpm
-    fi
     
     rpm -i --force ./kernel*.rpm 
     rm -f ./kernel*.rpm 
 
     if [[ $each_ml_version =~ $SPECS_VERSION ]]
     then
-        cp /usr/src/kernels/4.15.2-1.el6.elrepo.x86_64/tools/objtool/objtool /usr/src/kernels/$each_ml_version.el6.elrepo.x86_64/tools/objtool/objtool 
+        cp /usr/bin/objtool /usr/src/kernels/$each_ml_version.el6.elrepo.x86_64/tools/objtool/objtool 
     fi
 
     KV=$each_ml_version.el6.elrepo.x86_64

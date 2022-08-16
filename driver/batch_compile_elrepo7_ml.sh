@@ -3,6 +3,23 @@ mkdir -p /ko_output
 BUILD_VERSION=$(cat LKM/src/init.c | grep MODULE_VERSION | awk -F '"' '{print $2}')
 KO_NAME=$(grep "MODULE_NAME" ./LKM/Makefile | grep -m 1 ":=" | awk '{print $3}')
 
+yum remove -y kernel-devel kernel-lt-devel kernel-ml-devel &> /dev/null
+yum remove -y kernel-tools kernel-lt-tools kernel-ml-tools  &> /dev/null
+yum remove -y kernel-tools-libs kernel-lt-tools-libs kernel-ml-tools-libs   &> /dev/null
+
+cd /root
+wget http://mirrors.coreix.net/elrepo-archive-archive/kernel/el7/x86_64/RPMS/kernel-ml-devel-4.15.2-1.el7.elrepo.x86_64.rpm
+wget http://mirrors.coreix.net/elrepo-archive-archive/kernel/el7/x86_64/RPMS/kernel-ml-tools-4.15.2-1.el7.elrepo.x86_64.rpm
+wget http://mirrors.coreix.net/elrepo-archive-archive/kernel/el7/x86_64/RPMS/kernel-ml-tools-libs-4.15.2-1.el7.elrepo.x86_64.rpm
+
+rpm -i --force ./kernel-ml-devel-4.15.2-1.el7.elrepo.x86_64.rpm ./kernel-ml-tools-4.15.2-1.el7.elrepo.x86_64.rpm ./kernel-ml-tools-libs-4.15.2-1.el7.elrepo.x86_64.rpm
+
+cp /usr/src/kernels/4.15.2-1.el7.elrepo.x86_64/tools/objtool/objtool /usr/bin/objtool
+cp /usr/bin/objtool /bin/objtool
+cd -
+
+SPECS_VERSION="4.15."
+
 for each_ml_version in `curl http://mirrors.coreix.net/elrepo-archive-archive/kernel/el7/x86_64/RPMS/ | grep el7.elrepo.x86_64.rpm | grep kernel-ml-devel | sed -r 's/.*href="([^"]+).*/\1/g' | sed -r 's/kernel-ml-devel-([^"]+).el7.elrepo.x86_64.rpm/\1/g'`
 do 
     wget -q "http://mirrors.coreix.net/elrepo-archive-archive/kernel/el7/x86_64/RPMS/kernel-ml-devel"-$each_ml_version.el7.elrepo.x86_64.rpm
@@ -12,6 +29,11 @@ do
     yum remove -y kernel-devel kernel-lt-devel kernel-ml-devel &> /dev/null
     yum remove -y kernel-tools kernel-lt-tools kernel-ml-tools  &> /dev/null
     yum remove -y kernel-tools-libs kernel-lt-tools-libs kernel-ml-tools-libs   &> /dev/null
+
+    if [[ $each_ml_version =~ $SPECS_VERSION ]]
+    then
+        cp /usr/bin/objtool /usr/src/kernels/$each_ml_version.el7.elrepo.x86_64/tools/objtool/objtool 
+    fi
 
     rpm -i --force ./kernel*.rpm 
     rm -f ./kernel*.rpm 
