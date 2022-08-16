@@ -119,7 +119,6 @@ python: python-probe ## build CPython probe
 	cp python/python-loader/bin/* output/lib/python/
 	cp -r python/python-probe/dist/rasp-1.0.0-py2.py3-none-any.whl output/lib/python/
 	cd output/lib/python/ && unzip -o rasp-1.0.0-py2.py3-none-any.whl
-	cp -r python/entry.py output/lib/python/
 
 
 go-probe: ## build golang probe
