@@ -1,6 +1,7 @@
 #include "smith_client.h"
 #include <sys/un.h>
 #include <zero/log.h>
+#include <unistd.h>
 
 constexpr auto RECONNECT_DELAY = timeval {60, 0};
 
@@ -9,13 +10,15 @@ constexpr auto PROTOCOL_MAX_SIZE = 10240;
 constexpr auto EVENT_BUFFER_MAX_SIZE = 1024 * 1024;
 
 constexpr auto SOCKET_PATH = "/var/run/smith_agent.sock";
+constexpr auto MESSAGE_DIRECTORY = "/var/run/elkeid_rasp";
 
-SmithClient::SmithClient(event_base *base, ISmithNotify *notify) {
-    mNotify = notify;
+SmithClient::SmithClient(event_base *base, IMessageHandler *handler) {
+    mHandler = handler;
     mEventBase = base;
 
     struct stub {
         static void onEvent(evutil_socket_t fd, short what, void *arg) {
+            static_cast<SmithClient *>(arg)->readMessage();
             static_cast<SmithClient *>(arg)->connect();
         }
     };
@@ -61,7 +64,7 @@ void SmithClient::onBufferRead(bufferevent *bev) {
         }
 
         try {
-            mNotify->onMessage(nlohmann::json::parse(buffer.get()).get<SmithMessage>());
+            mHandler->onMessage(nlohmann::json::parse(buffer.get()).get<SmithMessage>());
         } catch (const nlohmann::json::exception &e) {
             LOG_ERROR("exception: %s", e.what());
             disconnect();
@@ -170,6 +173,31 @@ void SmithClient::disconnect() {
     if (mBev) {
         bufferevent_free(mBev);
         mBev = nullptr;
+    }
+}
+
+void SmithClient::readMessage() {
+    std::filesystem::path path = std::filesystem::path(MESSAGE_DIRECTORY) / zero::strings::format("%d.json", getppid());
+    std::ifstream stream(path);
+
+    if (!stream.is_open())
+        return;
+
+    LOG_INFO("read message from %s", path.string().c_str());
+
+    try {
+        for (const auto &message: nlohmann::json::parse(stream).get<std::list<SmithMessage>>())
+            mHandler->onMessage(message);
+    } catch (const nlohmann::json::exception &e) {
+        LOG_ERROR("exception: %s", e.what());
+    }
+
+    stream.close();
+
+    std::error_code ec;
+
+    if (!std::filesystem::remove(path, ec)) {
+        LOG_WARNING("remove failed: %s", ec.message().c_str());
     }
 }
 

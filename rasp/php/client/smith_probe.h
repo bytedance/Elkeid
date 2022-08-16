@@ -4,7 +4,7 @@
 #include "smith_client.h"
 #include <zero/singleton.h>
 
-class SmithProbe: public ISmithNotify {
+class SmithProbe: public IMessageHandler {
 #define gSmithProbe zero::Singleton<SmithProbe>::getInstance()
 public:
     SmithProbe();
@@ -22,7 +22,7 @@ public:
     void onMessage(const SmithMessage &message) override;
 
 private:
-    bool filter(const SmithTrace& smithTrace);
+    bool filter(const Trace& trace);
 
 private:
     bool mExit{false};
@@ -36,6 +36,7 @@ private:
 private:
     event *mTimer;
     event_base *mEventBase;
+    Heartbeat mHeartbeat;
     SmithClient mClient{mEventBase, this};
     zero::Thread<SmithProbe> mConsumer{this};
 };

@@ -37,67 +37,79 @@ std::string getVersion() {
 #endif
 }
 
-void to_json(nlohmann::json &j, const SmithRequest &r) {
-    j = nlohmann::json {
-            {"port", r.port},
-            {"scheme", r.scheme},
-            {"host", r.host},
-            {"serverName", r.serverName},
-            {"serverAddress", r.serverAddress},
-            {"uri", r.uri},
-            {"query", r.query},
-            {"body", r.body},
-            {"method", r.method},
-            {"remoteAddress", r.remoteAddress},
-            {"documentRoot", r.documentRoot}
-    };
-
-    for (int i = 0; i < r.header_count; i++)
-        j["headers"][r.headers[i][0]] = r.headers[i][1];
-
-    for (int i = 0; i < r.file_count; i++)
-        j["files"].push_back({
-            {"name", r.files[i].name},
-            {"type", r.files[i].type},
-            {"tmp_name", r.files[i].tmp_name}
-        });
-}
-
-void to_json(nlohmann::json &j, const SmithMessage &m) {
+void to_json(nlohmann::json &j, const SmithMessage &message) {
     static pid_t pid = getpid();
     static std::string version = getVersion();
 
-    j = nlohmann::json {
-        {"pid", pid},
-        {"runtime", RUNTIME},
-        {"runtime_version", version},
-        {"time", std::time(nullptr)},
-        {"message_type", m.operate},
-        {"probe_version", PROBE_VERSION},
-        {"data", m.data}
+    j = {
+            {"pid",             pid},
+            {"runtime",         RUNTIME},
+            {"runtime_version", version},
+            {"time",            std::time(nullptr)},
+            {"message_type",    message.operate},
+            {"probe_version",   PROBE_VERSION},
+            {"data",            message.data}
     };
 }
 
-void from_json(const nlohmann::json &j, SmithMessage &m) {
-    j.at("message_type").get_to(m.operate);
-    j.at("data").get_to(m.data);
+void from_json(const nlohmann::json &j, SmithMessage &message) {
+    j.at("message_type").get_to(message.operate);
+    j.at("data").get_to(message.data);
 }
 
-void to_json(nlohmann::json &j, const SmithTrace &t) {
-    j = nlohmann::json {
-        {"class_id", t.classID},
-        {"method_id", t.methodID},
-        {"blocked", t.blocked},
-        {"request", t.request}
+void to_json(nlohmann::json &j, const Heartbeat &heartbeat) {
+    j = {
+            {"filter", heartbeat.filter},
+            {"block",  heartbeat.block},
+            {"limit",  heartbeat.limit}
+    };
+}
+
+void to_json(nlohmann::json &j, const UploadFile &uploadFile) {
+    j = {
+            {"name",     uploadFile.name},
+            {"type",     uploadFile.type},
+            {"tmp_name", uploadFile.tmp_name}
+    };
+}
+
+void to_json(nlohmann::json &j, const Request &request) {
+    j = {
+            {"port",          request.port},
+            {"scheme",        request.scheme},
+            {"host",          request.host},
+            {"serverName",    request.serverName},
+            {"serverAddress", request.serverAddress},
+            {"uri",           request.uri},
+            {"query",         request.query},
+            {"body",          request.body},
+            {"method",        request.method},
+            {"remoteAddress", request.remoteAddress},
+            {"documentRoot",  request.documentRoot}
     };
 
-    if (*t.ret)
-        j["ret"] = t.ret;
+    for (int i = 0; i < request.header_count; i++)
+        j["headers"][request.headers[i][0]] = request.headers[i][1];
 
-    for (int i = 0; i < t.count; i++)
-        j["args"].push_back(t.args[i]);
+    for (int i = 0; i < request.file_count; i++)
+        j["files"].push_back(request.files[i]);
+}
 
-    for (const auto& stackTrace: t.stackTrace) {
+void to_json(nlohmann::json &j, const Trace &trace) {
+    j = {
+            {"class_id",  trace.classID},
+            {"method_id", trace.methodID},
+            {"blocked",   trace.blocked},
+            {"request",   trace.request}
+    };
+
+    if (*trace.ret)
+        j["ret"] = trace.ret;
+
+    for (int i = 0; i < trace.count; i++)
+        j["args"].push_back(trace.args[i]);
+
+    for (const auto &stackTrace: trace.stackTrace) {
         if (!*stackTrace)
             break;
 
@@ -105,26 +117,41 @@ void to_json(nlohmann::json &j, const SmithTrace &t) {
     }
 }
 
-void from_json(const nlohmann::json &j, MatchRule &r) {
-    j.at("index").get_to(r.index);
-    j.at("regex").get_to(r.regex);
+void from_json(const nlohmann::json &j, MatchRule &matchRule) {
+    j.at("index").get_to(matchRule.index);
+    j.at("regex").get_to(matchRule.regex);
 }
 
-void from_json(const nlohmann::json &j, Filter &f) {
-    j.at("class_id").get_to(f.classId);
-    j.at("method_id").get_to(f.methodID);
-    j.at("include").get_to(f.include);
-    j.at("exclude").get_to(f.exclude);
+void from_json(const nlohmann::json &j, Filter &filter) {
+    j.at("class_id").get_to(filter.classId);
+    j.at("method_id").get_to(filter.methodID);
+    j.at("include").get_to(filter.include);
+    j.at("exclude").get_to(filter.exclude);
 }
 
-void from_json(const nlohmann::json &j, Block &b) {
-    j.at("class_id").get_to(b.classId);
-    j.at("method_id").get_to(b.methodID);
-    j.at("rules").get_to(b.rules);
+void from_json(const nlohmann::json &j, Block &block) {
+    j.at("class_id").get_to(block.classId);
+    j.at("method_id").get_to(block.methodID);
+    j.at("rules").get_to(block.rules);
 }
 
-void from_json(const nlohmann::json &j, Limit &l) {
-    j.at("class_id").get_to(l.classId);
-    j.at("method_id").get_to(l.methodID);
-    j.at("quota").get_to(l.quota);
+void from_json(const nlohmann::json &j, Limit &limit) {
+    j.at("class_id").get_to(limit.classId);
+    j.at("method_id").get_to(limit.methodID);
+    j.at("quota").get_to(limit.quota);
+}
+
+void from_json(const nlohmann::json &j, FilterConfig &config) {
+    j.at("uuid").get_to(config.uuid);
+    j.at("filters").get_to(config.filters);
+}
+
+void from_json(const nlohmann::json &j, BlockConfig &config) {
+    j.at("uuid").get_to(config.uuid);
+    j.at("blocks").get_to(config.blocks);
+}
+
+void from_json(const nlohmann::json &j, LimitConfig &config) {
+    j.at("uuid").get_to(config.uuid);
+    j.at("limits").get_to(config.limits);
 }

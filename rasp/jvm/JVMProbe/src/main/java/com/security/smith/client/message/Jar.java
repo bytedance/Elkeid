@@ -1,6 +1,6 @@
-package com.security.smith.type;
+package com.security.smith.client.message;
 
-public class SmithJar {
+public class Jar {
     private String path;
     private String implementationTitle;
     private String implementationVersion;
@@ -18,8 +18,8 @@ public class SmithJar {
             return true;
         }
 
-        if (obj instanceof SmithJar) {
-            return ((SmithJar) obj).getPath().equals(path);
+        if (obj instanceof Jar) {
+            return ((Jar) obj).getPath().equals(path);
         }
 
         return false;

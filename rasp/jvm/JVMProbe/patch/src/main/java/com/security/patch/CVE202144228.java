@@ -1,7 +1,7 @@
 package com.security.patch;
 
 import com.security.smith.log.SmithLogger;
-import com.security.smith.module.Patch;
+import com.security.smith.module.Patcher;
 import javassist.*;
 
 import java.io.ByteArrayInputStream;
@@ -13,7 +13,7 @@ import java.security.ProtectionDomain;
 import java.util.Arrays;
 import java.util.Optional;
 
-public class CVE202144228 implements Patch, ClassFileTransformer {
+public class CVE202144228 implements Patcher, ClassFileTransformer {
     private static final String CLASS_NAME = "org.apache.logging.log4j.core.net.JndiManager";
     private static final String METHOD_NAME = "lookup";
     private final Instrumentation inst;

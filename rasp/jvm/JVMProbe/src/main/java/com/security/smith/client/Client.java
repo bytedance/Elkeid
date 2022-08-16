@@ -3,43 +3,41 @@ package com.security.smith.client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.security.smith.client.message.*;
+import com.security.smith.common.ProcessHelper;
 import com.security.smith.log.SmithLogger;
-import com.security.smith.type.SmithBlock;
-import com.security.smith.type.SmithFilter;
-import com.security.smith.type.SmithLimit;
-import com.security.smith.type.SmithPatch;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.epoll.EpollDomainSocketChannel;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.unix.DomainSocketAddress;
 import io.netty.channel.unix.DomainSocketChannel;
-import io.netty.handler.timeout.IdleState;
-import io.netty.handler.timeout.IdleStateEvent;
-import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.concurrent.DefaultThreadFactory;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 
-interface ProbeClientHandlerNotify {
-    void reconnect();
-    void onConnect();
-    void onDisconnect();
-    void onMessage(ProtocolBuffer protocolBuffer);
+interface EventHandler {
+    void onReconnect();
+    void onMessage(Message message);
 }
 
-public class ProbeClient implements ProbeClientHandlerNotify {
+public class Client implements EventHandler {
     private static final int EVENT_LOOP_THREADS = 1;
-    private static final int READ_TIME_OUT = 60;
     private static final int RECONNECT_SCHEDULE = 60;
+    private static final String SOCKET_PATH = "/var/run/smith_agent.sock";
+    private static final String MESSAGE_DIRECTORY = "/var/run/elkeid_rasp";
 
     private Channel channel;
-    private final ProbeNotify probeNotify;
+    private final MessageHandler messageHandler;
     private final EpollEventLoopGroup group;
 
-    public ProbeClient(ProbeNotify probeNotify) {
+    public Client(MessageHandler messageHandler) {
         // note: linux use epoll, mac use kqueue
-        this.probeNotify = probeNotify;
+        this.messageHandler = messageHandler;
         this.group = new EpollEventLoopGroup(EVENT_LOOP_THREADS, new DefaultThreadFactory(getClass(), true));
     }
 
@@ -55,17 +53,16 @@ public class ProbeClient implements ProbeClientHandlerNotify {
                         public void initChannel(DomainSocketChannel ch) {
                             ChannelPipeline p = ch.pipeline();
 
-                            p.addLast(new IdleStateHandler(READ_TIME_OUT, 0, 0, TimeUnit.SECONDS));
-                            p.addLast(new ProtocolBufferDecoder());
-                            p.addLast(new ProtocolBufferEncoder());
-                            p.addLast(new ProbeClientHandler(ProbeClient.this));
+                            p.addLast(new MessageDecoder());
+                            p.addLast(new MessageEncoder());
+                            p.addLast(new ClientHandlerAdapter(Client.this));
                         }
                     });
 
-            channel = b.connect(new DomainSocketAddress("/var/run/smith_agent.sock"))
+            channel = b.connect(new DomainSocketAddress(SOCKET_PATH))
                     .addListener((ChannelFuture f) -> {
                         if (!f.isSuccess()) {
-                            f.channel().eventLoop().schedule(this::reconnect, RECONNECT_SCHEDULE, TimeUnit.SECONDS);
+                            f.channel().eventLoop().schedule(this::onReconnect, RECONNECT_SCHEDULE, TimeUnit.SECONDS);
                         }
                     }).sync().channel();
 
@@ -80,36 +77,31 @@ public class ProbeClient implements ProbeClientHandlerNotify {
     }
 
     public void write(Operate operate, Object object) {
-        if (!channel.isActive()) {
-            SmithLogger.logger.warning("channel inactive");
+        if (channel == null || !channel.isActive() || !channel.isWritable())
             return;
-        }
-
-        if (!channel.isWritable()) {
-            SmithLogger.logger.warning("channel cannot write");
-            return;
-        }
 
         ObjectMapper objectMapper = new ObjectMapper()
                 .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
 
-        ProtocolBuffer protocolBuffer = new ProtocolBuffer();
+        Message message = new Message();
 
-        protocolBuffer.setOperate(operate);
-        protocolBuffer.setData(objectMapper.valueToTree(object));
+        message.setOperate(operate);
+        message.setData(objectMapper.valueToTree(object));
 
-        channel.writeAndFlush(protocolBuffer);
+        channel.writeAndFlush(message);
     }
 
     @Override
-    public void reconnect() {
+    public void onReconnect() {
         SmithLogger.logger.info("reconnect");
+
+        readMessage();
         new Thread(this::start).start();
     }
 
     @Override
-    public void onMessage(ProtocolBuffer protocolBuffer) {
-        switch (protocolBuffer.getOperate()) {
+    public void onMessage(Message message) {
+        switch (message.getOperate()) {
             case EXIT:
                 SmithLogger.logger.info("exit");
                 break;
@@ -120,17 +112,17 @@ public class ProbeClient implements ProbeClientHandlerNotify {
 
             case CONFIG:
                 SmithLogger.logger.info("config");
-                probeNotify.onConfig(protocolBuffer.getData().get("config").asText());
+                messageHandler.onConfig(message.getData().get("config").asText());
                 break;
 
             case CONTROL:
                 SmithLogger.logger.info("control");
-                probeNotify.onControl(protocolBuffer.getData().get("action").asInt());
+                messageHandler.onControl(message.getData().get("action").asInt());
                 break;
 
             case DETECT:
                 SmithLogger.logger.info("detect");
-                probeNotify.onDetect();
+                messageHandler.onDetect();
                 break;
 
             case FILTER: {
@@ -140,14 +132,14 @@ public class ProbeClient implements ProbeClientHandlerNotify {
                         .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
 
                 try {
-                    probeNotify.onFilter(
+                    messageHandler.onFilter(
                             objectMapper.treeToValue(
-                                    protocolBuffer.getData().get("filters"),
-                                    SmithFilter[].class
+                                    message.getData(),
+                                    FilterConfig.class
                             )
                     );
                 } catch (JsonProcessingException e) {
-                    e.printStackTrace();
+                    SmithLogger.exception(e);
                 }
 
                 break;
@@ -160,14 +152,14 @@ public class ProbeClient implements ProbeClientHandlerNotify {
                         .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
 
                 try {
-                    probeNotify.onBlock(
+                    messageHandler.onBlock(
                             objectMapper.treeToValue(
-                                    protocolBuffer.getData().get("blocks"),
-                                    SmithBlock[].class
+                                    message.getData(),
+                                    BlockConfig.class
                             )
                     );
                 } catch (JsonProcessingException e) {
-                    e.printStackTrace();
+                    SmithLogger.exception(e);
                 }
 
                 break;
@@ -180,14 +172,14 @@ public class ProbeClient implements ProbeClientHandlerNotify {
                         .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
 
                 try {
-                    probeNotify.onLimit(
+                    messageHandler.onLimit(
                             objectMapper.treeToValue(
-                                    protocolBuffer.getData().get("limits"),
-                                    SmithLimit[].class
+                                    message.getData(),
+                                    LimitConfig.class
                             )
                     );
                 } catch (JsonProcessingException e) {
-                    e.printStackTrace();
+                    SmithLogger.exception(e);
                 }
 
                 break;
@@ -200,14 +192,14 @@ public class ProbeClient implements ProbeClientHandlerNotify {
                         .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
 
                 try {
-                    probeNotify.onPatch(
+                    messageHandler.onPatch(
                             objectMapper.treeToValue(
-                                    protocolBuffer.getData().get("patches"),
-                                    SmithPatch[].class
+                                    message.getData(),
+                                    PatchConfig.class
                             )
                     );
                 } catch (JsonProcessingException e) {
-                    e.printStackTrace();
+                    SmithLogger.exception(e);
                 }
 
                 break;
@@ -215,66 +207,57 @@ public class ProbeClient implements ProbeClientHandlerNotify {
         }
     }
 
-    @Override
-    public void onConnect() {
-        probeNotify.onConnect();
-    }
+    private void readMessage() {
+        Path path = Paths.get(MESSAGE_DIRECTORY, String.format("%d.json", ProcessHelper.getCurrentPID()));
 
-    @Override
-    public void onDisconnect() {
-        probeNotify.onDisconnect();
-    }
+        if (!Files.exists(path))
+            return;
 
-    static class ProbeClientHandler extends ChannelInboundHandlerAdapter {
-        private final ProbeClientHandlerNotify probeClientHandlerNotify;
+        ObjectMapper objectMapper = new ObjectMapper()
+                .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
 
-        ProbeClientHandler(ProbeClientHandlerNotify probeClientHandlerNotify) {
-            this.probeClientHandlerNotify = probeClientHandlerNotify;
+        try {
+            for (Message message : objectMapper.readValue(path.toFile(), Message[].class))
+                onMessage(message);
+
+            Files.delete(path);
+        } catch (IOException e) {
+            SmithLogger.exception(e);
         }
+    }
 
-        @Override
-        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
-            if (evt instanceof IdleStateEvent) {
-                IdleStateEvent e = (IdleStateEvent) evt;
+    static class ClientHandlerAdapter extends ChannelInboundHandlerAdapter {
+        private final EventHandler eventHandler;
 
-                if (e.state() == IdleState.READER_IDLE) {
-                    SmithLogger.logger.info("send heartbeat request");
-
-                    ProtocolBuffer protocolBuffer = new ProtocolBuffer();
-
-                    protocolBuffer.setOperate(Operate.HEARTBEAT);
-                    ctx.writeAndFlush(protocolBuffer);
-                }
-            }
+        ClientHandlerAdapter(EventHandler eventHandler) {
+            this.eventHandler = eventHandler;
         }
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) throws Exception {
             super.channelInactive(ctx);
-
             SmithLogger.logger.info("channel inactive");
 
-            probeClientHandlerNotify.onDisconnect();
-            ctx.channel().eventLoop().schedule(probeClientHandlerNotify::reconnect, RECONNECT_SCHEDULE, TimeUnit.SECONDS);
+            ctx.channel().eventLoop().schedule(
+                    eventHandler::onReconnect,
+                    RECONNECT_SCHEDULE,
+                    TimeUnit.SECONDS
+            );
         }
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception {
             super.channelActive(ctx);
-
             SmithLogger.logger.info("channel active");
-            probeClientHandlerNotify.onConnect();
         }
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
-            probeClientHandlerNotify.onMessage((ProtocolBuffer) msg);
+            eventHandler.onMessage((Message) msg);
         }
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            probeClientHandlerNotify.onDisconnect();
-
             SmithLogger.exception(cause);
             ctx.close();
         }

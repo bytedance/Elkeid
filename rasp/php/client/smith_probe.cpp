@@ -57,16 +57,18 @@ void SmithProbe::consume() {
             continue;
         }
 
-        const SmithTrace &smithTrace = gAPITrace->mBuffer[*index];
+        const Trace &trace = gAPITrace->mBuffer[*index];
 
-        if (filter(smithTrace))
-            mClient.write({TRACE, smithTrace});
+        if (filter(trace))
+            mClient.write({TRACE, trace});
 
         gAPITrace->mBuffer.release(*index);
     }
 }
 
 void SmithProbe::onTimer() {
+    mClient.write({HEARTBEAT, mHeartbeat});
+
     std::lock_guard<std::mutex> _0_(mLimitMutex);
 
     for (int i = 0; i < CLASS_MAX; i++) {
@@ -96,17 +98,15 @@ void SmithProbe::onMessage(const SmithMessage &message) {
         case FILTER: {
             LOG_INFO("filter message");
 
-            if (!message.data.contains("filters"))
-                break;
+            auto config = message.data.get<FilterConfig>();
 
-            auto filters = message.data.at("filters").get<std::list<Filter>>();
             std::lock_guard<std::mutex> _0_(mFilterMutex);
 
             mFilters.clear();
+            mHeartbeat.filter = config.uuid;
 
-            for (const auto &filter: filters) {
+            for (const auto &filter: config.filters)
                 mFilters.insert({{filter.classId, filter.methodID}, filter});
-            }
 
             break;
         }
@@ -114,12 +114,11 @@ void SmithProbe::onMessage(const SmithMessage &message) {
         case BLOCK: {
             LOG_INFO("block message");
 
-            if (!message.data.contains("blocks"))
-                break;
+            auto config = message.data.get<BlockConfig>();
 
-            auto blocks = message.data.at("blocks").get<std::list<Block>>();
+            mHeartbeat.block = config.uuid;
 
-            for (const auto &block: blocks) {
+            for (const auto &block: config.blocks) {
                 if (block.classId >= CLASS_MAX || block.methodID >= METHOD_MAX)
                     continue;
 
@@ -155,31 +154,28 @@ void SmithProbe::onMessage(const SmithMessage &message) {
         case LIMIT: {
             LOG_INFO("limit message");
 
-            if (!message.data.contains("limits"))
-                break;
+            auto config = message.data.get<LimitConfig>();
 
-            auto limits = message.data.at("limits").get<std::list<Limit>>();
             std::lock_guard<std::mutex> _0_(mLimitMutex);
 
             mLimits.clear();
+            mHeartbeat.limit = config.uuid;
 
-            for (const auto &limit: limits) {
+            for (const auto &limit: config.limits)
                 mLimits.insert({{limit.classId, limit.methodID}, limit.quota});
-            }
 
             break;
         }
-
 
         default:
             break;
     }
 }
 
-bool SmithProbe::filter(const SmithTrace &smithTrace) {
+bool SmithProbe::filter(const Trace &trace) {
     std::lock_guard<std::mutex> _0_(mFilterMutex);
 
-    auto it = mFilters.find({smithTrace.classID, smithTrace.methodID});
+    auto it = mFilters.find({trace.classID, trace.methodID});
 
     if (it == mFilters.end()) {
         return true;
@@ -189,12 +185,12 @@ bool SmithProbe::filter(const SmithTrace &smithTrace) {
     const auto &exclude = it->second.exclude;
 
     auto pred = [&](const MatchRule &rule) {
-        if (rule.index >= smithTrace.count)
+        if (rule.index >= trace.count)
             return false;
 
         int length = 0;
 
-        return re_match(rule.regex.c_str(), smithTrace.args[rule.index], &length) != -1;
+        return re_match(rule.regex.c_str(), trace.args[rule.index], &length) != -1;
     };
 
     if (!include.empty() && std::none_of(include.begin(), include.end(), pred))

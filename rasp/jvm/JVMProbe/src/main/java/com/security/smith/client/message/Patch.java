@@ -1,8 +1,8 @@
-package com.security.smith.type;
+package com.security.smith.client.message;
 
 import java.net.URL;
 
-public class SmithPatch {
+public class Patch {
     private String className;
     private URL url;
 

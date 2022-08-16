@@ -23,9 +23,9 @@ import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.List;
 
-@JsonSerialize(using = ProtocolBufferSerializer.class)
-@JsonDeserialize(using = ProtocolBufferDeserializer.class)
-class ProtocolBuffer {
+@JsonSerialize(using = MessageSerializer.class)
+@JsonDeserialize(using = MessageDeserializer.class)
+class Message {
     static final int PROTOCOL_HEADER_SIZE = 4;
     static final int MAX_PAYLOAD_SIZE = 10240;
 
@@ -49,7 +49,7 @@ class ProtocolBuffer {
     }
 }
 
-class ProtocolBufferSerializer extends StdSerializer<ProtocolBuffer> {
+class MessageSerializer extends StdSerializer<Message> {
     static private final int pid;
     static private final String jvmVersion;
     static private final String probeVersion;
@@ -57,19 +57,19 @@ class ProtocolBufferSerializer extends StdSerializer<ProtocolBuffer> {
     static {
         pid = ProcessHelper.getCurrentPID();
         jvmVersion = ManagementFactory.getRuntimeMXBean().getSpecVersion();
-        probeVersion = ProtocolBufferSerializer.class.getPackage().getImplementationVersion();
+        probeVersion = MessageSerializer.class.getPackage().getImplementationVersion();
     }
 
-    protected ProtocolBufferSerializer() {
-        super(ProtocolBuffer.class);
+    protected MessageSerializer() {
+        super(Message.class);
     }
 
-    protected ProtocolBufferSerializer(Class<ProtocolBuffer> t) {
+    protected MessageSerializer(Class<Message> t) {
         super(t);
     }
 
     @Override
-    public void serialize(ProtocolBuffer value, JsonGenerator gen, SerializerProvider provider) throws IOException {
+    public void serialize(Message value, JsonGenerator gen, SerializerProvider provider) throws IOException {
         gen.writeStartObject();
 
         gen.writeNumberField("pid", pid);
@@ -85,29 +85,29 @@ class ProtocolBufferSerializer extends StdSerializer<ProtocolBuffer> {
     }
 }
 
-class ProtocolBufferDeserializer extends StdDeserializer<ProtocolBuffer> {
-    protected ProtocolBufferDeserializer() {
-        super(ProtocolBuffer.class);
+class MessageDeserializer extends StdDeserializer<Message> {
+    protected MessageDeserializer() {
+        super(Message.class);
     }
 
-    protected ProtocolBufferDeserializer(Class<?> vc) {
+    protected MessageDeserializer(Class<?> vc) {
         super(vc);
     }
 
     @Override
-    public ProtocolBuffer deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+    public Message deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
         JsonNode node = p.getCodec().readTree(p);
 
-        ProtocolBuffer protocolBuffer = new ProtocolBuffer();
+        Message message = new Message();
 
-        protocolBuffer.setOperate(Operate.values()[node.get("message_type").asInt()]);
-        protocolBuffer.setData(node.get("data"));
+        message.setOperate(Operate.values()[node.get("message_type").asInt()]);
+        message.setData(node.get("data"));
 
-        return protocolBuffer;
+        return message;
     }
 }
 
-class ProtocolBufferEncoder extends MessageToByteEncoder<Object> {
+class MessageEncoder extends MessageToByteEncoder<Object> {
     @Override
     protected void encode(ChannelHandlerContext ctx, Object msg, ByteBuf out) throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -115,7 +115,7 @@ class ProtocolBufferEncoder extends MessageToByteEncoder<Object> {
         byte[] payload = objectMapper.writeValueAsBytes(msg);
         int payloadSize = payload.length;
 
-        ByteBuffer buffer = ByteBuffer.allocate(payloadSize + ProtocolBuffer.PROTOCOL_HEADER_SIZE);
+        ByteBuffer buffer = ByteBuffer.allocate(payloadSize + Message.PROTOCOL_HEADER_SIZE);
 
         buffer.putInt(payloadSize);
         buffer.put(payload);
@@ -126,12 +126,12 @@ class ProtocolBufferEncoder extends MessageToByteEncoder<Object> {
     }
 }
 
-class ProtocolBufferDecoder extends ReplayingDecoder<Void> {
+class MessageDecoder extends ReplayingDecoder<Void> {
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws IOException {
         int payloadSize = in.readInt();
 
-        if (payloadSize > ProtocolBuffer.MAX_PAYLOAD_SIZE)
+        if (payloadSize > Message.MAX_PAYLOAD_SIZE)
             return;
 
         byte[] buffer = new byte[payloadSize];
@@ -139,9 +139,9 @@ class ProtocolBufferDecoder extends ReplayingDecoder<Void> {
 
         ObjectMapper objectMapper = new ObjectMapper();
 
-        ProtocolBuffer protocolBuffer = objectMapper.readValue(buffer, ProtocolBuffer.class);
+        Message message = objectMapper.readValue(buffer, Message.class);
 
-        if (protocolBuffer != null)
-            out.add(protocolBuffer);
+        if (message != null)
+            out.add(message);
     }
 }
