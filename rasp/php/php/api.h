@@ -100,10 +100,10 @@ public:
         return true;
     }
 
-    bool block(int classID, int methodID, const Trace &trace) {
+    bool block(const Trace &trace) {
         z_rwlock_read_lock(&mLock);
 
-        BlockPolicy &policy = mBlockPolicies[classID][methodID];
+        BlockPolicy &policy = mBlockPolicies[trace.classID][trace.methodID];
 
         bool match = std::any_of(policy.rules, policy.rules + policy.count, [&](const auto &rule) {
             if (rule.first >= trace.count)
@@ -237,7 +237,7 @@ public:
         trace.request = PHP_PROBE_G(request);
 
         if constexpr (CanBlock) {
-            if (gAPIConfig->block(ClassID, MethodID, trace)) {
+            if (gAPIConfig->block(trace)) {
                 trace.blocked = true;
 
                 gAPITrace->enqueue(trace);
