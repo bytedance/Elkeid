@@ -455,6 +455,163 @@ pub struct DetectTask {
     pub mtime: u64,
     pub token: String,
     pub add_ons: Option<HashMap<String, String>>,
+<<<<<<< HEAD
+}
+
+#[derive(Serialize, Debug, Default)]
+pub struct DetectOneTaskEvent {
+    types: String,    // rule type
+    class: String,    // class
+    name: String,     // name
+    exe: String,      // file path
+    exe_size: String, // file size
+    exe_hash: String, // xhash 32k
+    md5_hash: String, // md5
+    create_at: String,
+    modify_at: String,
+    error: String, // error
+    token: String, // task token
+
+    matched_data: Option<Vec<String>>,
+}
+
+impl DetectOneTaskEvent {
+    fn to_record_with_add_on(&self, addons: &HashMap<String, String>) -> plugins::Record {
+        let mut r = plugins::Record::new();
+        let mut pld = plugins::Payload::new();
+        r.set_data_type(6003);
+        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
+        let mut hmp = HashMap::with_capacity(16);
+        hmp.insert("types".to_string(), self.types.to_string());
+        hmp.insert("class".to_string(), self.class.to_string());
+        hmp.insert("name".to_string(), self.name.to_string());
+        hmp.insert("exe".to_string(), self.exe.to_string());
+        hmp.insert("exe_size".to_string(), self.exe_size.to_string());
+        hmp.insert("exe_hash".to_string(), self.exe_hash.to_string());
+        hmp.insert("md5_hash".to_string(), self.md5_hash.to_string());
+        hmp.insert("create_at".to_string(), self.create_at.to_string());
+        hmp.insert("modify_at".to_string(), self.modify_at.to_string());
+        for (k, v) in addons.into_iter() {
+            hmp.insert(k.to_string(), v.to_string());
+        }
+        hmp.insert("error".to_string(), self.error.to_string());
+        hmp.insert("token".to_string(), self.token.to_string());
+
+        if let Some(mdata) = &self.matched_data {
+            hmp.insert(
+                "hit_data".to_string(),
+                serde_json::to_string(&mdata).unwrap_or_default(),
+            );
+        }
+
+        pld.set_fields(hmp);
+        r.set_data(pld);
+        return r;
+    }
+}
+
+impl ToAgentRecord for DetectOneTaskEvent {
+    fn to_record(&self) -> plugins::Record {
+        let mut r = plugins::Record::new();
+        let mut pld = plugins::Payload::new();
+        r.set_data_type(6003);
+        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
+        let mut hmp = HashMap::with_capacity(16);
+        hmp.insert("types".to_string(), self.types.to_string());
+        hmp.insert("class".to_string(), self.class.to_string());
+        hmp.insert("name".to_string(), self.name.to_string());
+        hmp.insert("exe".to_string(), self.exe.to_string());
+        hmp.insert("exe_size".to_string(), self.exe_size.to_string());
+        hmp.insert("exe_hash".to_string(), self.exe_hash.to_string());
+        hmp.insert("md5_hash".to_string(), self.md5_hash.to_string());
+        hmp.insert("create_at".to_string(), self.create_at.to_string());
+        hmp.insert("modify_at".to_string(), self.modify_at.to_string());
+        hmp.insert("error".to_string(), self.error.to_string());
+        hmp.insert("token".to_string(), self.token.to_string());
+
+        if let Some(mdata) = &self.matched_data {
+            hmp.insert(
+                "hit_data".to_string(),
+                serde_json::to_string(&mdata).unwrap_or_default(),
+            );
+        }
+
+        pld.set_fields(hmp);
+        r.set_data(pld);
+        return r;
+    }
+
+    fn to_record_token(&self, token: &str) -> plugins::Record {
+        let mut r = plugins::Record::new();
+        let mut pld = plugins::Payload::new();
+        r.set_data_type(6003);
+        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
+        let mut hmp = HashMap::with_capacity(16);
+        hmp.insert("types".to_string(), self.types.to_string());
+        hmp.insert("class".to_string(), self.class.to_string());
+        hmp.insert("name".to_string(), self.name.to_string());
+        hmp.insert("exe".to_string(), self.exe.to_string());
+        hmp.insert("exe_size".to_string(), self.exe_size.to_string());
+        hmp.insert("exe_hash".to_string(), self.exe_hash.to_string());
+        hmp.insert("md5_hash".to_string(), self.md5_hash.to_string());
+        hmp.insert("create_at".to_string(), self.create_at.to_string());
+        hmp.insert("modify_at".to_string(), self.modify_at.to_string());
+        hmp.insert("error".to_string(), self.error.to_string());
+        hmp.insert("token".to_string(), token.to_string());
+
+        if let Some(mdata) = &self.matched_data {
+            hmp.insert(
+                "hit_data".to_string(),
+                serde_json::to_string(&mdata).unwrap_or_default(),
+            );
+        }
+
+        pld.set_fields(hmp);
+        r.set_data(pld);
+        return r;
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub struct RegReport<'a> {
+    db_version: &'a str,
+    db_sha256: &'a str,
+}
+
+impl ToAgentRecord for RegReport<'_> {
+    fn to_record(&self) -> plugins::Record {
+        let mut r = plugins::Record::new();
+        let mut pld = plugins::Payload::new();
+        r.set_data_type(6010);
+        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
+        let mut hmp = HashMap::with_capacity(4);
+        hmp.insert("version".to_string(), self.db_version.to_string());
+        hmp.insert("exe_hash".to_string(), self.db_sha256.to_string());
+        pld.set_fields(hmp);
+        r.set_data(pld);
+        return r;
+    }
+
+    fn to_record_token(&self, token: &str) -> plugins::Record {
+        let mut r = plugins::Record::new();
+        let mut pld = plugins::Payload::new();
+        r.set_data_type(6010);
+        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
+        let mut hmp = HashMap::with_capacity(4);
+        hmp.insert("version".to_string(), self.db_version.to_string());
+        hmp.insert("exe_hash".to_string(), self.db_sha256.to_string());
+        hmp.insert("token".to_string(), token.to_string());
+
+        pld.set_fields(hmp);
+        r.set_data(pld);
+        return r;
+    }
+}
+
+pub struct Scanner {
+    pub inner: Clamav,
+=======
+>>>>>>> 158296b (update scanner)
 }
 
 #[derive(Serialize, Debug, Default)]
@@ -610,6 +767,7 @@ impl ToAgentRecord for RegReport<'_> {
 pub struct Scanner {
     pub inner: Clamav,
 }
+
 
 impl Scanner {
     pub fn new(db_path: &str) -> Result<Self> {
@@ -804,6 +962,10 @@ pub struct Detector {
     _recv_worker: thread::JoinHandle<()>,
     rule_updater: crossbeam_channel::Receiver<String>,
     db_manager: updater::DBManager,
+<<<<<<< HEAD
+=======
+    model_php: String,
+>>>>>>> 158296b (update scanner)
     ppid: u32,
     supper_mode: bool,
 }
@@ -817,6 +979,10 @@ impl Detector {
         s_locker: crossbeam_channel::Sender<()>,
         db_path: &str,
         db_manager: updater::DBManager,
+<<<<<<< HEAD
+=======
+        model_php: &str,
+>>>>>>> 158296b (update scanner)
     ) -> Self {
         let recv_worker_s_locker = s_locker.clone();
         let (s, r) = bounded(0);
@@ -1042,6 +1208,10 @@ impl Detector {
             _recv_worker: recv_worker,
             rule_updater: r,
             db_manager: db_manager,
+<<<<<<< HEAD
+=======
+            model_php: model_php.into(),
+>>>>>>> 158296b (update scanner)
             supper_mode: false,
         };
     }
@@ -1091,7 +1261,11 @@ impl Detector {
                         work_s_locker.send(()).unwrap();
                         return
                     }
+<<<<<<< HEAD
                     match Scanner::new(&self.db_path){
+=======
+                    match Scanner::new(&self.db_path,&self.model_php){
+>>>>>>> 158296b (update scanner)
                         Ok(s) =>{
                             self.scanner = Some(
                                 s
@@ -1114,7 +1288,11 @@ impl Detector {
                                 work_s_locker.send(()).unwrap();
                                 return
                             }
+<<<<<<< HEAD
                             match Scanner::new(&self.db_path){
+=======
+                            match Scanner::new(&self.db_path,&self.model_php){
+>>>>>>> 158296b (update scanner)
                                 Ok(s) =>{
                                     self.scanner = Some(
                                         s
