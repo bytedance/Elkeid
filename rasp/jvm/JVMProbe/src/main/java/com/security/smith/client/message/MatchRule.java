@@ -1,6 +1,6 @@
-package com.security.smith.type;
+package com.security.smith.client.message;
 
-public class SmithMatchRule {
+public class MatchRule {
     private int index;
     private String regex;
 

@@ -14,41 +14,6 @@ constexpr auto SMITH_FILE_COUNT = 5;
 constexpr auto SMITH_HEADER_COUNT = 20;
 constexpr auto SMITH_FIELD_LENGTH = 256;
 
-struct UploadFile {
-    char name[SMITH_FIELD_LENGTH];
-    char type[SMITH_FIELD_LENGTH];
-    char tmp_name[SMITH_FIELD_LENGTH];
-};
-
-struct SmithRequest {
-    short port;
-    char scheme[SMITH_FIELD_LENGTH];
-    char host[SMITH_FIELD_LENGTH];
-    char serverName[SMITH_FIELD_LENGTH];
-    char serverAddress[SMITH_FIELD_LENGTH];
-    char uri[SMITH_FIELD_LENGTH];
-    char query[SMITH_FIELD_LENGTH];
-    char body[SMITH_FIELD_LENGTH];
-    char method[SMITH_FIELD_LENGTH];
-    char remoteAddress[SMITH_FIELD_LENGTH];
-    char documentRoot[SMITH_FIELD_LENGTH];
-    int file_count;
-    char headers[SMITH_HEADER_COUNT][2][SMITH_FIELD_LENGTH];
-    int header_count;
-    UploadFile files[SMITH_FILE_COUNT];
-};
-
-struct SmithTrace {
-    int classID;
-    int methodID;
-    bool blocked;
-    int count;
-    char ret[SMITH_ARG_LENGTH];
-    char args[SMITH_ARG_COUNT][SMITH_ARG_LENGTH];
-    char stackTrace[SMITH_TRACE_COUNT][SMITH_TRACE_LENGTH];
-    SmithRequest request;
-};
-
 enum Operate {
     EXIT,
     HEARTBEAT,
@@ -66,6 +31,47 @@ struct SmithMessage {
     nlohmann::json data;
 };
 
+struct Heartbeat {
+    std::string filter;
+    std::string block;
+    std::string limit;
+};
+
+struct UploadFile {
+    char name[SMITH_FIELD_LENGTH];
+    char type[SMITH_FIELD_LENGTH];
+    char tmp_name[SMITH_FIELD_LENGTH];
+};
+
+struct Request {
+    short port;
+    char scheme[SMITH_FIELD_LENGTH];
+    char host[SMITH_FIELD_LENGTH];
+    char serverName[SMITH_FIELD_LENGTH];
+    char serverAddress[SMITH_FIELD_LENGTH];
+    char uri[SMITH_FIELD_LENGTH];
+    char query[SMITH_FIELD_LENGTH];
+    char body[SMITH_FIELD_LENGTH];
+    char method[SMITH_FIELD_LENGTH];
+    char remoteAddress[SMITH_FIELD_LENGTH];
+    char documentRoot[SMITH_FIELD_LENGTH];
+    int file_count;
+    char headers[SMITH_HEADER_COUNT][2][SMITH_FIELD_LENGTH];
+    int header_count;
+    UploadFile files[SMITH_FILE_COUNT];
+};
+
+struct Trace {
+    int classID;
+    int methodID;
+    bool blocked;
+    int count;
+    char ret[SMITH_ARG_LENGTH];
+    char args[SMITH_ARG_COUNT][SMITH_ARG_LENGTH];
+    char stackTrace[SMITH_TRACE_COUNT][SMITH_TRACE_LENGTH];
+    Request request;
+};
+
 struct MatchRule {
     int index;
     std::string regex;
@@ -78,10 +84,20 @@ struct Filter {
     std::list<MatchRule> exclude;
 };
 
+struct FilterConfig {
+    std::string uuid;
+    std::list<Filter> filters;
+};
+
 struct Block {
     int classId;
     int methodID;
     std::list<MatchRule> rules;
+};
+
+struct BlockConfig {
+    std::string uuid;
+    std::list<Block> blocks;
 };
 
 struct Limit {
@@ -90,16 +106,25 @@ struct Limit {
     int quota;
 };
 
-void to_json(nlohmann::json &j, const SmithRequest &r);
+struct LimitConfig {
+    std::string uuid;
+    std::list<Limit> limits;
+};
 
-void to_json(nlohmann::json &j, const SmithMessage &m);
-void from_json(const nlohmann::json &j, SmithMessage &m);
+void to_json(nlohmann::json &j, const SmithMessage &message);
+void from_json(const nlohmann::json &j, SmithMessage &message);
 
-void to_json(nlohmann::json &j, const SmithTrace &t);
+void to_json(nlohmann::json &j, const Heartbeat &heartbeat);
+void to_json(nlohmann::json &j, const UploadFile &uploadFile);
+void to_json(nlohmann::json &j, const Request &request);
+void to_json(nlohmann::json &j, const Trace &trace);
 
-void from_json(const nlohmann::json &j, MatchRule &r);
-void from_json(const nlohmann::json &j, Filter &f);
-void from_json(const nlohmann::json &j, Block &b);
-void from_json(const nlohmann::json &j, Limit &l);
+void from_json(const nlohmann::json &j, MatchRule &matchRule);
+void from_json(const nlohmann::json &j, Filter &filter);
+void from_json(const nlohmann::json &j, Block &block);
+void from_json(const nlohmann::json &j, Limit &limit);
+void from_json(const nlohmann::json &j, FilterConfig &config);
+void from_json(const nlohmann::json &j, BlockConfig &config);
+void from_json(const nlohmann::json &j, LimitConfig &config);
 
 #endif //PHP_PROBE_SMITH_MESSAGE_H

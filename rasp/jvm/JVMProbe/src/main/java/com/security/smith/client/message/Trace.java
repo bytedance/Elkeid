@@ -1,11 +1,11 @@
-package com.security.smith.type;
+package com.security.smith.client.message;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.util.StdConverter;
 
 import java.util.Arrays;
 
-public class SmithTrace {
+public class Trace {
     private int classID;
     private int methodID;
     private boolean blocked;

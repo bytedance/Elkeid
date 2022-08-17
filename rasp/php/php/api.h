@@ -48,13 +48,13 @@ public:
     }
 
 public:
-    void trace(const SmithTrace &smithTrace) {
+    void enqueue(const Trace &trace) {
         std::optional<size_t> index = mBuffer.reserve();
 
         if (!index)
             return;
 
-        mBuffer[*index] = smithTrace;
+        mBuffer[*index] = trace;
         mBuffer.commit(*index);
 
         if (mBuffer.size() >= TRACE_BUFFER_SIZE / 2)
@@ -63,7 +63,7 @@ public:
 
 public:
     zero::atomic::Event mEvent;
-    zero::atomic::CircularBuffer<SmithTrace, TRACE_BUFFER_SIZE> mBuffer;
+    zero::atomic::CircularBuffer<Trace, TRACE_BUFFER_SIZE> mBuffer;
 };
 
 struct BlockPolicy {
@@ -100,18 +100,18 @@ public:
         return true;
     }
 
-    bool block(int classID, int methodID, const SmithTrace &smithTrace) {
+    bool block(const Trace &trace) {
         z_rwlock_read_lock(&mLock);
 
-        BlockPolicy &policy = mBlockPolicies[classID][methodID];
+        BlockPolicy &policy = mBlockPolicies[trace.classID][trace.methodID];
 
         bool match = std::any_of(policy.rules, policy.rules + policy.count, [&](const auto &rule) {
-            if (rule.first >= smithTrace.count)
+            if (rule.first >= trace.count)
                 return false;
 
             int length = 0;
 
-            return re_match(rule.second, smithTrace.args[rule.first], &length) != -1;
+            return re_match(rule.second, trace.args[rule.first], &length) != -1;
         });
 
         z_rwlock_read_unlock(&mLock);
@@ -201,19 +201,19 @@ public:
             return;
         }
 
-        SmithTrace smithTrace = {
+        Trace trace = {
                 ClassID,
                 MethodID
         };
 
-        while (smithTrace.count < std::min(argc, SMITH_ARG_COUNT)) {
-            zval *arg = args[smithTrace.count];
+        while (trace.count < std::min(argc, SMITH_ARG_COUNT)) {
+            zval *arg = args[trace.count];
 
             if (!arg)
                 continue;
 
             strncpy(
-                    smithTrace.args[smithTrace.count++],
+                    trace.args[trace.count++],
                     toString(
                             arg
 #if PHP_MAJOR_VERSION <= 5
@@ -231,16 +231,16 @@ public:
         );
 
         for (int i = 0; i < stackTrace.size() && i < SMITH_TRACE_COUNT; i++) {
-            strncpy(smithTrace.stackTrace[i], stackTrace[i].c_str(), SMITH_TRACE_LENGTH - 1);
+            strncpy(trace.stackTrace[i], stackTrace[i].c_str(), SMITH_TRACE_LENGTH - 1);
         }
 
-        smithTrace.request = PHP_PROBE_G(request);
+        trace.request = PHP_PROBE_G(request);
 
         if constexpr (CanBlock) {
-            if (gAPIConfig->block(ClassID, MethodID, smithTrace)) {
-                smithTrace.blocked = true;
+            if (gAPIConfig->block(trace)) {
+                trace.blocked = true;
 
-                gAPITrace->trace(smithTrace);
+                gAPITrace->enqueue(trace);
 
                 zend_throw_exception(
                         nullptr,
@@ -259,7 +259,7 @@ public:
             if (!gAPIConfig->surplus(ClassID, MethodID))
                 return;
 
-            gAPITrace->trace(smithTrace);
+            gAPITrace->enqueue(trace);
             origin(INTERNAL_FUNCTION_PARAM_PASSTHRU);
 
             return;
@@ -268,7 +268,7 @@ public:
         origin(INTERNAL_FUNCTION_PARAM_PASSTHRU);
 
         strncpy(
-                smithTrace.ret,
+                trace.ret,
                 toString(
                         return_value
 #if PHP_MAJOR_VERSION <= 5
@@ -281,7 +281,7 @@ public:
         if (!gAPIConfig->surplus(ClassID, MethodID))
             return;
 
-        gAPITrace->trace(smithTrace);
+        gAPITrace->enqueue(trace);
     }
 
 public:
@@ -378,13 +378,13 @@ public:
         zval *op2 = extract(execute_data->opline->op2.op_type, &execute_data->opline->op2);
 #endif
 
-        SmithTrace smithTrace = {
+        Trace trace = {
                 ClassID,
                 MethodID
         };
 
         strncpy(
-                smithTrace.args[smithTrace.count++],
+                trace.args[trace.count++],
                 toString(
                         op1
 #if PHP_MAJOR_VERSION <= 5
@@ -395,7 +395,7 @@ public:
         );
 
         strncpy(
-                smithTrace.args[smithTrace.count++],
+                trace.args[trace.count++],
                 toString(
                         op2
 #if PHP_MAJOR_VERSION <= 5
@@ -407,9 +407,9 @@ public:
 
         if constexpr (Extended) {
 #if PHP_VERSION_ID >= 50400
-            strncpy(smithTrace.args[smithTrace.count++], std::to_string(execute_data->opline->extended_value).c_str(), SMITH_ARG_LENGTH - 1);
+            strncpy(trace.args[trace.count++], std::to_string(execute_data->opline->extended_value).c_str(), SMITH_ARG_LENGTH - 1);
 #else
-            strncpy(smithTrace.args[smithTrace.count++], std::to_string(Z_LVAL(execute_data->opline->op2.u.constant)).c_str(), SMITH_ARG_LENGTH - 1);
+            strncpy(trace.args[trace.count++], std::to_string(Z_LVAL(execute_data->opline->op2.u.constant)).c_str(), SMITH_ARG_LENGTH - 1);
 #endif
         }
 
@@ -420,15 +420,15 @@ public:
         );
 
         for (int i = 0; i < stackTrace.size() && i < SMITH_TRACE_COUNT; i++) {
-            strncpy(smithTrace.stackTrace[i], stackTrace[i].c_str(), SMITH_TRACE_LENGTH - 1);
+            strncpy(trace.stackTrace[i], stackTrace[i].c_str(), SMITH_TRACE_LENGTH - 1);
         }
 
-        smithTrace.request = PHP_PROBE_G(request);
+        trace.request = PHP_PROBE_G(request);
 
         if (!gAPIConfig->surplus(ClassID, MethodID))
             return ZEND_USER_OPCODE_DISPATCH;
 
-        gAPITrace->trace(smithTrace);
+        gAPITrace->enqueue(trace);
 
         return ZEND_USER_OPCODE_DISPATCH;
     }

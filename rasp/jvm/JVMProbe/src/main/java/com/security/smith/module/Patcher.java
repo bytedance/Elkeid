@@ -1,6 +1,6 @@
 package com.security.smith.module;
 
-public interface Patch {
+public interface Patcher {
     void install();
     void uninstall();
 }

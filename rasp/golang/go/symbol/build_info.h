@@ -1,6 +1,7 @@
 #ifndef GO_PROBE_BUILD_INFO_H
 #define GO_PROBE_BUILD_INFO_H
 
+#include <client/smith_message.h>
 #include <string>
 #include <elfio/elfio.hpp>
 #include <go/type/basic.h>
@@ -8,28 +9,8 @@
 #include <vector>
 #include <zero/singleton.h>
 
-struct CModule {
-    std::string path;
-    std::string version;
-    std::string sum;
-    CModule *replace;
-
-    ~CModule() {
-        if (replace) {
-            delete replace;
-            replace = nullptr;
-        }
-    }
-};
-
-struct CModuleInfo {
-    std::string path;
-    CModule main;
-    std::list<CModule> deps;
-};
-
-class CBuildInfo {
-#define gBuildInfo zero::Singleton<CBuildInfo>::getInstance()
+class BuildInfo {
+#define gBuildInfo zero::Singleton<BuildInfo>::getInstance()
 public:
     bool load();
     bool load(const std::string& file);
@@ -47,7 +28,7 @@ public:
 
 public:
     std::string mVersion;
-    CModuleInfo mModuleInfo;
+    ModuleInfo mModuleInfo;
 };
 
 

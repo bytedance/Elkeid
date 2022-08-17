@@ -1,10 +1,10 @@
-package com.security.smith.type;
+package com.security.smith.client.message;
 
-public class SmithFilter {
+public class Filter {
     private int classID;
     private int methodID;
-    private SmithMatchRule[] include;
-    private SmithMatchRule[] exclude;
+    private MatchRule[] include;
+    private MatchRule[] exclude;
 
     public int getClassID() {
         return classID;
@@ -22,19 +22,19 @@ public class SmithFilter {
         this.methodID = methodID;
     }
 
-    public SmithMatchRule[] getInclude() {
+    public MatchRule[] getInclude() {
         return include;
     }
 
-    public void setInclude(SmithMatchRule[] include) {
+    public void setInclude(MatchRule[] include) {
         this.include = include;
     }
 
-    public SmithMatchRule[] getExclude() {
+    public MatchRule[] getExclude() {
         return exclude;
     }
 
-    public void setExclude(SmithMatchRule[] exclude) {
+    public void setExclude(MatchRule[] exclude) {
         this.exclude = exclude;
     }
 }

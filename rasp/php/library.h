@@ -9,7 +9,7 @@
 extern zend_module_entry php_probe_module_entry;
 
 ZEND_BEGIN_MODULE_GLOBALS(php_probe)
-    SmithRequest request{};
+    Request request{};
 ZEND_END_MODULE_GLOBALS(php_probe)
 
 ZEND_EXTERN_MODULE_GLOBALS(php_probe)
