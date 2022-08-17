@@ -11,8 +11,9 @@ use lazy_static::lazy_static;
 use log::*;
 use walkdir::WalkDir;
 
+use crate::data_type::{ScanTaskProcExe, ScanTaskStaticFile, DETECT_TASK};
 use crate::{
-    configs, detector::DetectTask, filter::Filter, get_file_btime, is_filetype_filter_skipped,
+    configs, filter::Filter, get_file_btime, is_filetype_filter_skipped,
     model::engine::clamav::config::CLAMAV_MAX_FILESIZE,
 };
 
@@ -23,7 +24,7 @@ lazy_static! {
 
 pub fn get_pid_live_time(pid: i32) -> Result<u64> {
     let process = procfs::process::Process::new(pid)?;
-    let start_time = process.stat.starttime as f32;
+    let start_time = process.stat()?.starttime as f32;
     let seconds_since_boot = (start_time / *CPU_TICKS) as u64;
     let timestamp = Clock::now_since_epoch().as_secs();
     return Ok(timestamp - seconds_since_boot - *CPU_BOOTTIME);
@@ -36,7 +37,7 @@ pub struct Cronjob {
 
 impl Cronjob {
     pub fn new(
-        sender: crossbeam_channel::Sender<DetectTask>,
+        sender: crossbeam_channel::Sender<DETECT_TASK>,
         s_locker: crossbeam_channel::Sender<()>,
         cron_interval: u64,
     ) -> Self {
@@ -95,23 +96,16 @@ impl Cronjob {
                         continue;
                     }
                     // send to scan
-                    let task = DetectTask {
-                        task_type: "6051".to_string(),
-                        pid: -1,
-                        path: fp.to_string_lossy().to_string(),
-                        rpath: fp.to_string_lossy().to_string(),
+                    let task = ScanTaskStaticFile {
+                        scan_path: fp.to_string_lossy().to_string(),
                         size: fsize,
-                        btime: btime.0,
-                        mtime: btime.1,
-                        token: "".to_string(),
-                        add_ons: None,
-                        finished: None,
+                        btime: btime,
                     };
 
                     while sender_proc.len() > 2 {
                         std::thread::sleep(Duration::from_secs(2));
                     }
-                    match sender_proc.send(task) {
+                    match sender_proc.send(DETECT_TASK::TASK_6051_STATIC_FILE(task)) {
                         Ok(_) => {}
                         Err(e) => {
                             warn!("internal task send err {:?}", e);
@@ -174,22 +168,18 @@ impl Cronjob {
                 }
 
                 // send to scan
-                let task = DetectTask {
-                    task_type: "6052".to_string(),
+                let task = ScanTaskProcExe {
                     pid: pid,
-                    path: pstr.to_string(),
-                    rpath: exe_real,
+                    pid_exe: pstr.to_string(),
+                    scan_path: exe_real.to_string(),
                     size: fsize,
-                    btime: btime.0,
-                    mtime: btime.1,
-                    token: "".to_string(),
-                    add_ons: None,
-                    finished: None,
+                    btime,
                 };
+
                 while sender.len() > 8 {
                     std::thread::sleep(Duration::from_secs(8));
                 }
-                match sender.send(task) {
+                match sender.send(DETECT_TASK::TASK_6052_PROC_EXE(task)) {
                     Ok(_) => {}
                     Err(e) => {
                         warn!("internal task send err {:?}", e);

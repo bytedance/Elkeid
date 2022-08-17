@@ -18,41 +18,41 @@ RUN python3 -m pip install mussels wheel
 
 RUN apt-get clean all
 
-RUN curl -O https://lf26-elkeid.bytetos.com/obj/elkeid-download/3rd_tools/x86_64-linux-musl-cross.tgz
-RUN tar zxvf x86_64-linux-musl-cross.tgz
-RUN mv x86_64-linux-musl-cross /opt/x86_64-linux-musl
-RUN rm -f x86_64-linux-musl-cross.tgz
+RUN curl -O https://lf26-elkeid.bytetos.com/obj/elkeid-download/3rd_tools/aarch64_be-linux-musl-cross.tgz
+RUN tar zxvf aarch64_be-linux-musl-cross.tgz
+RUN mv aarch64_be-linux-musl-cross /opt/aarch64_be-linux-musl
+RUN rm -f aarch64_be-linux-musl-cross.tgz
 
 ENV RUSTUP_HOME=/opt/rust
 ENV CARGO_HOME=/opt/rust
 
 RUN echo 'export PATH=/opt/rust/bin:$PATH' >> /etc/profile
-RUN echo 'export PATH=/opt/x86_64-linux-musl/bin:$PATH' >> /etc/profile
+RUN echo 'export PATH=/opt/aarch64_be-linux-musl/bin:$PATH' >> /etc/profile
 RUN echo 'export RUSTUP_HOME=/opt/rust' >> /etc/profile
 
 RUN echo 'export PATH=/opt/rust/bin:$PATH' >> /root/.bashrc
-RUN echo 'export PATH=/opt/x86_64-linux-musl/bin:$PATH' >>  /root/.bashrc
+RUN echo 'export PATH=/opt/aarch64_be-linux-musl/bin:$PATH' >>  /root/.bashrc
 RUN echo 'export RUSTUP_HOME=/opt/rust' >> /root/.bashrc
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path -t x86_64-unknown-linux-musl
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path -t aarch64_be-unknown-linux-musl
 
 ADD . /Elkeid
 WORKDIR /Elkeid/plugins/scanner
 
-ENV PATH="/opt/rust/bin:/opt/x86_64-linux-musl/bin:${PATH}"
+ENV PATH="/opt/rust/bin:/opt/aarch64_be-linux-musl/bin:${PATH}"
 RUN bash ./libclamav.sh
 
 RUN source /opt/rust/env
 RUN source ~/.bashrc
-ENV STDLIBCXX_STATIC_PATH=/opt/x86_64-linux-musl/x86_64-linux-musl/lib
-RUN rustup target add x86_64-unknown-linux-musl
-RUN CC="x86_64-linux-musl-gcc" CXX="x86_64-linux-musl-c++" RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --bin scanner_plugin --target x86_64-unknown-linux-musl
+ENV STDLIBCXX_STATIC_PATH=/opt/aarch64_be-linux-musl/aarch64_be-linux-musl/lib
+RUN rustup target add aarch64-unknown-linux-musl
+RUN CC="aarch64_be-linux-musl-gcc" CXX="aarch64_be-linux-musl-c++" RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --bin scanner_plugin --target aarch64-unknown-linux-musl
 
 RUN mkdir /Elkeid/plugins/scanner/output
 RUN cp -r tools/* ./output/.
 
 WORKDIR /Elkeid/plugins/scanner/output
-RUN cp /Elkeid/plugins/scanner/target/x86_64-unknown-linux-musl/release/scanner_plugin /Elkeid/plugins/scanner/output/scanner
+RUN cp /Elkeid/plugins/scanner/target/aarch64_be-unknown-linux-musl/release/scanner_plugin /Elkeid/plugins/scanner/output/scanner
 RUN mkdir tmp
 RUN wget http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607.zip
 RUN mv archive_db_default_20220607.zip ./tmp

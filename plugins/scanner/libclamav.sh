@@ -3,6 +3,12 @@
 cd clamav-mussels-cookbook
 rm -rf  mussels/* &> /dev/null
 mkdir mussels &> /dev/null
+
+if [ $TARGET_ARCH -ne "x86_64" ]; then
+    echo "change TARGET_ARCH into :$TARGET_ARCH"
+    sed -i "s|x86_64-linux-musl|$TARGET_ARCH-linux-musl" -rl clamav-mussels-cookbook
+fi
+
 msl build libclamav_deps -t host-static -w mussels/work -i mussels/install
 
 if [ $? -ne 0 ]; then
@@ -22,14 +28,15 @@ git checkout rel/0.104
 rm -rf  ./build/* &> /dev/null
 mkdir build &> /dev/null
 cd -
+
 export CLAMAV_DEPENDENCIES="$(pwd)/clamav-mussels-cookbook/mussels/install/" 
 
 cd clamav/build 
 
 cmake .. -G Ninja                                                      \
     -DCMAKE_BUILD_TYPE="RelWithDebInfo"                                \
-    -DCMAKE_C_COMPILER=x86_64-linux-musl-gcc                           \
-    -DCMAKE_CXX_COMPILER=x86_64-linux-musl-g++                         \
+    -DCMAKE_C_COMPILER=$TARGET_ARCH-linux-musl-gcc                           \
+    -DCMAKE_CXX_COMPILER=$TARGET_ARCH-linux-musl-g++                         \
     -DJSONC_INCLUDE_DIR="$CLAMAV_DEPENDENCIES/include/json-c"          \
     -DJSONC_LIBRARY="$CLAMAV_DEPENDENCIES/lib/libjson-c.a"             \
     -DBZIP2_INCLUDE_DIR="$CLAMAV_DEPENDENCIES/include"                 \

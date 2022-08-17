@@ -7,6 +7,7 @@
 #![allow(unused_variables)]
 
 use anyhow::{anyhow, Result};
+use configs::FULLSCAN_CPU_IDLE_100PCT;
 use sha2::{Digest, Sha256};
 use std::{
     ffi::{c_void, CStr, CString},
@@ -19,8 +20,8 @@ use std::{
 use cgroups_rs::{self, Controller};
 use infer::MatcherType;
 
-
 pub mod configs;
+pub mod data_type;
 pub mod detector;
 pub mod filter;
 pub mod model;
@@ -212,4 +213,30 @@ pub fn is_filetype_filter_skipped(fpath: &str) -> Result<bool> {
         }
     }
     return Ok(false);
+}
+
+pub fn get_available_worker_cpu_quota(
+    interval_secs: u64,
+    cpu_idle: u64,
+    default_cpu_min: u64,
+    default_cpu_max: u64,
+) -> Result<(u32, i64)> {
+    let mut cpu_usage = cpu_idle;
+    if cpu_idle <= 0 || cpu_idle > 100 {
+        cpu_usage = FULLSCAN_CPU_IDLE_100PCT;
+    }
+    let kstats = procfs::KernelStats::new()?;
+    thread::sleep(std::time::Duration::from_secs(interval_secs));
+    let kstate = procfs::KernelStats::new()?;
+
+    let idle_s = kstats.total.idle_ms();
+    let idle_e = kstate.total.idle_ms();
+    let idle_len = ((idle_e - idle_s) as f64 / interval_secs as f64).floor() as u64;
+    let mut cgroup_cpu_quota = std::cmp::max(idle_len * cpu_idle, default_cpu_min) as i64;
+    // quota min = 0.1 U
+    cgroup_cpu_quota = std::cmp::min(cgroup_cpu_quota, default_cpu_max as i64);
+    // quota max = 8 U
+    let worker = (cgroup_cpu_quota as f64 / 100_000.00).ceil() as u32;
+    // worker > 0
+    return Ok((worker, cgroup_cpu_quota));
 }

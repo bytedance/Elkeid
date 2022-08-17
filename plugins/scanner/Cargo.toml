@@ -28,7 +28,7 @@ reqwest = { version = "0.11", features = [
 ], default-features = false }
 
 walkdir = "2.3"
-procfs = "0.9"
+procfs = "0.14"
 crossbeam-channel = "0.5"
 sha2 = "0.10"
 md5 = "0.7"
@@ -56,14 +56,17 @@ infer = { version = "0.9", default-features = false }
 [dev-dependencies]
 crossbeam = "0.8"
 
+
 [profile.release]
-debug = 1
+debug = 0
+
 
 [features]
 cg_ctrl = []
 vendored = []
 default = ["vendored","cg_ctrl"]
 debug = ["plugins/debug"]
+
 
 [[bin]]
 name = "scanner_plugin"
@@ -74,4 +77,4 @@ required-features = ["default"]
 [[bin]]
 name = "scanner_cli"
 path = "src/bin/scanner_cli.rs"
-required-features = []
+required-features = ["default"]

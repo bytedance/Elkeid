@@ -1,9 +1,19 @@
 
 #!/bin/bash
 
+
 if [[ -z ${STDLIBCXX_STATIC_PATH} ]]; then
     echo 'please export STDLIBCXX_STATIC_PATH="/path/to/libstdc++.a"'
     exit -1
+fi
+
+if [[ -z ${TARGET_ARCH} ]]; then
+    echo "TARGET_ARCH set to x86_64"
+    TARGET_ARCH="x86_64"
+else
+    echo "TARGET_ARCH set to $TARGET_ARCH"
+    sed -i "s/x86_64/$TARGET_ARCH/gi" .cargo/config.toml
+    sed -i "s/x86_64/$TARGET_ARCH/gi" build.rs
 fi
 
 ./get_deps.sh
@@ -13,7 +23,7 @@ rm -rf output/* &> /dev/null
 mkdir output &> /dev/null
 
 # build plugin
-CC="x86_64-linux-musl-gcc" CXX="x86_64-linux-musl-c++" RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --bin scanner_plugin --target x86_64-unknown-linux-musl
+CC="$TARGET_ARCH-linux-musl-gcc" CXX="$TARGET_ARCH-linux-musl-c++" RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --bin scanner_plugin --target $TARGET_ARCH-unknown-linux-musl
 
 
 if [ $? -ne 0 ]; then
@@ -23,11 +33,11 @@ else
     echo "etrace cli build succeed"
 fi
 
-cp  target/x86_64-unknown-linux-musl/release/scanner_plugin  ./output/scanner
+cp  target/$TARGET_ARCH-unknown-linux-musl/release/scanner_plugin  ./output/scanner
 strip ./output/scanner
 
 # build cli
-CC="x86_64-linux-musl-gcc" CXX="x86_64-linux-musl-c++" RUSTFLAGS='-C target-feature=+crt-static'  cargo build --release --bin scanner_cli --target x86_64-unknown-linux-musl
+CC="$TARGET_ARCH-linux-musl-gcc" CXX="$TARGET_ARCH-linux-musl-c++" RUSTFLAGS='-C target-feature=+crt-static'  cargo build --release --bin scanner_cli --target $TARGET_ARCH-unknown-linux-musl
 
 if [ $? -ne 0 ]; then
     echo "etrace cli build failed"
@@ -36,7 +46,7 @@ else
     echo "etrace cli build succeed"
 fi
 
-cp  target/x86_64-unknown-linux-musl/release/scanner_cli  ./output/scanner_cli
+cp  target/$TARGET_ARCH-unknown-linux-musl/release/scanner_cli  ./output/scanner_cli
 strip ./output/scanner_cli
 
 cp -r tools/* ./output/.

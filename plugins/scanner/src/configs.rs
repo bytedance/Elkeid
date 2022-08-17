@@ -1,9 +1,21 @@
 use serde::{Deserialize, Serialize};
 
-pub const CLAMAV_MAX_FILESIZE: usize = 1024 * 1024 * 20;
-pub const CLAMAV_MAX_SCANSIZE: i64 = 1024 * 1024 * 40;
-
 pub const WAIT_INTERVAL_SCAN: std::time::Duration = std::time::Duration::from_secs(1);
+
+pub const FULLSCAN_CPU_IDLE_INTERVAL: u64 = 5;
+pub const FULLSCAN_CPU_IDLE_100PCT: u64 = 30;
+pub const FULLSCAN_CPU_QUOTA_DEFAULT_MIN: u64 = 10_000;
+pub const FULLSCAN_CPU_QUOTA_DEFAULT_MAX: u64 = 800_000;
+pub const FULLSCAN_CPU_MAX_TIME_SECS: u64 = 48 * 3600;
+
+pub const FULLSCAN_MAX_SCAN_ENGINES: u32 = 6;
+pub const FULLSCAN_MAX_SCAN_CPU_100: u32 = 600;
+pub const FULLSCAN_MAX_SCAN_MEM_MB: u32 = 512;
+pub const FULLSCAN_MAX_SCAN_TIMEOUT_FULL: u64 = 48 * 3600;
+pub const FULLSCAN_MAX_SCAN_TIMEOUT_QUICK: u64 = 3600;
+
+pub const FULLSCAN_SCAN_MODE_FULL: &str = "full";
+pub const FULLSCAN_SCAN_MODE_QUICK: &str = "quick";
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct ScanConfig<'a> {
@@ -88,5 +100,5 @@ pub const SCAN_DIR_FILTER: &[&str] = &[
     "/boot",
     "/sys",
     "/usr/src",
-    "/usr/local/src"
+    "/usr/local/src",
 ];

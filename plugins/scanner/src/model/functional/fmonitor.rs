@@ -13,7 +13,7 @@ use procfs::sys::kernel::Version;
 use std::io::Error;
 use std::thread;
 
-use crate::detector::DetectTask;
+use crate::data_type::{ScanTaskAntiVirus, DETECT_TASK};
 use crate::get_file_sha256;
 use crate::model::functional::anti_ransom::HONEYPOTSSHA256;
 
@@ -94,7 +94,7 @@ impl Drop for FileMonitor {
 // for 6004
 impl FileMonitor {
     pub fn new(
-        sender: crossbeam_channel::Sender<DetectTask>,
+        sender: crossbeam_channel::Sender<DETECT_TASK>,
         s_locker: crossbeam_channel::Sender<()>,
     ) -> Result<FileMonitor> {
         let pid = process::id();
@@ -223,24 +223,21 @@ impl FileMonitor {
                             };
 
                         if match_event_mask(&each_metadata.mask, &default_mask_set) {
-                            let task = DetectTask {
-                                task_type: "6054".to_string(),
+                            let task = ScanTaskAntiVirus {
                                 pid: pid as i32,
-                                path: exe_real.to_string(),
-                                rpath: fpath_real.to_string(),
+                                pid_exe: exe_real.to_string(),
+                                event_file_hash: fpath_real_sha256.to_string(),
+                                event_file_path: fpath_real.to_string(),
                                 size: fsize,
-                                btime: btime.0,
-                                mtime: btime.1,
-                                token: fpath_real_sha256.to_string(),
-                                add_ons: None,
-                                finished: None,
+                                btime: btime,
                             };
+
                             debug!("fanotify event {:?}", task);
 
                             while sender.len() > 8 {
                                 std::thread::sleep(Duration::from_secs(4));
                             }
-                            match sender.try_send(task) {
+                            match sender.try_send(DETECT_TASK::TASK_6054_ANTIVIRUS(task)) {
                                 Ok(_) => {}
                                 Err(e) => {
                                     warn!("internal send task err : {:?}", e);

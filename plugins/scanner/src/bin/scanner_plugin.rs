@@ -119,7 +119,7 @@ fn main() {
 
     info!("scanner start!");
 
-    let (s, r) = bounded(256);
+    let (s, r) = bounded(8192);
     let (s_lock, r_lock) = bounded(0);
 
     // main detector worker
