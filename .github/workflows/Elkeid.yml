@@ -27,21 +27,7 @@ jobs:
       uses: docker/build-push-action@v2
       with:
         file: rasp/docker/Dockerfile
-        load: true
         tags: elkeid/rasp:latest
-
-    - name: Extract RASP
-      id: extract-rasp
-      uses: shrink/actions-docker-extract@v1
-      with:
-        image: elkeid/rasp:latest
-        path: /Elkeid/rasp/output/.
-
-    - name: Upload RASP
-      uses: actions/upload-artifact@v3
-      with:
-        path: ${{ steps.extract-rasp.outputs.destination }}
-        name: rasp
 
     - name: Build Agent
       run: cd agent && go build -o elkeid-agent

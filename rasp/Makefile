@@ -1,7 +1,6 @@
 PREFIX ?= /etc/elkeid/plugin/rasp
 STATIC ?= "FALSE"
 VERSION ?= 1.0.0.0
-PERV_LIB ?= "lib"
 
 .PHONY: help
 help:
@@ -162,11 +161,6 @@ else
 endif
 
 build: update_version agent_plugin nsenter process_injector java python go node php_probe rasp server ## build all
-	if [ -a output/${PERV_LIB} ] ; \
-	then \
-		rm -r output/${PERV_LIB}; \
-		cd output && mkdir "${PERV_LIB}"; \
-	fi;
 	cd output && mv lib "lib-${VERSION}"
 	cd output && tar -czvf "rasp_${VERSION}.tar.gz" ./* && sha256sum "rasp_${VERSION}.tar.gz" && sha256sum rasp
 	mv "output/rasp_${VERSION}.tar.gz" .
