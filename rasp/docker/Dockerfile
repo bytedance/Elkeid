@@ -1,5 +1,7 @@
 FROM hackerl/centos-cpp:latest
 
+ARG VERSION=1.0.0.0
+
 RUN yum install -y unzip openssl-devel vim-common libtool automake bison gettext && yum clean all
 
 RUN curl -fsSL https://www.python.org/ftp/python/3.6.15/Python-3.6.15.tgz | tar -xz -C /tmp && cd /tmp/Python-3.6.15 && ./configure && make -j$(nproc) && make install && pip3 install wheel && rm -rf /tmp/Python-3.6.15

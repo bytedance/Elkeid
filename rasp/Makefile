@@ -1,6 +1,6 @@
 PREFIX ?= /etc/elkeid/plugin/rasp
 STATIC ?= "FALSE"
-VERSION ?= 1.9.1.0
+VERSION ?= 1.0.0.0
 PERV_LIB ?= "lib"
 
 .PHONY: help
