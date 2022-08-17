@@ -24,8 +24,8 @@ repositories {
 
 dependencies {
     testImplementation group: 'junit', name: 'junit', version: '4.12'
-    implementation group: 'org.ow2.asm', name: 'asm-tree', version: '8.0.1'
-    implementation group: 'org.ow2.asm', name: 'asm-commons', version: '8.0.1'
+    implementation group: 'org.ow2.asm', name: 'asm-tree', version: '9.3'
+    implementation group: 'org.ow2.asm', name: 'asm-commons', version: '9.3'
     implementation group: 'org.yaml', name: 'snakeyaml', version: '1.26'
     implementation group: 'io.netty', name: 'netty-all', version: '4.1.51.Final'
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.11.2'
