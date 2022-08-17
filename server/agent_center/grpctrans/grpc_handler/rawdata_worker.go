@@ -92,7 +92,7 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 			if err != nil {
 				continue
 			}
-			ylog.Infof("AgentErrorLog", "%s", string(b))
+			ylog.Infof("AgentErrorLog", "AgentID %s, Timestamp %d, DataType %d, Body %s", req.AgentID, req.GetData()[k].Timestamp, req.GetData()[k].DataType, string(b))
 		}
 
 		common.KafkaProducer.SendPBWithKey(req.AgentID, mqMsg)
