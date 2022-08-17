@@ -4,7 +4,7 @@ use log::*;
 use std::process::Command;
 
 use crate::{process::ProcessInfo, settings};
-
+use crate::{async_command::run_async_process};
 use crate::runtime::{ProbeState, ProbeStateInspect, ProbeCopy};
 
 pub struct CPythonProbeState {}
@@ -33,7 +33,6 @@ fn search_proc_map(process_info: &ProcessInfo) -> Result<ProbeState> {
     }
     Ok(ProbeState::NotAttach)
 }
-
 
 pub struct CPythonProbe {}
 
@@ -70,15 +69,13 @@ elif sys.version_info >= (2, 7):
 
 "#, settings::RASP_PYTHON_DIR());
     let path = settings::RASP_PYTHON_ENTRY();
-    let dest_dir = format!("/proc/{}/root{}",pid, path);
+    let dest_dir = format!("/proc/{}/root{}", pid, path);
     fs_extra::file::write_all(dest_dir, content.as_str())?;
     Ok(())
-
 }
 
 pub fn pangolin_inject_file(pid: i32, file_path: &str) -> Result<bool> {
     debug!("pangolin inject: {}", pid);
-    // let nsenter = settings::RASP_NS_ENTER_BIN.to_string();
     let python_loader = settings::RASP_PYTHON_LOADER();
     let pangolin = settings::RASP_PANGOLIN();
     let file = "--file";
@@ -91,8 +88,38 @@ pub fn pangolin_inject_file(pid: i32, file_path: &str) -> Result<bool> {
         file,
         file_path
     ];
-    return match Command::new(pangolin).args(args).status() {
-        Ok(st) => Ok(st.success()),
+    match run_async_process(Command::new(pangolin).args(args)) {
+        Ok((es, stdout, stderr)) => {
+            if stdout.len() != 0 {
+                info!("return code: {}\n{}", es.to_string(), &stdout);
+            }
+            if stderr.len() != 0 {
+                warn!("return code: {}\n{}", es.to_string(), &stderr);
+            }
+            let es_code = match es.code() {
+                Some(ec) => ec,
+                None => {
+                    return Err(anyhow!(
+                        "get status code failed: {}", pid
+                    ));
+                }
+            };
+            if es_code == 0 {
+                Ok(true)
+            } else if es_code == 255 {
+                let msg = format!(
+                    "python attach exit code 255: {} {} {} {}",
+                    es_code, pid, &stdout, &stderr
+                );
+                error!("{}", msg);
+                Err(anyhow!("{}", msg))
+            } else {
+                let msg = format!("python attach exit code {} {} {} {}",
+                                  es_code, pid, &stdout, &stderr);
+                error!("{}", msg);
+                Err(anyhow!("{}", msg))
+            }
+        }
         Err(e) => Err(anyhow!(e.to_string())),
-    };
+    }
 }

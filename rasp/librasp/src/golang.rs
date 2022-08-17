@@ -8,7 +8,8 @@ use std::fs::File;
 
 use crate::process::ProcessInfo;
 use crate::runtime::{ProbeState, ProbeStateInspect, ProbeCopy};
-use crate::settings::{RASP_GOLANG, RASP_PANGOLIN, RASP_GOLANG_BOE};
+use crate::settings;
+use crate::async_command::run_async_process;
 
 pub struct GolangProbeState {}
 
@@ -30,8 +31,7 @@ impl ProbeCopy for GolangProbe {
     fn names() -> (Vec<String>, Vec<String>) {
         (
             [
-                RASP_GOLANG_BOE(),
-                RASP_GOLANG(),
+                settings::RASP_GOLANG(),
                 // RASP_PANGOLIN.to_string(),
             ]
                 .to_vec(),
@@ -78,12 +78,12 @@ fn search_thread(process_info: &ProcessInfo) -> Result<ProbeState> {
     Ok(ProbeState::NotAttach)
 }
 
-
 pub fn golang_attach(pid: i32) -> Result<bool> {
     debug!("golang attach: {}", pid);
-    let golang_probe = RASP_GOLANG();
-    let pangolin = RASP_PANGOLIN();
+    let golang_probe = settings::RASP_GOLANG();
+    let pangolin = settings::RASP_PANGOLIN();
     let daemon = "--daemon";
+    let deaf = "--deaf";
     let pid_string = pid.clone().to_string();
     let args = &[daemon, pid_string.as_str(), golang_probe.as_str()];
     debug!("golang attach: {:?}", args);
