@@ -1,0 +1,41 @@
+name: Elkeid_rasp
+
+on:
+  push:
+    tags: [ rasp-v* ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Extract version
+      id: vars
+      run: echo ::set-output name=version::${GITHUB_REF#refs/*/rasp-v}
+
+    - name: Build
+      uses: docker/build-push-action@v2
+      with:
+        file: rasp/docker/Dockerfile
+        load: true
+        build-args: VERSION=${{ steps.vars.outputs.version }}
+        tags: elkeid/rasp:latest
+
+    - name: Extract
+      id: extract-rasp
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeid/rasp:latest
+        path: /Elkeid/rasp/rasp_${{ steps.vars.outputs.version }}.tar.gz
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ${{ steps.extract-rasp.outputs.destination }}/rasp_${{ steps.vars.outputs.version }}.tar.gz

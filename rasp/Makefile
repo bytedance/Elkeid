@@ -2,7 +2,6 @@ PREFIX ?= /etc/elkeid/plugin/rasp
 STATIC ?= "FALSE"
 VERSION ?= 1.9.1.0
 PERV_LIB ?= "lib"
-PHP_LIB ?= "php/output"
 
 .PHONY: help
 help:
@@ -19,7 +18,7 @@ update_version: ## patch version VERSION=x.x.x.x
 	sed -i "s/1.0.0/${VERSION}/g" "node/client.js"
 	sed -i "s/1.0.0/${VERSION}/g" "python/python-probe/rasp/client.py"
 	sed -i "s/1.0.0/${VERSION}/g" "golang/client/smith_message.cpp"
-
+	sed -i "s/1.0.0/${VERSION}/g" "php/client/smith_message.cpp"
 
 rasp: ## build elkeid_rasp bin file
 	mkdir -p output
@@ -60,13 +59,13 @@ nsenter: ## build nsenter from util-linux
 ifeq ($(STATIC), TRUE)
 	cd util-linux && \
 	./autogen.sh && \
-	CC=$(CC) CFLAGS="-static" ./configure --enable-static-programs=nsenter --disable-all-programs --enable-nsenter && \
+	CFLAGS="-static" ./configure --enable-static-programs=nsenter --disable-all-programs --enable-nsenter && \
 	make
 	cp util-linux/nsenter.static output/nsenter
 else
 	cd util-linux && \
 	./autogen.sh && \
-	CC=$(CC) ./configure --enable-static-programs=nsenter --disable-all-programs --enable-nsenter && \
+	./configure --enable-static-programs=nsenter --disable-all-programs --enable-nsenter && \
 	make
 	cp util-linux/nsenter output/nsenter
 endif
@@ -97,16 +96,15 @@ java: java-attach java-probe ## java probe
 
 process_injector: ## build process injector
 	cd pangolin && \
-	CFLAGS=-DDISABLE_LOG=1 CC=$(CC) LD=$(LD) make -C shellcode
+	CFLAGS=-DDISABLE_LOG=1 make -C shellcode
 	mkdir -p pangolin/build && cd pangolin/build && \
-	CC=$(CC) CXX=$(CXX) \
-	LD=$(LD) cmake -DSTATIC_BUILD=$(STATIC) .. && make
+	cmake -DSTATIC_BUILD=$(STATIC) .. && make
 	mkdir -p output/lib
 	cp pangolin/bin/pangolin output/lib/pangolin
 
 python-loader: ## build python loader
 	mkdir -p python/python-loader/build && cd python/python-loader/build && \
-	CC=$(CC) CXX=$(CXX) cmake -DSTATIC_BUILD=$(STATIC) .. && make
+	cmake -DSTATIC_BUILD=$(STATIC) .. && make
 
 python-probe: python-loader ## install python client so
 	cd python/python-probe && python3 setup.py sdist bdist_wheel --universal
@@ -123,7 +121,7 @@ python: python-probe ## build CPython probe
 
 go-probe: ## build golang probe
 	mkdir -p golang/build && cd golang/build && \
-	CC=$(CC) CXX=$(CXX) cmake -DSTATIC_BUILD=$(STATIC) .. && make
+	cmake -DSTATIC_BUILD=$(STATIC) .. && make
 
 
 go: go-probe ## build go probe
@@ -143,7 +141,12 @@ node: nsenter ## build node probe
 php_probe: ## build php probe
 	@echo "build PHP probe"
 	mkdir -p output/lib/php
-	cp -r ${PHP_LIB} output/lib/php
+ifeq ($(STATIC), TRUE)
+	cd php && mkdir -p output build; for header in ${PHP_HEADERS}/*; do CC=$(PHP_CC) CXX=$(PHP_CXX) cmake -B build -DSTATIC_BUILD=ON -DPHP_EXTENSIONS_INCLUDE_DIR=$$header && cmake --build build -j$$(nproc) && cp lib/libphp_probe.so output/libphp_probe-$$(basename $$header).so; done
+else
+	cd php && mkdir -p output build; for header in ${PHP_HEADERS}/*; do cmake -B build -DSTATIC_BUILD=ON -DPHP_EXTENSIONS_INCLUDE_DIR=$$header && cmake --build build -j$$(nproc) && cp lib/libphp_probe.so output/libphp_probe-$$(basename $$header).so; done
+endif
+	cp php/output/* output/lib/php
 
 agent_plugin: rasp server ## build Elkeid-RASP plugin for Agent
 	@echo "build plugin"
@@ -158,7 +161,7 @@ else
 	cp plugin/settings.toml output/settings.toml
 endif
 
-build: agent_plugin nsenter process_injector java python go node php_probe rasp server ## build all
+build: update_version agent_plugin nsenter process_injector java python go node php_probe rasp server ## build all
 	if [ -a output/${PERV_LIB} ] ; \
 	then \
 		rm -r output/${PERV_LIB}; \
