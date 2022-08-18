@@ -20,6 +20,8 @@ fi
 
 cd -
 
+rm -rf clamav
+
 # make get clamav source code
 git clone https://github.com/kulukami/clamav.git
 cd clamav
