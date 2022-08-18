@@ -1,9 +1,9 @@
 #!/bin/bash
 
-
+# TARGET_ARCH="aarch64"
 if [ "$TARGET_ARCH" == "x86_64" ]; then
     echo "change TARGET_ARCH into :$TARGET_ARCH"
-    sed -i "s|x86_64-linux-musl|$TARGET_ARCH-linux-musl|gi" -rl clamav-mussels-cookbook
+    sed -i "s|x86_64-linux-musl|$TARGET_ARCH-linux-musl|gi" ` grep -rl x86_64-linux-musl ./clamav-mussels-cookbook`
 fi
 
 cd clamav-mussels-cookbook
