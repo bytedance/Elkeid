@@ -6,7 +6,7 @@ mkdir mussels &> /dev/null
 
 if [ $TARGET_ARCH -ne "x86_64" ]; then
     echo "change TARGET_ARCH into :$TARGET_ARCH"
-    sed -i "s|x86_64-linux-musl|$TARGET_ARCH-linux-musl" -rl clamav-mussels-cookbook
+    sed -i "s|x86_64-linux-musl|$TARGET_ARCH-linux-musl|gi" -rl clamav-mussels-cookbook
 fi
 
 msl build libclamav_deps -t host-static -w mussels/work -i mussels/install
