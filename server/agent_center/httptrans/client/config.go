@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	ConfigUrl = `http://%s/api/v1/agent/getConfig/%s`
+	ConfigUrl = `http://%s/api/v6/component/GetComponentInstances`
 	TagsUrl   = `http://%s/api/v1/agent/queryInfo`
 )
 
@@ -43,16 +43,19 @@ type ResAgentTags struct {
 	Data    map[string]AgentExtraInfo `json:"data"`
 }
 
-func GetConfigFromRemote(agentID string) ([]*pb.ConfigItem, error) {
-	resp, err := grequests.Get(fmt.Sprintf(ConfigUrl, common.GetRandomManageAddr(), agentID), nil)
+func GetConfigFromRemote(agentID string, detail map[string]interface{}) ([]*pb.ConfigItem, error) {
+	rOption := &grequests.RequestOptions{
+		JSON: detail,
+	}
+	resp, err := grequests.Post(fmt.Sprintf(ConfigUrl, common.GetRandomManageAddr()), rOption)
 	if err != nil {
 		ylog.Errorf("GetConfigFromRemote", "error %s %s", agentID, err.Error())
 		return nil, err
 	}
 
 	if !resp.Ok {
-		ylog.Errorf("GetConfigFromRemote", "response code is not 200, %s %d", agentID, resp.StatusCode)
-		return nil, errors.New("status code is not 200")
+		ylog.Errorf("GetConfigFromRemote", "response code is not 200, AgentID: %s, StatusCode: %d,String: %s", agentID, resp.StatusCode, resp.String())
+		return nil, errors.New("status code is not ok")
 	}
 	var response ResAgentConf
 	err = json.Unmarshal(resp.Bytes(), &response)
