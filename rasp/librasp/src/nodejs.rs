@@ -1,3 +1,4 @@
+use std::process::Stdio;
 use std::{collections::HashMap, ffi::OsString, process::Command, thread::sleep, time::Duration};
 
 use crate::process::ProcessInfo;
@@ -6,9 +7,7 @@ use crate::settings;
 
 use anyhow::{anyhow, Result};
 use log::*;
-// use npm_package_json::Package;
 use regex::Regex;
-// use version_compare::{CompOp, VersionCompare};
 
 pub struct NodeJSProbe {}
 
@@ -45,7 +44,9 @@ pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str) -> Result<
         }
     };
     let nspid_string = nspid.clone().to_string();
-    let require_module = format!("require('{}')", smith_module_path);
+    let prefix = "setTimeout(() => { inspector.close(); }, 500); if (!Object.keys(require.cache).some(m => m.includes('smith.js'))) { require('";
+    let suffix = "');}";
+    let require_module = format!("{}{}{}", prefix, smith_module_path, suffix);
     let args = [
         "-m",
         "-n",
@@ -57,14 +58,53 @@ pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str) -> Result<
         nspid_string.as_str(),
         require_module.as_str(),
     ];
-    return match Command::new(nsenter).args(&args).status() {
-        Ok(st) => {
-            // wait inejct code done, then close debug
-            sleep(Duration::from_secs(1));
-            Ok(st.success())
+    match Command::new(nsenter)
+        .args(&args)
+        .stderr(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+    {
+        Ok(c) => match c.wait_with_output() {
+            Ok(out) => {
+                if out.status.success() {
+                    sleep(Duration::from_secs(1));
+                    return Ok(true);
+                }
+                match out.status.code() {
+                    Some(n) => {
+                        let stdout = match std::str::from_utf8(&out.stdout) {
+                            Ok(s) => s,
+                            Err(_) => "unknow stdout",
+                        };
+                        let stderr = match std::str::from_utf8(&out.stderr) {
+                            Ok(s) => s,
+                            Err(_) => "unknow stderr",
+                        };
+
+                        let output = format!("{}\n{}", stdout, stderr);
+                        // port
+                        if n == 1 {
+                            sleep(Duration::from_secs(1));
+                            error!("can not attach ");
+                            return Err(anyhow!(output));
+                        }
+                        if n == 2 {
+                            return Err(anyhow!(output));
+                        }
+                        return Err(anyhow!("return code: {}", n));
+                    }
+                    None => return Err(anyhow!("no return code founded")),
+                }
+            }
+            Err(e) => {
+                return Err(anyhow!(e));
+            }
+        },
+        Err(e) => {
+            return Err(anyhow!(e));
         }
-        Err(e) => Err(anyhow!(e.to_string())),
     };
+
 }
 
 pub fn nodejs_version(pid: i32, nodejs_bin_path: &String) -> Result<(u32, u32, String)> {

@@ -18,6 +18,7 @@ update_version: ## patch version VERSION=x.x.x.x
 	sed -i "s/1.0.0/${VERSION}/g" "python/python-probe/rasp/client.py"
 	sed -i "s/1.0.0/${VERSION}/g" "golang/client/smith_message.cpp"
 	sed -i "s/1.0.0/${VERSION}/g" "php/client/smith_message.cpp"
+  
 
 rasp: ## build elkeid_rasp bin file
 	mkdir -p output
@@ -82,7 +83,7 @@ endif
 
 
 java-probe: ## build JVM probe
-	cd jvm/JVMProbe && mkdir -p output && ./gradlew proguard && cp build/libs/JVMProbe-1.0-SNAPSHOT-pro.jar output/SmithAgent.jar
+	cd jvm/JVMProbe && mkdir -p output && BUILD_VERSION=${VERSION} ./gradlew proguard && cp build/libs/JVMProbe-1.0-SNAPSHOT-pro.jar output/SmithAgent.jar
 
 java-probe-example: ## build JVM probe example for test
 	cd jvm/JVMProbe && ./gradlew build:example
@@ -146,6 +147,7 @@ else
 	cd php && mkdir -p output build; for header in ${PHP_HEADERS}/*; do cmake -B build -DSTATIC_BUILD=ON -DPHP_EXTENSIONS_INCLUDE_DIR=$$header && cmake --build build -j$$(nproc) && cp lib/libphp_probe.so output/libphp_probe-$$(basename $$header).so; done
 endif
 	cp php/output/* output/lib/php
+
 
 agent_plugin: rasp server ## build Elkeid-RASP plugin for Agent
 	@echo "build plugin"
