@@ -1,4 +1,4 @@
-name: Elkeid_plugin_scanner
+name: Elkeid_plugin_scanner_aarch64
 
 on:
   push:
@@ -10,15 +10,16 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    env:
-      DOCKER_TARGET_PLATFORM: linux/arm/v7
     steps:
     - uses: actions/checkout@v2
       with:
         submodules: recursive
 
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+      
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
+      uses: docker/setup-buildx-action@v2
 
     - name: Build Scanner
       uses: docker/build-push-action@v3

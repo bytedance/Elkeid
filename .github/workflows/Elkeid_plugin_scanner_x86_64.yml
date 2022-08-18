@@ -1,4 +1,4 @@
-name: Elkeid_plugin_scanner
+name: Elkeid_plugin_scanner_x86_64
 
 on:
   push:
