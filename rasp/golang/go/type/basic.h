@@ -4,8 +4,6 @@
 #include "preprocess.h"
 #include <string>
 
-#pragma pack(push, 1)
-
 namespace go {
     typedef signed char Int8;
     typedef unsigned char Uint8;
@@ -39,11 +37,11 @@ namespace go {
         const char *data;
         ptrdiff_t length;
 
-        bool empty() const {
+        [[nodiscard]] bool empty() const {
             return data == nullptr || length == 0;
         }
 
-        std::string toSTDString() const {
+        [[nodiscard]] std::string toSTDString() const {
             return {data, (std::size_t)length};
         }
     };
@@ -56,19 +54,44 @@ namespace go {
         Int count;
         Int capacity;
 
-        bool empty() const {
+        [[nodiscard]] bool empty() const {
             return count == 0;
         }
 
-        T& operator[](int i) const {
+        [[nodiscard]] T& operator[](int i) const {
             return values[i];
         }
     };
 
     template<typename T>
     TEMPLATE_METADATA(slice<T>, T *, Int, Int)
-}
 
-#pragma pack(pop)
+    template<typename K, typename V>
+    struct bucket {
+        Uint8 topBits[8];
+        K keys[8];
+        V elems[8];
+        bucket<K, V> *overflow;
+    };
+
+    template<typename K, typename V>
+    TEMPLATE_METADATA(TEMPLATE_ARG(bucket<K, V>), Int, K[8], V[8], bucket<K, V> *)
+
+    template<typename K, typename V>
+    struct map {
+        Int count;
+        Uint8 flags;
+        Uint8 B;
+        Uint16 overflowNum;
+        Uint32 hash0;
+        bucket<K, V> *buckets;
+        bucket<K, V> *oldBuckets;
+        Uintptr evacuateNum;
+        Uintptr extra;
+    };
+
+    template<typename K, typename V>
+    TEMPLATE_METADATA(TEMPLATE_ARG(map<K, V>), Int, Uint8, Uint8, Uint16, Uint32, bucket<K, V> *, Uintptr, Uintptr, Uintptr)
+}
 
 #endif //GO_PROBE_BASIC_H

@@ -5,29 +5,23 @@
 #include <mutex>
 #include <event.h>
 #include <zero/interface.h>
-#include <zero/thread.h>
 
-class ISmithNotify: public zero::Interface {
+class IMessageHandler: public zero::Interface {
 public:
-    virtual void onMessage(const CSmithMessage &message) = 0;
+    virtual void onMessage(const SmithMessage &message) = 0;
 };
 
-class CSmithClient {
+class SmithClient {
 public:
-    explicit CSmithClient(ISmithNotify *notify);
-    ~CSmithClient();
+    explicit SmithClient(event_base *base, IMessageHandler *handler);
+    ~SmithClient();
 
 public:
-    bool start();
-    bool stop();
-
-public:
-    void loopThread();
-
-private:
     bool connect();
     void disconnect();
-    void reconnect();
+
+public:
+    void readMessage();
 
 public:
     void onBufferRead(bufferevent *bev);
@@ -35,19 +29,17 @@ public:
     void onBufferEvent(bufferevent *bev, short what);
 
 public:
-    bool write(const CSmithMessage &message);
+    bool write(const SmithMessage &message);
     bool writeBuffer(const std::string& message);
 
 private:
     std::mutex mMutex;
-    ISmithNotify *mNotify{};
+    IMessageHandler *mHandler{};
 
 private:
     event *mTimer{};
     bufferevent *mBev{};
-    event_base *mEventBase;
-    zero::Thread<CSmithClient> mThread{this};
+    event_base *mEventBase{};
 };
-
 
 #endif //GO_PROBE_SMITH_CLIENT_H

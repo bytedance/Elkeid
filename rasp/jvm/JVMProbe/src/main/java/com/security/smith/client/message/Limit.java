@@ -1,9 +1,9 @@
-package com.security.smith.type;
+package com.security.smith.client.message;
 
-public class SmithBlock {
+public class Limit {
     private int classID;
     private int methodID;
-    private SmithMatchRule[] rules;
+    private int quota;
 
     public int getClassID() {
         return classID;
@@ -21,11 +21,11 @@ public class SmithBlock {
         this.methodID = methodID;
     }
 
-    public SmithMatchRule[] getRules() {
-        return rules;
+    public int getQuota() {
+        return quota;
     }
 
-    public void setRules(SmithMatchRule[] rules) {
-        this.rules = rules;
+    public void setQuota(int quota) {
+        this.quota = quota;
     }
 }

@@ -17,8 +17,7 @@ public class SmithLogger {
         logger.setUseParentHandlers(false);
 
         try {
-            int pid = ProcessHelper.getCurrentPID();
-            String filename = String.format("/tmp/JVMProbe.%d.%d.log", pid, Instant.now().getEpochSecond());
+            String filename = String.format("/tmp/JVMProbe.%d.%d.log", ProcessHelper.getCurrentPID(), Instant.now().getEpochSecond());
 
             FileHandler handler = new FileHandler(filename, true);
             logger.addHandler(handler);

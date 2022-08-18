@@ -47,6 +47,7 @@
 -keep class com.security.smith.type.* {*;}
 -keep class com.security.smith.module.* {*;}
 -keep class com.security.smith.processor.* {*;}
+-keep class com.security.smith.client.message.* {*;}
 
 -keep class com.security.smith.SmithAgent {*;}
 
