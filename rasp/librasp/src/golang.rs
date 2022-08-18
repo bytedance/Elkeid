@@ -85,35 +85,57 @@ pub fn golang_attach(pid: i32) -> Result<bool> {
     let daemon = "--daemon";
     let deaf = "--deaf";
     let pid_string = pid.clone().to_string();
-    let args = &[daemon, pid_string.as_str(), golang_probe.as_str()];
+    let args = &[daemon, deaf, pid_string.as_str(), golang_probe.as_str()];
     debug!("golang attach: {:?}", args);
-    return match Command::new(pangolin).args(args).status() {
-        Ok(st) => Ok(st.success()),
+    return match run_async_process(Command::new(pangolin).args(args)) {
+        Ok((es, stdout, stderr)) => {
+            if stdout.len() != 0 {
+                info!("return code: {}\n{}", es.to_string(), &stdout);
+            }
+            if stderr.len() != 0 {
+                warn!("return code: {}\n{}", es.to_string(), &stderr);
+            }
+            let es_code = match es.code() {
+                Some(ec) => ec,
+                None => {
+                    return Err(anyhow!(
+                        "get status code failed: {}", pid
+                    ));
+                }
+            };
+            if es_code == 0 {
+                Ok(true)
+            } else if es_code == 255 {
+                let msg = format!(
+                    "golang attach exit code 255: {} {} {} {}",
+                    es_code, pid, &stdout, &stderr
+                );
+                error!("{}", msg);
+                Err(anyhow!("{}", msg))
+            } else {
+                let msg = format!(
+                    "golang attach exit code {} {} {} {}",
+                    es_code, pid, &stdout, &stderr
+                );
+                error!("{}", msg);
+                Err(anyhow!("{}", msg))
+            }
+        }
         Err(e) => Err(anyhow!(e.to_string())),
-    };
+    }
 }
 
 pub fn golang_bin_inspect(bin_file: PathBuf) -> Result<bool> {
-    // file exist?
     let metadata = match fs::metadata(bin_file.clone()) {
         Ok(md) => md,
         Err(e) => {
             return Err(anyhow!(e));
         }
     };
-    // file size <= 100M
     let size = metadata.len();
     if size >= (500 * 1024 * 1024) {
         return Err(anyhow!("bin file oversize"));
     }
-    /*
-    let bin = match std::fs::read(bin_file) {
-        Ok(b) => b,
-        Err(e) => {
-            return Err(anyhow!(e));
-        }
-    };
-     */
     let file = File::open(bin_file)?;
     let bin = unsafe { MmapOptions::new().map(&file)? };
     let elf = Elf::parse(&bin).unwrap();
@@ -122,11 +144,9 @@ pub fn golang_bin_inspect(bin_file: PathBuf) -> Result<bool> {
         let offset = section.sh_name;
         if let Some(name) = shstrtab.get(offset) {
             if name.unwrap() == ".gopclntab" {
-                // drop(bin);
                 return Ok(true);
             }
         }
     }
-    // drop(bin);
     return Ok(false);
 }

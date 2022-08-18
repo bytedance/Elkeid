@@ -1,12 +1,13 @@
 use anyhow::{anyhow, Result};
 
-// use log::*;
+use log::*;
 use regex::Regex;
 use std::process::Command;
 
-use super::settings;
-use crate::runtime::{ProbeCopy, ProbeState, ProbeStateInspect};
+use crate::settings;
+use crate::async_command::run_async_process;
 use crate::process::ProcessInfo;
+use crate::runtime::{ProbeCopy, ProbeState, ProbeStateInspect};
 
 pub struct JVMProbeState {}
 
@@ -37,22 +38,27 @@ impl ProbeCopy for JVMProbe {
 pub fn java_attach(pid: i32) -> Result<bool> {
     let java_attach = settings::RASP_JAVA_JATTACH_BIN();
     let probe = settings::RASP_JAVA_PROBE_BIN();
-    let status = match Command::new(java_attach)
+    match run_async_process(Command::new(java_attach)
         .args(&[
             pid.to_string().as_str(),
             "load",
             "instrument",
             "false",
             probe.as_str(),
-        ])
-        .status()
-    {
-        Ok(s) => s,
+        ])) {
+        Ok((_, out, err)) => {
+            if out.len() != 0 {
+                info!("{}", &out);
+            }
+            if err.len() != 0 {
+                info!("{}", &err);
+            }
+            return Ok(true);
+        }
         Err(e) => {
             return Err(anyhow!(e.to_string()));
         }
-    };
-    Ok(status.success())
+    }
 }
 
 pub fn jcmd(pid: i32, cmd: &'static str) -> Result<Vec<u8>> {
