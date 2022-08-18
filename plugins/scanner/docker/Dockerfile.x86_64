@@ -40,6 +40,7 @@ ADD . /Elkeid
 WORKDIR /Elkeid/plugins/scanner
 
 ENV PATH="/opt/rust/bin:/opt/x86_64-linux-musl/bin:${PATH}"
+ENV TARGET_ARCH="x86_64"
 RUN bash ./libclamav.sh
 
 RUN source /opt/rust/env

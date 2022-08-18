@@ -4,7 +4,7 @@ cd clamav-mussels-cookbook
 rm -rf  mussels/* &> /dev/null
 mkdir mussels &> /dev/null
 
-if [ $TARGET_ARCH -ne "x86_64" ]; then
+if [ "$TARGET_ARCH" == "x86_64" ]; then
     echo "change TARGET_ARCH into :$TARGET_ARCH"
     sed -i "s|x86_64-linux-musl|$TARGET_ARCH-linux-musl|gi" -rl clamav-mussels-cookbook
 fi
