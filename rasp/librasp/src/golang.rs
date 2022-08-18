@@ -1,10 +1,10 @@
-use anyhow::{anyhow, Result};
-use goblin::elf::Elf;
-use log::*;
 use std::{fs, path::PathBuf, process::Command};
+use std::fs::File;
+use log::*;
 
 use memmap::MmapOptions;
-use std::fs::File;
+use anyhow::{anyhow, Result};
+use goblin::elf::Elf;
 
 use crate::process::ProcessInfo;
 use crate::runtime::{ProbeState, ProbeStateInspect, ProbeCopy};
