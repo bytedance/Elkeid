@@ -173,7 +173,6 @@ impl SuperDetector {
                                 },
                                 Err(e) => {
                                     warn!("error {:?} while scann {:?}",e,&t.scan_path);
-
                                 },
                             };
                         },
@@ -287,6 +286,7 @@ pub fn FullScan(
                 Ok(_) => {}
                 Err(e) => {
                     warn!("internal task send err {:?}", e);
+                    break;
                 }
             };
         }
@@ -317,8 +317,7 @@ pub fn FullScan(
                     let fp = entry.path();
                     let (fsize, btime) = match fp.metadata() {
                         Ok(p) => {
-                            //if p.is_dir() {
-                            if !p.is_file() {
+                            if p.is_dir() {
                                 continue;
                             }
                             let fsize = p.len() as usize;
@@ -351,6 +350,7 @@ pub fn FullScan(
                         Ok(_) => {}
                         Err(e) => {
                             warn!("internal task send err {:?}", e);
+                            break;
                         }
                     };
                 }
@@ -414,6 +414,7 @@ pub fn FullScan(
                             Ok(_) => {}
                             Err(e) => {
                                 warn!("internal task send err {:?}", e);
+                                break;
                             }
                         };
                     }
@@ -435,7 +436,6 @@ pub fn FullScan(
             let mut tmp_sdetector =
                 SuperDetector::new(nt_client, nt_recv, &nt_engine, exit_timeout, token);
             return tmp_sdetector.work(Duration::from_secs(30));
-
         });
         worker_job.push(tmp_job);
         std::thread::sleep(Duration::from_secs(2));

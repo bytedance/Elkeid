@@ -1,0 +1,110 @@
+name: Elkeid_plugin_scanner_release
+
+on:
+  push:
+    tags:
+    - scanner-v*
+
+jobs:
+
+  build_arm64:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build Scanner
+      uses: docker/build-push-action@v3
+      with:
+        file: plugins/scanner/docker/Dockerfile.aarch64
+        load: true
+        tags: elkeid/scanner_aarch64:latest
+        context: .
+        platforms: linux/arm64
+
+    - name: Extract Scanner
+      id: extract-scanner
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeid/scanner_aarch64:latest
+        path: /Elkeid/plugins/scanner/output/.
+
+    - name: Upload Scanner
+      uses: actions/upload-artifact@v3
+      with:
+        path: ${{ steps.extract-scanner.outputs.destination }}
+        name: scanner_arm64
+  
+  build_x86_64:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Build Scanner
+      uses: docker/build-push-action@v3
+      with:
+        file: plugins/scanner/docker/Dockerfile.x86_64
+        load: true
+        tags: elkeid/scanner_x86_64:latest
+
+    - name: Extract Scanner
+      id: extract-scanner
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeid/scanner_x86_64:latest
+        path: /Elkeid/plugins/scanner/output/.
+
+    - name: Upload Scanner
+      uses: actions/upload-artifact@v3
+      with:
+        path: ${{ steps.extract-scanner.outputs.destination }}
+        name: scanner_x86_64
+
+  release_all:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      with:
+        draft: false
+        prerelease: false
+        release_name: Release ${{github.ref}}
+        tag_name: ${{github.ref}}
+    - uses: actions/download-artifact@v3
+      with:
+        path: ~/scanner_packages
+    - name: Prepare artifact 1 mkdir
+      run: mkdir -p scanner_packages
+    - name: Prepare artifact 2 mv files
+      run: mv -f ~/scanner_packages/*/* elkeid_scanner/. || true
+    - name: Pack artifact
+      run: zip -r elkeid_scanner.zip elkeid_scanner
+    - name: Upload Release Asset 
+      id: upload-release-asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      with:
+        asset_content_type: application/zip
+        asset_name: elkeid_scanner.zip
+        asset_path: ./elkeid_scanner.zip
+        upload_url: ${{steps.create_release.outputs.upload_url}}
+    needs:
+    - build_arm64
+    - build_x86_64

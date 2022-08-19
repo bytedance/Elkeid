@@ -46,7 +46,7 @@ fn main() {
     info!("pid : {:?}", pid);
 
     #[cfg(feature = "cg_ctrl")]
-    scanner::setup_cgroup(pid, 1024 * 1024 * 180, 10000);
+    scanner::setup_cgroup(pid, 1024 * 1024 * 256, 10000);
 
     let client = Client::new(true);
 
