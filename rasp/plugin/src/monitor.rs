@@ -22,6 +22,7 @@ use librasp::{
 use log::{debug, info, warn, error};
 use parking_lot::RwLock;
 use plugins::{Client, Record};
+use rand::Rng;
 use crate::utils::{generate_heartbeat, generate_seq_id, hashmap_to_record, time};
 
 pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
@@ -308,6 +309,9 @@ fn internal_main(
                 break;
             }
             sleep(Duration::from_secs(settings_int("internal", "report_interval").unwrap_or(120) as u64));
+            let mut rng = rand::thread_rng();
+            let random = rng.gen_range(1..30);
+            sleep(Duration::from_secs(random));
             let watched_process = report_process_r.read();
             let watched_process_cloned = watched_process.clone();
             drop(watched_process);
