@@ -36,4 +36,4 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         path: ${{ steps.extract-scanner.outputs.destination }}
-        name: scanner
+        name: scanner_x86_64
