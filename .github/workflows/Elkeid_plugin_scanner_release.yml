@@ -90,7 +90,7 @@ jobs:
       with:
         path: ~/scanner_packages
     - name: Prepare artifact 1 mkdir
-      run: mkdir -p scanner_packages
+      run: mkdir -p elkeid_scanner
     - name: Prepare artifact 2 mv files
       run: mv -f ~/scanner_packages/*/* elkeid_scanner/. || true
     - name: Pack artifact
