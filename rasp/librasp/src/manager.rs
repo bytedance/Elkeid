@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fs;
 use std::path::Path;
 
 use anyhow::{anyhow, Result, Result as AnyhowResult};
@@ -7,15 +8,11 @@ use fs_extra::dir::{copy, CopyOptions, create_all};
 use fs_extra::file::{copy as file_copy, CopyOptions as FileCopyOptions};
 use log::*;
 
-use crate::{
-    comm::{Control, RASPComm, ThreadMode, ProcessMode},
-    process::ProcessInfo,
-    runtime::{ProbeState, ProbeStateInspect, RuntimeInspect, ProbeCopy},
-};
+use crate::{comm::{Control, RASPComm, ThreadMode, ProcessMode}, process::ProcessInfo, runtime::{ProbeState, ProbeStateInspect, RuntimeInspect, ProbeCopy}, settings};
 use crate::php::{PHPProbeState, php_attach};
 use crate::cpython::{CPythonProbe, CPythonProbeState, python_attach};
 use crate::golang::{GolangProbe, golang_attach, GolangProbeState};
-use crate::jvm::{JVMProbe, JVMProbeState, java_attach} ;
+use crate::jvm::{JVMProbe, JVMProbeState, java_attach};
 use crate::nodejs::{NodeJSProbe, nodejs_attach};
 
 pub struct RASPManager {
@@ -305,6 +302,7 @@ impl RASPManager {
         bind_path: String,
         linking_to: Option<String>,
     ) -> AnyhowResult<Self> {
+        Self::clean_prev_lib()?;
         match comm_mode {
             "thread" => {
                 Ok(RASPManager {
@@ -326,6 +324,19 @@ impl RASPManager {
             }
         }
     }
+
+    fn clean_prev_lib() -> AnyhowResult<()> {
+        info!("cleaning previous lib dir");
+        for entry in read_dir("/proc")? {
+            let filename = entry.file_name().to_string_lossy().to_string();
+            if filename.contains("lib-") && !filename.contains(settings::RASP_VERSION) {
+                info!("remove: {}", filename);
+                fs_extra::dir::remove(format!("./{}", filename))?
+            }
+        }
+        Ok(())
+    }
+
 
     pub fn copy_to_dest(&self, dest_root: String) -> Result<()> {
         let cwd_path = std::env::current_dir()?;
@@ -509,4 +520,15 @@ impl RASPManager {
         fs_extra::file::remove(config_path)?;
         Ok(())
     }
+}
+
+fn read_dir<P>(path: P) -> AnyhowResult<Vec<fs::DirEntry>>
+    where P: AsRef<Path>,
+{
+    fs::read_dir(&path)
+        .map_err(|err| anyhow!("Failed to read file '{:?}': {}", path.as_ref(), err))?
+        .map(|entry| {
+            entry.map_err(|err| anyhow!("Failed to read file '{:?}': {}", path.as_ref(), err))
+        })
+        .collect()
 }
