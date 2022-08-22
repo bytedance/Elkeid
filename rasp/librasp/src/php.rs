@@ -32,8 +32,19 @@ pub fn inspect_phpfpm_version(process: &ProcessInfo) -> AnyhowResult<String> {
     Err(anyhow!("can not found php version"))
 }
 
+pub fn inspect_phpfpm_zts(process: &ProcessInfo) -> AnyhowResult<bool> {
+    let output = execute_phpfpm_info(String::from(process.exe_path.as_ref().unwrap()))?;
+    let regex = Regex::new(r"Configure Command.+zts")?;
+    Ok(regex.is_match(output.as_str()))
+}
+
 fn execute_phpfpm_version(phpfmp: String) -> AnyhowResult<String> {
     let output = Command::new(phpfmp).args(["-v"]).output()?;
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+}
+
+fn execute_phpfpm_info(phpfmp: String) -> AnyhowResult<String> {
+    let output = Command::new(phpfmp).args(["-i"]).output()?;
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
@@ -69,9 +80,17 @@ fn check_probe(process_info: &ProcessInfo) -> AnyhowResult<ProbeState> {
 pub fn php_attach(process_info: &ProcessInfo, version: String) -> AnyhowResult<bool> {
     let process = Process::new(process_info.pid)?;
     let splited: Vec<&str> = version.split(".").collect();
-    let major = splited.get(0);
-    let miner = splited.get(1);
-    let (probe_path, probe_name) = RASP_PHP_PROBE(major.unwrap(), miner.unwrap()).unwrap();
+    let (probe_path, probe_name) = if splited.len() == 2 {
+        let major = splited.get(0);
+        let miner = splited.get(1);
+        RASP_PHP_PROBE(major.unwrap(), miner.unwrap(), false).unwrap()
+    } else if splited.len() == 3 {
+        let major = splited.get(0);
+        let miner = splited.get(1);
+        RASP_PHP_PROBE(major.unwrap(), miner.unwrap(), true).unwrap()
+    } else {
+        return Err(anyhow!("php version detect failed: {}", &version));
+    };
 
     // match locate_extension_dir(&process) {
     //     Ok(path) => {

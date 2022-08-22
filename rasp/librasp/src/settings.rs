@@ -55,7 +55,7 @@ pub fn RASP_NODEJS_ENTRY() -> String { format!("{}{}", RASP_NODEJS_DIR(), "/smit
 
 
 #[allow(non_snake_case)]
-pub fn RASP_PHP_PROBE(major: &str, miner: &str) -> Option<(String, String)> {
+pub fn RASP_PHP_PROBE(major: &str, miner: &str, zts: bool) -> Option<(String, String)> {
     if match major {
         "5" => match miner {
             "3" => true,
@@ -78,12 +78,21 @@ pub fn RASP_PHP_PROBE(major: &str, miner: &str) -> Option<(String, String)> {
         },
         _ => false
     } {
-        Some(
-            (
-                format!("{}/php/libphp_probe-{}.{}.so", RASP_LIB_DIR(), major, miner),
-                format!("libphp_probe-{}.{}.so", major, miner)
+        if zts {
+            Some(
+                (
+                    format!("{}/php/libphp_probe-{}.{}-zts.so", RASP_LIB_DIR(), major, miner),
+                    format!("libphp_probe-{}.{}-zts.so", major, miner)
+                )
             )
-        )
+        } else {
+            Some(
+                (
+                    format!("{}/php/libphp_probe-{}.{}.so", RASP_LIB_DIR(), major, miner),
+                    format!("libphp_probe-{}.{}.so", major, miner)
+                )
+            )
+        }
     } else {
         None
     }
