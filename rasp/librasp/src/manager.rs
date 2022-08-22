@@ -126,13 +126,24 @@ impl RASPManager {
         // try to write probe to dir
         let nspid = ProcessInfo::read_nspid(pid)?.ok_or(anyhow!("can not fetch nspid: {}", pid))?;
         self.write_message_to_config_file(pid, nspid, message.clone())?;
-        if let Some(comm) = self.thread_comm.as_mut() {
-            comm.send_message_to_probe(pid, mnt_namespace, message)
-        } else if let Some(comm) = self.process_comm.as_mut() {
-            comm.send_message_to_probe(pid, mnt_namespace, message)
-        } else {
-            Err(anyhow!("both thread && process comm mode not init"))
+        debug!("send message to probe: {} {} {}", pid, nspid, &message);
+        // send through sock
+        let messages: Vec<libraspserver::proto::PidMissingProbeConfig> = serde_json::from_str(message)?;
+        for m in messages {
+            let m_str = serde_json::json!(m);
+            let m_string = match m_str.as_str() {
+                Some(s) => String::from(s),
+                None => continue,
+            };
+            if let Some(comm) = self.thread_comm.as_mut() {
+                comm.send_message_to_probe(pid, mnt_namespace, &m_string)?;
+            } else if let Some(comm) = self.process_comm.as_mut() {
+                comm.send_message_to_probe(pid, mnt_namespace, &m_string)?;
+            } else {
+                return Err(anyhow!("both thread && process comm mode not init"));
+            }
         }
+        Ok(())
     }
 }
 
@@ -404,8 +415,9 @@ impl RASPManager {
         let root_dir = format!("/proc/{}/root", pid);
         self.copy_to_dest(root_dir)
     }
-    pub fn can_copy(&self, mnt_namesapce: &String) -> bool {
-        !self.namespace_tracer.server_state(&mnt_namesapce).is_some()
+    pub fn can_copy(&self, _mnt_namesapce: &String) -> bool {
+        // !self.namespace_tracer.server_state(&mnt_namesapce).is_some()
+        true
     }
     pub fn root_dir(pid: i32) -> String {
         format!("/proc/{}/root", pid)

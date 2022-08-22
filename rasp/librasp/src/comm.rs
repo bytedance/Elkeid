@@ -129,7 +129,7 @@ impl RASPComm for ProcessMode {
                     control: self.ctrl.control.clone(),
                 },
             )?;
-        server_process.spawn("RASP_SERVER_PATH")?;
+        server_process.spawn(settings::RASP_SERVER_BIN().as_str())?;
         self.mnt_namesapce_server_map.insert(mnt_namespace.clone(), server_process);
         self.mnt_namespace_comm_pair.insert(mnt_namespace.clone(), (probe_mesasge_sender, probe_message_receiver));
         Ok(())

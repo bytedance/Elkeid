@@ -130,17 +130,13 @@ impl Operator {
                 info!("attaching process: {:?}", process);
                 if let Some(process_state) = process.tracing_state.as_ref() {
                     match process_state.to_string().as_str() {
-                        "WAIT_ATTACH" => {
-                            if probe_message != "" {
-                                self.send_probe_message(&process, &probe_message)?;
-                            }
-                        }
+                        "WAIT_ATTACH" => {}
                         _ => {
                             self.attach_process(process)?;
-                            if probe_message != "" {
-                                self.send_probe_message(&process, &probe_message)?;
-                            }
                         }
+                    }
+                    if probe_message != "" {
+                        self.send_probe_message(&process, &probe_message)?;
                     }
                 }
             }
