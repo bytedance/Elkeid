@@ -214,6 +214,7 @@ fn internal_main(
                 continue;
             }
             for pid in pids.iter() {
+                debug!("send pid: {}", pid);
                 if let Err(_) = pid_sender.send(*pid) {
                     error!("can not send pid to pid_sender channel, quiting");
                     let _ = pid_recv_ctrl.stop();
@@ -251,6 +252,7 @@ fn internal_main(
                     continue;
                 }
             };
+            debug!("recv pid: {}", pid);
             let mut process = match crate::process::collect(pid, &local_filters) {
                 Ok(p) => p,
                 Err(e) => {

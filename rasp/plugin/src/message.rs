@@ -113,8 +113,8 @@ pub fn parse_message(task: &plugins::Task) -> Anyhow<RASPMessage> {
     Ok(rasp_message)
 }
 
-pub fn parse_patch_message(pid: String, patches: libraspserver::proto::ProbeConfigPatches) -> Anyhow<()> {
-    for patch in patches.patches.iter() {
+pub fn parse_patch_message(pid: String, patches: Vec<libraspserver::proto::ProbeConfigPatch>) -> Anyhow<()> {
+    for patch in patches.iter() {
         let patch_path = String::from(patch.path.clone());
         if let Some(download_urls) = patch.file_download_url.as_ref() {
             for download_url in download_urls.iter() {
