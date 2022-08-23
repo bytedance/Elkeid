@@ -128,10 +128,12 @@ impl RASPManager {
         // send through sock
         let messages: Vec<libraspserver::proto::PidMissingProbeConfig> = serde_json::from_str(message)?;
         for m in messages {
-            let m_str = serde_json::json!(m);
-            let m_string = match m_str.as_str() {
-                Some(s) => String::from(s),
-                None => continue,
+            let m_string = match serde_json::to_string(&m) {
+                Ok(s) => s,
+                Err(e) => {
+                    warn!("failed to convert json to string: {:?}", m);
+                    continue
+                }
             };
             debug!("sending message: {}", m_string);
             if let Some(comm) = self.thread_comm.as_mut() {
