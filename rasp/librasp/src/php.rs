@@ -3,6 +3,7 @@ use std::process::Command;
 use crate::process::ProcessInfo;
 use procfs::process::Process;
 use anyhow::{anyhow, Result as AnyhowResult};
+use fs_extra::dir::DirEntryAttr::Path;
 use libc::{kill, pid_t, SIGUSR2};
 use regex::Regex;
 use crate::settings::RASP_PHP_PROBE;
@@ -188,7 +189,7 @@ fn search_maps(process: &Process) -> AnyhowResult<Option<String>> {
 }
 
 fn search_argv(process: &Process) -> AnyhowResult<Option<String>> {
-    let raw_fpm_regex = Regex::new(r"/.+php.+\.conf")?;
+    let regex = Regex::new(r"/.+php.+\.conf")?;
     let cmdlines = process.cmdline()?;
     for cmdline in cmdlines.iter() {
         if let Some(caps) = regex.captures(cmdline) {
@@ -212,15 +213,16 @@ pub fn locate_extension_dir(process: &Process) -> AnyhowResult<String> {
 }
 
 pub fn locate_confd_dir(process: &Process) -> AnyhowResult<String> {
+    let root_dir = PathBuf::from(format!("/proc/{}/root/", process.pid));
     if let Some(conf) = search_argv(process)? {
         if let Some(confp) = PathBuf::from(conf).parent() {
             let confd = confp.join("conf.d");
-            if confd.exists() {
+            if root_dir.join(confd.as_path()).exists() {
                 return Ok(String::from(confd.to_str().unwrap()));
             }
             if let Some(confpp) = PathBuf::from(confp).parent() {
                 let confd = confpp.join("conf.d");
-                if confd.exists() {
+                if root_dir.join(confd.as_path()).exists() {
                     return Ok(String::from(confd.to_str().unwrap()));
                 }
             }
