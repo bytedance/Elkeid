@@ -54,7 +54,7 @@ fn execute_phpfpm_version(pid: i32, phpfmp: String) -> AnyhowResult<String> {
                 "-v"
             ])
     )?;
-    if exit_status != 0 {
+    if !exit_status.success() {
         warn!("check phpfpm failed: {} {} {} {}", pid, exit_status, output, stderr);
         return Err(anyhow!("can not fetch phpfpm version: {} {} {}", pid, exit_status, stderr));
     }
@@ -71,7 +71,7 @@ fn execute_phpfpm_info(pid: i32, phpfmp: String) -> AnyhowResult<String> {
                 "-i"
             ])
     )?;
-    if exit_status != 0 {
+    if !exit_status.success() {
         warn!("check phpfpm failed: {} {} {} {}", pid, exit_status, output, stderr);
         return Err(anyhow!("can not fetch phpfpm info: {} {} {}", pid, exit_status, stderr));
     }
@@ -188,7 +188,7 @@ fn search_maps(process: &Process) -> AnyhowResult<Option<String>> {
 }
 
 fn search_argv(process: &Process) -> AnyhowResult<Option<String>> {
-    let regex = Regex::new(r"/.+php.+php-fpm.conf")?;
+    let raw_fpm_regex = Regex::new(r"/.+php.+\.conf")?;
     let cmdlines = process.cmdline()?;
     for cmdline in cmdlines.iter() {
         if let Some(caps) = regex.captures(cmdline) {
@@ -217,6 +217,12 @@ pub fn locate_confd_dir(process: &Process) -> AnyhowResult<String> {
             let confd = confp.join("conf.d");
             if confd.exists() {
                 return Ok(String::from(confd.to_str().unwrap()));
+            }
+            if let Some(confpp) = PathBuf::from(confp).parent() {
+                let confd = confpp.join("conf.d");
+                if confd.exists() {
+                    return Ok(String::from(confd.to_str().unwrap()));
+                }
             }
         }
     }
