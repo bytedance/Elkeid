@@ -131,7 +131,7 @@ impl RASPManager {
             let m_string = match serde_json::to_string(&m) {
                 Ok(s) => s,
                 Err(e) => {
-                    warn!("failed to convert json to string: {:?}", m);
+                    warn!("failed to convert json to string: {:?} {}", m, e);
                     continue
                 }
             };
