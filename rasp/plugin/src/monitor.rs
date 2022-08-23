@@ -407,7 +407,7 @@ fn internal_main(
             match operator.op(&mut process, state.clone(), probe_message.clone()) {
                 Ok(_) => {
                     info!("operation success: {:?}", operation_message);
-                    let report = make_report(&process.clone(), "attach_success", String::new());
+                    let report = make_report(&process.clone(), format!("{}_success", state.clone()).as_str(), String::new());
                     let mut record = hashmap_to_record(report);
                     record.data_type = report_heartbeat_data_type.clone() as i32;
                     record.timestamp = time();
