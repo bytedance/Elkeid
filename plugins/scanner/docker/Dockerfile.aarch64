@@ -57,6 +57,6 @@ RUN cp /Elkeid/plugins/scanner/target/aarch64-unknown-linux-musl/release/scanner
 RUN mkdir tmp
 RUN wget http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220817.zip
 RUN mv archive_db_default_20220817.zip ./tmp
-RUN tar zcvf scanner.tar.gz scanner tmp elkeid_targets
+RUN tar zcvf scanner-aarch64.tar.gz scanner tmp elkeid_targets
 RUN rm -rf tmp scanner elkeid_targets
 
