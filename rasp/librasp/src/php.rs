@@ -212,7 +212,6 @@ pub fn locate_extension_dir(process: &Process) -> AnyhowResult<String> {
 }
 
 pub fn locate_confd_dir(process: &Process) -> AnyhowResult<String> {
-    let root_dir = PathBuf::from(format!("/proc/{}/root/", process.pid));
     if let Some(conf) = search_argv(process)? {
         if let Some(confp) = PathBuf::from(conf).parent() {
             let confd = confp.join("conf.d");
@@ -251,21 +250,47 @@ pub fn copy_so_to_extension_dir(root_dir: String, extension_dir: String, probe_p
 pub fn write_conf_to_cond_dir(root_dir: String, confd_dir: String, probe_path: String, _probe_name: String) -> AnyhowResult<()> {
     let so_target_path = format!("{}/{}", root_dir, probe_path);
     debug!("{} -> {}", probe_path, so_target_path);
-    if !std::path::Path::new(&so_target_path).exists() {
-        let copy_options = fs_extra::file::CopyOptions::default();
-        fs_extra::file::copy(
-            &probe_path,
-            so_target_path.clone(),
-            &copy_options,
-        )?;
-    }
+    copy_file_from_to_dest(probe_path.clone(), root_dir.clone())?;
     let conf_path = format!("{}/{}/{}", root_dir, confd_dir, "999-php_probe.ini");
     debug!("{} -> {}", probe_path.clone(), conf_path);
     fs_extra::file::write_all(conf_path, format!("extension={}", probe_path).as_str())?;
     Ok(())
 }
 
-fn reload_phpfpm(pid: i32) -> AnyhowResult<()> {
+pub fn copy_file_from_to_dest(from: String, dest_root: String) -> AnyhowResult<()> {
+    let target = format!("{}/{}", dest_root, from);
+    if Path::new(&target).exists() {
+        return Ok(());
+    }
+    let dir = Path::new(&from).parent().unwrap();
+    create_dir_if_not_exist(dir.to_str().unwrap().to_string(), dest_root.clone())?;
+    let options = fs_extra::file::CopyOptions::new();
+    debug!("copy file: {} {}", from.clone(), format!("{}/{}", dest_root, from));
+    return match fs_extra::file::copy(from.clone(), format!("{}/{}", dest_root, from), &options) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            warn!("can not copy: {}", e);
+            Err(anyhow!(
+		    "copy failed: from {} to {}: {}",
+		    from,
+		    format!("{}/{}", dest_root, from),
+		    e
+		))
+        }
+    };
+}
+
+pub fn create_dir_if_not_exist(dir: String, dest_root: String) -> AnyhowResult<()> {
+    let target = format!("{}{}", dest_root, dir);
+    if Path::new(&target).exists() {
+        return Ok(());
+    }
+    fs_extra::dir::create_all(format!("{}{}", dest_root, dir), true)?;
+    Ok(())
+}
+
+
+    fn reload_phpfpm(pid: i32) -> AnyhowResult<()> {
     let pidt = pid_t::from(pid);
     unsafe {
         match kill(pidt, SIGUSR2) {
