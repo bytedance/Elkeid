@@ -71,6 +71,19 @@ pub async fn start_bind(sock: RASPSock) -> Result<(), String> {
     let pairs_clean = Arc::clone(&pairs);
     let pairs_send_message = Arc::clone(&&pairs);
     let mut clean_ctrl = sock.ctrl.clone();
+    let server_addr = sock.server_addr.clone();
+    let mut checking_ctrl = sock.ctrl.clone();
+    spawn(async move {
+        loop {
+            if Path::new(&server_addr).exists() {
+                sleep(Duration::from_secs(60 * 60)).await;
+            } else {
+                error!("RASP ERROR: SOCK has been deleted");
+                let _ = checking_ctrl.stop();
+                break;
+            }
+        }
+    });
     spawn(async move {
         loop {
             debug!("pairs clean tokio thread looping");
@@ -120,14 +133,14 @@ pub async fn start_bind(sock: RASPSock) -> Result<(), String> {
                     continue;
                 }
             };
-            // println!("dispatcher recv message: {} {}", message, pid,);
+            debug!("dispatcher recv message: {} {}", message, pid,);
             let writable = pairs_send_message.write().await;
-            // println!(
-            //     "dispatcher paris: {} {} {:?}",
-            //     message,
-            //     pid,
-            //     writable.keys()
-            // );
+            debug!(
+                "dispatcher paris: {} {} {:?}",
+                message,
+                pid,
+                writable.keys()
+            );
             let pair = match writable.get(&pid) {
                 Some(pair) => pair,
                 None => {
@@ -135,7 +148,7 @@ pub async fn start_bind(sock: RASPSock) -> Result<(), String> {
                     continue;
                 }
             };
-            // println!("send to pair: {} {}", pid, message);
+            debug!("send to pair: {} {}", pid, message);
             match pair.probe_message_sender.send(message).await {
                 Ok(_) => {}
                 Err(e) => {

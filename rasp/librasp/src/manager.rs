@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 
 use anyhow::{anyhow, Result, Result as AnyhowResult};
 use crossbeam::channel::Sender;
@@ -507,17 +508,45 @@ impl MntNamespaceTracer {
 
 impl RASPManager {
     pub fn write_message_to_config_file(&self, pid: i32, nspid: i32, message: String) -> AnyhowResult<()> {
-        let config_path = format!("/proc/{}/root/var/run/elkeid_rasp/{}.json", pid, nspid);
+        let config_dir = "/var/run/elkeid_rasp";
+        let config_path = format!("{}/{}.json", config_dir, nspid);
         let config_path_bak = format!("{}.bak", config_path);
-        fs_extra::file::write_all(&config_path_bak, message.as_str())?;
-        let mut option = fs_extra::file::CopyOptions::new();
-        option.overwrite = false;
-        fs_extra::file::move_file(config_path_bak, config_path, &option)?;
+        debug!("write message to {} {}", config_path_bak, message);
+        crate::async_command::run_async_process(Command::new(crate::settings::RASP_NS_ENTER_BIN()).args([
+            "-m",
+            "-t",
+            pid.to_string().as_str(),
+            "sh",
+            "-c",
+            format!(
+                "mkdir -p {} && echo '{}' > {} && mv {} {}",
+                config_dir, message, config_path_bak, config_path_bak, config_path
+            ).as_str(),
+        ]))?;
+        /*
+        let ns_thread = thread::Builder::new().spawn(move || -> AnyhowResult<()> {
+            debug!("switch namespace");
+            libraspserver::ns::switch_namespace(pid);
+            if !Path::new(&config_dir).exists() {
+                fs_extra::dir::create(config_dir, true)?;
+            }
+            fs_extra::file::write_all(&config_path_bak, message.as_str())?;
+            let mut option = fs_extra::file::CopyOptions::new();
+            option.overwrite = true;
+            fs_extra::file::move_file(config_path_bak, config_path, &option)?;
+            Ok(())
+        }).unwrap();
+        ns_thread.join()?;
+         */
         Ok(())
     }
     pub fn delete_config_file(&self, pid: i32, nspid: i32) -> AnyhowResult<()> {
+        debug!("delete config file");
+        crate::async_command::run_async_process(Command::new(crate::settings::RASP_NS_ENTER_BIN()))
         let config_path = format!("/proc/{}/root/var/run/elkeid_rasp/{}.json", pid, nspid);
-        fs_extra::file::remove(config_path)?;
+        if Path::new(&config_path).exists() {
+            fs_extra::file::remove(config_path)?;
+        }
         Ok(())
     }
 }

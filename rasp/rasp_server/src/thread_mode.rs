@@ -23,7 +23,7 @@ pub fn core_loop(sock: RASPSock, max_thread: usize) {
         })
         .build()
         .unwrap();
-    debug!("ready");
+    debug!("rasp server config ready");
     let tokio_task = runtime.block_on(async { comm::start_bind(sock).await });
     tokio_task.unwrap();
 }

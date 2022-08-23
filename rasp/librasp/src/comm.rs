@@ -193,7 +193,9 @@ impl RASPComm for ThreadMode {
     }
     fn send_message_to_probe(&mut self, pid: i32, _mnt_namespace: &String, message: &String) -> AnyhowResult<()> {
         match self.agent_to_probe_sender.send((pid, message.clone())) {
-            Ok(_) => {}
+            Ok(_) => {
+                debug!("sending to probe: {} {}", pid, message.clone());
+            }
             Err(SendError(e)) => {
                 error!("send error: {:?}", e);
                 let _ = self.ctrl.stop();
