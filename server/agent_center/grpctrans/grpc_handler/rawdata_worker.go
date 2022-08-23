@@ -25,7 +25,7 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 	var extraInfo = GlobalGRPCPool.GetExtraInfoByID(req.AgentID)
 
 	for k, v := range req.GetData() {
-		ylog.Debugf("handleRawData", "Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
+		ylog.Debugf("handleRawData", "Num:%d Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
 
 		//Loading from the object pool, which can improve performance
 		mqMsg := kafka.MQMsgPool.Get().(*pb.MQData)

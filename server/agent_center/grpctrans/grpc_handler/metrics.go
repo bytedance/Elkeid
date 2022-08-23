@@ -142,6 +142,20 @@ func initPrometheusAgentRxSpeedGauge() *prometheus.GaugeVec {
 	return vec
 }
 
+func releaseAgentHeartbeatMetrics(agentID string) {
+	// tmp remove all gauge for v1.9.1
+	for _, v := range agentGauge {
+		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": "agent"})
+		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": "driver"})
+		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": "rasp"})
+		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": "baseline"})
+		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": "collector"})
+		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": "journal_watcher"})
+		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": "scanner"})
+		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": "scanner_clamav"})
+	}
+}
+
 func init() {
 	initPrometheusGrpcConnGauge()
 }
