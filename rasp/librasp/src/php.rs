@@ -7,6 +7,7 @@ use libc::{kill, pid_t, SIGUSR2};
 use regex::Regex;
 use crate::settings::RASP_PHP_PROBE;
 use log::*;
+use crate::async_command::run_async_process;
 use crate::runtime::{ProbeState, ProbeStateInspect};
 
 pub fn inspect_phpfpm(process: &ProcessInfo) -> AnyhowResult<bool> {
@@ -23,7 +24,10 @@ pub fn inspect_phpfpm(process: &ProcessInfo) -> AnyhowResult<bool> {
 
 pub fn inspect_phpfpm_version(process: &ProcessInfo) -> AnyhowResult<String> {
     let regex = Regex::new(r"PHP ((\d\.\d+)\.\d+)(-| )")?;
-    let output = execute_phpfpm_version(String::from(process.exe_path.as_ref().unwrap()))?;
+    let output = execute_phpfpm_version(
+        process.pid,
+        String::from(process.exe_path.as_ref().unwrap()),
+    )?;
     if let Some(caps) = regex.captures(output.as_str()) {
         if caps.len() == 4 {
             return Ok(String::from(caps.get(2).unwrap().as_str()));
@@ -33,19 +37,45 @@ pub fn inspect_phpfpm_version(process: &ProcessInfo) -> AnyhowResult<String> {
 }
 
 pub fn inspect_phpfpm_zts(process: &ProcessInfo) -> AnyhowResult<bool> {
-    let output = execute_phpfpm_info(String::from(process.exe_path.as_ref().unwrap()))?;
+    let output = execute_phpfpm_info(
+        process.pid, String::from(process.exe_path.as_ref().unwrap()),
+    )?;
     let regex = Regex::new(r"Configure Command.+zts")?;
     Ok(regex.is_match(output.as_str()))
 }
 
-fn execute_phpfpm_version(phpfmp: String) -> AnyhowResult<String> {
-    let output = Command::new(phpfmp).args(["-v"]).output()?;
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+fn execute_phpfpm_version(pid: i32, phpfmp: String) -> AnyhowResult<String> {
+    let (exit_status, output, stderr) = run_async_process(
+        Command::new(crate::settings::RASP_NS_ENTER_BIN())
+            .args([
+                "-m", "-p",
+                "-t", pid.to_string().as_str(),
+                phpfmp.as_str(),
+                "-v"
+            ])
+    )?;
+    if exit_status != 0 {
+        warn!("check phpfpm failed: {} {} {} {}", pid, exit_status, output, stderr);
+        return Err(anyhow!("can not fetch phpfpm version: {} {} {}", pid, exit_status, stderr));
+    }
+    Ok(output)
 }
 
-fn execute_phpfpm_info(phpfmp: String) -> AnyhowResult<String> {
-    let output = Command::new(phpfmp).args(["-i"]).output()?;
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+fn execute_phpfpm_info(pid: i32, phpfmp: String) -> AnyhowResult<String> {
+    let (exit_status, output, stderr) = run_async_process(
+        Command::new(crate::settings::RASP_NS_ENTER_BIN())
+            .args([
+                "-m", "-p",
+                "-t", pid.to_string().as_str(),
+                phpfmp.as_str(),
+                "-i"
+            ])
+    )?;
+    if exit_status != 0 {
+        warn!("check phpfpm failed: {} {} {} {}", pid, exit_status, output, stderr);
+        return Err(anyhow!("can not fetch phpfpm info: {} {} {}", pid, exit_status, stderr));
+    }
+    Ok(output)
 }
 
 

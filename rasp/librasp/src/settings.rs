@@ -1,7 +1,7 @@
 use std::env::current_dir;
 // use anyhow::{Result as AnyhowResult, anyhow};
 
-pub const RASP_VERSION: &'static str = "1.0.0.1";
+pub const RASP_VERSION: &'static str = "1.9.1.32";
 
 pub fn RASP_BASE_DIR() -> String {
     match current_dir() {
