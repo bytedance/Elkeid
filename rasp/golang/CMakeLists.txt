@@ -52,7 +52,7 @@ FetchContent_MakeAvailable(libevent)
 FetchContent_Declare(
         c-runtime
         GIT_REPOSITORY https://github.com/Hackerl/c-runtime
-        GIT_TAG master
+        GIT_TAG 77e47318432a39b4920b8d06610aea0b43138b23
 )
 
 FetchContent_MakeAvailable(c-runtime)
@@ -68,7 +68,7 @@ FetchContent_MakeAvailable(zydis)
 FetchContent_Declare(
         zero
         GIT_REPOSITORY https://github.com/Hackerl/zero
-        GIT_TAG 2ee1ee881dc5a0912dcd0a9a2eb4d2fd82ecd012
+        GIT_TAG d6c7172b537918bd130686b2cc2e06dcccb71344
 )
 
 FetchContent_MakeAvailable(zero)
