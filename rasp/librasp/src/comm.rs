@@ -192,6 +192,7 @@ impl RASPComm for ThreadMode {
         Ok(())
     }
     fn send_message_to_probe(&mut self, pid: i32, _mnt_namespace: &String, message: &String) -> AnyhowResult<()> {
+        debug!("recv thread mode message: {}", message);
         match self.agent_to_probe_sender.send((pid, message.clone())) {
             Ok(_) => {
                 debug!("sending to probe: {} {}", pid, message.clone());

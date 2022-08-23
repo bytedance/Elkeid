@@ -124,7 +124,7 @@ impl RASPManager {
         // try to write probe to dir
         let nspid = ProcessInfo::read_nspid(pid)?.ok_or(anyhow!("can not fetch nspid: {}", pid))?;
         self.write_message_to_config_file(pid, nspid, message.clone())?;
-        debug!("send message to probe: {} {} {}", pid, nspid, &message);
+        debug!("send messages to probe: {} {} {}", pid, nspid, &message);
         // send through sock
         let messages: Vec<libraspserver::proto::PidMissingProbeConfig> = serde_json::from_str(message)?;
         for m in messages {
@@ -133,6 +133,7 @@ impl RASPManager {
                 Some(s) => String::from(s),
                 None => continue,
             };
+            debug!("sending message: {}", m_string);
             if let Some(comm) = self.thread_comm.as_mut() {
                 comm.send_message_to_probe(pid, mnt_namespace, &m_string)?;
             } else if let Some(comm) = self.process_comm.as_mut() {
@@ -541,11 +542,16 @@ impl RASPManager {
         Ok(())
     }
     pub fn delete_config_file(&self, pid: i32, nspid: i32) -> AnyhowResult<()> {
-        debug!("delete config file");
-        crate::async_command::run_async_process(Command::new(crate::settings::RASP_NS_ENTER_BIN()))
-        let config_path = format!("/proc/{}/root/var/run/elkeid_rasp/{}.json", pid, nspid);
+        let config_path = format!("/var/run/elkeid_rasp/{}.json", nspid);
         if Path::new(&config_path).exists() {
-            fs_extra::file::remove(config_path)?;
+            crate::async_command::run_async_process(Command::new(crate::settings::RASP_NS_ENTER_BIN()).args([
+                "-m",
+                "-t",
+                pid.to_string().as_str(),
+                "sh",
+                "-c",
+                format!("rm {}", config_path).as_str()
+            ]))?;
         }
         Ok(())
     }
