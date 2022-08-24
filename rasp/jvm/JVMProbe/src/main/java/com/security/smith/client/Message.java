@@ -129,12 +129,12 @@ class MessageEncoder extends MessageToByteEncoder<Object> {
 class MessageDecoder extends ReplayingDecoder<Void> {
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws IOException {
-        int payloadSize = in.readInt();
+        long payloadSize = in.readUnsignedInt();
 
         if (payloadSize > Message.MAX_PAYLOAD_SIZE)
             return;
 
-        byte[] buffer = new byte[payloadSize];
+        byte[] buffer = new byte[(int) payloadSize];
         in.readBytes(buffer);
 
         ObjectMapper objectMapper = new ObjectMapper();
