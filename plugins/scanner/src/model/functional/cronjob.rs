@@ -57,7 +57,8 @@ impl Cronjob {
                     let entry = match w_dir.next() {
                         None => break,
                         Some(Err(_err)) => {
-                            break;
+                            warn!("walkdir err while cronjob:{:?}", _err);
+                            continue;
                         }
                         Some(Ok(entry)) => entry,
                     };

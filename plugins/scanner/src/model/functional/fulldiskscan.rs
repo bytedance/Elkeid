@@ -302,7 +302,8 @@ pub fn FullScan(
                     let entry = match w_dir.next() {
                         None => break,
                         Some(Err(_err)) => {
-                            break;
+                            warn!("walkdir err while full:{:?}", _err);
+                            continue;
                         }
                         Some(Ok(entry)) => entry,
                     };
@@ -324,7 +325,8 @@ pub fn FullScan(
                             let btime = get_file_btime(&p);
                             (fsize, btime)
                         }
-                        Err(_) => {
+                        Err(_err) => {
+                            warn!("walkdir err while full: get {:?} metadata {:?}", fp, _err);
                             continue;
                         }
                     };
@@ -365,7 +367,8 @@ pub fn FullScan(
                         let entry = match w_dir.next() {
                             None => break,
                             Some(Err(_err)) => {
-                                break;
+                                warn!("walkdir err while full:{:?}", _err);
+                                continue;
                             }
                             Some(Ok(entry)) => entry,
                         };
@@ -388,7 +391,8 @@ pub fn FullScan(
                                 let btime = get_file_btime(&p);
                                 (fsize, btime)
                             }
-                            Err(_) => {
+                            Err(_err) => {
+                                warn!("walkdir err while full: get {:?} metadata {:?}", fp, _err);
                                 continue;
                             }
                         };
