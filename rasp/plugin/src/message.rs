@@ -98,7 +98,7 @@ pub fn parse_message(task: &plugins::Task) -> Anyhow<RASPMessage> {
                             continue;
                         }
                     };
-                    if let Some(patches) = probe_config.patch {
+                    if let Some(patches) = probe_config.patches {
                         match parse_patch_message(pid, patches) {
                             Ok(_) => {},
                             Err(e) => {

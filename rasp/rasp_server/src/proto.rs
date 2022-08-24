@@ -125,7 +125,7 @@ pub struct ProbeConfigData {
     pub blocks: Option<Vec<ProbeConfigBlock>>,
     pub filters: Option<Vec<ProbeConfigFilter>>,
     pub limits: Option<Vec<ProbeConfigLimit>>,
-    pub patch: Option<Vec<ProbeConfigPatch>>
+    pub patches: Option<Vec<ProbeConfigPatch>>
 }
 
 // #[derive(Debug, Serialize, Deserialize, Clone, Default)]
