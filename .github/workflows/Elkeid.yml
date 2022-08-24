@@ -15,19 +15,15 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
-
     - name: Set up Go
       uses: actions/setup-go@v2
       with:
         go-version: 1.16
 
     - name: Build RASP
-      uses: docker/build-push-action@v2
-      with:
-        file: rasp/docker/Dockerfile
-        tags: elkeid/rasp:latest
+      run: |
+        curl -fsSL https://lf3-static.bytednsdoc.com/obj/eden-cn/laahweh7uhwbps/php-headers.tar.gz | tar -xz -C rasp/php
+        docker run --rm -v $(pwd):/Elkeid -e MAKEFLAGS="-j$(nproc)" hackerl/rasp-toolchain make -C /Elkeid/rasp build STATIC=TRUE CC=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-gcc CXX=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-g++ LD=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-ld CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-ld PHP_CC=/opt/gcc-10.4.0/bin/gcc PHP_CXX=/opt/gcc-10.4.0/bin/g++ PHP_HEADERS=/Elkeid/rasp/php/php-headers
 
     - name: Build Agent
       run: cd agent && go build -o elkeid-agent
