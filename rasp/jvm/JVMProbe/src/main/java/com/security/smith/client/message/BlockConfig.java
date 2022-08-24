@@ -1,20 +1,14 @@
 package com.security.smith.client.message;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.deser.std.UUIDDeserializer;
-
-import java.util.UUID;
-
 public class BlockConfig {
-    @JsonDeserialize(using = UUIDDeserializer.class)
-    private UUID uuid;
+    private String uuid;
     private Block[] blocks;
 
-    public UUID getUUID() {
+    public String getUUID() {
         return uuid;
     }
 
-    public void setUUID(UUID uuid) {
+    public void setUUID(String uuid) {
         this.uuid = uuid;
     }
 
