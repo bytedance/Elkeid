@@ -83,13 +83,6 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 	//Send command to agent
 	go sendData(stream, &connection)
 
-	//Every time the agent connects to the server
-	//it needs to push the latest configuration to agent
-	err = GlobalGRPCPool.PostLatestConfig(agentID)
-	if err != nil {
-		ylog.Errorf("Transfer", "send config error, %s %s", agentID, err.Error())
-	}
-
 	//stop here
 	<-connection.Ctx.Done()
 	return nil

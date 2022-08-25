@@ -164,7 +164,20 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 
 	//last heartbeat time get from server
 	detail["last_heartbeat_time"] = time.Now().Unix()
-	conn.SetAgentDetail(detail)
+
+	if len(conn.GetAgentDetail()) == 0 {
+		conn.SetAgentDetail(detail)
+
+		//Every time the agent connects to the server
+		//it needs to push the latest configuration to agent
+		err = GlobalGRPCPool.PostLatestConfig(req.AgentID)
+		if err != nil {
+			ylog.Errorf("Transfer", "send config error, %s %s", req.AgentID, err.Error())
+		}
+	} else {
+		conn.SetAgentDetail(detail)
+	}
+
 	return detail
 }
 

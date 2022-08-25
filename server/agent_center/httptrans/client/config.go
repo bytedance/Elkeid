@@ -52,7 +52,6 @@ func GetConfigFromRemote(agentID string, detail map[string]interface{}) ([]*pb.C
 		ylog.Errorf("GetConfigFromRemote", "error %s %s", agentID, err.Error())
 		return nil, err
 	}
-
 	if !resp.Ok {
 		ylog.Errorf("GetConfigFromRemote", "response code is not 200, AgentID: %s, StatusCode: %d,String: %s", agentID, resp.StatusCode, resp.String())
 		return nil, errors.New("status code is not ok")
