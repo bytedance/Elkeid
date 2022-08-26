@@ -80,7 +80,7 @@
         "keys": {
           "token": 1
         },
-        "unique": true
+        "unique": false
       },            {
         "keys": {
           "name": 1
