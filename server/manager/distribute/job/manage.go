@@ -38,9 +38,10 @@ func init() {
 	CM = NewCronJobManager()
 	CM.add("Server_AgentStat", 90, 512, 120)
 	CM.add("Server_AgentList", 30, 512, 20)
+	go CM.manage()
 }
 
-//cron job manage
+// cron job manage
 const (
 	cronLock = "LOCK:%s:%d"
 )
@@ -63,7 +64,6 @@ func NewCronJobManager() *cronJobManager {
 		jobs: make([]cronJob, 0),
 		done: make(chan bool),
 	}
-	go cj.manage()
 	return cj
 }
 
