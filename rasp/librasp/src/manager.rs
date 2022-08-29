@@ -7,6 +7,7 @@ use anyhow::{anyhow, Result, Result as AnyhowResult};
 use crossbeam::channel::Sender;
 use fs_extra::dir::{copy, CopyOptions, create_all};
 use fs_extra::file::{copy as file_copy, CopyOptions as FileCopyOptions};
+use libraspserver::proto::{PidMissingProbeConfig, ProbeConfigData};
 use log::*;
 
 use crate::{comm::{Control, RASPComm, ThreadMode, ProcessMode}, process::ProcessInfo, runtime::{ProbeState, ProbeStateInspect, RuntimeInspect, ProbeCopy}, settings};
@@ -126,29 +127,37 @@ impl RASPManager {
         debug!("send messages to probe: {} {} {}", pid, nspid, &message);
         // send through sock
         let messages: Vec<libraspserver::proto::PidMissingProbeConfig> = serde_json::from_str(message)?;
-        self.write_message_to_config_file(pid, nspid, message.clone())?;
+        let mut valid_messages: Vec<libraspserver::proto::PidMissingProbeConfig> = Vec::new();
         for m in messages.iter() {
             if m.data.uuid == "" {
-                continue
-            }
-            let m_string = match serde_json::to_string(&m) {
-                Ok(s) => s,
-                Err(e) => {
-                    warn!("failed to convert json to string: {:?} {}", m, e);
-                    continue
-                }
-            };
-            debug!("sending message: {}", m_string);
-            if let Some(comm) = self.thread_comm.as_mut() {
-                comm.send_message_to_probe(pid, mnt_namespace, &m_string)?;
-            } else if let Some(comm) = self.process_comm.as_mut() {
-                comm.send_message_to_probe(pid, mnt_namespace, &m_string)?;
-            } else {
-                return Err(anyhow!("both thread && process comm mode not init"));
-            }
+                valid_messages.push(PidMissingProbeConfig {
+                    message_type: m.message_type,
+                    data: ProbeConfigData::empty(m.message_type)?
+                });
+            continue;
         }
-        Ok(())
+        let m_string = match serde_json::to_string(&m) {
+            Ok(s) => s,
+            Err(e) => {
+                warn!("failed to convert json to string: {:?} {}", m, e);
+                continue;
+            }
+        };
+        valid_messages.push(m.clone());
+        debug!("sending message: {}", m_string);
+        if let Some(comm) = self.thread_comm.as_mut() {
+            comm.send_message_to_probe(pid, mnt_namespace, &m_string)?;
+        } else if let Some(comm) = self.process_comm.as_mut() {
+            comm.send_message_to_probe(pid, mnt_namespace, &m_string)?;
+        } else {
+            return Err(anyhow!("both thread && process comm mode not init"));
+        }
     }
+    let valid_messages_string = serde_json::to_string(&valid_messages)?;
+    self.write_message_to_config_file(pid, nspid, valid_messages_string)?;
+
+    Ok(())
+}
 }
 
 pub const PROCESS_BALACK: &'static [&'static str] = &[

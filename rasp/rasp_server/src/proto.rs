@@ -6,6 +6,7 @@ use lazy_static::lazy_static;
 use log::*;
 use serde::{Deserialize, Serialize};
 use serde_json;
+use anyhow::{Result as AnyhowResult, anyhow};
 
 use super::utils::generate_timestamp_f64;
 
@@ -122,10 +123,59 @@ pub struct PidMissingProbeConfig {
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ProbeConfigData {
     pub uuid: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub blocks: Option<Vec<ProbeConfigBlock>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub filters: Option<Vec<ProbeConfigFilter>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub limits: Option<Vec<ProbeConfigLimit>>,
-    pub patches: Option<Vec<ProbeConfigPatch>>
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub patches: Option<Vec<ProbeConfigPatch>>,
+}
+
+impl ProbeConfigData {
+    pub fn empty(message_type: i32) -> AnyhowResult<Self> {
+        /*
+        6FILTER,
+        7BLOCK,
+        8LIMIT,
+        9PATCH
+         */
+        let data = match message_type {
+            6 => ProbeConfigData {
+                uuid: "".to_string(),
+                blocks: None,
+                filters: Some(Vec::new()),
+                limits: None,
+                patches: None,
+            },
+            7 => ProbeConfigData {
+                uuid: "".to_string(),
+                blocks: Some(Vec::new()),
+                filters: None,
+                limits: None,
+                patches: None,
+            },
+            8 => ProbeConfigData {
+                uuid: "".to_string(),
+                blocks: None,
+                filters: None,
+                limits: Some(Vec::new()),
+                patches: None,
+            },
+            9 => ProbeConfigData {
+                uuid: "".to_string(),
+                blocks: None,
+                filters: None,
+                limits: None,
+                patches: Some(Vec::new()),
+            },
+            _ => {
+                return Err(anyhow!("message type not valid"));
+            }
+        };
+        return Ok(data);
+    }
 }
 
 // #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -219,6 +269,7 @@ pub fn message_handle(message: &String) -> Result<String, String> {
     };
     Ok(response)
 }
+
 pub fn jar_report(message: &Message) -> Result<String, String> {
     let msg = message.clone();
     let response = serde_json::json!(msg).to_string();

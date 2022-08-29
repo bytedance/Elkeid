@@ -257,7 +257,7 @@ fn internal_main(
             let mut process = match crate::process::collect(pid, &local_filters) {
                 Ok(p) => p,
                 Err(e) => {
-                    warn!("process filting failed: {} {}", pid, e);
+                    debug!("process information collect failed: {} {}", pid, e);
                     sleep(Duration::from_millis(50));
                     continue;
                 }
@@ -319,6 +319,7 @@ fn internal_main(
             let watched_process_cloned = watched_process.clone();
             drop(watched_process);
             let seq_id = generate_seq_id();
+            info!("sending heartbeat, len: {}", watched_process_cloned.len());
             for (_pid, process) in watched_process_cloned.iter() {
                 let mut message = generate_heartbeat(&process);
                 message.insert("package_seq", seq_id.clone());

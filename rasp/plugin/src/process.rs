@@ -15,12 +15,12 @@ pub(crate) fn collect(pid: i32, filters: &Filters) -> AnyhowResult<ProcessInfo> 
     let (exe_name, exe_path) = pi.update_exe(&process)?;
     for ignore_path in filters.ignore_exe_path.iter() {
         if exe_path.starts_with(ignore_path) {
-            return Err(anyhow!("hit global exe_path filter: {}, ignore prcess", ignore_path));
+            return Err(anyhow!("hit global exe_path filter: {}, ignore process", ignore_path));
         }
     }
     for ignore_name in filters.ignore_exe_name.iter() {
         if &exe_name == ignore_name {
-            return Err(anyhow!("hit global exe_path filter: {}, ignore prcess", ignore_name));
+            return Err(anyhow!("hit global exe_path filter: {}, ignore process", ignore_name));
         }
     }
     if filters.collect_all_env {
