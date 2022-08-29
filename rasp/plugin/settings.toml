@@ -11,7 +11,6 @@ ignore_exe_path = [
 ]
 
 ignore_exe_name = [
-    "python2",
     "mongoosev3-agent",
     "mongoosev3-agen",
     "elkeid",
@@ -40,16 +39,8 @@ auto_attach_runtime = [
 ### recommand for large scale deployment
 ### `data_type` field
 report_heartbeat = 2997
+report_action = 2995
 
-[attach]
-### handle probe message in thread/sub-process mode.
-handle_probe_message_mode = "process"
-pangolin_path = ""
-python_inject_path = ""
-python_probe_path = ""
-golang_probe_path = ""
-jvm_jattach_path = ""
-jvm_probe_path = ""
 
 [server]
 # process mode will start new unix-socket server for every namespace

@@ -234,6 +234,7 @@ fn internal_main(
     let inspect_reportor = internal_message_sender.clone();
     let external_message_sender_for_inspected = external_message_sender.clone();
     let report_heartbeat_data_type = settings_int("data_type", "report_heartbeat")?;
+    let report_action_data_type = settings_int("data_type", "report_action")?;
     let inspect_thread = Builder::new()
         .name("inspect".to_string())
         .spawn(move || loop {
@@ -292,7 +293,7 @@ fn internal_main(
             let mut ip = inspected_process_rw.write();
             let report = make_report(&process.clone(), "inspected", String::new());
             let mut record = hashmap_to_record(report);
-            record.data_type = report_heartbeat_data_type.clone() as i32;
+            record.data_type = report_action_data_type.clone() as i32;
             record.timestamp = time();
             let _ = inspect_reportor.send(
                 record
@@ -409,7 +410,7 @@ fn internal_main(
                     info!("operation success: {:?}", operation_message);
                     let report = make_report(&process.clone(), format!("{}_success", state.clone()).as_str(), String::new());
                     let mut record = hashmap_to_record(report);
-                    record.data_type = report_heartbeat_data_type.clone() as i32;
+                    record.data_type = report_action_data_type.clone() as i32;
                     record.timestamp = time();
                     let _ = operation_reporter.send(
                         record
@@ -423,7 +424,7 @@ fn internal_main(
                         e.to_string(),
                     );
                     let mut record = hashmap_to_record(report);
-                    record.data_type = report_heartbeat_data_type.clone() as i32;
+                    record.data_type = report_action_data_type.clone() as i32;
                     record.timestamp = time();
                     let _ = operation_reporter.send(
                         record
