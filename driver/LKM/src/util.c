@@ -696,7 +696,6 @@ u8 *smith_query_sb_uuid(struct super_block *sb)
 size_t smith_strnlen (const char *str, size_t maxlen)
 {
     const char *char_ptr, *end_ptr = str + maxlen;
-    const unsigned long *longword_ptr;
     unsigned long longword, himagic, lomagic;
 
     if (!str || maxlen == 0)
@@ -708,16 +707,12 @@ size_t smith_strnlen (const char *str, size_t maxlen)
     /* Handle the first few characters by reading one character at a time.
        Do this until CHAR_PTR is aligned on a longword boundary.  */
     for (char_ptr = str; ((unsigned long)char_ptr & (sizeof(longword) - 1)) != 0;
-         ++char_ptr)
-    if (*char_ptr == '\0') {
-	    if (char_ptr > end_ptr)
-	        char_ptr = end_ptr;
-        return char_ptr - str;
+         ++char_ptr) {
+        if (char_ptr >= end_ptr)
+            return end_ptr - str;
+        else if (*char_ptr == '\0')
+            return char_ptr - str;
     }
-
-    /* All these elucidatory comments refer to 4-byte longwords,
-       but the theory applies equally well to 8-byte longwords.  */
-    longword_ptr = (unsigned long *) char_ptr;
 
     /* Bits 31, 24, 16, and 8 of this number are zero.  Call these bits
        the "holes."  Note that there is a hole just to the left of
@@ -741,7 +736,7 @@ size_t smith_strnlen (const char *str, size_t maxlen)
     /* Instead of the traditional loop which tests each character,
        we will test a longword at a time.  The tricky part is testing
        if *any of the four* bytes in the longword in question are zero.  */
-    while (longword_ptr < (unsigned long *) end_ptr) {
+    while (char_ptr < end_ptr) {
         /* We tentatively exit the loop if adding MAGIC_BITS to
 	       LONGWORD fails to change any of the hole bits of LONGWORD.
 
@@ -770,46 +765,73 @@ size_t smith_strnlen (const char *str, size_t maxlen)
 
 	       So it ignores everything except 128's, when they're aligned
 	       properly.  */
-
-        longword = *longword_ptr++;
-
-        if ((longword - lomagic) & himagic)	{
-	        /* Which of the bytes was the zero?  If none of them were, it was
-	           a misfire; continue the search.  */
-
-	        const char *cp = (const char *) (longword_ptr - 1);
-
-	        char_ptr = cp;
-	        if (cp[0] == 0)
-	            break;
-	        char_ptr = cp + 1;
-	        if (cp[1] == 0)
-	            break;
-	        char_ptr = cp + 2;
-	        if (cp[2] == 0)
-	            break;
-	        char_ptr = cp + 3;
-	        if (cp[3] == 0)
-	            break;
-	        if (sizeof (longword) > 4) {
-	            char_ptr = cp + 4;
-	            if (cp[4] == 0)
-		            break;
-	            char_ptr = cp + 5;
-	            if (cp[5] == 0)
-		            break;
-	            char_ptr = cp + 6;
-	            if (cp[6] == 0)
-		            break;
-	            char_ptr = cp + 7;
-	            if (cp[7] == 0)
-		            break;
-	          }
-	    }
-        char_ptr = end_ptr;
+        if (likely(char_ptr <= end_ptr - sizeof(longword))) {
+            longword = *((unsigned long *)char_ptr);
+            if ((longword - lomagic) & himagic)	{
+                /* Which of the bytes was the zero?  If none of them were, it was
+                a misfire; continue the search.  */
+                const char *cp = char_ptr;
+                char_ptr = cp;
+                if (cp[0] == 0)
+                    break;
+                char_ptr = cp + 1;
+                if (cp[1] == 0)
+                    break;
+                char_ptr = cp + 2;
+                if (cp[2] == 0)
+                    break;
+                char_ptr = cp + 3;
+                if (cp[3] == 0)
+                    break;
+                if (sizeof (longword) > 4) {
+                    char_ptr = cp + 4;
+                    if (cp[4] == 0)
+                        break;
+                    char_ptr = cp + 5;
+                    if (cp[5] == 0)
+                        break;
+                    char_ptr = cp + 6;
+                    if (cp[6] == 0)
+                        break;
+                    char_ptr = cp + 7;
+                    if (cp[7] == 0)
+                        break;
+                }
+            }
+            char_ptr += sizeof(longword);
+        } else {
+            while (char_ptr < end_ptr && *char_ptr)
+                char_ptr++;
+        }
     }
 
     if (char_ptr > end_ptr)
         char_ptr = end_ptr;
     return char_ptr - str;
 }
+
+#ifdef SMITH_STRNLEN_TESTING
+#define TEST_STRNLEN_STR0  "123456"
+#define TEST_STRNLEN_STR1  "_123456"
+#define TEST_STRNLEN_STR2  "__123456"
+#define TEST_STRNLEN_STR3  "___123456"
+#define TEST_STRNLEN_STR4  "____123456"
+#define TEST_STRNLEN_STR5  "_____123456"
+#define TEST_STRNLEN_STR6  "123456789012345678"
+#define TEST_STRNLEN_STR7  "_123456789012345678"
+#define TEST_STRNLEN_STR8  "__123456789012345678"
+#define TEST_STRNLEN_STR9  "___123456789012345678"
+static void smith_strnlen_test(void)
+{
+    printk("STR0: %px %ld\n", TEST_STRNLEN_STR0, smith_strnlen(&TEST_STRNLEN_STR0[0], 128));
+    printk("STR1: %px %ld\n", TEST_STRNLEN_STR1, smith_strnlen(&TEST_STRNLEN_STR1[1], 128));
+    printk("STR2: %px %ld\n", TEST_STRNLEN_STR2, smith_strnlen(&TEST_STRNLEN_STR2[2], 128));
+    printk("STR3: %px %ld\n", TEST_STRNLEN_STR3, smith_strnlen(&TEST_STRNLEN_STR3[3], 128));
+    printk("STR4: %px %ld\n", TEST_STRNLEN_STR4, smith_strnlen(&TEST_STRNLEN_STR4[4], 128));
+    printk("STR5: %px %ld\n", TEST_STRNLEN_STR5, smith_strnlen(&TEST_STRNLEN_STR5[5], 128));
+    printk("STR6: %px %ld\n", TEST_STRNLEN_STR6, smith_strnlen(&TEST_STRNLEN_STR6[0], 128));
+    printk("STR7: %px %ld\n", TEST_STRNLEN_STR7, smith_strnlen(&TEST_STRNLEN_STR7[1], 128));
+    printk("STR8: %px %ld\n", TEST_STRNLEN_STR8, smith_strnlen(&TEST_STRNLEN_STR8[2], 128));
+    printk("STR9: %px %ld\n", TEST_STRNLEN_STR9, smith_strnlen(&TEST_STRNLEN_STR9[3], 128));
+}
+#endif
