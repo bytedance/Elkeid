@@ -123,7 +123,7 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 	detail := make(map[string]interface{}, len(hb)+9)
 	for k, v := range hb {
 		//部分字段不需要修改
-		if k == "platform_version" {
+		if k == "platform_version" || k == "version" || k == "host_serial" || k == "host_id" || k == "host_model" || k == "host_vendor" || k == "cpu_name" {
 			detail[k] = v
 			continue
 		}
