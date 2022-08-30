@@ -343,10 +343,10 @@ impl RASPManager {
 
     fn clean_prev_lib() -> AnyhowResult<()> {
         info!("cleaning previous lib dir");
-        for entry in read_dir("/proc")? {
+        for entry in read_dir("./")? {
             let filename = entry.file_name().to_string_lossy().to_string();
             if filename.contains("lib-") && !filename.contains(settings::RASP_VERSION) {
-                info!("remove: {}", filename);
+                info!("remove perv libs: {}", filename);
                 fs_extra::dir::remove(format!("./{}", filename))?
             }
         }
