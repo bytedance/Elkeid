@@ -106,7 +106,7 @@ void SmithProbe::onMessage(const SmithMessage &message) {
             mHeartbeat.filter = config.uuid;
 
             for (const auto &filter: config.filters)
-                mFilters.insert({{filter.classId, filter.methodID}, filter});
+                mFilters.insert({{filter.classID, filter.methodID}, filter});
 
             break;
         }
@@ -118,34 +118,46 @@ void SmithProbe::onMessage(const SmithMessage &message) {
 
             mHeartbeat.block = config.uuid;
 
-            for (const auto &block: config.blocks) {
-                if (block.classId >= CLASS_MAX || block.methodID >= METHOD_MAX)
-                    continue;
+            for (int i = 0; i < CLASS_MAX; i++) {
+                for (int j = 0; j < METHOD_MAX; j++) {
+                    z_rwlock_write_lock(&gAPIConfig->mBlockPolicies[i][j].lock);
 
-                if (block.rules.size() > BLOCK_RULE_COUNT) {
-                    LOG_WARNING("block rule size limit");
-                    continue;
-                }
+                    auto it = std::find_if(config.blocks.begin(), config.blocks.end(), [=](const auto &block) {
+                        return block.classID == i && block.methodID == j;
+                    });
 
-                z_rwlock_write_lock(&gAPIConfig->mLock);
-
-                int count = 0;
-
-                for (const auto &r : block.rules) {
-                    if (r.regex.length() >= BLOCK_RULE_LENGTH) {
-                        LOG_WARNING("block rule regex length limit");
+                    if (it == config.blocks.end()) {
+                        gAPIConfig->mBlockPolicies[i][j].count = 0;
+                        z_rwlock_write_unlock(&gAPIConfig->mBlockPolicies[i][j].lock);
                         continue;
                     }
 
-                    auto rule = gAPIConfig->mBlockPolicies[block.classId][block.methodID].rules + count++;
+                    if (it->rules.size() > BLOCK_RULE_COUNT) {
+                        LOG_WARNING("block rule size limit");
 
-                    rule->first = r.index;
-                    strcpy(rule->second, r.regex.c_str());
+                        gAPIConfig->mBlockPolicies[i][j].count = 0;
+                        z_rwlock_write_unlock(&gAPIConfig->mBlockPolicies[i][j].lock);
+
+                        continue;
+                    }
+
+                    int count = 0;
+
+                    for (const auto &r : it->rules) {
+                        if (r.regex.length() >= BLOCK_RULE_LENGTH) {
+                            LOG_WARNING("block rule regex length limit");
+                            continue;
+                        }
+
+                        auto rule = gAPIConfig->mBlockPolicies[i][j].rules + count++;
+
+                        rule->first = r.index;
+                        strcpy(rule->second, r.regex.c_str());
+                    }
+
+                    gAPIConfig->mBlockPolicies[i][j].count = count;
+                    z_rwlock_write_unlock(&gAPIConfig->mBlockPolicies[i][j].lock);
                 }
-
-                gAPIConfig->mBlockPolicies[block.classId][block.methodID].count = count;
-
-                z_rwlock_write_unlock(&gAPIConfig->mLock);
             }
 
             break;
@@ -162,7 +174,7 @@ void SmithProbe::onMessage(const SmithMessage &message) {
             mHeartbeat.limit = config.uuid;
 
             for (const auto &limit: config.limits)
-                mLimits.insert({{limit.classId, limit.methodID}, limit.quota});
+                mLimits.insert({{limit.classID, limit.methodID}, limit.quota});
 
             break;
         }

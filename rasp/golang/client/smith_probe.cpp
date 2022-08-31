@@ -93,7 +93,7 @@ void SmithProbe::onTimer() {
 
     std::lock_guard<std::mutex> _0_(mLimitMutex);
 
-    for (const auto &api : GOLANG_API) {
+    for (const auto &api: GOLANG_API) {
         auto it = mLimits.find({api.metadata.classID, api.metadata.methodID});
 
         if (it == mLimits.end()) {
@@ -127,7 +127,7 @@ void SmithProbe::onMessage(const SmithMessage &message) {
             mHeartbeat.filter = config.uuid;
 
             for (const auto &filter: config.filters)
-                mFilters.insert({{filter.classId, filter.methodID}, filter});
+                mFilters.insert({{filter.classID, filter.methodID}, filter});
 
             break;
         }
@@ -139,38 +139,44 @@ void SmithProbe::onMessage(const SmithMessage &message) {
 
             mHeartbeat.block = config.uuid;
 
-            for (const auto &block : config.blocks) {
-                auto it = std::find_if(GOLANG_API.begin(), GOLANG_API.end(), [&](const auto &r) {
-                    return r.metadata.classID == block.classId && r.metadata.methodID == block.methodID;
+            for (const auto &api: GOLANG_API) {
+                z_rwlock_write_lock(&api.metadata.config->lock);
+
+                auto it = std::find_if(config.blocks.begin(), config.blocks.end(), [&](const auto &block) {
+                    return block.classID == api.metadata.classID && block.methodID == api.metadata.methodID;
                 });
 
-                if (it == GOLANG_API.end())
-                    continue;
-
-                if (block.rules.size() > BLOCK_RULE_COUNT) {
-                    LOG_WARNING("block rule size limit");
+                if (it == config.blocks.end()) {
+                    api.metadata.config->policies.count = 0;
+                    z_rwlock_write_unlock(&api.metadata.config->lock);
                     continue;
                 }
 
-                z_rwlock_write_lock(&it->metadata.config->lock);
+                if (it->rules.size() > BLOCK_RULE_COUNT) {
+                    LOG_WARNING("block rule size limit");
+
+                    api.metadata.config->policies.count = 0;
+                    z_rwlock_write_unlock(&api.metadata.config->lock);
+
+                    continue;
+                }
 
                 int count = 0;
 
-                for (const auto &r : block.rules) {
+                for (const auto &r: it->rules) {
                     if (r.regex.length() >= BLOCK_RULE_LENGTH) {
                         LOG_WARNING("block rule regex length limit");
                         continue;
                     }
 
-                    auto rule = it->metadata.config->policies.rules + count++;
+                    auto rule = api.metadata.config->policies.rules + count++;
 
                     rule->first = r.index;
                     strcpy(rule->second, r.regex.c_str());
                 }
 
-                it->metadata.config->policies.count = count;
-
-                z_rwlock_write_unlock(&it->metadata.config->lock);
+                api.metadata.config->policies.count = count;
+                z_rwlock_write_unlock(&api.metadata.config->lock);
             }
 
             break;
@@ -187,7 +193,7 @@ void SmithProbe::onMessage(const SmithMessage &message) {
             mHeartbeat.limit = config.uuid;
 
             for (const auto &limit: config.limits)
-                mLimits.insert({{limit.classId, limit.methodID}, limit.quota});
+                mLimits.insert({{limit.classID, limit.methodID}, limit.quota});
 
             break;
         }

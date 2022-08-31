@@ -68,6 +68,7 @@ public:
 
 struct BlockPolicy {
     int count;
+    z_rwlock_t lock;
     std::pair<int, char[BLOCK_RULE_LENGTH]> rules[BLOCK_RULE_COUNT];
 };
 
@@ -101,9 +102,9 @@ public:
     }
 
     bool block(const Trace &trace) {
-        z_rwlock_read_lock(&mLock);
-
         BlockPolicy &policy = mBlockPolicies[trace.classID][trace.methodID];
+
+        z_rwlock_read_lock(&policy.lock);
 
         bool match = std::any_of(policy.rules, policy.rules + policy.count, [&](const auto &rule) {
             if (rule.first >= trace.count)
@@ -114,16 +115,13 @@ public:
             return re_match(rule.second, trace.args[rule.first], &length) != -1;
         });
 
-        z_rwlock_read_unlock(&mLock);
+        z_rwlock_read_unlock(&policy.lock);
 
         return match;
     }
 
 public:
     int mQuotas[CLASS_MAX][METHOD_MAX]{};
-
-public:
-    z_rwlock_t mLock{};
     BlockPolicy mBlockPolicies[CLASS_MAX][METHOD_MAX]{};
 };
 

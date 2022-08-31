@@ -78,7 +78,7 @@ struct MatchRule {
 };
 
 struct Filter {
-    int classId;
+    int classID;
     int methodID;
     std::list<MatchRule> include;
     std::list<MatchRule> exclude;
@@ -90,7 +90,7 @@ struct FilterConfig {
 };
 
 struct Block {
-    int classId;
+    int classID;
     int methodID;
     std::list<MatchRule> rules;
 };
@@ -101,7 +101,7 @@ struct BlockConfig {
 };
 
 struct Limit {
-    int classId;
+    int classID;
     int methodID;
     int quota;
 };
