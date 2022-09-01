@@ -86,20 +86,20 @@ void from_json(const nlohmann::json &j, MatchRule &matchRule) {
 }
 
 void from_json(const nlohmann::json &j, Filter &filter) {
-    j.at("class_id").get_to(filter.classId);
+    j.at("class_id").get_to(filter.classID);
     j.at("method_id").get_to(filter.methodID);
     j.at("include").get_to(filter.include);
     j.at("exclude").get_to(filter.exclude);
 }
 
 void from_json(const nlohmann::json &j, Block &block) {
-    j.at("class_id").get_to(block.classId);
+    j.at("class_id").get_to(block.classID);
     j.at("method_id").get_to(block.methodID);
     j.at("rules").get_to(block.rules);
 }
 
 void from_json(const nlohmann::json &j, Limit &limit) {
-    j.at("class_id").get_to(limit.classId);
+    j.at("class_id").get_to(limit.classID);
     j.at("method_id").get_to(limit.methodID);
     j.at("quota").get_to(limit.quota);
 }
