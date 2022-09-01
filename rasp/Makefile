@@ -164,7 +164,7 @@ endif
 
 build: update_version agent_plugin nsenter process_injector java python go node php_probe rasp server ## build all
 	cd output && mv lib "lib-${VERSION}"
-	cd output && strip ./* && strip ./*/* && strip ./*/*/*
+	# cd output && strip ./* && strip ./*/* && strip ./*/*/*
 	cd output && tar -czvf "rasp_${VERSION}.tar.gz" ./* && sha256sum "rasp_${VERSION}.tar.gz" && sha256sum rasp
 	mv "output/rasp_${VERSION}.tar.gz" .
 
