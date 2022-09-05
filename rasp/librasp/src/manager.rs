@@ -127,6 +127,9 @@ impl RASPManager {
         debug!("send messages to probe: {} {} {}", pid, nspid, &message);
         // send through sock
         let messages: Vec<libraspserver::proto::PidMissingProbeConfig> = serde_json::from_str(message)?;
+        if messages.len() <= 0 {
+            return Ok(())
+        }
         let mut valid_messages: Vec<libraspserver::proto::PidMissingProbeConfig> = Vec::new();
         for m in messages.iter() {
             if m.data.uuid == "" {
