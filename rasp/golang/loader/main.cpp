@@ -27,6 +27,56 @@ int main(int argc, char **argv, char **envp) {
     if (load_elf(argv[1], ctx) < 0)
         return -1;
 
+    ELFIO::elfio reader;
+
+    if (!reader.load(argv[1]))
+        return -1;
+
+    if (reader.get_type() == ET_DYN) {
+        std::vector<ELFIO::segment *> loads;
+
+        std::copy_if(
+                reader.segments.begin(),
+                reader.segments.end(),
+                std::back_inserter(loads),
+                [](const auto &i) {
+                    return i->get_type() == PT_LOAD;
+                });
+
+        uintptr_t minVA = std::min_element(
+                loads.begin(),
+                loads.end(),
+                [](const auto &i, const auto &j) {
+                    return i->get_virtual_address() < j->get_virtual_address();
+                }).operator*()->get_virtual_address() & ~(PAGE_SIZE - 1);
+
+        for (const auto &section: reader.sections) {
+            if (section->get_type() != SHT_RELA)
+                continue;
+
+            ELFIO::relocation_section_accessor relocations(reader, section);
+
+            for (ELFIO::Elf_Xword i = 0; i < relocations.get_entries_num(); i++) {
+                ELFIO::Elf64_Addr offset = 0;
+                ELFIO::Elf64_Addr symbolValue = 0;
+                std::string symbolName;
+                ELFIO::Elf_Word type = 0;
+                ELFIO::Elf_Sxword addend = 0;
+                ELFIO::Elf_Sxword calcValue = 0;
+
+                if (!relocations.get_entry(i, offset, symbolValue, symbolName, type, addend, calcValue)) {
+                    LOG_ERROR("get relocation entry %lu failed", i);
+                    return -1;
+                }
+
+                if (type != R_X86_64_RELATIVE)
+                    continue;
+
+                *(size_t *) (ctx[0].base + offset - minVA) = (ctx[0].base + calcValue - minVA);
+            }
+        }
+    }
+
     sigset_t mask = {};
     sigset_t origin_mask = {};
 
@@ -85,59 +135,6 @@ int main(int argc, char **argv, char **envp) {
             pthread_self(),
             std::filesystem::path(argv[1]).filename().string().substr(0, TASK_COMM_LEN - 1).c_str()
     );
-
-    ELFIO::elfio reader;
-
-    if (!reader.load(argv[1]))
-        return -1;
-
-    if (reader.get_type() != ET_DYN) {
-        jump_to_entry(ctx, argc - 1, argv + 1, envp);
-        return 0;
-    }
-
-    std::vector<ELFIO::segment *> loads;
-
-    std::copy_if(
-            reader.segments.begin(),
-            reader.segments.end(),
-            std::back_inserter(loads),
-            [](const auto &i) {
-                return i->get_type() == PT_LOAD;
-            });
-
-    uintptr_t minVA = std::min_element(
-            loads.begin(),
-            loads.end(),
-            [](const auto &i, const auto &j) {
-                return i->get_virtual_address() < j->get_virtual_address();
-            }).operator*()->get_virtual_address() & ~(PAGE_SIZE - 1);
-
-    for (const auto &section: reader.sections) {
-        if (section->get_type() != SHT_RELA)
-            continue;
-
-        ELFIO::relocation_section_accessor relocations(reader, section);
-
-        for (ELFIO::Elf_Xword i = 0; i < relocations.get_entries_num(); i++) {
-            ELFIO::Elf64_Addr offset = 0;
-            ELFIO::Elf64_Addr symbolValue = 0;
-            std::string symbolName;
-            ELFIO::Elf_Word type = 0;
-            ELFIO::Elf_Sxword addend = 0;
-            ELFIO::Elf_Sxword calcValue = 0;
-
-            if (!relocations.get_entry(i, offset, symbolValue, symbolName, type, addend, calcValue)) {
-                LOG_ERROR("get relocation entry %lu failed", i);
-                return -1;
-            }
-
-            if (type != R_X86_64_RELATIVE)
-                continue;
-
-            *(size_t *) (ctx[0].base + offset - minVA) = (ctx[0].base + calcValue - minVA);
-        }
-    }
 
     jump_to_entry(ctx, argc - 1, argv + 1, envp);
 

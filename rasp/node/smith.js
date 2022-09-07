@@ -165,9 +165,3 @@ dns.lookup = smithHook(dns.lookup, 3, 0);
 dns.resolve = smithHook(dns.resolve, 3, 1);
 dns.resolve4 = smithHook(dns.resolve4, 3, 2);
 dns.resolve6 = smithHook(dns.resolve6, 3, 3);
-
-if (inspector.url()) {
-    setTimeout(() => {
-        inspector.close();
-    }, 500);
-}

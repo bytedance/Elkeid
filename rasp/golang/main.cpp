@@ -38,6 +38,7 @@ int main() {
 
     if (!gLineTable->load()) {
         LOG_ERROR("line table load failed");
+        pthread_sigmask(SIG_SETMASK, &origin_mask, nullptr);
         quit(-1);
     }
 
@@ -48,6 +49,7 @@ int main() {
 
         if (!table.load()) {
             LOG_ERROR("interface table load failed");
+            pthread_sigmask(SIG_SETMASK, &origin_mask, nullptr);
             quit(-1);
         }
 
