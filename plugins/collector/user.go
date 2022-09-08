@@ -108,8 +108,15 @@ func GetUser() {
 	for passwdScanner.Scan() {
 		line := passwdScanner.Text()
 		fields := strings.Split(line, ":")
-		for i := 0; i < 6-len(fields); i++ {
+		/*fields是切片,在for遍历中使用append,fields长度将动态增长,6-len(fields)结果会变,
+		使用变量接收6-len(fields)值
+		*/
+		count := 6 - len(fields)
+		for i := 0; i < count; i++ {
 			fields = append(fields, "")
+		}
+		if len(fields) < 7 { //避免发生越界panic
+			continue
 		}
 		u := User{Username: fields[0], Password: fields[1], Info: fields[4], HomeDir: fields[5], Shell: fields[6]}
 		uid, _ := strconv.ParseUint(fields[2], 10, 32)
