@@ -55,9 +55,7 @@ struct Request {
     char method[SMITH_FIELD_LENGTH];
     char remoteAddress[SMITH_FIELD_LENGTH];
     char documentRoot[SMITH_FIELD_LENGTH];
-    int file_count;
     char headers[SMITH_HEADER_COUNT][2][SMITH_FIELD_LENGTH];
-    int header_count;
     UploadFile files[SMITH_FILE_COUNT];
 };
 

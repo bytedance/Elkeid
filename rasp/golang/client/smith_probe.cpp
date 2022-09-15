@@ -4,7 +4,7 @@
 #include <event2/thread.h>
 
 constexpr auto WAIT_TIMEOUT = std::chrono::seconds{30};
-constexpr auto RESET_QUOTAS_INTERVAL = timeval{60, 0};
+constexpr auto TIMER_INTERVAL = timeval{60, 0};
 
 SmithProbe::SmithProbe() : mEventBase((evthread_use_pthreads(), event_base_new())) {
     struct stub {
@@ -32,7 +32,7 @@ void SmithProbe::start() {
     mClient.connect();
     mConsumer.start(&SmithProbe::consume);
 
-    evtimer_add(mTimer, &RESET_QUOTAS_INTERVAL);
+    evtimer_add(mTimer, &TIMER_INTERVAL);
     mEventLoop.start(&SmithProbe::loop);
 }
 
