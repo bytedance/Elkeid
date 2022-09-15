@@ -245,6 +245,8 @@ PHP_RINIT_FUNCTION (php_probe) {
     if (port)
         PHP_PROBE_G(request).port = *port;
 
+    int index = 0;
+
     for (const auto &e: Z_ARRVAL_P(server)) {
         if (e.type != HASH_KEY_IS_STRING || Z_TYPE_P(e.value) != IS_STRING)
             continue;
@@ -263,10 +265,10 @@ PHP_RINIT_FUNCTION (php_probe) {
             continue;
         }
 
-        strncpy(PHP_PROBE_G(request).headers[PHP_PROBE_G(request).header_count][0], override.c_str(), SMITH_FIELD_LENGTH - 1);
-        strncpy(PHP_PROBE_G(request).headers[PHP_PROBE_G(request).header_count][1], Z_STRVAL_P(e.value), SMITH_FIELD_LENGTH - 1);
+        strncpy(PHP_PROBE_G(request).headers[index][0], override.c_str(), SMITH_FIELD_LENGTH - 1);
+        strncpy(PHP_PROBE_G(request).headers[index][1], Z_STRVAL_P(e.value), SMITH_FIELD_LENGTH - 1);
 
-        if (++PHP_PROBE_G(request).header_count >= SMITH_HEADER_COUNT)
+        if (++index >= SMITH_HEADER_COUNT)
             break;
     }
 
@@ -274,7 +276,7 @@ PHP_RINIT_FUNCTION (php_probe) {
         return SUCCESS;
 
     auto begin = PHP_PROBE_G(request).headers;
-    auto end = begin + PHP_PROBE_G(request).header_count;
+    auto end = begin + index;
 
     if (std::find_if(begin, end, [](const auto &header) {
         if (strcmp(header[0], "content-type") != 0)
@@ -308,15 +310,17 @@ PHP_RINIT_FUNCTION (php_probe) {
         if (!files || Z_TYPE_P(files) != IS_ARRAY)
             return SUCCESS;
 
+        index = 0;
+
         for (const auto &e: Z_ARRVAL_P(files)) {
             if (Z_TYPE_P(e.value) != IS_ARRAY)
                 continue;
 
-            strncpy(PHP_PROBE_G(request).files[PHP_PROBE_G(request).file_count].name, fetch(Z_ARRVAL_P(e.value), "name").c_str(), SMITH_FIELD_LENGTH - 1);
-            strncpy(PHP_PROBE_G(request).files[PHP_PROBE_G(request).file_count].type, fetch(Z_ARRVAL_P(e.value), "type").c_str(), SMITH_FIELD_LENGTH - 1);
-            strncpy(PHP_PROBE_G(request).files[PHP_PROBE_G(request).file_count].tmp_name, fetch(Z_ARRVAL_P(e.value), "tmp_name").c_str(), SMITH_FIELD_LENGTH - 1);
+            strncpy(PHP_PROBE_G(request).files[index].name, fetch(Z_ARRVAL_P(e.value), "name").c_str(), SMITH_FIELD_LENGTH - 1);
+            strncpy(PHP_PROBE_G(request).files[index].type, fetch(Z_ARRVAL_P(e.value), "type").c_str(), SMITH_FIELD_LENGTH - 1);
+            strncpy(PHP_PROBE_G(request).files[index].tmp_name, fetch(Z_ARRVAL_P(e.value), "tmp_name").c_str(), SMITH_FIELD_LENGTH - 1);
 
-            if (++PHP_PROBE_G(request).file_count >= SMITH_FILE_COUNT)
+            if (++index >= SMITH_FILE_COUNT)
                 break;
         }
 

@@ -79,6 +79,9 @@ add_library(
         tiny-regex-c/re.c
 )
 
+set_target_properties(php_probe PROPERTIES C_VISIBILITY_PRESET hidden)
+set_target_properties(php_probe PROPERTIES CXX_VISIBILITY_PRESET hidden)
+
 target_link_libraries(
         php_probe
         zero
@@ -88,4 +91,5 @@ target_link_libraries(
         event_pthreads_static
         $<$<BOOL:${STATIC_BUILD}>:-static-libgcc>
         $<$<BOOL:${STATIC_BUILD}>:-static-libstdc++>
+        -Wl,--exclude-libs,ALL
 )

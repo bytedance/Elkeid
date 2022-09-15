@@ -54,7 +54,7 @@ void SmithClient::onBufferRead(bufferevent *bev) {
         if (evbuffer_get_length(input) < length + PROTOCOL_HEADER_SIZE)
             break;
 
-        std::unique_ptr<char> buffer(new char[length + 1]());
+        std::unique_ptr<char[]> buffer = std::make_unique<char[]>(length + 1);
 
         if (evbuffer_drain(input, PROTOCOL_HEADER_SIZE) != 0 || evbuffer_remove(input, buffer.get(), length) != length) {
             LOG_ERROR("read buffer failed: %s", evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));

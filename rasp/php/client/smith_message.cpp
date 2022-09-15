@@ -88,11 +88,19 @@ void to_json(nlohmann::json &j, const Request &request) {
             {"documentRoot",  request.documentRoot}
     };
 
-    for (int i = 0; i < request.header_count; i++)
-        j["headers"][request.headers[i][0]] = request.headers[i][1];
+    for (const auto &header : request.headers) {
+        if (!*header[0])
+            break;
 
-    for (int i = 0; i < request.file_count; i++)
-        j["files"].push_back(request.files[i]);
+        j["headers"][header[0]] = header[1];
+    }
+
+    for (const auto &file : request.files) {
+        if (!*file.name)
+            break;
+
+        j["files"].push_back(file);
+    }
 }
 
 void to_json(nlohmann::json &j, const Trace &trace) {
