@@ -245,7 +245,7 @@ pub async fn looping(
                         }
                     }
                     None => {
-                        log::warn!("tx recv ctrl stop: ");
+                        log::warn!("tx recv ctrl stop");
                         let _ = tx_ctrl.stop();
                         drop(framed_rx.get_mut());
                         return

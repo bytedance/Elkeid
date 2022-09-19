@@ -23,6 +23,8 @@ ignore_exe_name = [
     "collector",
 ]
 
+ingore_argv_regex = []
+
 ### report env after inspected both key and value
 collect_env = [
     "PROCESS_ENV_KEY",
@@ -60,6 +62,8 @@ flock_path = "elkeid_rasp.lock"
 cgroup_name = "elkeid_rasp"
 ### mega byte
 cgroup_mem_limit = 300
+### %
+cgroup_cpu_limit = 10
 ### log
 log_level = "debug"
 log_path = "."

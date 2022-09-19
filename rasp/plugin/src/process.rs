@@ -30,6 +30,13 @@ pub(crate) fn collect(pid: i32, filters: &Filters) -> AnyhowResult<ProcessInfo> 
         pi.update_env(&process, &filters.collect_env)?;
     }
     pi.update_cmdline(&process)?;
+    if let Some(cmdline) =  pi.cmdline.clone()  {
+        for regex in filters.ignore_argv_regex.iter() {
+            if regex.is_match(&cmdline) {
+                return Err(anyhow!("hit global cmdline filter: {}, ignore process", regex.as_str()))
+            }
+        }
+    }
     pi.update_ns_info(&process)?;
     pi.update_ppid(&process)?;
     pi.update_tgid(&process)?;

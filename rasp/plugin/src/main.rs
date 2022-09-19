@@ -35,13 +35,17 @@ fn init(client: Client) -> Anyhow<()> {
     // cgroup
     fn setup_cgroup(pid: u32) -> Anyhow<()> {
         let hier = cgroups_rs::hierarchies::auto();
-        let new_cg = CgroupBuilder::new(&settings_string("service", "cgroup_name")?)
+        let rasp_cg = CgroupBuilder::new(&settings_string("service", "cgroup_name")?)
             .memory()
-            .memory_hard_limit(1024 * 1024 * settings_int("service", "cgroup_mem_limit")?)
-            .done()
+                .memory_hard_limit(1024 * 1024 * settings_int("service", "cgroup_mem_limit")?)
+                .done()
+            .cpu()
+                .quota(1000 * settings_int("service", "cgroup_cpu_limit ")?).done()
             .build(hier);
-        let mems: &cgroups_rs::memory::MemController = new_cg.controller_of().unwrap();
+        let mems: &cgroups_rs::memory::MemController = rasp_cg.controller_of().unwrap();
         mems.add_task(&CgroupPid::from(pid as u64))?;
+        let cpus: &cgroups_rs::cpu::CpuController = rasp_cg.controller_of().unwrap();
+        cpus.add_task(&CgroupPid::from(pid as u64))?;
         Ok(())
     }
     let self_pid = std::process::id();
