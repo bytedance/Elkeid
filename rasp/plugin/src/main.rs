@@ -40,7 +40,7 @@ fn init(client: Client) -> Anyhow<()> {
                 .memory_hard_limit(1024 * 1024 * settings_int("service", "cgroup_mem_limit")?)
                 .done()
             .cpu()
-                .quota(1000 * settings_int("service", "cgroup_cpu_limit ")?).done()
+                .quota(1000 * settings_int("service", "cgroup_cpu_limit")?).done()
             .build(hier);
         let mems: &cgroups_rs::memory::MemController = rasp_cg.controller_of().unwrap();
         mems.add_task(&CgroupPid::from(pid as u64))?;
