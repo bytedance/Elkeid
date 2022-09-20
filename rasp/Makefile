@@ -15,10 +15,10 @@ help:
 update_version: ## patch version VERSION=x.x.x.x
 	sed -i "s/1.0.0.1/${VERSION}/g" "librasp/src/settings.rs"
 	sed -i "s/1.0.0/${VERSION}/g" "node/client.js"
-	sed -i "s/1.0.0/${VERSION}/g" "python/python-probe/rasp/client.py"
+	sed -i "s/1.0.0/${VERSION}/g" "python/python-probe/rasp/probe/client/smith_message.cpp"
 	sed -i "s/1.0.0/${VERSION}/g" "golang/client/smith_message.cpp"
 	sed -i "s/1.0.0/${VERSION}/g" "php/client/smith_message.cpp"
-  
+
 
 rasp: ## build elkeid_rasp bin file
 	mkdir -p output
@@ -106,8 +106,20 @@ python-loader: ## build python loader
 	mkdir -p python/python-loader/build && cd python/python-loader/build && \
 	cmake -DSTATIC_BUILD=$(STATIC) .. && make
 
-python-probe: python-loader ## install python client so
-	cd python/python-probe && python3 setup.py sdist bdist_wheel --universal
+python-probe: python-loader ## build python package
+ifeq ($(STATIC), TRUE)
+ifeq ($(PY_PREBUILT), TRUE)
+	cd python/python-probe && mkdir -p rasp/probe/build && CC=$(GNU_CC) CXX=$(GNU_CXX) cmake -B rasp/probe/build -DSTATIC_BUILD=ON -DPython_INCLUDE_DIRS=$(PYTHON2_INCLUDE) rasp/probe && cmake --build rasp/probe/build -j$$(nproc) && cp rasp/probe/lib/libpython_probe.so rasp/probe.so && cmake -B rasp/probe/build -DSTATIC_BUILD=ON -DPython_INCLUDE_DIRS=$(PYTHON3_INCLUDE) rasp/probe && cmake --build rasp/probe/build -j$$(nproc) && cp rasp/probe/lib/libpython_probe.so rasp/probe.abi3.so && PREBUILT=1 python3 setup.py bdist_wheel
+else
+	cd python/python-probe && CC=$(GNU_CC) CXX=$(GNU_CXX) python3 setup.py bdist_wheel
+endif
+else
+ifeq ($(PY_PREBUILT), TRUE)
+	cd python/python-probe && mkdir -p rasp/probe/build && cmake -B rasp/probe/build -DSTATIC_BUILD=ON -DPython_INCLUDE_DIRS=$(PYTHON2_INCLUDE) rasp/probe && cmake --build rasp/probe/build -j$$(nproc) && cp rasp/probe/lib/libpython_probe.so rasp/probe.so && cmake -B rasp/probe/build -DSTATIC_BUILD=ON -DPython_INCLUDE_DIRS=$(PYTHON3_INCLUDE) rasp/probe && cmake --build rasp/probe/build -j$$(nproc) && cp rasp/probe/lib/libpython_probe.so rasp/probe.abi3.so && PREBUILT=1 python3 setup.py bdist_wheel
+else
+	cd python/python-probe && python3 setup.py bdist_wheel
+endif
+endif
 
 python: python-probe ## build CPython probe
 	@echo "build CPython probe"
@@ -115,8 +127,8 @@ python: python-probe ## build CPython probe
 	mkdir -p output/lib
 	mkdir -p output/lib/python
 	cp python/python-loader/bin/* output/lib/python/
-	cp -r python/python-probe/dist/rasp-1.0.0-py2.py3-none-any.whl output/lib/python/
-	cd output/lib/python/ && unzip -o rasp-1.0.0-py2.py3-none-any.whl
+	cp -r python/python-probe/dist/rasp-*.whl output/lib/python/
+	cd output/lib/python/ && unzip -o rasp-*.whl
 
 
 go-probe: ## build golang probe
@@ -142,7 +154,7 @@ php_probe: ## build php probe
 	@echo "build PHP probe"
 	mkdir -p output/lib/php
 ifeq ($(STATIC), TRUE)
-	cd php && mkdir -p output build; for header in ${PHP_HEADERS}/*; do CC=$(PHP_CC) CXX=$(PHP_CXX) cmake -B build -DSTATIC_BUILD=ON -DPHP_EXTENSIONS_INCLUDE_DIR=$$header && cmake --build build -j$$(nproc) && cp lib/libphp_probe.so output/libphp_probe-$$(basename $$header).so; done
+	cd php && mkdir -p output build; for header in ${PHP_HEADERS}/*; do CC=$(GNU_CC) CXX=$(GNU_CXX) cmake -B build -DSTATIC_BUILD=ON -DPHP_EXTENSIONS_INCLUDE_DIR=$$header && cmake --build build -j$$(nproc) && cp lib/libphp_probe.so output/libphp_probe-$$(basename $$header).so; done
 else
 	cd php && mkdir -p output build; for header in ${PHP_HEADERS}/*; do cmake -B build -DSTATIC_BUILD=ON -DPHP_EXTENSIONS_INCLUDE_DIR=$$header && cmake --build build -j$$(nproc) && cp lib/libphp_probe.so output/libphp_probe-$$(basename $$header).so; done
 endif
@@ -162,12 +174,29 @@ else
 	cp plugin/settings.toml output/settings.toml
 endif
 
-build: update_version agent_plugin nsenter process_injector java python go node php_probe rasp server ## build all
-	cd output && mv lib "lib-${VERSION}"
-	# cd output && strip ./* && strip ./*/* && strip ./*/*/*
-	cd output && tar -czvf "rasp_${VERSION}.tar.gz" ./* && sha256sum "rasp_${VERSION}.tar.gz" && sha256sum rasp
-	mv "output/rasp_${VERSION}.tar.gz" .
+define split_debug
+	objcopy --only-keep-debug $(1) debug/$$(basename $(1)).debug
+	strip --strip-debug --strip-unneeded $(1)
+	objcopy --add-gnu-debuglink=./debug/$$(basename $(1)).debug $(1)
+endef
 
+build: update_version agent_plugin nsenter process_injector java python go node php_probe rasp server ## build all
+	mkdir -p debug
+
+	$(call split_debug, output/rasp)
+	$(call split_debug, output/elkeid_rasp)
+	$(call split_debug, output/lib/pangolin)
+	$(call split_debug, output/lib/rasp_server)
+	$(call split_debug, output/lib/golang/go_loader)
+	$(call split_debug, output/lib/golang/go_probe)
+	$(call split_debug, output/lib/python/python_loader)
+	$(call split_debug, output/lib/python/rasp/probe.so)
+	$(call split_debug, output/lib/python/rasp/probe.abi3.so)
+	$(foreach file, $(wildcard output/lib/php/*), $(call split_debug, $(file));)
+
+	tar -czvf debug.tar.gz debug
+	cd output && mv lib "lib-${VERSION}" && tar -czvf ../rasp_${VERSION}.tar.gz ./*
+	sha256sum "rasp_${VERSION}.tar.gz" && sha256sum output/rasp
 
 install: ## install to $PREFIX default: /etc/elkeid/plugin/rasp
 	mkdir -p $(PREFIX)
