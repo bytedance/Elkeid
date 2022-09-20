@@ -270,7 +270,8 @@ waitagain:
     if (cnt >= PAGE_SIZE)
         cnt = PAGE_SIZE - 1;
 
-    memset(&iter->seq, 0, sizeof(*iter) - offsetof(struct print_event_iterator, seq));
+    memset((void *)iter + offsetof(struct print_event_iterator, seq), 0,
+           sizeof(*iter) - offsetof(struct print_event_iterator, seq));
 
     mutex_lock(&access_lock);
     while (trace_next_entry_inc(iter) != NULL) {
