@@ -31,7 +31,7 @@ DEVDEC=$(printf "%d %d" $(stat --format "0x%t 0x%T" $DEV))
 run_command="$NSENTER_PATH --target $PID --mount --uts --ipc --net --pid -- sh -c"
 if  [ `$run_command "mount|grep $CONTPATH|wc -l"` -ne 0 ];then
     echo "container  mount dir $CONTPATH is mounting!"
-    exit 1
+    exit 0
 fi
 $run_command "[ -b $DEV ] ||mknod --mode 0600 $DEV b $DEVDEC"
 $run_command "mkdir /tmpmnt"
