@@ -7,7 +7,7 @@ ignore_exe_path = [
     "/etc/elkeid",
     "/opt/elkeid",
     "/opt/hids",
-    "/opt/bytedance"
+    "/opt/bytedance",
     "/elkeid"
 ]
 
