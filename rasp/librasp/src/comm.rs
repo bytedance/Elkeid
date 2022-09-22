@@ -8,6 +8,7 @@ use log::*;
 
 // use super::process::ProcessInfo;
 use anyhow::{anyhow, Result as AnyhowResult};
+use crate::async_command::run_async_process;
 use crate::settings;
 
 // https://stackoverflow.com/questions/35883390/how-to-check-if-a-thread-has-finished-in-rust
@@ -73,7 +74,7 @@ pub struct ThreadMode {
 impl ThreadMode {
     pub fn new(log_level: String, ctrl: Control,
                probe_report_sender: Sender<plugins::Record>,
-               bind_path: String, linking_to: Option<String>
+               bind_path: String, linking_to: Option<String>,
     ) -> AnyhowResult<Self> {
         let (sender, receiver) = bounded(50);
         libraspserver::thread_mode::start(
@@ -161,6 +162,10 @@ impl RASPComm for ThreadMode {
         _probe_report_sender: Sender<plugins::Record>,
         _patch_filed: HashMap<&'static str, String>,
     ) -> AnyhowResult<()> {
+        if let Some(bind_dir) = std::path::Path::new(&self.bind_path.clone()).parent() {
+            let bind_dir_str = bind_dir.to_str().unwrap();
+            mount(pid, bind_dir_str, bind_dir_str)?
+        }
         if let Some(linking_to) = self.linking_to.clone() {
             match std::process::Command::new(settings::RASP_NS_ENTER_BIN())
                 .args([
@@ -205,4 +210,28 @@ impl RASPComm for ThreadMode {
         }
         Ok(())
     }
+}
+
+fn mount(pid: i32, from: &str, to: &str) -> AnyhowResult<()> {
+    let pid_str = pid.to_string();
+    let nsenter_str = settings::RASP_NS_ENTER_BIN();
+    let args = [
+        pid_str.as_str(),
+        from,
+        to,
+        nsenter_str.as_str()
+    ];
+    return match run_async_process(std::process::Command::new(settings::RASP_MOUNT_SCRIPT_BIN()).args(args)) {
+        Ok((exit_status, stdout, stderr)) => {
+            if !exit_status.success() {
+                error!("mount script execute failed: {} {} {}", exit_status, stdout, stderr);
+                return Err(anyhow!("mount script execute failed: {} {} {} ", exit_status, stdout, stderr));
+            }
+            debug!("mount success: {} {} {}", exit_status, stdout, stderr);
+            Ok(())
+        }
+        Err(e) => {
+            Err(anyhow!("can not mount: {}", e))
+        }
+    };
 }

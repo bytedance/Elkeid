@@ -70,6 +70,11 @@ else
 	cp util-linux/nsenter output/nsenter
 endif
 
+mounts:
+	mkdir -p output
+	chmod +x mount_script
+	cp mount_script output/mount_script
+
 java-attach: ## build jattach using musl-gcc
 ifeq ($(STATIC), TRUE)
 	cd jvm/jattach && \
@@ -180,7 +185,7 @@ define split_debug
 	objcopy --add-gnu-debuglink=./debug/$$(basename $(1)).debug $(1)
 endef
 
-build: update_version agent_plugin nsenter process_injector java python go node php_probe rasp server ## build all
+build: update_version agent_plugin nsenter mounts process_injector java python go node php_probe rasp server ## build all
 	mkdir -p debug
 
 	$(call split_debug, output/rasp)

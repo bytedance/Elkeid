@@ -50,7 +50,7 @@ report_action = 2995
 # process_mode_bind_path = "/var/run"
 # host_bind = true
 mode = "thread"
-bind_path = "/tmp/smith_agent.sock"
+bind_path = "/tmp/elkeid_rasp/smith_agent.sock"
 linking_to = "/var/run/smith_agent.sock"
 
 
