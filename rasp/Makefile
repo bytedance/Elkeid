@@ -79,11 +79,11 @@ java-attach: ## build jattach using musl-gcc
 ifeq ($(STATIC), TRUE)
 	cd jvm/jattach && \
 	mkdir -p build && \
-	$(CC) -static -DJATTACH_VERSION=\"1.5\" src/jattach_posix.c -o build/jattach
+	$(CC) -static -DJATTACH_VERSION=\"2.1\" src/posix/*.c -o build/jattach
 else
 	cd jvm/jattach && \
 	mkdir -p build && \
-	$(CC) -DJATTACH_VERSION=\"1.5\" src/jattach_posix.c -o build/jattach
+	$(CC) -DJATTACH_VERSION=\"2.1\" src/posix/*.c -o build/jattach
 endif
 
 
