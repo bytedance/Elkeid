@@ -23,7 +23,7 @@ ignore_exe_name = [
     "collector",
 ]
 
-ingore_argv_regex = []
+ignore_argv_regex = []
 
 ### report env after inspected both key and value
 collect_env = [
