@@ -740,7 +740,7 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 				    dip6 = &(sk->sk_v6_daddr);
 				    sip6 = &(sk->sk_v6_rcv_saddr);
 				    sport = ntohs(inet->inet_sport);
-				    dport = ntohs(((struct sockaddr_in6 *)&tmp_dirp)->sin6_port);
+				    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
 				    if(dport == 0)
 				        dport = ntohs(inet->inet_dport);
 				    flag = 1;
@@ -751,7 +751,7 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 				    dip6 = &(inet->pinet6->daddr);
 				    sip6 = &(inet->pinet6->saddr);
 				    sport = ntohs(inet->inet_sport);
-				    dport = ntohs(((struct sockaddr_in6 *)&tmp_dirp)->sin6_port);
+				    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
 				    if(dport)
 				        dport = ntohs(inet->inet_dport);
 				    flag = 1;
@@ -762,7 +762,7 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 				    dip6 = &(inet->pinet6->daddr);
 				    sip6 = &(inet->pinet6->saddr);
 				    sport = ntohs(inet->sport);
-				    dport = ntohs(((struct sockaddr_in6 *)&tmp_dirp)->sin6_port);
+				    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
 				    if(dport)
 				        dport = ntohs(inet->dport);
 				    flag = 1;

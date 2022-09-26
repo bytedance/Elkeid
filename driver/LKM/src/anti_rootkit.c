@@ -175,7 +175,7 @@ static void analyze_modules(void)
 		}
 
 		kobj = container_of(cur, struct module_kobject, kobj);
-		if (kobj && kobj->mod && kobj->mod->name) {
+		if (kobj && kobj->mod) {
 			if (mod_find_module && !mod_find_module(kobj->mod->name))
 				mod_print(kobj->mod->name);
 		}
