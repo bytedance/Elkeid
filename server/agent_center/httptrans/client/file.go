@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	UploadFileUrl = "http://%s/api/v6/shared/Upload"
+	DownLoadFileUrl = `http://%s/api/v6/investigate/file/DownloadFileByToken`
+	UploadFileUrl   = "http://%s/api/v6/shared/Upload"
 )
 
 type UploadResp struct {
@@ -48,4 +49,20 @@ func UploadFile(filePath string, hash string) (string, error) {
 		ylog.Errorf("UploadFile", "UploadFile error %s", resp.String())
 		return "", errors.New(resp.String())
 	}
+}
+
+func GetFileFromRemote(token string) ([]byte, error) {
+	resp, err := grequests.Post(
+		fmt.Sprintf(DownLoadFileUrl, common.GetRandomManageAddr()),
+		&grequests.RequestOptions{JSON: map[string]interface{}{"token": token}})
+	if err != nil {
+		ylog.Errorf("GetFileFromRemote", "Post Error, %s", err.Error())
+		return nil, err
+	}
+
+	if !resp.Ok {
+		ylog.Errorf("GetFileFromRemote", "response code is not 200 but %d", resp.StatusCode)
+		return nil, fmt.Errorf("status code is %d", resp.StatusCode)
+	}
+	return resp.Bytes(), nil
 }

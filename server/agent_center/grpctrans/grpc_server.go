@@ -73,7 +73,7 @@ func credential(crtFile, keyFile, caFile string) credentials.TransportCredential
 	})
 }
 
-//start grpc server
+// start grpc server
 // - enableCA: Whether to enable ssl
 func runServer(enableCA bool, port int, crtFile, keyFile, caFile string) {
 	// Handling client timeout
