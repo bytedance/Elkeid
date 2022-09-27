@@ -36,23 +36,6 @@ func (h *FileExtHandler) Init() {
 	}
 }
 
-func (h *FileExtHandler) Download(request *pb.DownloadRequest, server pb.FileExt_DownloadServer) error {
-	file, err := client.GetFileFromRemote(request.GetToken())
-	if err != nil {
-		ylog.Errorf("Download", "GetFileFromRemote token %s error %s", request.GetToken(), err.Error())
-		return err
-	}
-	resp := &pb.DownloadResponse{
-		Data: file,
-	}
-	err = server.Send(resp)
-	if err != nil {
-		ylog.Errorf("Download", "error while sending chunk: %s", err.Error())
-		return err
-	}
-	return nil
-}
-
 func (h *FileExtHandler) Upload(stream pb.FileExt_UploadServer) (err error) {
 	var fp *os.File
 	var fileRequest *pb.UploadRequest
@@ -187,7 +170,7 @@ func handlerFile(token, filePath string) {
 	item["msg"] = newPath
 }
 
-// zip file
+//zip file
 func zipFile(zipFilePath, srcFilePath string) error {
 	newZipFile, err := os.Create(zipFilePath)
 	if err != nil {

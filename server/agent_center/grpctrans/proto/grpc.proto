@@ -118,15 +118,6 @@ message UploadResponse {
   StatusCode Status = 1;
 }
 
-message DownloadRequest {
-  string token = 1;
-}
-
-message DownloadResponse {
-  bytes data = 1;
-}
-
 service FileExt {
   rpc Upload(stream UploadRequest) returns (UploadResponse);
-  rpc Download(DownloadRequest) returns (stream DownloadResponse);
 }
