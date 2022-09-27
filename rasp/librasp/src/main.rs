@@ -48,11 +48,11 @@ fn main() -> anyhow::Result<()> {
     let process_id = parse_arg();
     let ctrl = Control::new();
     let (result_sender, result_receiver) = unbounded();
-
+    let current_dir = librasp::settings::RASP_BASE_DIR();
     let mut rasp_manager = RASPManager::init(
         "thread", "debug".to_string(),
         ctrl.clone(), result_sender.clone(),
-        "./smith_agent.sock".to_string(), Some(String::from("/var/run/smith_agent.sock")),
+        format!("{}/smith_agent.sock", current_dir), Some(String::from("/var/run/smith_agent.sock")),
     )?;
     let mut process_info = ProcessInfo::from_pid(process_id)?;
     match rasp_manager.inspect(&mut process_info) {
