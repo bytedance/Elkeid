@@ -58,7 +58,7 @@ pub fn write_python_entry(pid: i32) -> Result<()> {
 import sys
 
 name = 'rasp'
-path = '{}/rasp/__init__.py'
+path = '{}/__init__.py'
 
 if sys.version_info >= (3, 3):
     from importlib.machinery import SourceFileLoader
