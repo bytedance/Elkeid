@@ -50,7 +50,7 @@ fn main() -> anyhow::Result<()> {
     let (result_sender, result_receiver) = unbounded();
 
     let mut rasp_manager = RASPManager::init(
-        "process", "debug".to_string(),
+        "thread", "debug".to_string(),
         ctrl.clone(), result_sender.clone(),
         "/var/run/smith_agent.sock".to_string(), None,
     )?;
