@@ -15,7 +15,7 @@ use serde::{Serialize, Deserialize};
 use crate::php::{inspect_phpfpm, inspect_phpfpm_version, inspect_phpfpm_zts};
 
 const DEFAULT_JVM_FILTER_JSON_STR: &str = r#"{"exe": ["java"]}"#;
-const DEFAULT_CPYTHON_FILTER_JSON_STR: &str = r#"{"exe": ["python","python2", "python3","python2.7", "python3.4", "python3.5", "python3.6", "python3.7", "python3.8", "python3.9", "uwsgi"]}"#;
+const DEFAULT_CPYTHON_FILTER_JSON_STR: &str = r#"{"exe": ["python","python2", "python3","python2.7", "python3.4", "python3.5", "python3.6", "python3.7", "python3.8", "python3.9", "python3.10", "uwsgi"]}"#;
 const DEFAULT_NODEJS_FILTER_JSON_STR: &str = r#"{"exe": ["node", "nodejs"]}"#;
 
 impl RuntimeInspect for ProcessInfo {}
