@@ -3598,7 +3598,7 @@ static int smith_is_anchor(struct task_struct *task)
     int len, i;
 
     /* systemd / init */
-    if (task->pid == 1 || NULL == task)
+    if (NULL == task || task->pid == 1)
         return 1;
 
     len = strnlen(task->comm, TASK_COMM_LEN);

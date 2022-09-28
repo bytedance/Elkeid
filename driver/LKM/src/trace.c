@@ -219,6 +219,9 @@ static int trace_put_user(struct trace_instance *ti, char __user *ubuf,
 {
     int len = tb_event_size(ti->event);
 
+    if (len <= 0)
+        return -EAGAIN;
+
     if (len + 8 + *used > cnt)
         return -EOVERFLOW;
 

@@ -12,7 +12,7 @@
                      ENTRY_U32(sid, __get_sid()),                                   \
                      ENTRY_U32(epoch, smith_query_sid()),                           \
                      ENTRY_STL(comm, current->comm, TASK_COMM_LEN),                 \
-                     ENTRY_STR(nodename, current->nsproxy->uts_ns->name.nodename),  \
+                     ENTRY_STL(nodename, current->nsproxy->uts_ns->name.nodename, __NEW_UTS_LEN),\
                      ENTRY_ULONG(mntns_id, smith_query_mntns()),                    \
                      ENTRY_ULONG(root_mntns_id, ROOT_MNT_NS_ID)
 #endif
@@ -50,7 +50,7 @@ SD_XFER_DEFINE( NAME(security_inode4_create),
                      ENTRY_IP4(sip, sip),
                      ENTRY_U16(sport, sport),
                      ENTRY_U32(socket_pid, socket_pid),
-                     ENTRY_STR(s_id, s_id)
+                     ENTRY_STL(s_id, s_id, 32)
                 )
 )
 
@@ -63,7 +63,7 @@ SD_XFER_DEFINE( NAME(security_inode_create_nosocket),
 
                 XFER(ENTRY_COMMON(602),
                      ENTRY_STR(pathstr, pathstr),
-                     ENTRY_STR(s_id, s_id)
+                     ENTRY_STL(s_id, s_id, 32)
                 )
 )
 
@@ -88,7 +88,7 @@ SD_XFER_DEFINE( NAME(security_inode6_create),
                      ENTRY_IP6(sip, sip),
                      ENTRY_U16(sport, sport),
                      ENTRY_U32(socket_pid, socket_pid),
-                     ENTRY_STR(s_id, s_id)
+                     ENTRY_STL(s_id, s_id, 32)
                 )
 )
 #endif
@@ -175,7 +175,7 @@ SD_XFER_DEFINE( NAME(execve),
                      ENTRY_IP4(sip, sip),
                      ENTRY_U16(sport, sport),
                      ENTRY_STR(pid_tree, pid_tree),
-                     ENTRY_STR(tty_name, tty_name),
+                     ENTRY_STL(tty_name, tty_name, 64),
                      ENTRY_U32(socket_pid, socket_pid),
                      ENTRY_STR(ssh_connection, ssh_connection),
                      ENTRY_STR(ld_preload, ld_preload),
@@ -209,8 +209,8 @@ SD_XFER_DEFINE( NAME(execve_nosocket),
                      ENTRY_S8(sip, -1),
                      ENTRY_S8(sport, -1),
                      ENTRY_STR(pid_tree, pid_tree),
-                     ENTRY_STR(tty_name, tty_name),
-                     /* ENTRY_U32(socket_pid, socket_pid), */
+                     ENTRY_STL(tty_name, tty_name, 64),
+                     ENTRY_S32(socket_pid, -1),
                      ENTRY_STR(ssh_connection, ssh_connection),
                      ENTRY_STR(ld_preload, ld_preload),
                      ENTRY_STR(ld_library_path, ld_library_path),
@@ -249,7 +249,7 @@ SD_XFER_DEFINE( NAME(execve6),
                      ENTRY_IP6(sip, sip),
                      ENTRY_U16(sport, sport),
                      ENTRY_STR(pid_tree, pid_tree),
-                     ENTRY_STR(tty_name, tty_name),
+                     ENTRY_STL(tty_name, tty_name, 64),
                      ENTRY_U32(socket_pid, socket_pid),
                      ENTRY_STR(ssh_connection, ssh_connection),
                      ENTRY_STR(ld_preload, ld_preload),
@@ -431,7 +431,7 @@ SD_XFER_DEFINE( NAME(rename),
                 XFER(ENTRY_COMMON(82),
                      ENTRY_STR(oldname, oldname),
                      ENTRY_STR(newname, newname),
-                     ENTRY_STR(s_id, s_id)
+                     ENTRY_STL(s_id, s_id, 32)
                 )
 )
 
@@ -446,7 +446,7 @@ SD_XFER_DEFINE( NAME(link),
                 XFER(ENTRY_COMMON(86),
                      ENTRY_STR(oldname, oldname),
                      ENTRY_STR(newname, newname),
-                     ENTRY_STR(s_id, s_id)
+                     ENTRY_STL(s_id, s_id, 32)
                 )
 )
 
@@ -604,14 +604,14 @@ SD_XFER_DEFINE( NAME(file_permission_write),
 
                 PROT(ELEMENT(char *, exe_path), ELEMENT(char *, file), ELEMENT(char *, s_id)),
 
-                XFER(ENTRY_COMMON(608), ENTRY_STR(file, file), ENTRY_STR(s_id, s_id))
+                XFER(ENTRY_COMMON(608), ENTRY_STR(file, file), ENTRY_STL(s_id, s_id, 32))
 )
 
 SD_XFER_DEFINE( NAME(file_permission_read),
 
                 PROT(ELEMENT(char *, exe_path), ELEMENT(char *, file), ELEMENT(char *, s_id)),
 
-                XFER(ENTRY_COMMON(609), ENTRY_STR(file, file), ENTRY_STR(s_id, s_id))
+                XFER(ENTRY_COMMON(609), ENTRY_STR(file, file), ENTRY_STL(s_id, s_id, 32))
 )
 
 SD_XFER_DEFINE( NAME(chmod),
@@ -688,7 +688,7 @@ SD_XFER_DEFINE( NAME(privilege_escalation),
                      ENTRY_U32(sid, __get_sid()),
                      ENTRY_U32(sid_fork, smith_query_sid()),
                      ENTRY_STL(comm, current->comm, TASK_COMM_LEN),
-                     ENTRY_STR(nodename, current->nsproxy->uts_ns->name.nodename),
+                     ENTRY_STL(nodename, current->nsproxy->uts_ns->name.nodename, __NEW_UTS_LEN),
                      ENTRY_U32(pid_inum, __get_pid_ns_inum()),
                      ENTRY_ULONG(root_mntns_id, ROOT_MNT_NS_ID),
 

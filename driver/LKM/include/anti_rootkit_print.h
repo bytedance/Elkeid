@@ -10,21 +10,25 @@ SD_XFER_DEFINE( NAME(fops),
 
                 PROT(ELEMENT(char *, name)),
 
-                XFER(ENTRY_XID(PROC_FILE_HOOK), ENTRY_STR(name, name))
+                XFER(ENTRY_XID(PROC_FILE_HOOK),
+                     ENTRY_STL(name, name, MODULE_NAME_LEN))
 )
 
 SD_XFER_DEFINE( NAME(syscall),
 
                 PROT(ELEMENT(char *, name), ELEMENT(int, scid)),
 
-                XFER(ENTRY_XID(SYSCALL_HOOK), ENTRY_STR(name, name), ENTRY_INT(scid, scid))
+                XFER(ENTRY_XID(SYSCALL_HOOK),
+                     ENTRY_STL(name, name, MODULE_NAME_LEN),
+                     ENTRY_INT(scid, scid))
 )
 
 SD_XFER_DEFINE( NAME(mod),
 
                 PROT(ELEMENT(char *, name)),
 
-                XFER(ENTRY_XID(LKM_HIDDEN),ENTRY_STR(name, name))
+                XFER(ENTRY_XID(LKM_HIDDEN),
+                     ENTRY_STL(name, name, MODULE_NAME_LEN))
 )
 
 #if IS_ENABLED(CONFIG_X86)
@@ -32,6 +36,8 @@ SD_XFER_DEFINE( NAME(interrupts),
 
                 PROT(ELEMENT(char *, name), ELEMENT(int, intno)),
 
-                XFER(ENTRY_XID(INTERRUPTS_HOOK), ENTRY_STR(name, name), ENTRY_INT(intno, intno))
+                XFER(ENTRY_XID(INTERRUPTS_HOOK),
+                     ENTRY_STL(name, name, MODULE_NAME_LEN),
+                     ENTRY_INT(intno, intno))
 )
 #endif
