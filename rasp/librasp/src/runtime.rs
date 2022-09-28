@@ -12,10 +12,10 @@ use crate::jvm::vm_version;
 use crate::nodejs::nodejs_version;
 use crate::process::ProcessInfo;
 use serde::{Serialize, Deserialize};
+use crate::cpython;
 use crate::php::{inspect_phpfpm, inspect_phpfpm_version, inspect_phpfpm_zts};
 
 const DEFAULT_JVM_FILTER_JSON_STR: &str = r#"{"exe": ["java"]}"#;
-const DEFAULT_CPYTHON_FILTER_JSON_STR: &str = r#"{"exe": ["python","python2", "python3","python2.7", "python3.4", "python3.5", "python3.6", "python3.7", "python3.8", "python3.9", "python3.10", "uwsgi"]}"#;
 const DEFAULT_NODEJS_FILTER_JSON_STR: &str = r#"{"exe": ["node", "nodejs"]}"#;
 
 impl RuntimeInspect for ProcessInfo {}
@@ -72,24 +72,14 @@ pub trait RuntimeInspect {
                 }));
             }
         }
-        let cpython_process_filter: RuntimeFilter =
-            match serde_json::from_str(DEFAULT_CPYTHON_FILTER_JSON_STR) {
-                Ok(cpython_filter) => cpython_filter,
-                Err(e) => {
-                    error!("filter deserialize failed: {}", e);
-                    return Err(anyhow!("cpython filter deserialize failed: {}", e));
-                }
-            };
-        let process_filter_check_result = match cpython_process_filter.match_exe(&process_exe_file)
-        {
-            Ok(o) => o,
-            Err(_) => false,
-        };
-        if process_filter_check_result {
-            return Ok(Some(Runtime {
-                name: "CPython",
-                version: String::new(),
-            }));
+        match cpython::CPythonRuntime::python_inspect(&process_info) {
+            Some(version) => {
+                return Ok(Some(Runtime {
+                    name: "CPython",
+                    version,
+                }))
+            }
+            None => {}
         }
         let nodejs_process_filter: RuntimeFilter =
             match serde_json::from_str(DEFAULT_NODEJS_FILTER_JSON_STR) {
@@ -175,7 +165,7 @@ pub trait RuntimeInspect {
                             }
                         }
                         Err(e) => {
-                            warn!("detect phpfpm version failed: {}", e.to_string());
+                            warn!("detect php-fpm version failed: {}", e.to_string());
                         }
                     }
                 }
