@@ -44,7 +44,7 @@ pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str) -> Result<
         }
     };
     let nspid_string = nspid.clone().to_string();
-    let prefix = "setTimeout(() => { inspector.close(); }, 500); if (!Object.keys(require.cache).some(m => m.includes('smith.js'))) { require('";
+    let prefix = "const inspector = require('inspector');setTimeout(() => { inspector.close(); }, 500); if (!Object.keys(require.cache).some(m => m.includes('smith.js'))) { require('";
     let suffix = "');}";
     let require_module = format!("{}{}{}", prefix, smith_module_path, suffix);
     let args = [

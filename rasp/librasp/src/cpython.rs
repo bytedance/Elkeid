@@ -1,7 +1,13 @@
 use anyhow::{anyhow, Result};
 use log::*;
 
+use std::path::PathBuf;
+use std::fs::{self, File};
 use std::process::Command;
+
+use memmap::MmapOptions;
+use goblin::elf::Elf;
+use regex::Regex;
 
 use crate::{process::ProcessInfo, settings};
 use crate::{async_command::run_async_process};
@@ -42,6 +48,99 @@ impl ProbeCopy for CPythonProbe {
             [settings::RASP_PYTHON_LOADER()].to_vec(),
             [settings::RASP_PYTHON_DIR()].to_vec(),
         )
+    }
+}
+
+pub struct CPythonRuntime {}
+
+impl CPythonRuntime {
+    pub fn python_inspect(process_info: &ProcessInfo) -> Option<String> {
+        match Self::libpython_inspect(process_info) {
+            Ok(s) => {
+                if s.is_some() {
+                    return s;
+                }
+            }
+            Err(e) => {
+                warn!("inspect libpython failed: {}", e)
+            }
+        }
+        match Self::symbol_inspect(&process_info) {
+            Ok(s) => {
+                if s.is_some() {
+                    return s;
+                }
+            }
+            Err(e) => {
+                warn!("inspect python symbol failed: {}", e)
+            }
+        }
+        None
+    }
+    pub fn libpython_inspect(process_info: &ProcessInfo) -> Result<Option<String>> {
+        let maps = procfs::process::Process::new(process_info.pid)?.maps()?;
+        let regex_str = r"libpython(\d\.\d+)\.so";
+        let regex = Regex::new(regex_str)?;
+        for map in maps.iter() {
+            if let procfs::process::MMapPath::Path(p) = map.pathname.clone() {
+                let s = match p.into_os_string().into_string() {
+                    Ok(s) => s,
+                    Err(os) => {
+                        warn!("convert osstr to string failed: {:?}", os);
+                        continue;
+                    }
+                };
+                match regex.captures(&s) {
+                    Some(c) => {
+                        if let Some(version) = c.get(1) {
+                            return Ok(Some(String::from(version.as_str())));
+                        }
+                    }
+                    None => continue
+                }
+            }
+        }
+        Ok(None)
+    }
+    pub fn symbol_inspect(process_info: &ProcessInfo) -> Result<Option<String>> {
+        let pid = process_info.pid.clone();
+        let exe_path = process_info.exe_path.clone().unwrap();
+        // /proc/<pid>/<exe_path> for process in container
+        let mut path = PathBuf::from(format!("/proc/{}/root/", pid));
+        let exe_path_buf = PathBuf::from(exe_path);
+        if !exe_path_buf.has_root() {
+            path.push(exe_path_buf);
+        } else {
+            for p in exe_path_buf.iter() {
+                if p == std::ffi::OsString::from("/") {
+                    continue;
+                }
+                path.push(p);
+            }
+        }
+        let metadata = fs::metadata(path.clone())?;
+        let size = metadata.len();
+        if size >= (500 * 1024 * 1024) {
+            return Err(anyhow!("bin file oversize: {}", process_info.pid));
+        }
+        let file = File::open(path)?;
+        let bin = unsafe { MmapOptions::new().map(&file)? };
+        let elf = Elf::parse(&bin)?;
+
+        for dynsym in elf.dynsyms.iter() {
+            let name = elf.dynstrtab[dynsym.st_name].to_string();
+            if name == "PyRun_SimpleString" {
+                return Ok(Some("Unknow".to_string()));
+            }
+        }
+        for sym in elf.syms.iter() {
+            let name = elf.strtab[sym.st_name].to_string();
+            if name == "PyRun_SimpleString" {
+                return Ok(Some("Unknow".to_string()));
+            }
+        }
+
+        return Ok(None);
     }
 }
 
