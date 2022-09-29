@@ -9,6 +9,7 @@
   * Golang
   * JVM
   * NodeJS
+  * PHP
 * Compatible with Elkeid stack.
 
 
