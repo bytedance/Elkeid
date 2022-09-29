@@ -142,16 +142,26 @@ impl RASPManager {
                     message_type: m.message_type,
                     data: ProbeConfigData::empty(m.message_type)?,
                 });
-                continue;
+            } else {
+                let _ = match serde_json::to_string(&m) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        warn!("failed to convert json to string: {:?} {}", m, e);
+                        continue;
+                    }
+                };
+                valid_messages.push(m.clone());
+
             }
-            let m_string = match serde_json::to_string(&m) {
+        }
+        for valid_m in valid_messages.iter() {
+            let m_string = match serde_json::to_string(&valid_m) {
                 Ok(s) => s,
                 Err(e) => {
-                    warn!("failed to convert json to string: {:?} {}", m, e);
+                    warn!("failed to convert json to string: {:?} {}", valid_m, e);
                     continue;
                 }
             };
-            valid_messages.push(m.clone());
             debug!("sending message: {}", m_string);
             if let Some(comm) = self.thread_comm.as_mut() {
                 comm.send_message_to_probe(pid, mnt_namespace, &m_string)?;
@@ -161,6 +171,7 @@ impl RASPManager {
                 return Err(anyhow!("both thread && process comm mode not init"));
             }
         }
+
         let valid_messages_string = serde_json::to_string(&valid_messages)?;
         self.write_message_to_config_file(pid, nspid, valid_messages_string)?;
 
