@@ -159,9 +159,9 @@ php_probe: ## build php probe
 	@echo "build PHP probe"
 	mkdir -p output/lib/php
 ifeq ($(STATIC), TRUE)
-	cd php && mkdir -p output build; for header in ${PHP_HEADERS}/*; do CC=$(GNU_CC) CXX=$(GNU_CXX) cmake -B build -DSTATIC_BUILD=ON -DPHP_EXTENSIONS_INCLUDE_DIR=$$header && cmake --build build -j$$(nproc) && cp lib/libphp_probe.so output/libphp_probe-$$(basename $$header).so; done
+	cd php && mkdir -p output; for header in ${PHP_HEADERS}/*; do mkdir -p build-$$(basename $$header); CC=$(GNU_CC) CXX=$(GNU_CXX) cmake -B build-$$(basename $$header) -DSTATIC_BUILD=ON -DPHP_EXTENSIONS_INCLUDE_DIR=$$header && cmake --build build-$$(basename $$header) -j$$(nproc) && cp lib/libphp_probe.so output/libphp_probe-$$(basename $$header).so; done
 else
-	cd php && mkdir -p output build; for header in ${PHP_HEADERS}/*; do cmake -B build -DSTATIC_BUILD=ON -DPHP_EXTENSIONS_INCLUDE_DIR=$$header && cmake --build build -j$$(nproc) && cp lib/libphp_probe.so output/libphp_probe-$$(basename $$header).so; done
+	cd php && mkdir -p output; for header in ${PHP_HEADERS}/*; do mkdir -p build-$$(basename $$header); cmake -B build-$$(basename $$header) -DSTATIC_BUILD=ON -DPHP_EXTENSIONS_INCLUDE_DIR=$$header && cmake --build build-$$(basename $$header) -j$$(nproc) && cp lib/libphp_probe.so output/libphp_probe-$$(basename $$header).so; done
 endif
 	cp php/output/* output/lib/php
 
