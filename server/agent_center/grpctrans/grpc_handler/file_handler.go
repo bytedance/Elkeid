@@ -3,8 +3,10 @@ package grpc_handler
 import (
 	"archive/zip"
 	"bufio"
+	"bytes"
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
@@ -42,8 +44,13 @@ func (h *FileExtHandler) Download(request *pb.DownloadRequest, server pb.FileExt
 		ylog.Errorf("Download", "GetFileFromRemote token %s error %s", request.GetToken(), err.Error())
 		return err
 	}
+	out, err := unZipSingleFileFromMemory(file)
+	if err != nil {
+		ylog.Errorf("Download", "unZipSingleFileFromMemory token %s error %s", request.GetToken(), err.Error())
+		return err
+	}
 	resp := &pb.DownloadResponse{
-		Data: file,
+		Data: out,
 	}
 	err = server.Send(resp)
 	if err != nil {
@@ -221,6 +228,30 @@ func zipFile(zipFilePath, srcFilePath string) error {
 		return err
 	}
 	return nil
+}
+
+func unZipSingleFileFromMemory(in []byte) ([]byte, error) {
+	zipReader, err := zip.NewReader(bytes.NewReader(in), int64(len(in)))
+	if err != nil {
+		return nil, err
+	}
+	for _, zipFile := range zipReader.File {
+		unzippedFileBytes, err := readZipFile(zipFile)
+		if err != nil {
+			return nil, err
+		}
+		return unzippedFileBytes, nil
+	}
+	return nil, errors.New("no zip file found")
+}
+
+func readZipFile(zf *zip.File) ([]byte, error) {
+	f, err := zf.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return io.ReadAll(f)
 }
 
 func fileMD5(filePath string) (string, error) {

@@ -51,6 +51,15 @@ type Connection struct {
 	agentDetail      map[string]interface{} `json:"agent_detail"`
 	pluginDetailLock sync.RWMutex
 	pluginDetail     map[string]map[string]interface{} `json:"plugin_detail"`
+
+	connUpdateStatLock sync.Mutex `json:"-"`
+	connStatNeedSync   bool       `json:"-"` //是否需要把状态更新至manager端
+}
+
+// Init 初始化同步状态
+func (c *Connection) Init() {
+	c.connStatNeedSync = false
+	go c.connStatWorker()
 }
 
 func (c *Connection) GetAgentDetail() map[string]interface{} {
@@ -64,8 +73,27 @@ func (c *Connection) GetAgentDetail() map[string]interface{} {
 
 func (c *Connection) SetAgentDetail(detail map[string]interface{}) {
 	c.agentDetailLock.Lock()
-	defer c.agentDetailLock.Unlock()
+	if c.agentDetail == nil {
+		//新增agent
+		c.updateConnStat()
+	} else {
+		//异步检测是否有插件离线
+		time.AfterFunc(time.Second*10, func() {
+			c.pluginDetailLock.Lock()
+			defer c.pluginDetailLock.Unlock()
+			onlineTime := time.Now().Add(-120 * time.Second).Unix()
+			for k := range c.pluginDetail {
+				if c.pluginDetail[k]["last_heartbeat_time"].(int64) < onlineTime {
+					c.pluginDetail[k]["online"] = false
+					c.updateConnStat()
+					break
+				}
+			}
+		})
+	}
+	detail["agent_connection"] = c.SourceAddr
 	c.agentDetail = detail
+	c.agentDetailLock.Unlock()
 }
 
 func (c *Connection) GetPluginDetail(name string) map[string]interface{} {
@@ -83,6 +111,12 @@ func (c *Connection) SetPluginDetail(name string, detail map[string]interface{})
 	if c.pluginDetail == nil {
 		c.pluginDetail = map[string]map[string]interface{}{}
 	}
+
+	//新增插件设置推送到远端
+	if _, ok := c.pluginDetail[name]; !ok {
+		c.updateConnStat()
+	}
+
 	c.pluginDetail[name] = detail
 }
 
@@ -94,6 +128,38 @@ func (c *Connection) GetPluginsList() []map[string]interface{} {
 		res = append(res, c.pluginDetail[k])
 	}
 	return res
+}
+
+func (c *Connection) updateConnStat() {
+	c.connUpdateStatLock.Lock()
+	defer c.connUpdateStatLock.Unlock()
+
+	if !c.connStatNeedSync {
+		c.connStatNeedSync = true
+	}
+}
+
+func (c *Connection) connStatWorker() {
+	ylog.Infof("GRPCPool", "%s connStatWorker start!", c.AgentID)
+	tk := time.NewTicker(10 * time.Second)
+	defer tk.Stop()
+	for {
+		select {
+		case <-tk.C:
+			c.connUpdateStatLock.Lock()
+			if c.connStatNeedSync {
+				c.connStatNeedSync = false
+				c.connUpdateStatLock.Unlock()
+				//agent_connection
+				client.PostHBJoin(&client.ConnStat{
+					AgentInfo:   c.GetAgentDetail(),
+					PluginsInfo: c.GetPluginsList(),
+				})
+			} else {
+				c.connUpdateStatLock.Unlock()
+			}
+		}
+	}
 }
 
 type Command struct {

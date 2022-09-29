@@ -210,6 +210,7 @@ func parsePluginHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connect
 	}
 	//last heartbeat time get from server
 	detail["last_heartbeat_time"] = time.Now().Unix()
+	detail["online"] = true
 
 	conn.SetPluginDetail(pluginName, detail)
 	return detail

@@ -7,6 +7,7 @@ import (
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/pool"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
+	"github.com/bytedance/Elkeid/server/agent_center/httptrans/client"
 	"google.golang.org/grpc/peer"
 	"time"
 )
@@ -63,6 +64,7 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 		Ctx:         ctx,
 		CancelFuc:   cancelButton,
 	}
+	connection.Init()
 	ylog.Infof("Transfer", ">>>>now set %s %v", agentID, connection)
 	err = GlobalGRPCPool.Add(agentID, &connection)
 	if err != nil {
@@ -73,6 +75,11 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 		ylog.Infof("Transfer", "now delete %s ", agentID)
 		GlobalGRPCPool.Delete(agentID)
 		releaseAgentHeartbeatMetrics(agentID)
+
+		client.PostHBEvict(&client.HeartBeatEvictModel{
+			AgentID:   agentID,
+			AgentAddr: addr,
+		})
 	}()
 
 	//Process the first of data
