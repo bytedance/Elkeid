@@ -53,6 +53,7 @@ report_action = 2995
 mode = "thread"
 bind_path = "/tmp/elkeid_rasp/smith_agent.sock"
 linking_to = "/var/run/smith_agent.sock"
+using_mount = true
 
 
 

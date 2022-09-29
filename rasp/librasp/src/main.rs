@@ -53,6 +53,7 @@ fn main() -> anyhow::Result<()> {
         "thread", "debug".to_string(),
         ctrl.clone(), result_sender.clone(),
         format!("{}/smith_agent.sock", current_dir), Some(String::from("/var/run/smith_agent.sock")),
+        false,
     )?;
     let mut process_info = ProcessInfo::from_pid(process_id)?;
     match rasp_manager.inspect(&mut process_info) {

@@ -5,7 +5,7 @@ use log::*;
 
 use crate::{utils::Control};
 use librasp::process::ProcessInfo;
-use crate::config::settings_string;
+use crate::config::{settings_bool, settings_string};
 
 pub struct Operator {
     rasp_manager: RASPManager,
@@ -26,10 +26,14 @@ impl Operator {
             Ok(s) => Some(s),
             Err(_) => None,
         };
+        let using_mount = match settings_bool("server", "using_mount") {
+            Ok(v) => v,
+            Err(_) => false,
+        };
         let rasp_manager = RASPManager::init(
             comm_mode.as_str(), log_level,
             comm_ctrl.clone(), message_sender.clone(),
-            bind_path, linking_to
+            bind_path, linking_to, using_mount
         )?;
 
         Ok(Self {

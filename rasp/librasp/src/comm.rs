@@ -68,6 +68,7 @@ pub struct ThreadMode {
     pub log_level: String,
     pub bind_path: String,
     pub linking_to: Option<String>,
+    pub using_mount: bool,
     pub agent_to_probe_sender: Sender<(i32, String)>,
 }
 
@@ -75,6 +76,7 @@ impl ThreadMode {
     pub fn new(log_level: String, ctrl: Control,
                probe_report_sender: Sender<plugins::Record>,
                bind_path: String, linking_to: Option<String>,
+               using_mount: bool,
     ) -> AnyhowResult<Self> {
         let (sender, receiver) = bounded(50);
         libraspserver::thread_mode::start(
@@ -92,6 +94,7 @@ impl ThreadMode {
             log_level,
             bind_path: bind_path,
             linking_to: linking_to,
+            using_mount,
             agent_to_probe_sender: sender,
         })
     }
@@ -162,9 +165,11 @@ impl RASPComm for ThreadMode {
         _probe_report_sender: Sender<plugins::Record>,
         _patch_filed: HashMap<&'static str, String>,
     ) -> AnyhowResult<()> {
-        if let Some(bind_dir) = std::path::Path::new(&self.bind_path.clone()).parent() {
-            let bind_dir_str = bind_dir.to_str().unwrap();
-            mount(pid, bind_dir_str, bind_dir_str)?
+        if self.using_mount {
+            if let Some(bind_dir) = std::path::Path::new(&self.bind_path.clone()).parent() {
+                let bind_dir_str = bind_dir.to_str().unwrap();
+                mount(pid, bind_dir_str, bind_dir_str)?
+            }
         }
         if let Some(linking_to) = self.linking_to.clone() {
             match std::process::Command::new(settings::RASP_NS_ENTER_BIN())

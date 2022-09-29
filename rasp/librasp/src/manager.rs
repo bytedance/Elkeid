@@ -325,12 +325,13 @@ impl RASPManager {
         message_sender: Sender<plugins::Record>,
         bind_path: String,
         linking_to: Option<String>,
+        using_mount: bool,
     ) -> AnyhowResult<Self> {
         Self::clean_prev_lib()?;
         match comm_mode {
             "thread" => {
                 Ok(RASPManager {
-                    thread_comm: Some(ThreadMode::new(log_level, ctrl, message_sender.clone(), bind_path, linking_to)?),
+                    thread_comm: Some(ThreadMode::new(log_level, ctrl, message_sender.clone(), bind_path, linking_to, using_mount)?),
                     namespace_tracer: MntNamespaceTracer::new(),
                     process_comm: None,
                 })
