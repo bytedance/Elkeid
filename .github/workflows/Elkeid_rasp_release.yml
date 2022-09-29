@@ -11,14 +11,12 @@ jobs:
     steps:
     - uses: actions/checkout@v3
       with:
-        clean: false
         submodules: recursive
 
     - name: Build
       run: |
-        curl -fsSL https://lf3-static.bytednsdoc.com/obj/eden-cn/laahweh7uhwbps/php-headers.tar.gz | tar -xz -C rasp/php
-        docker run --rm -v $(pwd):/Elkeid -v ~/.cargo:/root/.cargo -v ~/.gradle:/root/.gradle -e MAKEFLAGS="-j$(nproc)" hackerl/rasp-toolchain make -C /Elkeid/rasp build STATIC=TRUE PY_PREBUILT=TRUE CC=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-gcc CXX=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-g++ LD=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-ld CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-ld GNU_CC=/opt/gcc-10.4.0/bin/gcc GNU_CXX=/opt/gcc-10.4.0/bin/g++ PHP_HEADERS=/Elkeid/rasp/php/php-headers PYTHON2_INCLUDE=/usr/local/include/python2.7 PYTHON3_INCLUDE=/usr/local/include/python3.6m VERSION=${GITHUB_REF#refs/*/rasp-v}
-        git reset --hard HEAD
+        curl -fsSL https://lf3-static.bytednsdoc.com/obj/eden-cn/laahweh7uhwbps/php-headers.tar.gz | tar -xz -C /tmp
+        docker run --rm -v $(pwd):/Elkeid -v /tmp/cache/gradle:/root/.gradle -v /tmp/cache/php:/Elkeid/rasp/php/build -v /tmp/cache/librasp:/Elkeid/rasp/librasp/target -v /tmp/cache/rasp_server:/Elkeid/rasp/rasp_server/target -v /tmp/cache/plugin:/Elkeid/rasp/plugin/target -e MAKEFLAGS="-j$(nproc)" hackerl/rasp-toolchain make -C /Elkeid/rasp build STATIC=TRUE PY_PREBUILT=TRUE CC=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-gcc CXX=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-g++ LD=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-ld CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-ld GNU_CC=/opt/gcc-10.4.0/bin/gcc GNU_CXX=/opt/gcc-10.4.0/bin/g++ PHP_HEADERS=/tmp/php-headers PYTHON2_INCLUDE=/usr/local/include/python2.7 PYTHON3_INCLUDE=/usr/local/include/python3.6m VERSION=${GITHUB_REF#refs/*/rasp-v}
 
     - name: Release
       uses: softprops/action-gh-release@v1
