@@ -23,7 +23,7 @@ pub fn nodejs_attach(
     node_path: &str,
 ) -> Result<bool> {
     debug!("node attach: {}", pid);
-    let smith_module_path =  settings::RASP_NODEJS_DIR();
+    let smith_module_path = settings::RASP_NODEJS_DIR();
     nodejs_run(pid, node_path, smith_module_path.as_str())
 }
 
@@ -44,7 +44,7 @@ pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str) -> Result<
         }
     };
     let nspid_string = nspid.clone().to_string();
-    let prefix = "const inspector = require('inspector');setTimeout(() => { inspector.close(); }, 500); if (!Object.keys(require.cache).some(m => m.includes('smith.js'))) { require('";
+    let prefix = "setTimeout((inspector) => {inspector.close(); }, 500, require('inspector')); if (!Object.keys(require.cache).some(m => m.includes('smith.js'))) { require('";
     let suffix = "');}";
     let require_module = format!("{}{}{}", prefix, smith_module_path, suffix);
     let args = [
@@ -101,7 +101,6 @@ pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str) -> Result<
             return Err(anyhow!(e));
         }
     };
-
 }
 
 pub fn nodejs_version(pid: i32, nodejs_bin_path: &String) -> Result<(u32, u32, String)> {
