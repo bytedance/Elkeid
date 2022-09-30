@@ -22,7 +22,6 @@ lazy_static! {
     pub static ref H26_KERNEL_VERSION: Version = Version::new(2, 6, 37);
     static ref AN_CHECK_KEY: regex::bytes::Regex =
         regex::bytes::Regex::new(r"6a4c1ebe0dbf718afcf110469c0d6ac4beab6e837646eea5f1c5edd0da73b08ba0336feaab383712872582b5054a56895adbda56c45aebdcac0e7a4f6fc976af").unwrap();
-
 }
 
 pub static HONEYPOTSSHA256: Map<&'static str, &'static str> = phf_map! {
@@ -108,11 +107,10 @@ impl HoneyPot {
             s_locker: is_l,
         });
     }
-
     pub fn reset_fanotify(&mut self) -> Result<()> {
         self.moniter.flush();
         for each in crate::configs::FANOTIFY_CONFIGS {
-            if let Err(e) = self.moniter.add(&format!("{}/{}", &dst, each_target), true) {
+            if let Err(e) = self.moniter.add_cfg(each) {
                 error!("reset_fanotify add_cfg Err {:?},with {:?}", e, each);
             }
         }
@@ -124,7 +122,6 @@ impl HoneyPot {
 
     pub fn reset_antiransome(&mut self) -> Result<()> {
         self.reset_fanotify()?;
-
         for (k, (uid, gid, home_path)) in &self.user_homes {
             let dst = format!("{}/elkeid_targets", home_path);
             copy_elkeid_targets(&dst, uid.to_owned(), gid.to_owned())?;
@@ -134,6 +131,9 @@ impl HoneyPot {
                 }
             }
         }
+        let mut w = self.anti_ransome_status.lock().unwrap();
+        *w = "on".to_string();
+        drop(w);
         return Ok(());
     }
 
