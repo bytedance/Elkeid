@@ -51,7 +51,7 @@ regex = "1.5"
 base64 = "0.13"
 
 infer = { version = "0.9", default-features = false }
-
+cached = "0.36"
 
 [dev-dependencies]
 crossbeam = "0.8"

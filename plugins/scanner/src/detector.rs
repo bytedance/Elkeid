@@ -6,8 +6,8 @@ use crate::{
         FULLSCAN_SCAN_MODE_QUICK,
     },
     data_type::{
-        self, AntiRansomEvent, DetectFileEvent, DetectOneTaskEvent, DetectProcEvent, FullScanTask,
-        RegReport, ScanFinished, ScanTaskUserTask, DETECT_TASK,
+        self, AntiRansomEvent, DetectFileEvent, DetectOneTaskEvent, DetectProcEvent, FanotifyEvent,
+        FullScanTask, RegReport, ScanFinished, ScanTaskUserTask, DETECT_TASK,
     },
     get_file_btime, get_file_md5, get_file_md5_fast, get_file_xhash,
     model::engine::{
@@ -253,6 +253,21 @@ impl Detector {
         clamav::clamav_init().unwrap();
         let recv_worker = thread::spawn(move || {
             let mut _arf_t: Option<HoneyPot> = None;
+            let s_arf_worker = task_sender.clone();
+            let s_arf_lock = recv_worker_s_locker.clone();
+
+            _arf_t = match HoneyPot::new(s_arf_worker, s_arf_lock) {
+                Ok(mut hp) => {
+                    info!("fanotify turn on.");
+                    hp.run_report();
+                    Some(hp)
+                }
+                Err(e) => {
+                    error!("fanotify init failed in HoneyPot:new with {}", e);
+                    None
+                }
+            };
+
             loop {
                 match r_client.receive() {
                     Ok(t) => {
@@ -418,35 +433,24 @@ impl Detector {
                             }
                             6051 => {
                                 // turn on anti-ransom funcs
-                                if let Some(_) = _arf_t {
-                                    info!("anti-ransom is already on.");
-                                    continue;
+                                if let Some(ref mut arf) = _arf_t {
+                                    arf.reset_antiransome();
+                                    info!("Anti-ransom has been turn on.");
+                                } else {
+                                    info!("Anti-ransom has been downgrade.");
                                 }
-                                let s_arf_worker = task_sender.clone();
-                                let s_arf_lock = recv_worker_s_locker.clone();
-                                _arf_t = match HoneyPot::new(s_arf_worker, s_arf_lock) {
-                                    Ok(hp) => {
-                                        info!("anti-ransom turn on.");
-                                        Some(hp)
-                                    }
-                                    Err(e) => {
-                                        error!(
-                                            "anti-ransom init failed in HoneyPot:new with {}",
-                                            e
-                                        );
-                                        None
-                                    }
-                                };
                             }
                             6052 => {
                                 // turn off anti-ransom funcs
-                                _arf_t = None;
+                                if let Some(ref mut arf) = _arf_t {
+                                    arf.reset_fanotify();
+                                }
                                 info!("Anti-ransom has been turn off.");
                             }
                             6054 => {
                                 // reset anti-ransom honeypots
                                 if let Some(ref mut arf_t) = _arf_t {
-                                    arf_t.reset();
+                                    arf_t.reset_antiransome();
                                     info!("Anti-ransom has been reset.");
                                 } else {
                                     info!("Anti-ransom is off ,will not be reset.");
@@ -699,8 +703,8 @@ impl Detector {
                             debug!("recv work 6052");
                             if let Some(t) =  &mut self.scanner{
                                 debug!("scan pid {} {:?}",&task_data.pid, &task_data.scan_path);
-                                if let Ok((ftype,fclass,fname,xhash,md5sum,matched_data)) = t.scan(&task_data.scan_path){
-                                    let t = match DetectProcEvent::new(
+                                if let Ok((ftype,fclass,fname,xhash,md5sum,matched_data)) = t.scan(&format!("/proc/{}/exe",task_data.pid)){
+                                    let t = DetectProcEvent::new(
                                             task_data.pid,
                                             &ftype,
                                             &fclass,
@@ -712,13 +716,7 @@ impl Detector {
                                             task_data.btime.0,
                                             task_data.btime.1,
                                             matched_data,
-
-                                    ){
-                                        Ok(pt)=>pt,
-                                        Err(_)=>{
-                                            continue;
-                                        }
-                                    };
+                                    );
                                     if &ftype != "not_detected" &&  &fname != ""{
                                         info!("filepath:{} filesize:{} md5sum:{} create_at:{} motidy_at:{} types:{} class:{} name:{}",
                                             &task_data.scan_path,
@@ -846,8 +844,9 @@ impl Detector {
                                         task_data.btime.1,
                                         &task_data.event_file_path,
                                         &task_data.event_file_hash,
+                                        &task_data.event_file_mask,
                                         matched_data,
-                                    ).unwrap_or_default();
+                                    );
                                     info!("filepath:{} filesize:{} md5sum:{} create_at:{} motidy_at:{} types:{} class:{} name:{}",
                                         &task_data.pid_exe,
                                         &task_data.size,
@@ -866,6 +865,30 @@ impl Detector {
                                 }
                             }
                         }, // anti_ransom
+                        DETECT_TASK::TASK_6054_FANOTIFY(task_data) =>{
+                            let mut event = FanotifyEvent::new(
+                                task_data.pid,
+                                &task_data.pid_exe,
+                                task_data.size,//exe_size,
+                                task_data.btime.0,
+                                task_data.btime.1,
+                                &task_data.event_file_path,
+                                &task_data.event_file_hash,
+                                &task_data.event_file_mask,
+                            );
+                            if let Err(e) = self.client.send_record(&event.to_record()) {
+                                warn!("send err, should exit : {:?}",e);
+                                work_s_locker.send(()).unwrap();
+                                return
+                            };
+                        }, // fanotify
+                        DETECT_TASK::TASK_6054_TASK_6054_ANTIVIRUS_STATUS(arf_status) => {
+                            if let Err(e) = self.client.send_record(&arf_status.to_record()) {
+                                warn!("send err, should exit : {:?}",e);
+                                work_s_locker.send(()).unwrap();
+                                return
+                            };
+                        },// arf status
                         DETECT_TASK::TASK_6055_SUPPER_MODE_ON =>{
                             // turn on supper mode
                             self.supper_mode = true;

@@ -127,14 +127,13 @@ impl SuperDetector {
                                         };
                                     }
                                 }
-
                         },
                         DETECT_TASK::TASK_6052_PROC_EXE(t) =>{
                             debug!("scan pid {:?}",t.pid);
                             match self.scanner.scan_fast(&t.scan_path){
 
                                 Ok((ftype,fclass,fname,xhash,md5sum,matched_data)) => {
-                                    let event = match DetectProcEvent::new(
+                                    let event = DetectProcEvent::new(
                                             t.pid,
                                             &ftype,
                                             &fclass,
@@ -146,12 +145,7 @@ impl SuperDetector {
                                             t.btime.0,
                                             t.btime.1,
                                             matched_data,
-                                        ){
-                                            Ok(pt)=>pt,
-                                            Err(_)=>{
-                                                continue;
-                                            }
-                                        };
+                                        );
 
 
                                     if &ftype != "not_detected"{

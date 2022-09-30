@@ -5,28 +5,33 @@ use nix::unistd::{chown, Gid, Uid};
 use std::{
     collections::HashMap,
     fs,
-    io::{self, BufRead, BufReader},
+    io::{self, BufRead, BufReader, Read},
     path::Path,
+    sync::{Arc, Mutex},
+    thread,
 };
 
 use phf::{phf_map, Map};
 
-use crate::data_type::DETECT_TASK;
+use crate::data_type::{AnitRansomFunc, AntiRansomEvent, DETECT_TASK};
 use procfs::sys::kernel::Version;
 
 use super::fmonitor::FileMonitor;
 
 lazy_static! {
     pub static ref H26_KERNEL_VERSION: Version = Version::new(2, 6, 37);
+    static ref AN_CHECK_KEY: regex::bytes::Regex =
+        regex::bytes::Regex::new(r"6a4c1ebe0dbf718afcf110469c0d6ac4beab6e837646eea5f1c5edd0da73b08ba0336feaab383712872582b5054a56895adbda56c45aebdcac0e7a4f6fc976af").unwrap();
+
 }
 
 pub static HONEYPOTSSHA256: Map<&'static str, &'static str> = phf_map! {
-    "0_elkeid_hids_anti_ransom.csv" => "668f23ce53e38f964564ecdc3e5f1a646169ed779d774fda1009d23f9e52bce0",
-    "0_elkeid_hids_anti_ransom.doc" => "4974f533cbc6bb6df5d5a99c3ef94240d9e3076a227fde44fc00a240d70bc71b",
-    "0_elkeid_hids_anti_ransom.pdf" => "20b3b1d7d0440fbe57f9f5e6998d660890892c9c7703de787c9de66fc2368636",
-    "0_elkeid_hids_anti_ransom.png" => "86dbc28537142e8fba1bb58b801889cb6a61d50ba60f1e6ca9ba879cb297cfa7",
-    "0_elkeid_hids_anti_ransom.txt" => "55ccb1e3b83ca0bfbccd9c2cc1cd1b8ac3d04c21853a6209f23e2592e63f9f65",
-    "0_elkeid_hids_anti_ransom.xls" => "5d9d6e5ed89989c44e50a1bd8d3722869d4ffb8b7e9b0dbb1a30a242dfb727b4",
+    "0_elkeid_hids_anti_ransom.csv" => "71457f09ba8fe11a0ee50c27c56a0482286955e7ec7821729875c2a30ebfb4eb",
+    "0_elkeid_hids_anti_ransom.doc" => "5c77d3b491bc678f27e44193346fbc0c853a08efe900eefb40c7b0f7ef17870e",
+    "0_elkeid_hids_anti_ransom.pdf" => "4f63c17039909dc985e4eb3647271bca87d022d06a511064e9b10d9706f75979",
+    "0_elkeid_hids_anti_ransom.png" => "1fd2e99445b30f2945ba74092c3517e625daf1be31b4144a108dd0bebf73b5c4",
+    "0_elkeid_hids_anti_ransom.txt" => "fb4877e0f8094877bd7cf8f0a87a3d9d3ea82e000889881cb6a405a178cbbdbb",
+    "0_elkeid_hids_anti_ransom.xls" => "f8ef4abc6cd51f73587c989fd6528d9d2d27875910714e7bf4113a2c16233b15",
 };
 
 pub static HONEYPOTS: &[&str] = &[
@@ -42,6 +47,10 @@ pub struct HoneyPot {
     pub target_md5maps: HashMap<String, String>,
     pub user_homes: HashMap<String, (u32, u32, String)>,
     moniter: FileMonitor,
+    _cronjob: Option<thread::JoinHandle<()>>,
+    pub sender: crossbeam_channel::Sender<DETECT_TASK>,
+    pub s_locker: crossbeam_channel::Sender<()>,
+    pub anti_ransome_status: Arc<Mutex<String>>,
 }
 
 impl HoneyPot {
@@ -50,6 +59,8 @@ impl HoneyPot {
         s_locker: crossbeam_channel::Sender<()>,
     ) -> Result<Self> {
         let current_kernel_version = Version::current().unwrap();
+        let is = sender.clone();
+        let is_l = s_locker.clone();
 
         if current_kernel_version < *H26_KERNEL_VERSION {
             return Err(anyhow!(
@@ -57,6 +68,7 @@ impl HoneyPot {
                 current_kernel_version
             ));
         }
+        let anti_ransome_status = Arc::new(Mutex::new("off".to_string()));
 
         let mut target_md5maps = HashMap::new();
         let mut user_homes = HashMap::<String, (u32, u32, String)>::new();
@@ -78,15 +90,11 @@ impl HoneyPot {
         }
 
         // file_monitor scan
-        let mut fmonitor_t = FileMonitor::new(sender, s_locker)?;
+        let mut fmonitor_t = FileMonitor::new(sender, s_locker, 30, 4096)?;
 
-        for (k, (uid, gid, home_path)) in &user_homes {
-            let dst = format!("{}/elkeid_targets", home_path);
-            copy_elkeid_targets(&dst, uid.to_owned(), gid.to_owned())?;
-            for each_target in HONEYPOTS {
-                if let Err(e) = fmonitor_t.add(&format!("{}/{}", &dst, each_target)) {
-                    error!("fmonitor add fpath err {}/{}:{:?}", &dst, each_target, e);
-                }
+        for each in crate::configs::FANOTIFY_CONFIGS {
+            if let Err(e) = fmonitor_t.add_cfg(each) {
+                warn!("reset_fanotify add_cfg Err {:?}", e);
             }
         }
 
@@ -94,21 +102,64 @@ impl HoneyPot {
             target_md5maps: target_md5maps,
             user_homes: user_homes,
             moniter: fmonitor_t,
+            anti_ransome_status: anti_ransome_status,
+            _cronjob: None,
+            sender: is,
+            s_locker: is_l,
         });
     }
 
-    pub fn reset(&mut self) -> Result<()> {
+    pub fn reset_fanotify(&mut self) -> Result<()> {
         self.moniter.flush();
+        for each in crate::configs::FANOTIFY_CONFIGS {
+            if let Err(e) = self.moniter.add(&format!("{}/{}", &dst, each_target), true) {
+                error!("reset_fanotify add_cfg Err {:?},with {:?}", e, each);
+            }
+        }
+        let mut w = self.anti_ransome_status.lock().unwrap();
+        *w = "off".to_string();
+        drop(w);
+        return Ok(());
+    }
+
+    pub fn reset_antiransome(&mut self) -> Result<()> {
+        self.reset_fanotify()?;
+
         for (k, (uid, gid, home_path)) in &self.user_homes {
             let dst = format!("{}/elkeid_targets", home_path);
             copy_elkeid_targets(&dst, uid.to_owned(), gid.to_owned())?;
             for each_target in HONEYPOTS {
-                if let Err(e) = self.moniter.add(&format!("{}/{}", &dst, each_target)) {
+                if let Err(e) = self.moniter.add(&format!("{}/{}", &dst, each_target), true) {
                     error!("fmonitor add fpath err {:?}:{:?}", &dst, e);
                 }
             }
         }
         return Ok(());
+    }
+
+    pub fn run_report(&mut self) {
+        let sender = self.sender.clone();
+        let s_locker = self.s_locker.clone();
+        let anti_ransome_status = self.anti_ransome_status.clone();
+        let recv_worker = thread::spawn(move || loop {
+            thread::sleep(std::time::Duration::from_secs(60));
+            let status = {
+                let arfs = anti_ransome_status.lock().unwrap();
+                let s = arfs.as_str().to_string();
+                drop(arfs);
+                s
+            };
+            let event = AnitRansomFunc { status: status };
+            match sender.send(DETECT_TASK::TASK_6054_TASK_6054_ANTIVIRUS_STATUS(event)) {
+                Ok(_) => {}
+                Err(e) => {
+                    warn!("internal task send err {:?}", e);
+                    s_locker.send(()).unwrap();
+                }
+            };
+            thread::sleep(std::time::Duration::from_secs(540));
+        });
+        self._cronjob = Some(recv_worker);
     }
 }
 
@@ -141,4 +192,24 @@ fn copy_elkeid_targets(dst: &str, ruid: u32, rgid: u32) -> io::Result<()> {
         }
     }
     Ok(())
+}
+
+pub fn check_av_file(file_path: &str) -> bool {
+    let mut f = match std::fs::File::open(file_path) {
+        Ok(f) => f,
+        Err(_) => return false,
+    };
+
+    let mut buf = [0; 1024 * 1024 * 4];
+    let read_len = match f.read(&mut buf) {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
+
+    let caps = match AN_CHECK_KEY.captures(&buf[..read_len]) {
+        Some(_) => return true,
+        None => return false,
+    };
+
+    return false;
 }
