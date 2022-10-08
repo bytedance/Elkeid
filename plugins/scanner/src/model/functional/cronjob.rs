@@ -47,6 +47,7 @@ impl Cronjob {
         let s_locker_proc = s_locker.clone();
         let job_dir = thread::spawn(move || loop {
             let start_timestap = Clock::now_since_epoch().as_secs();
+            info!("[CronjobDir] Scan started at : {}", start_timestamp);
             for conf in configs::SCAN_DIR_CONFIG {
                 let mut w_dir = WalkDir::new(conf.fpath)
                     .max_depth(conf.max_depth)
@@ -104,7 +105,7 @@ impl Cronjob {
                     };
 
                     while sender_proc.len() > 2 {
-                        std::thread::sleep(Duration::from_secs(2));
+                        std::thread::sleep(Duration::from_secs(4));
                     }
                     match sender_proc.send(DETECT_TASK::TASK_6051_STATIC_FILE(task)) {
                         Ok(_) => {}
@@ -113,16 +114,23 @@ impl Cronjob {
                             s_locker_proc.send(()).unwrap();
                         }
                     };
-                    std::thread::sleep(Duration::from_secs(20));
+                    std::thread::sleep(Duration::from_secs(16));
                 }
-                let timecost = Clock::now_since_epoch().as_secs() - start_timestap;
+                let end_timestamp = Clock::now_since_epoch().as_secs();
+                let timecost = end_timestamp - start_timestamp;
+                let left_sleep = 3600 * 24 - (timecost % (3600 * 24));
+                info!(
+                    "[CronjobDir]Scan end at {}, start at {}, cost {}, will sleep {}.",
+                    end_timestamp, start_timestamp, timecost, left_sleep
+                );
                 // sleep cron_interval
-                thread::sleep(Duration::from_secs(3600 * 24 - (timecost % (3600 * 24))));
+                thread::sleep(Duration::from_secs(left_sleep));
             }
         });
 
         let job_proc = thread::spawn(move || loop {
             let start_timestap = Clock::now_since_epoch().as_secs();
+            info!("[CronjobProc] Scan started at : {}", start_timestamp);
             let dir_p = fs::read_dir("/proc").unwrap();
 
             for each in dir_p {
@@ -138,9 +146,10 @@ impl Cronjob {
 
                 let pstr: &str = &format!("/proc/{}/exe", pid);
                 let fp = Path::new(pstr);
+                let (mut fsize, mut btime) = (0, (0, 0));
                 let exe_real = match fs::read_link(fp) {
                     Ok(pf) => pf.to_string_lossy().to_string(),
-                    Err(_) => continue,
+                    Err(_) => "-3".to_string(),
                 };
 
                 // proc filter
@@ -159,12 +168,10 @@ impl Cronjob {
                         let btime = get_file_btime(&p);
                         (fsize, btime)
                     }
-                    Err(_) => {
-                        continue;
-                    }
+                    Err(_) => (0, (0, 0)),
                 };
 
-                if fsize <= 0 || fsize > CLAMAV_MAX_FILESIZE {
+                if fsize > CLAMAV_MAX_FILESIZE {
                     continue;
                 }
 
@@ -178,7 +185,7 @@ impl Cronjob {
                 };
 
                 while sender.len() > 8 {
-                    std::thread::sleep(Duration::from_secs(8));
+                    std::thread::sleep(Duration::from_secs(4));
                 }
                 match sender.send(DETECT_TASK::TASK_6052_PROC_EXE(task)) {
                     Ok(_) => {}
@@ -189,8 +196,14 @@ impl Cronjob {
                 };
                 std::thread::sleep(Duration::from_secs(8));
             }
-            let timecost = Clock::now_since_epoch().as_secs() - start_timestap;
             // sleep cron_interval
+            let end_timestamp = Clock::now_since_epoch().as_secs();
+            let timecost = end_timestamp - start_timestamp;
+            let left_sleep = 3600 * 24 - (timecost % (3600 * 24));
+            info!(
+                "[CronjobProc]Scan end at {}, start at {}, cost {}, will sleep {}.",
+                end_timestamp, start_timestamp, timecost, left_sleep
+            );
             thread::sleep(Duration::from_secs(3600 - (timecost % (3600))));
         });
         return Self { job_dir, job_proc };

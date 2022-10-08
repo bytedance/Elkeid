@@ -241,9 +241,10 @@ pub fn FullScan(
 
             let pstr: &str = &format!("/proc/{}/exe", pid);
             let fp = Path::new(pstr);
+            let (mut fsize, mut btime) = (0, (0, 0));
             let exe_real = match fs::read_link(fp) {
                 Ok(pf) => pf.to_string_lossy().to_string(),
-                Err(_) => continue,
+                Err(_) => "-3".to_string(),
             };
 
             // proc filter
@@ -252,7 +253,7 @@ pub fn FullScan(
                 continue;
             }
             let rfp = Path::new(&exe_real);
-            let (fsize, btime) = match rfp.metadata() {
+            (fsize, btime) = match rfp.metadata() {
                 Ok(p) => {
                     if p.is_dir() {
                         continue;
@@ -261,11 +262,9 @@ pub fn FullScan(
                     let btime = get_file_btime(&p);
                     (fsize, btime)
                 }
-                Err(_) => {
-                    continue;
-                }
+                Err(_) => (0, (0, 0)),
             };
-            if fsize <= 4 || fsize > 1024 * 1024 * 100 {
+            if fsize > 1024 * 1024 * 100 {
                 continue;
             }
             // send to scan
