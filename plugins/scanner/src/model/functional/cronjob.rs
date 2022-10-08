@@ -46,7 +46,7 @@ impl Cronjob {
         let sender_proc = sender.clone();
         let s_locker_proc = s_locker.clone();
         let job_dir = thread::spawn(move || loop {
-            let start_timestap = Clock::now_since_epoch().as_secs();
+            let start_timestamp = Clock::now_since_epoch().as_secs();
             info!("[CronjobDir] Scan started at : {}", start_timestamp);
             for conf in configs::SCAN_DIR_CONFIG {
                 let mut w_dir = WalkDir::new(conf.fpath)
@@ -129,7 +129,7 @@ impl Cronjob {
         });
 
         let job_proc = thread::spawn(move || loop {
-            let start_timestap = Clock::now_since_epoch().as_secs();
+            let start_timestamp = Clock::now_since_epoch().as_secs();
             info!("[CronjobProc] Scan started at : {}", start_timestamp);
             let dir_p = fs::read_dir("/proc").unwrap();
 
