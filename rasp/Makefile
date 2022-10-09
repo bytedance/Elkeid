@@ -159,9 +159,9 @@ php_probe: ## build php probe
 	@echo "build PHP probe"
 	mkdir -p output/lib/php
 ifeq ($(STATIC), TRUE)
-	cd php && mkdir -p output build; for header in ${PHP_HEADERS}/*; do version=$$(basename $$header); mkdir -p build/$$version; CC=$(GNU_CC) CXX=$(GNU_CXX) cmake -B build/$$version -DSTATIC_BUILD=ON -DPHP_EXTENSIONS_INCLUDE_DIR=$$header && cmake --build build/$$version -j$$(nproc) && cp lib/libphp_probe.so output/libphp_probe-$$version.so; done
+	cd php && mkdir -p output build; for header in ${PHP_HEADERS}/*; do [ -d include ] && rm -rf include; cp -r $$header include; CC=$(GNU_CC) CXX=$(GNU_CXX) cmake -B build -DSTATIC_BUILD=ON -DPHP_EXTENSIONS_INCLUDE_DIR=$$(pwd)/include && cmake --build build -j$$(nproc) && cp lib/libphp_probe.so output/libphp_probe-$$(basename $$header).so; done
 else
-	cd php && mkdir -p output build; for header in ${PHP_HEADERS}/*; do version=$$(basename $$header); mkdir -p build/$$version; cmake -B build/$$version -DSTATIC_BUILD=ON -DPHP_EXTENSIONS_INCLUDE_DIR=$$header && cmake --build build/$$version -j$$(nproc) && cp lib/libphp_probe.so output/libphp_probe-$$version.so; done
+	cd php && mkdir -p output build; for header in ${PHP_HEADERS}/*; do [ -d include ] && rm -rf include; cp -r $$header include; cmake -B build -DSTATIC_BUILD=ON -DPHP_EXTENSIONS_INCLUDE_DIR=$$(pwd)/include && cmake --build build -j$$(nproc) && cp lib/libphp_probe.so output/libphp_probe-$$(basename $$header).so; done
 endif
 	cp php/output/* output/lib/php
 
@@ -195,8 +195,6 @@ build: update_version agent_plugin nsenter mounts process_injector java python g
 	$(call split_debug, output/lib/golang/go_loader)
 	$(call split_debug, output/lib/golang/go_probe)
 	$(call split_debug, output/lib/python/python_loader)
-	$(call split_debug, output/lib/python/rasp/probe.so)
-	$(call split_debug, output/lib/python/rasp/probe.abi3.so)
 	$(foreach file, $(wildcard output/lib/php/*), $(call split_debug, $(file));)
 
 	tar -czvf debug.tar.gz debug
