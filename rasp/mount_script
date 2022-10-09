@@ -5,6 +5,7 @@ PID=$1
 HOSTPATH=$2
 CONTPATH=$3
 NSENTER_PATH=$4
+MOUNT_PATH=$4
 
 if [ ! -d $HOSTPATH ];then
     echo "physics $HOSTPATH is not exist!"
@@ -35,14 +36,16 @@ if  [ `$run_command "mount|grep $CONTPATH|wc -l"` -ne 0 ];then
 fi
 $run_command "[ -b $DEV ] ||mknod --mode 0600 $DEV b $DEVDEC"
 $run_command "mkdir /tmpmnt"
-$run_command "mount $DEV /tmpmnt"
+$run_command "$MOUNT_PATH $DEV /tmpmnt"
 $run_command "mkdir -p $CONTPATH"
-$run_command "mount -o bind /tmpmnt/$SUBROOT/$SUBPATH $CONTPATH"
+$run_command "$MOUNT_PATH -o bind /tmpmnt/$SUBROOT/$SUBPATH $CONTPATH"
 $run_command "umount /tmpmnt"
 $run_command "rmdir /tmpmnt"
-check_result=`$run_command "mount|grep $CONTPATH|wc -l"`
+check_result=`$run_command "$MOUNT_PATH|grep $CONTPATH|wc -l"`
 if [ $check_result -ne 0 ];then
-    echo "dynamic mount physics $HOSTPATH on $PID $CONTPATH is success!"
+    echo "dynamic mount physics $REALPATH on $PID $CONTPATH is success!"
+    exit 0
 else
-    echo "dynamic mount physics $HOSTPATH on $PID $CONTPATH is fail!"
+    echo "dynamic mount physics REALPATH on $PID $CONTPATH is fail!"
+    exit 1
 fi

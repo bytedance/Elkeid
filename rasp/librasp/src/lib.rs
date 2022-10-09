@@ -10,7 +10,68 @@ pub mod golang;
 pub mod nodejs;
 pub mod php;
 
+pub mod file_copy {
+    use std::path::Path;
+    use anyhow::{anyhow, Result as AnyhowResult};
+    use fs_extra::dir::{copy, CopyOptions, create_all};
+    use fs_extra::file::{copy as file_copy, CopyOptions as FileCopyOptions};
+    use log::{debug, warn};
 
+    pub fn create_dir_if_not_exist(dir: String, dest_root: String) -> AnyhowResult<()> {
+        let target = format!("{}{}", dest_root, dir);
+        if Path::new(&target).exists() {
+            return Ok(());
+        }
+        create_all(format!("{}{}", dest_root, dir), true)?;
+        Ok(())
+    }
+    pub fn copy_file_from_to_dest(from: String, dest_root: String) -> AnyhowResult<()> {
+        let target = format!("{}/{}", dest_root, from);
+        if Path::new(&target).exists() {
+            return Ok(());
+        }
+        let dir = Path::new(&from).parent().unwrap();
+        create_dir_if_not_exist(dir.to_str().unwrap().to_string(), dest_root.clone())?;
+        let options = FileCopyOptions::new();
+        debug!("copy file: {} {}", from.clone(), format!("{}/{}", dest_root, from));
+        return match file_copy(from.clone(), format!("{}/{}", dest_root, from), &options) {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                warn!("can not copy: {}", e);
+                Err(anyhow!(
+		    "copy failed: from {} to {}: {}",
+		    from,
+		    format!("{}/{}", dest_root, from),
+		    e
+		))
+            }
+        };
+    }
+    pub fn copy_dir_from_to_dest(from: String, dest_root: String) -> AnyhowResult<()> {
+        let target = format!("{}{}", dest_root, from);
+        if Path::new(&target).exists() {
+            return Ok(());
+        }
+        let dir = Path::new(&from).parent().unwrap();
+        create_dir_if_not_exist(dir.to_str().unwrap().to_string(), dest_root.clone())?;
+        let mut options = CopyOptions::new();
+        options.copy_inside = true;
+        debug!("copy dir: {} {}", from.clone(), format!("{}/{}", dest_root, from));
+        return match copy(from.clone(), format!("{}/{}", dest_root, from), &options) {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                warn!("can not copy: {}", e);
+                Err(anyhow!(
+		    "copy failed: from {} to {}: {}",
+		    from,
+		    format!("{}/{}", dest_root, from),
+		    e
+		))
+            }
+        };
+    }
+
+}
 pub mod async_command {
     use std::io::{BufRead, BufReader};
     use std::process::{Command, ExitStatus, Stdio};

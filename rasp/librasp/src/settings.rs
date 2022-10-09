@@ -21,6 +21,9 @@ pub fn RASP_NS_ENTER_BIN() -> String {
 pub fn RASP_MOUNT_SCRIPT_BIN() -> String {
     format!("{}{}", RASP_BASE_DIR(), "/mount_script")
 }
+pub fn RASP_MOUNT_BIN() -> String {
+    format!("{}{}", RASP_BASE_DIR(), "/elkeid_mount")
+}
 
 pub fn RASP_LIB_DIR() -> String {
     format!("{}{}", RASP_BASE_DIR(), format!("/lib-{}", RASP_VERSION))

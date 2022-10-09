@@ -59,15 +59,17 @@ nsenter: ## build nsenter from util-linux
 ifeq ($(STATIC), TRUE)
 	cd util-linux && \
 	./autogen.sh && \
-	CFLAGS="-static" ./configure --enable-static-programs=nsenter --disable-all-programs --enable-nsenter && \
+	CFLAGS="-static" ./configure --enable-static-programs=nsenter,mount --disable-all-programs --enable-nsenter --enable-mount --enable-libmount --enable-libblkid && \
 	make
 	cp util-linux/nsenter.static output/nsenter
+	cp util-linux/mount.static output/elkeid_mount
 else
 	cd util-linux && \
 	./autogen.sh && \
-	./configure --enable-static-programs=nsenter --disable-all-programs --enable-nsenter && \
+	./configure --enable-static-programs=nsenter,mount --disable-all-programs --enable-nsenter --enable-mount --enable-libmount --enable-libblkid && \
 	make
 	cp util-linux/nsenter output/nsenter
+	cp util-linux/nsenter output/elkeid_mount
 endif
 
 mounts:

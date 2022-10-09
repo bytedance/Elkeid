@@ -5,8 +5,6 @@ use std::process::Command;
 
 use anyhow::{anyhow, Result, Result as AnyhowResult};
 use crossbeam::channel::Sender;
-use fs_extra::dir::{copy, CopyOptions, create_all};
-use fs_extra::file::{copy as file_copy, CopyOptions as FileCopyOptions};
 use libraspserver::proto::{PidMissingProbeConfig, ProbeConfigData};
 use log::*;
 
@@ -16,6 +14,7 @@ use crate::cpython::{CPythonProbe, CPythonProbeState, python_attach};
 use crate::golang::{GolangProbe, golang_attach, GolangProbeState};
 use crate::jvm::{JVMProbe, JVMProbeState, java_attach};
 use crate::nodejs::{NodeJSProbe, nodejs_attach};
+use crate::file_copy::{copy_file_from_to_dest, copy_dir_from_to_dest};
 
 pub struct RASPManager {
     pub namespace_tracer: MntNamespaceTracer,
@@ -239,10 +238,10 @@ impl RASPManager {
                 ProbeState::NotAttach => {
                     if self.can_copy(mnt_namespace) {
                         for from in JVMProbe::names().0.iter() {
-                            self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
+                            copy_file_from_to_dest(from.clone(), root_dir.clone())?;
                         }
                         for from in JVMProbe::names().1.iter() {
-                            self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
+                            copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
                         }
                     }
                     java_attach(process_info.pid)
@@ -256,10 +255,10 @@ impl RASPManager {
                 ProbeState::NotAttach => {
                     if self.can_copy(mnt_namespace) {
                         for from in CPythonProbe::names().0.iter() {
-                            self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
+                            copy_file_from_to_dest(from.clone(), root_dir.clone())?;
                         }
                         for from in CPythonProbe::names().1.iter() {
-                            self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
+                            copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
                         }
                     }
                     python_attach(process_info.pid)
@@ -273,10 +272,10 @@ impl RASPManager {
                 ProbeState::NotAttach => {
                     if self.can_copy(mnt_namespace) {
                         for from in GolangProbe::names().0.iter() {
-                            self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
+                            copy_file_from_to_dest(from.clone(), root_dir.clone())?;
                         }
                         for from in GolangProbe::names().1.iter() {
-                            self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
+                            copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
                         }
                     }
 
@@ -286,10 +285,10 @@ impl RASPManager {
             "NodeJS" => {
                 if self.can_copy(mnt_namespace) {
                     for from in NodeJSProbe::names().0.iter() {
-                        self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
+                        copy_file_from_to_dest(from.clone(), root_dir.clone())?;
                     }
                     for from in NodeJSProbe::names().1.iter() {
-                        self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
+                        copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
                     }
                 }
 
@@ -371,96 +370,6 @@ impl RASPManager {
             }
         }
         Ok(())
-    }
-
-
-    pub fn copy_to_dest(&self, dest_root: String) -> Result<()> {
-        let cwd_path = std::env::current_dir()?;
-        let cwd = cwd_path.to_str().unwrap();
-        debug!("current dir: {}", cwd);
-        // check namespace before copy
-        match create_all(format!("{}{}", dest_root, cwd), false) {
-            Ok(_) => {}
-            Err(e) => {
-                warn!("create failed: {:?}", e);
-            }
-        };
-        let mut options = CopyOptions::new();
-        options.overwrite = true;
-        return match copy(
-            format!("{}/lib", cwd),
-            format!("{}/{}/", dest_root, cwd),
-            &options,
-        ) {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                warn!("can not copy: {}", e);
-                Err(anyhow!("copy failed: {}", dest_root))
-            }
-        };
-    }
-    pub fn create_dir_if_not_exist(&self, dir: String, dest_root: String) -> AnyhowResult<()> {
-        let target = format!("{}{}", dest_root, dir);
-        if Path::new(&target).exists() {
-            return Ok(());
-        }
-        create_all(format!("{}{}", dest_root, dir), true)?;
-        Ok(())
-    }
-    pub fn copy_file_from_to_dest(&self, from: String, dest_root: String) -> AnyhowResult<()> {
-        let target = format!("{}/{}", dest_root, from);
-        if Path::new(&target).exists() {
-            return Ok(());
-        }
-        let dir = Path::new(&from).parent().unwrap();
-        self.create_dir_if_not_exist(dir.to_str().unwrap().to_string(), dest_root.clone())?;
-        let options = FileCopyOptions::new();
-        debug!("copy file: {} {}", from.clone(), format!("{}/{}", dest_root, from));
-        return match file_copy(from.clone(), format!("{}/{}", dest_root, from), &options) {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                warn!("can not copy: {}", e);
-                Err(anyhow!(
-		    "copy failed: from {} to {}: {}",
-		    from,
-		    format!("{}/{}", dest_root, from),
-		    e
-		))
-            }
-        };
-    }
-    pub fn copy_dir_from_to_dest(&self, from: String, dest_root: String) -> AnyhowResult<()> {
-        let target = format!("{}{}", dest_root, from);
-        if Path::new(&target).exists() {
-            return Ok(());
-        }
-        let dir = Path::new(&from).parent().unwrap();
-        self.create_dir_if_not_exist(dir.to_str().unwrap().to_string(), dest_root.clone())?;
-        let mut options = CopyOptions::new();
-        options.copy_inside = true;
-        debug!("copy dir: {} {}", from.clone(), format!("{}/{}", dest_root, from));
-        return match copy(from.clone(), format!("{}/{}", dest_root, from), &options) {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                warn!("can nout copy: {}", e);
-                Err(anyhow!(
-		    "copy failed: from {} to {}: {}",
-		    from,
-		    format!("{}/{}", dest_root, from),
-		    e
-		))
-            }
-        };
-    }
-    pub fn copy_to_target_dir(&self, pid: i32, mnt_namespace: &String) -> Result<()> {
-        // check namespace first
-        if let Some(tracing) = self.namespace_tracer.server_state(&mnt_namespace) {
-            if tracing {
-                return Ok(());
-            }
-        }
-        let root_dir = format!("/proc/{}/root", pid);
-        self.copy_to_dest(root_dir)
     }
     pub fn can_copy(&self, _mnt_namesapce: &String) -> bool {
         // !self.namespace_tracer.server_state(&mnt_namesapce).is_some()

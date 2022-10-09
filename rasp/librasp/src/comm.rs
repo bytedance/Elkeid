@@ -1,14 +1,13 @@
 use std::collections::HashMap;
-// use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 
 use crossbeam::channel::{bounded, Receiver, Sender, SendError};
 use log::*;
 
-// use super::process::ProcessInfo;
 use anyhow::{anyhow, Result as AnyhowResult};
 use crate::async_command::run_async_process;
+use crate::file_copy::copy_file_from_to_dest;
 use crate::settings;
 
 // https://stackoverflow.com/questions/35883390/how-to-check-if-a-thread-has-finished-in-rust
@@ -92,8 +91,8 @@ impl ThreadMode {
         Ok(Self {
             ctrl,
             log_level,
-            bind_path: bind_path,
-            linking_to: linking_to,
+            bind_path,
+            linking_to,
             using_mount,
             agent_to_probe_sender: sender,
         })
@@ -218,13 +217,19 @@ impl RASPComm for ThreadMode {
 }
 
 fn mount(pid: i32, from: &str, to: &str) -> AnyhowResult<()> {
+    // using elkeid_mount
+    let source = settings::RASP_MOUNT_BIN();
+    let dest = format!("/proc/{}/root{}", pid, source.clone());
+    copy_file_from_to_dest(source.clone(), dest)?;
+    // execute mount script
     let pid_str = pid.to_string();
     let nsenter_str = settings::RASP_NS_ENTER_BIN();
     let args = [
         pid_str.as_str(),
         from,
         to,
-        nsenter_str.as_str()
+        nsenter_str.as_str(),
+        source.as_str(),
     ];
     return match run_async_process(std::process::Command::new(settings::RASP_MOUNT_SCRIPT_BIN()).args(args)) {
         Ok((exit_status, stdout, stderr)) => {
