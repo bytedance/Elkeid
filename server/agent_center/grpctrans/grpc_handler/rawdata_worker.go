@@ -45,8 +45,10 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 		mqMsg.PSMPath = ""
 		if extraInfo != nil {
 			mqMsg.Tag = extraInfo.Tags
+			mqMsg.Enhanced = extraInfo.Enhanced
 		} else {
 			mqMsg.Tag = ""
+			mqMsg.Enhanced = "false"
 		}
 
 		outputDataTypeCounter.With(prometheus.Labels{"data_type": fmt.Sprint(mqMsg.DataType)}).Add(float64(1))

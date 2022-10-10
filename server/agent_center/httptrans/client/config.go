@@ -32,9 +32,10 @@ type ConfigMsg struct {
 }
 
 type AgentExtraInfo struct {
-	Tags    string `json:"tags"`
-	PSMName string `json:"psm_name"`
-	PSMPath string `json:"psm_path"`
+	Tags     string `json:"tags"`
+	PSMName  string `json:"psm_name"`
+	PSMPath  string `json:"psm_path"`
+	Enhanced string `json:"enhanced"`
 }
 
 type ResAgentTags struct {

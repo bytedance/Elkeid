@@ -75,6 +75,7 @@ message MQData{
   string PSMName = 13;    //Used to identify business
   string PSMPath = 14;    //Used to identify business
   string Tag = 15;        //Used to identify agent group
+  string Enhanced = 16;   //Used to identify protection level
 }
 
 //bmq --> Rule engine
