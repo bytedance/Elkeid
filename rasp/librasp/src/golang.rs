@@ -138,7 +138,7 @@ pub fn golang_bin_inspect(bin_file: PathBuf) -> Result<bool> {
     }
     let file = File::open(bin_file)?;
     let bin = unsafe { MmapOptions::new().map(&file)? };
-    let elf = Elf::parse(&bin).unwrap();
+    let elf = Elf::parse(&bin)?;
     let shstrtab = elf.shdr_strtab;
     for section in elf.section_headers.iter() {
         let offset = section.sh_name;
