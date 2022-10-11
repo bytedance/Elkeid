@@ -9,7 +9,7 @@
 /* mount_ns and pid_ns id for systemd process */
 static void *ROOT_MNT_NS;
 static void *ROOT_MNT_SB;
-static unsigned long ROOT_MNT_NS_ID;
+static uint64_t ROOT_MNT_NS_ID;
 
 #define __SD_XFER_SE__
 #include "../include/xfer.h"
@@ -316,6 +316,61 @@ void (*__smith_put_task_struct)(struct task_struct *tsk);
 
 static const struct cred *(*get_task_cred_sym) (struct task_struct *);
 
+#if !defined(SMITH_HAVE_NO_MNTNS_OPS) && !defined(SMITH_HAVE_MNTNS_PROCFS)
+/* proc_ns.h introduced from v3.10, originated from proc_fs.h */
+#include <linux/proc_ns.h> /* proc_ns_operations */
+#endif
+#include <linux/mount.h>
+
+struct proc_ns_operations *smith_mntns_ops;
+static uint64_t smith_query_mntns_id(struct task_struct *task)
+{
+    struct super_block *sb = NULL;
+    struct path root;
+    uint64_t mntns;
+    uint32_t inum = 0xF0000001; /* default mntns inum for kernels < 3.8 */
+
+#ifndef SMITH_HAVE_NO_MNTNS_OPS
+    void *ns;
+
+    /* mntns_operations was introduced from v3.8 */
+    if (!smith_mntns_ops || !smith_mntns_ops->get || !smith_mntns_ops->put)
+        goto errorout;
+
+#ifdef SMITH_HAVE_MNTNS_OPS_INUM
+    if (!smith_mntns_ops->inum)
+        goto errorout;
+    ns = smith_mntns_ops->get(task);
+    if (ns) {
+        inum = smith_mntns_ops->inum(ns);
+        smith_mntns_ops->put(ns);
+    }
+#else
+    /* ops->inum callback was removed from v3.19 */
+    ns = smith_mntns_ops->get(task);
+    if (ns) {
+        struct ns_common *nc = ns;
+        inum = nc->inum;
+        smith_mntns_ops->put(nc);
+    }
+#endif /* SMITH_HAVE_MNTNS_OPS_INUM */
+
+errorout:
+#endif /* !SMITH_HAVE_NO_MNTNS_OPS */
+
+    task_lock(task);
+    root = task->fs->root;
+    task_unlock(task);
+
+    /* get superblock of root fs, using as mnt namespace id */
+    sb = root.mnt ? root.mnt->mnt_sb : NULL;
+    mntns = sb ? (unsigned long)sb : -1;
+    mntns = (~mntns) << 16; /* canonical address */
+    mntns = (mntns & 0xFFFFFFFF00000000ULL) | inum;
+
+    return mntns;
+}
+
 static int __init kernel_symbols_init(void)
 {
     void *ptr = (void *)smith_kallsyms_lookup_name("put_files_struct");
@@ -347,6 +402,10 @@ static int __init kernel_symbols_init(void)
         smith_d_absolute_path = ptr;
     else
         smith_d_absolute_path = (void *)d_path;
+
+    ptr = (void *)smith_kallsyms_lookup_name("mntns_operations");
+    if (ptr)
+        smith_mntns_ops = ptr;
 
     return 0;
 }
@@ -3631,14 +3690,14 @@ static int smith_is_anchor(struct task_struct *task)
 struct hlist_root g_hlist_tid;
 
 /* query mntns id */
-unsigned long smith_query_mntns(void)
+uint64_t smith_query_mntns(void)
 {
     struct smith_tid tid;
 
     if (0 == hlist_query_key(&g_hlist_tid, current, &tid))
         return tid.st_root;
 
-    return 0;
+    return smith_query_mntns_id(current);
 }
 
 /* query the original session id */
@@ -3776,25 +3835,6 @@ static void smith_update_pid_tree(char *pid_tree, char *comm_new)
     memcpy(s, comm_new, n);
 }
 
-#include <linux/mount.h>
-static unsigned long smith_query_mntns_id(struct task_struct *task)
-{
-    struct super_block *sb = NULL;
-    struct path root;
-    unsigned long mntns;
-
-    task_lock(task);
-    root = task->fs->root;
-    task_unlock(task);
-
-    /* get superblock of root fs, using as mnt namespace id */
-    sb = root.mnt ? root.mnt->mnt_sb : NULL;
-    mntns = sb ? (unsigned long)sb : -1;
-    mntns = ~(mntns);
-
-    return mntns;
-}
-
 static int smith_build_tid(struct smith_tid *tid, struct task_struct *task)
 {
     tid->st_start = smith_task_start_time(task);
@@ -3866,7 +3906,7 @@ static void smith_show_tid(struct hlist_hnod *hnod)
         return;
 
     tid = container_of(hnod, struct smith_tid, st_node);
-    printk("pid: %u sid: %u task: %s mnt: %ld refs: %d\n",
+    printk("pid: %u sid: %u task: %s mnt: %llu refs: %d\n",
             tid->st_pid, tid->st_sid, tid->st_pid_tree,
             tid->st_root, atomic_read(&tid->st_node.refs));
 }

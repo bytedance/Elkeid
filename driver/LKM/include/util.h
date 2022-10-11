@@ -283,25 +283,6 @@ static inline void *__get_dns_query(unsigned char *data, int query_len, char *re
     return 0;
 }
 
-static inline unsigned int __get_pid_ns_inum(void) {
-    unsigned int inum;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-    inum = current->nsproxy->pid_ns_for_children->ns.inum;
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
-    inum = current->nsproxy->pid_ns_for_children->proc_inum;
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
-    inum = current->nsproxy->pid_ns->proc_inum;
-#else
-    /*
-     * For kernels < 3.8.0, id for pid namespaces isn't defined.
-     * So here we are using fixed values, no emulating any more,
-     * previously we were using image file's inode number.
-     */
-    inum = 0xEFFFFFFCU /* PROC_PID_INIT_INO */;
-#endif
-    return inum;
-}
-
 static inline int __get_pgid(void) {
     return task_pgrp_nr_ns(current, &init_pid_ns);
 }
