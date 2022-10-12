@@ -84,6 +84,8 @@ impl HoneyPot {
                     && (lvec[5].starts_with("/root") || lvec[5].starts_with("/home"))
                 {
                     user_homes.insert(lvec[0].to_string(), (uid, gid, lvec[5].to_string()));
+                    let dst = format!("{}/elkeid_targets", lvec[5]);
+                    std::fs::remove_dir_all(dst);
                 }
             }
         }
