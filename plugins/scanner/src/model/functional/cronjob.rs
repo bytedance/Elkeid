@@ -58,7 +58,7 @@ impl Cronjob {
                     let entry = match w_dir.next() {
                         None => break,
                         Some(Err(_err)) => {
-                            warn!("walkdir err while cronjob:{:?}", _err);
+                            //warn!("walkdir err while cronjob:{:?}", _err);
                             continue;
                         }
                         Some(Ok(entry)) => entry,
@@ -159,7 +159,7 @@ impl Cronjob {
                 }
 
                 let rfp = Path::new(&exe_real);
-                let (fsize, btime) = match rfp.metadata() {
+                (fsize, btime) = match rfp.metadata() {
                     Ok(p) => {
                         if p.is_dir() {
                             continue;

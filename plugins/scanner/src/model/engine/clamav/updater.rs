@@ -3,6 +3,7 @@ use log::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{fs::File, io::Write, path::Path};
+use walkdir::WalkDir;
 
 pub const DB_URLS: &'static [&'static str] = &[
     "http://lf26-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220930",
@@ -31,6 +32,26 @@ pub struct DBManager {
 
 impl DBManager {
     pub fn new(version: &str, sha256: &str, passwd: &str, urls: &[&str]) -> Result<Self> {
+        std::fs::remove_dir_all(DB_PATH);
+        let mut w_dir = WalkDir::new(TMP_PATH).into_iter();
+        loop {
+            let entry = match w_dir.next() {
+                None => break,
+                Some(Err(_err)) => {
+                    warn!("walkdir err while clean db:{:?}", _err);
+                    continue;
+                }
+                Some(Ok(entry)) => entry,
+            };
+            if entry.path().is_dir() {
+                continue;
+            }
+            let fullpathstr = entry.path().to_string_lossy().to_string();
+            if !fullpathstr.contains(ARCHIVE_DB_VERSION) {
+                info!("clean file {} in ./tmp", &fullpathstr);
+                std::fs::remove_file(&fullpathstr);
+            }
+        }
         if let Some(filename) = urls[0].split('/').last() {
             return Ok(DBManager {
                 version: version.to_string(),

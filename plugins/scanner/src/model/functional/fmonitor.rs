@@ -49,11 +49,10 @@ pub const FAN_DELETE_SELF: u64 = 0x0000_0400;
 pub const FAN_MOVE_SELF: u64 = 0x0000_0800;
 
 // settings for kernel < 5.1
-pub const LOW_DIR_MATCH_MASK: u64 = FAN_MODIFY | FAN_CLOSE_WRITE | FAN_ONDIR | FAN_EVENT_ON_CHILD;
+pub const LOW_DIR_MATCH_MASK: u64 = FAN_CLOSE_WRITE | FAN_ONDIR | FAN_EVENT_ON_CHILD;
 
 // settings for kernel >= 5.1
-pub const H51_DIRS_MATCH_MASK: u64 =
-    FAN_ONDIR | FAN_EVENT_ON_CHILD | FAN_MODIFY | FAN_DELETE | FAN_DELETE_SELF;
+pub const H51_DIRS_MATCH_MASK: u64 = FAN_ONDIR | FAN_EVENT_ON_CHILD | FAN_CLOSE_WRITE;
 
 const METADATA_MAX_LEN: usize = 1024;
 
@@ -66,7 +65,7 @@ lazy_static! {
                 if t >= Version::new(5, 1, 0) {
                     return (
                         true,
-                        libc::FAN_CLASS_NOTIF | FAN_REPORT_FID,
+                        libc::FAN_CLASS_NOTIF,
                         H51_DIRS_MATCH_MASK
                     );
                 } else if t >= Version::new(2, 6, 36){
@@ -190,6 +189,13 @@ impl FileMonitor {
                     };
 
                     for each_metadata in metadata.iter() {
+                        if each_metadata.fd == -1 {
+                            continue; // too many event, skip queue overflowed event
+                        }
+                        if each_metadata.vers != libc::FANOTIFY_METADATA_VERSION {
+                            safe_close(each_metadata.fd);
+                            continue; // skip monitor self pid
+                        }
                         if each_metadata.pid == pid as i32 {
                             safe_close(each_metadata.fd);
                             continue; // skip monitor self pid
@@ -234,16 +240,20 @@ impl FileMonitor {
                         let event_pid = &each_metadata.pid;
                         let pstr: &str = &format!("/proc/{}/exe", event_pid);
                         let exe_fp = Path::new(pstr);
-                        let (exe_real, rfp) = match std::fs::read_link(exe_fp) {
-                            Ok(pf) => (pf.to_string_lossy().to_string(), pf),
+                        let exe_real = match std::fs::read_link(exe_fp) {
+                            Ok(pf) => pf.to_string_lossy().to_string(),
+
                             Err(e) => {
-                                error!(
+                                debug!(
                                     "fanotify get target pid:{} exe_real_path failed, process may exit.",
                                     event_pid
                                 );
                                 continue;
                             }
                         };
+
+                        let pstr_full: &str = &format!("/proc/{}/root{}", event_pid, exe_real);
+                        let rfp = Path::new(pstr_full);
 
                         let fpath_real_sha256 = get_file_sha256(&event_fpath);
 
@@ -252,19 +262,22 @@ impl FileMonitor {
                             if !map.contains_key(&event_fpath) {
                                 let (fsize, btime) = match rfp.metadata() {
                                     Ok(p) => {
-                                        if p.is_dir() {
-                                            continue;
-                                        }
                                         let fsize = p.len() as usize;
                                         let btime = crate::get_file_btime(&p);
                                         (fsize, btime)
                                     }
                                     Err(e) => {
-                                        error!(
-                                            "error {}, while get exe realpath metadata",
-                                            &exe_real
-                                        );
-                                        continue;
+                                        if let Ok(exe_rm) = Path::new(&exe_real).metadata() {
+                                            let fsize = exe_rm.len() as usize;
+                                            let btime = crate::get_file_btime(&exe_rm);
+                                            (fsize, btime)
+                                        } else {
+                                            warn!(
+                                                "error {}, while get exe realpath metadata",
+                                                &exe_real
+                                            );
+                                            (0, (0, 0))
+                                        }
                                     }
                                 };
                                 let default_mask_set: u64 = FANOTIFY_DEFAULT_CONFIG.2;
@@ -280,7 +293,7 @@ impl FileMonitor {
                                     };
                                     debug!("fanotify event {:?}", task);
 
-                                    while sender.len() > 8 {
+                                    while sender.len() > 256 {
                                         std::thread::sleep(Duration::from_secs(4));
                                     }
 
@@ -322,14 +335,18 @@ impl FileMonitor {
                                 (fsize, btime)
                             }
                             Err(e) => {
-                                error!("error {}, while get exe realpath metadata", &exe_real);
-                                continue;
+                                if let Ok(exe_rm) = Path::new(&exe_real).metadata() {
+                                    let fsize = exe_rm.len() as usize;
+                                    let btime = crate::get_file_btime(&exe_rm);
+                                    (fsize, btime)
+                                } else {
+                                    warn!("error {}, while get exe realpath metadata", &exe_real);
+                                    (0, (0, 0))
+                                }
                             }
                         };
 
-                        if fsize <= 0
-                            || fsize > crate::model::engine::clamav::config::CLAMAV_MAX_FILESIZE
-                        {
+                        if fsize > crate::model::engine::clamav::config::CLAMAV_MAX_FILESIZE {
                             continue;
                         }
                         let default_mask_set: u64 = FANOTIFY_DEFAULT_CONFIG.2;
@@ -374,7 +391,7 @@ impl FileMonitor {
     }
     pub fn flush(&mut self) {
         if unsafe { libc::fanotify_mark(self.fd, FAN_MARK_FLUSH, 0, 0, std::ptr::null()) } != 0 {
-            error!("mm.flush() :{}", Error::last_os_error());
+            warn!("mm.flush() :{}", Error::last_os_error());
         } else {
             info!("{}.flush success !", self.fd);
         }
@@ -400,7 +417,8 @@ impl FileMonitor {
         } != 0
         {
             let e = anyhow!(
-                "error :{:?} : kernel = {:?}",
+                "add: {}, error :{:?} : kernel = {:?}",
+                path,
                 Error::last_os_error(),
                 self.current_kernel_version
             );
@@ -494,6 +512,6 @@ fn safe_close(fd: i32) {
         retc
     };
     if rcode != 0 {
-        error!("close fd :{}; return:{}.", fd, rcode);
+        warn!("close fd :{}; return:{}.", fd, rcode);
     };
 }
