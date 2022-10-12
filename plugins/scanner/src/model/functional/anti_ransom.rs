@@ -109,6 +109,12 @@ impl HoneyPot {
     }
     pub fn reset_fanotify(&mut self) -> Result<()> {
         self.moniter.flush();
+
+        for (k, (uid, gid, home_path)) in &self.user_homes {
+            let dst = format!("{}/elkeid_targets", home_path);
+            std::fs::remove_dir_all(dst);
+        }
+
         for each in crate::configs::FANOTIFY_CONFIGS {
             if let Err(e) = self.moniter.add_cfg(each) {
                 error!("reset_fanotify add_cfg Err {:?},with {:?}", e, each);

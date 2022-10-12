@@ -395,6 +395,10 @@ impl FileMonitor {
         } else {
             info!("{}.flush success !", self.fd);
         }
+        if let Ok(mut map) = self.anti_ransome.write() {
+            map.clear();
+            drop(map);
+        }
     }
     pub fn add(&mut self, path: &str, is_anti_ransome: bool) -> Result<()> {
         if !FANOTIFY_DEFAULT_CONFIG.0 {
