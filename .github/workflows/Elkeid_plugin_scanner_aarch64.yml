@@ -10,7 +10,7 @@ on:
 jobs:
 
   build:
-    runs-on: hids
+    runs-on: [self-hosted,linux,ARM64]
     steps:
     - uses: actions/checkout@v3
       with:
