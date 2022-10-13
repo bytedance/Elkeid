@@ -2,6 +2,8 @@ FROM kulukami/libclamav_icm_x86_64 as scanner_compiler
 
 ADD . /Elkeid
 WORKDIR /Elkeid/plugins/scanner
+
+RUN rm -rf clamav clamav-mussels-cookbook lib include
 RUN mv /LibClamavDocker/clamav /Elkeid/plugins/scanner/.
 RUN mv /LibClamavDocker/clamav-mussels-cookbook /Elkeid/plugins/scanner/.
 RUN mv /LibClamavDocker/lib /Elkeid/plugins/scanner/.
