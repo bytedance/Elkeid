@@ -5,6 +5,7 @@ on:
     branches:
     - main
     - 1.9/scanner
+    - 2.0/scanner
 
 jobs:
 
