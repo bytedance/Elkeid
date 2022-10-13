@@ -36,7 +36,6 @@ hex = "0.4"
 
 nix = "0.24"
 
-rust-crypto = "0.2"
 libc = "0.2"
 
 fs2 = "0.4.3"
