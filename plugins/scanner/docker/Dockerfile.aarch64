@@ -9,6 +9,7 @@ RUN mv /LibClamavDocker/clamav-mussels-cookbook /Elkeid/plugins/scanner/.
 RUN mv /LibClamavDocker/lib /Elkeid/plugins/scanner/.
 RUN mv /LibClamavDocker/include /Elkeid/plugins/scanner/.
 
+RUN rustup target add aarch64-unknown-linux-musl
 RUN CC="aarch64-linux-musl-gcc" CXX="aarch64-linux-musl-c++" RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --bin scanner_plugin --target aarch64-unknown-linux-musl
 
 RUN mkdir /Elkeid/plugins/scanner/output
