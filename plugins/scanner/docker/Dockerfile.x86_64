@@ -1,51 +1,14 @@
-FROM debian:bullseye as scanner_compiler
-
-
-SHELL ["/bin/bash", "-c"]
-
-RUN apt update
-RUN apt-get install -y apt-transport-https ca-certificates debian-archive-keyring
-RUN apt-get install -y bison autoconf gettext curl unzip git wget curl
-RUN apt-get install -y python3.9 python3-pip python3.9-dev libc-dev
-RUN apt-get install -y clang llvm flex ninja-build lsb-release
-RUN apt-get install -y libstdc++-10-dev cmake make libpcre2-dev
-
-
-ARG DEBIAN_FRONTEND=noninteractive
-ENV PATH=/root/.cargo/bin:$PATH
-
-RUN python3 -m pip install mussels wheel
-
-RUN apt-get clean all
-
-RUN curl -O https://lf26-elkeid.bytetos.com/obj/elkeid-download/3rd_tools/x86_64-linux-musl-cross.tgz
-RUN tar zxvf x86_64-linux-musl-cross.tgz
-RUN mv x86_64-linux-musl-cross /opt/x86_64-linux-musl
-RUN rm -f x86_64-linux-musl-cross.tgz
-
-ENV RUSTUP_HOME=/opt/rust
-ENV CARGO_HOME=/opt/rust
-
-RUN echo 'export PATH=/opt/rust/bin:$PATH' >> /etc/profile
-RUN echo 'export PATH=/opt/x86_64-linux-musl/bin:$PATH' >> /etc/profile
-RUN echo 'export RUSTUP_HOME=/opt/rust' >> /etc/profile
-
-RUN echo 'export PATH=/opt/rust/bin:$PATH' >> /root/.bashrc
-RUN echo 'export PATH=/opt/x86_64-linux-musl/bin:$PATH' >>  /root/.bashrc
-RUN echo 'export RUSTUP_HOME=/opt/rust' >> /root/.bashrc
-
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path -t x86_64-unknown-linux-musl
+FROM kulukami/libclamav_icm_x86_64 as scanner_compiler
 
 ADD . /Elkeid
 WORKDIR /Elkeid/plugins/scanner
 
-ENV PATH="/opt/rust/bin:/opt/x86_64-linux-musl/bin:${PATH}"
-ENV TARGET_ARCH="x86_64"
-RUN bash ./libclamav.sh
+RUN rm -rf clamav clamav-mussels-cookbook lib include
+RUN mv /LibClamavDocker/clamav /Elkeid/plugins/scanner/.
+RUN mv /LibClamavDocker/clamav-mussels-cookbook /Elkeid/plugins/scanner/.
+RUN mv /LibClamavDocker/lib /Elkeid/plugins/scanner/.
+RUN mv /LibClamavDocker/include /Elkeid/plugins/scanner/.
 
-RUN source /opt/rust/env
-RUN source ~/.bashrc
-ENV STDLIBCXX_STATIC_PATH=/opt/x86_64-linux-musl/x86_64-linux-musl/lib
 RUN rustup target add x86_64-unknown-linux-musl
 RUN CC="x86_64-linux-musl-gcc" CXX="x86_64-linux-musl-c++" RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --bin scanner_plugin --target x86_64-unknown-linux-musl
 
