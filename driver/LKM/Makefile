@@ -44,6 +44,12 @@ ifeq ($(TRACE_EVENTS_HEADER_CHECK),$(TRACE_EVENTS_HEADER))
 ccflags-y += -D SMITH_TRACE_EVENTS
 endif
 
+PROCFS_H_FILES := $(K_S_PATH)/linux/proc_fs.h $(K_B_PATH)/linux/proc_fs.h $(K_K_PATH)/linux/proc_fs.h
+PROCFS_PDE_DATA := $(shell sh -c "grep -s pde_data $(PROCFS_H_FILES)")
+ifneq ($(PROCFS_PDE_DATA),)
+ccflags-y += -D SMITH_PROCFS_PDE_DATA
+endif
+
 else
 
 MODULE_DIR		:= $(shell pwd)

@@ -44,16 +44,16 @@ static bool readUVarInt(const unsigned char **pp, unsigned long &value) {
     return false;
 }
 
-bool CBuildInfo::load(const std::string &file) {
-    zero::proc::CProcessMapping processMapping;
+bool BuildInfo::load(const std::string &file) {
+    std::optional<zero::proc::ProcessMapping> processMapping = zero::proc::getImageBase(getpid(), file);
 
-    if (!zero::proc::getImageBase(getpid(), file, processMapping))
+    if (!processMapping)
         return false;
 
-    return load(file, processMapping.start);
+    return load(file, processMapping->start);
 }
 
-bool CBuildInfo::load(const std::string &file, unsigned long base) {
+bool BuildInfo::load(const std::string &file, unsigned long base) {
     ELFIO::elfio reader;
 
     if (!reader.load(file)) {
@@ -87,14 +87,14 @@ bool CBuildInfo::load(const std::string &file, unsigned long base) {
                     return i->get_type() == PT_LOAD;
                 });
 
-        auto minElement = std::min_element(
+        uintptr_t minVA = std::min_element(
                 loads.begin(),
                 loads.end(),
                 [](const auto &i, const auto &j) {
                     return i->get_virtual_address() < j->get_virtual_address();
-                });
+                }).operator*()->get_virtual_address() & ~(PAGE_SIZE - 1);
 
-        data += base - ((*minElement)->get_virtual_address() & ~(PAGE_SIZE - 1));
+        data += base - minVA;
     }
 
     if (memcmp(data, GO_BUILD_INFO_MAGIC, magicSize) != 0) {
@@ -136,11 +136,11 @@ bool CBuildInfo::load(const std::string &file, unsigned long base) {
     if (!std::regex_match(mVersion, match, std::regex(R"(^go(\d+)\.(\d+).*)")))
         return false;
 
-    unsigned long major = 0;
-    unsigned long minor = 0;
+    std::optional<unsigned long> major = zero::strings::toNumber<unsigned long>(match.str(1));
+    std::optional<unsigned long> minor = zero::strings::toNumber<unsigned long>(match.str(2));
 
-    if (zero::strings::toNumber(match.str(1), major) && zero::strings::toNumber(match.str(2), minor)) {
-        mRegisterBased = major > GO_REGISTER_BASED_MAJOR || (major == GO_REGISTER_BASED_MAJOR && minor >= GO_REGISTER_BASED_MINOR);
+    if (major && minor) {
+        mRegisterBased = *major > GO_REGISTER_BASED_MAJOR || (*major == GO_REGISTER_BASED_MAJOR && *minor >= GO_REGISTER_BASED_MINOR);
     }
 
     if (modInfo.empty()) {
@@ -151,11 +151,11 @@ bool CBuildInfo::load(const std::string &file, unsigned long base) {
     return readModuleInfo(modInfo);
 }
 
-bool CBuildInfo::load() {
-    return load(zero::filesystem::path::getApplicationPath());
+bool BuildInfo::load() {
+    return load(zero::filesystem::getApplicationPath());
 }
 
-bool CBuildInfo::readModuleInfo(const go::string &modInfo) {
+bool BuildInfo::readModuleInfo(const go::string &modInfo) {
     if (modInfo.length < 32) {
         LOG_ERROR("module info invalid");
         return false;
@@ -164,7 +164,7 @@ bool CBuildInfo::readModuleInfo(const go::string &modInfo) {
     std::string info(modInfo.data + 16, modInfo.length - 32);
     std::vector<std::string> mods = zero::strings::split(info, "\n");
 
-    auto readEntry = [](const std::string &m, CModule &module) {
+    auto readEntry = [](const std::string &m, Module &module) {
         std::vector<std::string> tokens = zero::strings::split(m, "\t");
 
         if (tokens.size() != 4)
@@ -186,26 +186,26 @@ bool CBuildInfo::readModuleInfo(const go::string &modInfo) {
 
             mModuleInfo.path = tokens[1];
         } else if (zero::strings::startsWith(m, "mod")) {
-            CModule module = {};
+            Module module = {};
 
             if (!readEntry(m, module))
                 continue;
 
             mModuleInfo.main = module;
         } else if (zero::strings::startsWith(m, "dep")) {
-            CModule module = {};
+            Module module = {};
 
             if (!readEntry(m, module))
                 continue;
 
             mModuleInfo.deps.push_back(module);
         } else if (zero::strings::startsWith(m, "=>")) {
-            CModule module = {};
+            Module module = {};
 
             if (!readEntry(m, module))
                 continue;
 
-            mModuleInfo.deps.back().replace = new CModule(module);
+            mModuleInfo.deps.back().replace = new Module(module);
         }
     }
 

@@ -262,7 +262,7 @@ impl Kmod {
                 Err(err) => match err.downcast::<reqwest::Error>() {
                     Ok(err) => {
                         if let Some(status) = err.status() {
-                            if status == 500 {
+                            if status == 500 || status == 404 {
                                 warn!("cann't download driver kmod temporary, sleeping...");
                                 std::thread::sleep(std::time::Duration::from_secs(3600));
                             } else {

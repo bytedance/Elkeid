@@ -5,7 +5,7 @@ from collections import OrderedDict
 
 all_dockers = os.listdir("driver/dockerfiles")
 
-black_list = ["rhel7_elrepo", "rhel8_elrepo"]
+black_list = []
 
 all_vms = []
 
@@ -81,7 +81,7 @@ yaml_cfg_build = OrderedDict(
                     "main",
                 ]
             },
-            "schedule": ["cron : '0 3 * * *'"]
+            "schedule": ["cron : '0 3 1 * *'"]
         }
     }
 )

@@ -1,6 +1,6 @@
 #include "api_hook.h"
+#include "trap.h"
 #include <zero/log.h>
-#include <trap/trap.h>
 #include <Zydis/Zydis.h>
 
 constexpr auto MAX_OFFSET = 100;

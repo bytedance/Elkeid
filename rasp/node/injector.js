@@ -57,7 +57,7 @@ try {
             'includeCommandLineAPI': true
         });
 
-        if (response.result.className === 'Error') {
+        if (response.result.type === 'object' && response.result.subtype === 'error') {
             console.log(response);
             process.exit(2);
         }
