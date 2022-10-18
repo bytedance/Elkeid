@@ -13,7 +13,8 @@ use self::clamav::timeval;
 use super::ScanEngine;
 use std::{
     ffi::{c_void, CStr, CString},
-    io::Read,
+    fs::File,
+    io::{Read, Seek, SeekFrom},
     mem,
     path::Path,
     ptr,
@@ -25,7 +26,6 @@ use libc::{c_char, size_t};
 pub struct Clamav {
     engine: *mut clamav::cl_engine,
     scan_option: clamav::cl_scan_options,
-    scan_option_php: clamav::cl_scan_options,
 }
 
 // impl .Send trait for Clamav
@@ -51,15 +51,8 @@ impl Clamav {
         return Ok(Clamav {
             engine: pointer,
             scan_option: clamav::cl_scan_options {
-                general: 0,
-                parse: clamav::CL_SCAN_PARSE_ELF,
-                heuristic: 0,
-                mail: 0,
-                dev: 0,
-            },
-            scan_option_php: clamav::cl_scan_options {
                 general: clamav::CL_SCAN_GENERAL_YARAHIT,
-                parse: 0,
+                parse: clamav::CL_SCAN_PARSE_ELF,
                 heuristic: 0,
                 mail: 0,
                 dev: 0,
@@ -159,7 +152,8 @@ impl ScanEngine for Clamav {
         unsafe {
             let cfmap_t =
                 clamav::cl_fmap_open_memory(buf.as_ptr() as *const c_void, buf.len() as u64);
-            let nil_ctx = ptr::null_mut();
+            let mut nil_ctx = clamav::cl_yr_hit_cb_ctx_init();
+            let mut yr_ctx: *mut c_void = nil_ctx as _;
 
             let retc = clamav::cl_scanmap_callback(
                 cfmap_t,
@@ -168,7 +162,7 @@ impl ScanEngine for Clamav {
                 &mut scann_bytes as *mut u64,
                 self.engine,
                 &mut self.scan_option,
-                nil_ctx,
+                yr_ctx,
             );
             clamav::cl_fmap_close(cfmap_t);
 
@@ -195,80 +189,58 @@ impl ScanEngine for Clamav {
         if !fp.is_file() {
             return Err(anyhow!("scan target {} is not a regular file!", fpath));
         }
-        let mut php_flag = false;
-        if fpath.ends_with(".php") {
-            php_flag = true;
-        }
+
         let target_path = CString::new(fpath.as_bytes()).unwrap();
         let mut virus_name: *const ::std::os::raw::c_char = ptr::null();
 
         let mut scann_bytes: u64 = 0;
 
         unsafe {
-            let mut nil_ctx: *mut clamav::yr_hit_cb_ctx = ptr::null_mut();
-            if php_flag {
-                nil_ctx = clamav::cl_yr_hit_cb_ctx_init();
-            }
+            let mut nil_ctx = clamav::cl_yr_hit_cb_ctx_init();
             let mut retc: u32 = 0;
             let mut yr_ctx: *mut c_void = nil_ctx as _;
 
-            if php_flag {
-                retc = clamav::cl_scanfile_callback(
-                    target_path.as_ptr(),
-                    &mut virus_name,
-                    &mut scann_bytes as *mut u64,
-                    self.engine,
-                    &mut self.scan_option_php,
-                    yr_ctx,
-                );
-            } else {
-                retc = clamav::cl_scanfile(
-                    target_path.as_ptr(),
-                    &mut virus_name,
-                    &mut scann_bytes as *mut u64,
-                    self.engine,
-                    &mut self.scan_option,
-                );
-            }
+            retc = clamav::cl_scanfile_callback(
+                target_path.as_ptr(),
+                &mut virus_name,
+                &mut scann_bytes as *mut u64,
+                self.engine,
+                &mut self.scan_option,
+                yr_ctx,
+            );
 
             match retc {
                 clamav::cl_error_t_CL_CLEAN => {
-                    if php_flag {
-                        clamav::cl_yr_hit_cb_ctx_free(nil_ctx);
-                    }
+                    clamav::cl_yr_hit_cb_ctx_free(nil_ctx);
                     return Ok(("OK".to_string(), None));
                 }
                 clamav::cl_error_t_CL_VIRUS => {
                     let target_virust_name =
                         CStr::from_ptr(virus_name).to_str().unwrap().to_string();
-                    if php_flag {
-                        if (*nil_ctx).hit_cnt != 0 {
-                            let length = (*nil_ctx).hit_cnt as usize;
-                            let mut hitstring: Vec<String> = Vec::new();
-                            let mut v: Vec<*mut c_char> =
-                                Vec::from_raw_parts((*nil_ctx).hits, length, length);
-                            loop {
-                                if let Some(tc) = v.pop() {
-                                    hitstring
-                                        .push(CStr::from_ptr(tc).to_string_lossy().to_string());
-                                } else {
-                                    break;
-                                }
+                    if (*nil_ctx).hit_cnt != 0 {
+                        let length = (*nil_ctx).hit_cnt as usize;
+                        let mut hitstring: Vec<String> = Vec::new();
+                        let mut v: Vec<*mut c_char> =
+                            Vec::from_raw_parts((*nil_ctx).hits, length, length);
+                        loop {
+                            if let Some(tc) = v.pop() {
+                                hitstring.push(CStr::from_ptr(tc).to_string_lossy().to_string());
+                            } else {
+                                break;
                             }
-                            mem::forget(v);
-                            clamav::cl_yr_hit_cb_ctx_free(nil_ctx);
-                            return Ok((target_virust_name, Some(hitstring)));
                         }
+                        mem::forget(v);
+                        clamav::cl_yr_hit_cb_ctx_free(nil_ctx);
+                        return Ok((target_virust_name, Some(hitstring)));
                     }
+                    clamav::cl_yr_hit_cb_ctx_free(nil_ctx);
                     return Ok((target_virust_name, None));
                 }
                 tc => {
                     let errmsg = CStr::from_ptr(clamav::cl_strerror(tc as ::std::os::raw::c_int))
                         .to_string_lossy()
                         .into_owned();
-                    if php_flag {
-                        clamav::cl_yr_hit_cb_ctx_free(nil_ctx);
-                    }
+                    clamav::cl_yr_hit_cb_ctx_free(nil_ctx);
                     return Err(anyhow!("clamav::cl_scanfile {:?} err", errmsg));
                 }
             };
@@ -290,19 +262,46 @@ impl Clone for Clamav {
         return Clamav {
             engine: *&self.engine,
             scan_option: clamav::cl_scan_options {
-                general: 0,
-                parse: clamav::CL_SCAN_PARSE_ELF,
-                heuristic: 0,
-                mail: 0,
-                dev: 0,
-            },
-            scan_option_php: clamav::cl_scan_options {
                 general: clamav::CL_SCAN_GENERAL_YARAHIT,
-                parse: 0,
+                parse: clamav::CL_SCAN_PARSE_ELF,
                 heuristic: 0,
                 mail: 0,
                 dev: 0,
             },
         };
     }
+}
+
+// read file with offset & bufsize
+pub fn raw_read(f: &mut File, off: u64) -> Result<String> {
+    // This is unsafe
+    let mut buf: Vec<u8> = vec![0; 16];
+    f.seek(SeekFrom::Start(off))?; // return Io Error
+    let _: usize = f.read(&mut buf)?; // return Io Error
+    let result = match String::from_utf8(buf.clone()) {
+        Ok(s) => s,
+        Err(_) => hex::encode(&buf),
+    };
+    return Ok(result);
+}
+
+pub fn get_hit_data(fpath: &str, hit_data: &Vec<String>) -> Result<Vec<String>> {
+    let mut new_matched_data = Vec::<String>::new();
+    if hit_data.len() <= 0 {
+        return Ok(new_matched_data);
+    }
+    let mut f = File::open(fpath)?;
+    let fmeta = f.metadata()?;
+
+    for each_match_item in hit_data {
+        let tmp_v: Vec<&str> = each_match_item.splitn(3, ",").collect();
+        if tmp_v.len() == 3 {
+            let file_offset: u64 = tmp_v[1].parse::<u64>().unwrap();
+            if file_offset < fmeta.len() {
+                let hit_raw = raw_read(&mut f, file_offset)?;
+                new_matched_data.push(hit_raw);
+            }
+        }
+    }
+    return Ok(new_matched_data);
 }

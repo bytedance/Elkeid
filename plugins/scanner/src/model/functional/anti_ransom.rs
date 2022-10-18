@@ -11,7 +11,7 @@ use std::{
 
 use phf::{phf_map, Map};
 
-use crate::detector::DetectTask;
+use crate::data_type::DETECT_TASK;
 use procfs::sys::kernel::Version;
 
 use super::fmonitor::FileMonitor;
@@ -46,7 +46,7 @@ pub struct HoneyPot {
 
 impl HoneyPot {
     pub fn new(
-        sender: crossbeam_channel::Sender<DetectTask>,
+        sender: crossbeam_channel::Sender<DETECT_TASK>,
         s_locker: crossbeam_channel::Sender<()>,
     ) -> Result<Self> {
         let current_kernel_version = Version::current().unwrap();

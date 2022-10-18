@@ -5,16 +5,16 @@ use sha2::{Digest, Sha256};
 use std::{fs::File, io::Write, path::Path};
 
 pub const DB_URLS: &'static [&'static str] = &[
-    "http://lf26-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607",
-    "http://lf3-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607",
-    "http://lf6-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607",
-    "http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220607",
+    "http://lf26-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220817",
+    "http://lf3-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220817",
+    "http://lf6-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220817",
+    "http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220817",
 ];
 
 pub const ARCHIVE_DB_PWD: &str = &"clamav_default_passwd";
 pub const ARCHIVE_DB_HASH: &str =
-    &"025e0fdde3865ab89e1261df747806bbb8841e89318a8ff5e7c252ce24fd64fb";
-pub const ARCHIVE_DB_VERSION: &str = &"20220607";
+    &"290c9a6db172d1f709e8840753568218d8d96c40dec444376fa524f88a5b2ff9";
+pub const ARCHIVE_DB_VERSION: &str = &"20220817";
 
 pub const ARCHIVE_DB_VERSION_FILE: &str = &"version";
 pub const DB_PATH: &str = "./dat";

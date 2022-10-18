@@ -12,65 +12,61 @@ use log::*;
 use walkdir::WalkDir;
 
 use crate::{
-    configs,
-    detector::{self, DetectFileEvent, DetectProcEvent, DetectTask, Scanner},
+    configs::{
+        self, FULLSCAN_CPU_IDLE_INTERVAL, FULLSCAN_CPU_QUOTA_DEFAULT_MAX,
+        FULLSCAN_CPU_QUOTA_DEFAULT_MIN, FULLSCAN_MAX_SCAN_ENGINES, FULLSCAN_SCAN_MODE_QUICK,
+    },
+    data_type::{DetectFileEvent, DetectProcEvent},
+    detector::{self, Scanner},
     filter::Filter,
-    get_file_btime,
+    get_file_btime, is_filetype_filter_skipped,
     model::engine::clamav::{updater, Clamav},
     ToAgentRecord,
 };
+use crate::{
+    data_type::{FullScanTask, ScanTaskProcExe, ScanTaskStaticFile, DETECT_TASK},
+    get_available_worker_cpu_quota,
+};
 
 use super::cronjob::get_pid_live_time;
+use anyhow::{anyhow, Result};
 
 use serde::{self, Deserialize, Serialize};
 use serde_json;
 
-// fullscan finished datatype
-#[derive(Serialize, Debug)]
-pub struct FulllScanFinished {}
+#[derive(PartialEq)]
+pub enum FullScanResult {
+    FULLSCANN_SUCCEED,
+    FULLSCANN_TIMEOUT,
+    FULLSCANN_FAILED,
+}
 
-pub const MAX_SCAN_ENGINES: u32 = 4;
-pub const MAX_SCAN_CPU_100: u32 = 4;
-pub const MAX_SCAN_MEM_MB: u32 = 2048;
-
-impl ToAgentRecord for FulllScanFinished {
-    fn to_record(&self) -> plugins::Record {
-        let mut r = plugins::Record::new();
-        let mut pld = plugins::Payload::new();
-        r.set_data_type(6000);
-        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
-        let mut hmp = HashMap::with_capacity(4);
-        hmp.insert("data".to_string(), "FullScan Finished".to_string());
-        pld.set_fields(hmp);
-        r.set_data(pld);
-        return r;
-    }
-
-    fn to_record_token(&self, token: &str) -> plugins::Record {
-        let mut r = plugins::Record::new();
-        let mut pld = plugins::Payload::new();
-        r.set_data_type(6000);
-        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
-        let mut hmp = HashMap::with_capacity(4);
-        hmp.insert("token".to_string(), token.to_string());
-        hmp.insert("data".to_string(), "FullScan Finished".to_string());
-        pld.set_fields(hmp);
-        r.set_data(pld);
-        return r;
+impl std::fmt::Display for FullScanResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let result: &str = match &self {
+            FullScanResult::FULLSCANN_SUCCEED => "succeed",
+            FullScanResult::FULLSCANN_TIMEOUT => "failed",
+            FullScanResult::FULLSCANN_FAILED => "failed",
+        };
+        write!(f, "{}", result)
     }
 }
 
 pub struct SuperDetector {
     pub client: plugins::Client,
-    pub task_receiver: crossbeam_channel::Receiver<DetectTask>,
+    pub task_receiver: crossbeam_channel::Receiver<DETECT_TASK>,
     scanner: Scanner,
+    exit_timeout: u64,
+    token: String,
 }
 
 impl SuperDetector {
     pub fn new(
         client: plugins::Client,
-        task_receiver: crossbeam_channel::Receiver<DetectTask>,
+        task_receiver: crossbeam_channel::Receiver<DETECT_TASK>,
         engine: &Clamav,
+        exit_timeout: u64,
+        token: String,
     ) -> Self {
         return Self {
             client: client,
@@ -78,93 +74,105 @@ impl SuperDetector {
             scanner: Scanner {
                 inner: engine.clone(),
             },
+            exit_timeout: exit_timeout,
+            token: token,
         };
     }
-    pub fn work(&mut self, timeout: time::Duration) {
+    pub fn work(&mut self, recv_timeout: time::Duration) -> Result<FullScanResult> {
         let mut first = true;
+        let exit_timeout_ticker = tick(Duration::from_secs(self.exit_timeout * 3600));
         loop {
             select! {
                 recv(self.task_receiver)->data=>{
-                    let task:DetectTask = match data{
+                    let task:DETECT_TASK = match data{
                         Ok(d) =>d,
-                        Err(e) =>{
+                        Err(_) =>{
                             info!("[FulScan] Child exit");
-                            return;
+                            return Ok(FullScanResult::FULLSCANN_SUCCEED);
                         },
                     };
-                    match &task.task_type[..]{
-                        "6051" =>{
-                                debug!("scan {:?}",task.path);
-                                if let Ok((ftype,fclass,fname,xhash,md5sum,matched_data)) = self.scanner.scan_fast(&task.path){
-                                    let t = DetectFileEvent {
+                    match task{
+                        DETECT_TASK::TASK_6051_STATIC_FILE(t) =>{
+                                debug!("scan {:?}",t.scan_path);
+                                if let Ok((ftype,fclass,fname,xhash,md5sum,matched_data)) = self.scanner.scan_fast(&t.scan_path){
+                                    let event = DetectFileEvent {
                                         types: ftype.to_string(),
                                         class:fclass.to_string(),
                                         name: fname.to_string(),
-                                        exe: task.rpath.to_string(),
-                                        exe_size: task.size.to_string(),
-                                        create_at:task.btime.to_string(),
-                                        modify_at:task.mtime.to_string(),
+                                        exe: t.scan_path.to_string(),
+                                        static_file: t.scan_path.to_string(),
+                                        exe_size: t.size.to_string(),
+                                        create_at:t.btime.0.to_string(),
+                                        modify_at:t.btime.1.to_string(),
                                         exe_hash: xhash.to_string(),
                                         md5_hash: md5sum.to_string(),
                                         matched_data: matched_data
+
                                     };
 
                                     if &ftype != "not_detected"{
                                         info!("filepath:{} filesize:{} md5sum:{} create_at:{} motidy_at:{} types:{} class:{} name:{}",
-                                            &task.path,
-                                            &task.size,
+                                            &t.scan_path,
+                                            &t.size,
                                             &md5sum,
-                                            &task.btime,
-                                            &task.mtime,
+                                            &t.btime.0,
+                                            &t.btime.1,
                                             &ftype,
                                             &fclass,
                                             &fname
                                         );
-                                        if let Err(e) = self.client.send_record(&t.to_record()) {
+                                        if let Err(e) = self.client.send_record(&event.to_record_token(&self.token.to_string())) {
                                             warn!("send err, should exit : {:?}",e);
-                                            return
+                                            return Err(anyhow!("FullScan Child client_send err return : {:?}",e));
                                         };
                                     }
                                 }
 
                         },
-                        "6052" =>{
-                            debug!("scan {:?}",task.path);
-                            match self.scanner.scan_fast(&task.path){
+                        DETECT_TASK::TASK_6052_PROC_EXE(t) =>{
+                            debug!("scan pid {:?}",t.pid);
+                            match self.scanner.scan_fast(&t.scan_path){
+
                                 Ok((ftype,fclass,fname,xhash,md5sum,matched_data)) => {
-                                    let t = DetectProcEvent::new(
-                                            task.pid,
+                                    let event = match DetectProcEvent::new(
+                                            t.pid,
                                             &ftype,
                                             &fclass,
                                             &fname,
-                                            &task.rpath,
+                                            &t.scan_path,
                                             &xhash,
                                             &md5sum,
-                                            task.size,
-                                            task.btime,
-                                            task.mtime,
+                                            t.size,
+                                            t.btime.0,
+                                            t.btime.1,
                                             matched_data,
-                                        ).unwrap_or_default();
+                                        ){
+                                            Ok(pt)=>pt,
+                                            Err(_)=>{
+                                                continue;
+                                            }
+                                        };
+
 
                                     if &ftype != "not_detected"{
                                         info!("[FullScan]filepath:{} filesize:{} md5sum:{} create_at:{} motidy_at:{} types:{} class:{}name:{}",
-                                            &task.path,
-                                            &task.size,
+                                            &t.scan_path,
+                                            &t.size,
                                             &md5sum,
-                                            &task.btime,
-                                            &task.mtime,
+                                            &t.btime.0,
+                                            &t.btime.1,
                                             &ftype,
                                             &fclass,
                                             &fname
                                         );
-                                            if let Err(e) = self.client.send_record(&t.to_record()) {
+                                            if let Err(e) = self.client.send_record(&event.to_record_token(&self.token.to_string())) {
                                             warn!("send err, should exit : {:?}",e);
-                                            return
+                                            return Err(anyhow!("FullScan Child client_send err return : {:?}",e));
                                         };
                                     }
                                 },
                                 Err(e) => {
-                                    error!("error {:?} while scann {:?}",e,&task.path);
+                                    warn!("error {:?} while scann {:?}",e,&t.scan_path);
                                 },
                             };
                         },
@@ -172,9 +180,14 @@ impl SuperDetector {
                    }
 
                 }
-                recv(after(timeout)) -> _ => {
-                    info!("[FullScan] work timed out, clean buf");
-                    return
+                recv(after(recv_timeout)) -> _ => {
+                    info!("[FullScan] work recv timed out, clean buf");
+                    return Ok(FullScanResult::FULLSCANN_SUCCEED)
+                }
+                recv(exit_timeout_ticker) -> _ =>{
+                    info!("[FullScan] work exit timed out, clean buf");
+                    return Ok(FullScanResult::FULLSCANN_TIMEOUT)
+
                 }
             }
         }
@@ -184,14 +197,33 @@ impl SuperDetector {
 pub fn FullScan(
     pid: u32,
     client: plugins::Client,
-    worker_count: u32,
-    cpu: u32,
-    mem: u32,
     engine: &detector::Scanner,
-) -> (JoinHandle<()>, Vec<JoinHandle<()>>) {
+    fullscan_cfg: &FullScanTask,
+) -> (JoinHandle<()>, Vec<JoinHandle<Result<FullScanResult>>>) {
     // unlimit_cgroup
     info!("[FullScan] init: bankai");
-    crate::setup_cgroup(pid, (1024 * 1024 * mem).into(), (1000 * cpu).into());
+    let mut engine_count = FULLSCAN_MAX_SCAN_ENGINES;
+    if let Ok((worker_count, cgroup_cpu_quota)) = get_available_worker_cpu_quota(
+        FULLSCAN_CPU_IDLE_INTERVAL,
+        fullscan_cfg.cpu_idle_100pct,
+        FULLSCAN_CPU_QUOTA_DEFAULT_MIN,
+        FULLSCAN_CPU_QUOTA_DEFAULT_MAX,
+    ) {
+        engine_count = worker_count;
+        crate::setup_cgroup(
+            pid,
+            (1024 * 1024 * fullscan_cfg.max_scan_mem_mb).into(),
+            (cgroup_cpu_quota).into(),
+        );
+    } else {
+        crate::setup_cgroup(
+            pid,
+            (1024 * 1024 * fullscan_cfg.max_scan_mem_mb).into(),
+            (1000 * fullscan_cfg.max_scan_cpu100).into(),
+        );
+    }
+
+    let fullscan_mode = fullscan_cfg.scan_mode_full;
 
     let (s, r) = bounded(64);
     let sender = s.clone();
@@ -243,96 +275,171 @@ pub fn FullScan(
                 continue;
             }
             // send to scan
-            let task = DetectTask {
-                task_type: "6052".to_string(),
+            let task = ScanTaskProcExe {
                 pid: pid,
-                path: pstr.to_string(),
-                rpath: exe_real,
+                pid_exe: pstr.to_string(),
+                scan_path: exe_real,
                 size: fsize,
-                btime: btime.0,
-                mtime: btime.1,
-                token: "".to_string(),
-                add_ons: None,
+                btime: btime,
             };
-            match sender.send(task) {
+            match sender.send(DETECT_TASK::TASK_6052_PROC_EXE(task)) {
                 Ok(_) => {}
                 Err(e) => {
-                    error!("internal task send err {:?}", e);
+                    warn!("internal task send err {:?}", e);
+                    break;
                 }
             };
         }
 
         // step-2
         info!("[FullScan] step-2: fulldisk");
-        filter.add("/proc");
-        // scan config dirs
-        let mut w_dir = WalkDir::new("/").follow_links(false).into_iter();
-        loop {
-            let entry = match w_dir.next() {
-                None => break,
-                Some(Err(_err)) => {
-                    break;
-                }
-                Some(Ok(entry)) => entry,
-            };
-            let filter_flag = filter.catch(&entry.path());
-            if filter_flag == 1 {
-                continue;
-            } else if filter_flag == 2 {
-                w_dir.skip_current_dir();
-                debug!("skip cur dir{:?}", &entry.path());
-                continue;
-            }
-
-            let fp = entry.path();
-            let (fsize, btime) = match fp.metadata() {
-                Ok(p) => {
-                    //if p.is_dir() {
-                    if !p.is_file() {
+        match fullscan_mode {
+            true => {
+                filter.add("/proc");
+                // scan full mode
+                let mut w_dir = WalkDir::new("/").follow_links(false).into_iter();
+                loop {
+                    let entry = match w_dir.next() {
+                        None => break,
+                        Some(Err(_err)) => {
+                            warn!("walkdir err while full:{:?}", _err);
+                            continue;
+                        }
+                        Some(Ok(entry)) => entry,
+                    };
+                    let filter_flag = filter.catch(&entry.path());
+                    if filter_flag == 1 {
+                        continue;
+                    } else if filter_flag == 2 {
+                        w_dir.skip_current_dir();
+                        debug!("skip cur dir{:?}", &entry.path());
                         continue;
                     }
-                    let fsize = p.len() as usize;
-                    let btime = get_file_btime(&p);
-                    (fsize, btime)
+                    let fp = entry.path();
+                    let (fsize, btime) = match fp.metadata() {
+                        Ok(p) => {
+                            if p.is_dir() {
+                                continue;
+                            }
+                            let fsize = p.len() as usize;
+                            let btime = get_file_btime(&p);
+                            (fsize, btime)
+                        }
+                        Err(_err) => {
+                            warn!("walkdir err while full: get {:?} metadata {:?}", fp, _err);
+                            continue;
+                        }
+                    };
+                    if fsize <= 4 || fsize > 1024 * 1024 * 100 {
+                        continue;
+                    }
+                    let fpath_str = fp.to_string_lossy().to_string();
+                    if let Ok(t) = is_filetype_filter_skipped(&fpath_str) {
+                        if t {
+                            continue;
+                        }
+                    } else {
+                        continue;
+                    }
+                    // send to scan
+                    let task = ScanTaskStaticFile {
+                        scan_path: fpath_str.to_string(),
+                        size: fsize,
+                        btime: btime,
+                    };
+
+                    match sender.send(DETECT_TASK::TASK_6051_STATIC_FILE(task)) {
+                        Ok(_) => {}
+                        Err(e) => {
+                            warn!("internal task send err {:?}", e);
+                            break;
+                        }
+                    };
                 }
-                Err(_) => {
-                    continue;
-                }
-            };
-            if fsize <= 4 || fsize > 1024 * 1024 * 100 {
-                continue;
             }
-            // send to scan
-            let task = DetectTask {
-                task_type: "6051".to_string(),
-                pid: -1,
-                path: fp.to_string_lossy().to_string(),
-                rpath: fp.to_string_lossy().to_string(),
-                size: fsize,
-                btime: btime.0,
-                mtime: btime.1,
-                token: "".to_string(),
-                add_ons: None,
-            };
-            match sender.send(task) {
-                Ok(_) => {}
-                Err(e) => {
-                    error!("internal task send err {:?}", e);
+            false => {
+                for conf in configs::SCAN_DIR_CONFIG {
+                    let mut w_dir = WalkDir::new(conf.fpath)
+                        .same_file_system(true)
+                        .follow_links(false)
+                        .into_iter();
+                    loop {
+                        let entry = match w_dir.next() {
+                            None => break,
+                            Some(Err(_err)) => {
+                                warn!("walkdir err while full:{:?}", _err);
+                                continue;
+                            }
+                            Some(Ok(entry)) => entry,
+                        };
+                        let filter_flag = filter.catch(&entry.path());
+                        if filter_flag == 1 {
+                            continue;
+                        } else if filter_flag == 2 {
+                            w_dir.skip_current_dir();
+                            debug!("skip cur dir{:?}", &entry.path());
+                            continue;
+                        }
+
+                        let fp = entry.path();
+                        let (fsize, btime) = match fp.metadata() {
+                            Ok(p) => {
+                                if p.is_dir() {
+                                    continue;
+                                }
+                                let fsize = p.len() as usize;
+                                let btime = get_file_btime(&p);
+                                (fsize, btime)
+                            }
+                            Err(_err) => {
+                                warn!("walkdir err while full: get {:?} metadata {:?}", fp, _err);
+                                continue;
+                            }
+                        };
+                        if fsize <= 4 || fsize > 1024 * 1024 * 100 {
+                            continue;
+                        }
+                        let fpath_str = fp.to_string_lossy().to_string();
+                        if let Ok(t) = is_filetype_filter_skipped(&fpath_str) {
+                            if t {
+                                continue;
+                            }
+                        } else {
+                            continue;
+                        }
+                        // send to scan
+                        let task = ScanTaskStaticFile {
+                            scan_path: fpath_str.to_string(),
+                            size: fsize,
+                            btime: btime,
+                        };
+
+                        match sender.send(DETECT_TASK::TASK_6051_STATIC_FILE(task)) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                warn!("internal task send err {:?}", e);
+                                break;
+                            }
+                        };
+                    }
                 }
-            };
-        }
+            }
+        };
         info!("[FullScan] finished");
     });
 
     let mut worker_job = Vec::new();
+    let exit_timeout = fullscan_cfg.max_scan_timeout;
 
-    for i in 0..worker_count {
+    for i in 0..engine_count {
         let nt_client = client.clone();
         let nt_recv = r.clone();
         let nt_engine = engine.inner.clone();
+        let token = fullscan_cfg.token.to_string();
         let tmp_job = thread::spawn(move || {
-            let mut tmp_sdetector = SuperDetector::new(nt_client, nt_recv, &nt_engine);
-            tmp_sdetector.work(Duration::from_secs(30));
+            let mut tmp_sdetector =
+                SuperDetector::new(nt_client, nt_recv, &nt_engine, exit_timeout, token);
+            return tmp_sdetector.work(Duration::from_secs(30));
         });
         worker_job.push(tmp_job);
         std::thread::sleep(Duration::from_secs(2));
