@@ -102,3 +102,22 @@ message MQRawData{
 service Transfer {
   rpc Transfer (stream RawData) returns (stream Command){}
 }
+
+
+//pb for file upload
+message UploadRequest {
+  string Token = 1;
+  bytes Data = 2;
+}
+
+message UploadResponse {
+  enum StatusCode {
+    SUCCESS = 0;
+    FAILED = 1;
+  }
+  StatusCode Status = 1;
+}
+
+service FileExt {
+  rpc Upload(stream UploadRequest) returns (UploadResponse);
+}

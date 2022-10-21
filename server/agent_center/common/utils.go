@@ -1,7 +1,10 @@
-package utils
+package common
 
 import (
+	"math/rand"
 	"net"
+	"os"
+	"time"
 )
 
 func CheckIPFormat(ip string) bool {
@@ -20,4 +23,24 @@ func GetOutboundIP() (string, error) {
 	}
 	defer conn.Close()
 	return conn.LocalAddr().(*net.UDPAddr).IP.String(), nil
+}
+
+func IsFileExist(path string) bool {
+	_, err := os.Stat(path)
+	if err != nil {
+		if os.IsExist(err) {
+			return true
+		}
+		return false
+	}
+	return true
+}
+
+func init() {
+	rand.Seed(time.Now().Unix())
+}
+
+func GetRandomManageAddr() string {
+	return ManageAddrs[rand.Intn(len(ManageAddrs))]
+
 }

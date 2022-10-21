@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/bytedance/Elkeid/server/agent_center/common/kafka"
 	"github.com/bytedance/Elkeid/server/agent_center/common/userconfig"
-	"github.com/bytedance/Elkeid/server/agent_center/common/utils"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	"os"
 	"strings"
@@ -33,16 +32,18 @@ func initConfig() {
 
 func initDefault() {
 	var err error
-	LocalIP, err = utils.GetOutboundIP()
+	LocalIP, err = GetOutboundIP()
 	if err != nil {
 		ylog.Fatalf("init", "GET_LOCALIP_ERROR: %s Error: %v", LocalIP, err)
 	}
 
 	SSLKeyFile = UserConfig.GetString("server.ssl.keyfile")
 	SSLCertFile = UserConfig.GetString("server.ssl.certfile")
+	SSLRawDataKeyFile = UserConfig.GetString("server.ssl.rawdata_keyfile")
+	SSLRawDataCertFile = UserConfig.GetString("server.ssl.rawdata_certfile")
 	SSLCaFile = UserConfig.GetString("server.ssl.cafile")
-	if SSLKeyFile == "" || SSLCertFile == "" || SSLCaFile == "" {
-		ylog.Fatalf("init", "ssl file empty SSLKeyFile:%s SSLCertFile:%s SSLCaFile:%s", SSLKeyFile, SSLCertFile, SSLCaFile)
+	if SSLKeyFile == "" || SSLCertFile == "" || SSLCaFile == "" || SSLRawDataKeyFile == "" || SSLRawDataCertFile == "" {
+		ylog.Fatalf("init", "ssl file empty SSLKeyFile:%s SSLCertFile:%s SSLCaFile:%s SSLRawDataKeyFile:%s SSLRawDataCertFile:%s", SSLKeyFile, SSLCertFile, SSLCaFile, SSLRawDataKeyFile, SSLRawDataCertFile)
 	}
 	SvrName = UserConfig.GetString("sd.name")
 	SdAddrs = UserConfig.GetStringSlice("sd.addrs")
@@ -61,6 +62,8 @@ func initDefault() {
 
 	PProfEnable = UserConfig.GetBool("server.pprof.enable")
 	PProfPort = UserConfig.GetInt("server.pprof.port")
+
+	RawDataPort = UserConfig.GetInt("server.rawdata.port")
 }
 
 func initLog() {
@@ -83,6 +86,7 @@ func initComponents() {
 	//kafka
 	kafkaAddr := UserConfig.GetStringSlice("kafka.addrs")
 	kafkaTopic := UserConfig.GetString("kafka.topic")
+	RawdataTopic := UserConfig.GetString("kafka.rawdata_topic")
 	kafkaLog := UserConfig.GetString("kafka.logpath")
 	kafkaEnable := UserConfig.GetBool("kafka.sasl.enable")
 	kafkaUser := UserConfig.GetString("kafka.sasl.username")
@@ -91,5 +95,11 @@ func initComponents() {
 	if KafkaProducer, err = kafka.NewProducerWithLog(kafkaAddr, kafkaTopic, fmt.Sprintf("sarama-%s", LocalIP), kafkaLog, kafkaUser, kafkaPassword, kafkaEnable); err != nil {
 		fmt.Printf("#### %s %s CONNECT_KAFKA_ERROR: %v", kafkaAddr, kafkaTopic, err)
 		ylog.Fatalf("InitComponents", "%s %s CONNECT_KAFKA_ERROR: %v", kafkaAddr, kafkaTopic, err)
+	}
+
+	ylog.Infof("InitComponents", "KAFKA Producer: %v - %v", kafkaAddr, RawdataTopic)
+	if KafkaRawDataProducer, err = kafka.NewProducerWithLog(kafkaAddr, RawdataTopic, fmt.Sprintf("sarama-%s", LocalIP), kafkaLog, kafkaUser, kafkaPassword, kafkaEnable); err != nil {
+		fmt.Printf("#### %s %s CONNECT_KAFKA_ERROR: %v", kafkaAddr, RawdataTopic, err)
+		ylog.Fatalf("InitComponents", "%s %s CONNECT_KAFKA_ERROR: %v", kafkaAddr, RawdataTopic, err)
 	}
 }
