@@ -15,10 +15,17 @@ disableGcc8(){
     unset CXX
 }
 
-for each_tag in `yum --showduplicates list kernel-devel | grep kernel-devel | awk -c '{print $2}'`
+mkdir -p /ko_output
+BUILD_VERSION=$(cat LKM/src/init.c | grep MODULE_VERSION | awk -F '"' '{print $2}')
+KO_NAME=$(grep "MODULE_NAME" ./LKM/Makefile | grep -m 1 ":=" | awk '{print $3}')
+
+
+for each_tag in `yum --showduplicates list kernel-devel --enablerepo=C7.{3.4,5,6,7,8,9}.* | grep kernel-devel | awk -c '{print $2}'`
 do 
-    yumdownloader  --destdir /root/headers kernel-devel-$each_tag.aarch64 > /dev/null
-    rpm --force -i /root/headers/kernel-devel-$each_tag.aarch64.rpm || true
+    yum remove -y kernel-devel kernel-tools kernel-tools-libs &> /dev/null
+    yumdownloader --enablerepo=C7.{3.4,5,6,7,8,9}.* --destdir /root/headers kernel-devel-$each_tag.aarch64 kernel-tools-$each_tag.aarch64 kernel-tools-libs-$each_tag.aarch64 > /dev/null
+
+    rpm --force -i /root/headers/kernel-*.rpm || true
     KV=$each_tag.aarch64
 
     disableGcc8
@@ -37,10 +44,9 @@ do
         # The file is empty.
         rm -f /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_arm64.sign
     fi
+
     mv ./LKM/${KO_NAME}.ko /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_arm64.ko || true 
     KVERSION=$KV  make -C ./LKM clean || true
 
-    rpm --force -e kernel-devel-$each_tag.aarch64 > /dev/null || true
     rm -f /root/headers/*.rpm
 done
-
