@@ -2,8 +2,8 @@ import yaml
 import os
 from collections import OrderedDict
 
-
-all_dockers = os.listdir("driver/dockerfiles")
+all_dockers_x86_64  = os.listdir("/home/zhangjiacheng.111/hids_os/Elkeid/driver/dockerfiles.x86_64")
+all_dockers_aarch64 = os.listdir("/home/zhangjiacheng.111/hids_os/Elkeid/driver/dockerfiles.aarch64")
 
 black_list = []
 white_list = []
@@ -12,11 +12,16 @@ all_vms = []
 
 jobs = []
 
+def gen_job(vminfo):
+    vmname,aarch = vminfo[:]
+    runs_on = "ubuntu-latest"
+    dockerpath = "driver/dockerfiles."+aarch
+    if aarch.endswith("aarch64"):
+        runs_on = "[self-hosted,linux,ARM64]"
 
-def gen_job(vmname):
     some_data = OrderedDict(
         {
-            "runs-on": "ubuntu-latest",
+            "runs-on": runs_on,
             "steps": [
                 OrderedDict({
                     "uses": "actions/checkout@v2",
@@ -41,7 +46,7 @@ def gen_job(vmname):
                     "name": "Build "+vmname,
                     "uses": "docker/build-push-action@v2",
                     "with": {
-                        "file": "driver/dockerfiles/Dockerfile."+vmname,
+                        "file": dockerpath + "/Dockerfile."+vmname,
                         "push": True,
                         "tags": "elkeidteam/elkeid_driver_"+vmname+":latest"
                     }
@@ -81,9 +86,11 @@ def gen_job(vmname):
     )
     return some_data
 
-
-for each_dockers in all_dockers:
-    all_vms.append(each_dockers.replace("Dockerfile.", ""))
+for each_dockers in all_dockers_x86_64:
+    all_vms.append((each_dockers.replace("Dockerfile.", ""),"x86_64"))
+                   
+for each_dockers in all_dockers_aarch64:
+    all_vms.append((each_dockers.replace("Dockerfile.", ""),"aarch64"))
 
 yaml_cfg_build = OrderedDict(
     {
@@ -184,8 +191,8 @@ create_release_job = OrderedDict(
 
 total_jobs_list = []
 for each in all_vms:
-    if each not in black_list:
-        total_jobs_list.append("build_"+each)
+    if each[0] not in black_list:
+        total_jobs_list.append("build_"+each[0]+"_"+each[1])
 create_release_job.update({"needs": total_jobs_list})
 
 total_jobs_build = OrderedDict({})
@@ -195,16 +202,16 @@ total_jobs_release = OrderedDict({})
 all_vms.sort()
 if len(white_list) != 0:
     for each in all_vms:
-        if each in white_list:
+        if each[0] in white_list:
             tmp_job = gen_job(each)
-            total_jobs_build.update({"build_"+each: tmp_job})
-            total_jobs_release.update({"build_"+each: tmp_job})
+            total_jobs_build.update({"build_"+each[0]+"_"+each[1]: tmp_job})
+            total_jobs_release.update({"build_"+each[0]+"_"+each[1]: tmp_job})
 else:
     for each in all_vms:
-        if each not in black_list:
+        if each[0] not in black_list:
             tmp_job = gen_job(each)
-            total_jobs_build.update({"build_"+each: tmp_job})
-            total_jobs_release.update({"build_"+each: tmp_job})
+            total_jobs_build.update({"build_"+each[0]+"_"+each[1]: tmp_job})
+            total_jobs_release.update({"build_"+each[0]+"_"+each[1]: tmp_job})
 
 total_jobs_release.update({"release_all": create_release_job})
 
@@ -223,7 +230,6 @@ def setup_yaml():
 
 setup_yaml()
 
-
 with open(".github/workflows/Elkeid_driver_build.yml", "w") as f:
     config_data = yaml.dump(yaml_cfg_build, default_flow_style=False)
     config_data = config_data.replace("'", "")
@@ -233,3 +239,4 @@ with open(".github/workflows/Elkeid_driver_release.yml", "w") as f:
     config_data = yaml.dump(yaml_cfg_release, default_flow_style=False)
     config_data = config_data.replace("'", "")
     f.write(config_data)
+

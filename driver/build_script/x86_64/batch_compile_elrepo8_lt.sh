@@ -3,11 +3,11 @@ mkdir -p /ko_output
 BUILD_VERSION=$(cat LKM/src/init.c | grep MODULE_VERSION | awk -F '"' '{print $2}')
 KO_NAME=$(grep "MODULE_NAME" ./LKM/Makefile | grep -m 1 ":=" | awk '{print $3}')
 
-for each_lt_version in `curl http://mirrors.coreix.net/elrepo-archive-archive/kernel/el8/x86_64/RPMS/ | grep el8.elrepo.x86_64.rpm | grep kernel-lt-devel | sed -r 's/.*href="([^"]+).*/\1/g' | sed -r 's/kernel-lt-devel-([^"]+).el8.elrepo.x86_64.rpm/\1/g'`
+for each_lt_version in `curl https://mirrors.portworx.com/mirrors/http/mirrors.coreix.net/elrepo-archive-archive/kernel/el8/x86_64/RPMS/ | grep el8.elrepo.x86_64.rpm | grep kernel-lt-devel | sed -r 's/.*href="([^"]+).*/\1/g' | sed -r 's/kernel-lt-devel-([^"]+).el8.elrepo.x86_64.rpm/\1/g'`
 do 
-    wget -q "http://mirrors.coreix.net/elrepo-archive-archive/kernel/el8/x86_64/RPMS/kernel-lt-devel"-$each_lt_version.el8.elrepo.x86_64.rpm
-    wget -q "http://mirrors.coreix.net/elrepo-archive-archive/kernel/el8/x86_64/RPMS/kernel-lt-tools"-$each_lt_version.el8.elrepo.x86_64.rpm
-    wget -q "http://mirrors.coreix.net/elrepo-archive-archive/kernel/el8/x86_64/RPMS/kernel-lt-tools-libs"-$each_lt_version.el8.elrepo.x86_64.rpm
+    wget -q "https://mirrors.portworx.com/mirrors/http/mirrors.coreix.net/elrepo-archive-archive/kernel/el8/x86_64/RPMS/kernel-lt-devel"-$each_lt_version.el8.elrepo.x86_64.rpm
+    wget -q "https://mirrors.portworx.com/mirrors/http/mirrors.coreix.net/elrepo-archive-archive/kernel/el8/x86_64/RPMS/kernel-lt-tools"-$each_lt_version.el8.elrepo.x86_64.rpm
+    wget -q "https://mirrors.portworx.com/mirrors/http/mirrors.coreix.net/elrepo-archive-archive/kernel/el8/x86_64/RPMS/kernel-lt-tools-libs"-$each_lt_version.el8.elrepo.x86_64.rpm
     
     yum remove -y kernel-devel kernel-lt-devel kernel-ml-devel &> /dev/null
     yum remove -y kernel-tools kernel-lt-tools kernel-ml-tools  &> /dev/null

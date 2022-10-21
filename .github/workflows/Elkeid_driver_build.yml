@@ -7,7 +7,7 @@ on:
   schedule:
   - cron : 0 3 1 * *
 jobs:
-  build_aliyun_linux2:
+  build_aliyun_linux2_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -23,7 +23,7 @@ jobs:
     - name: Build aliyun_linux2
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.aliyun_linux2
+        file: driver/dockerfiles.x86_64/Dockerfile.aliyun_linux2
         push: true
         tags: elkeidteam/elkeid_driver_aliyun_linux2:latest
     - name: Docker Hub Description aliyun_linux2
@@ -44,7 +44,7 @@ jobs:
       with:
         name: elkeid_driver_aliyun_linux2
         path: ${{steps.extract-aliyun_linux2.outputs.destination}}
-  build_aliyun_linux3:
+  build_aliyun_linux3_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -60,7 +60,7 @@ jobs:
     - name: Build aliyun_linux3
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.aliyun_linux3
+        file: driver/dockerfiles.x86_64/Dockerfile.aliyun_linux3
         push: true
         tags: elkeidteam/elkeid_driver_aliyun_linux3:latest
     - name: Docker Hub Description aliyun_linux3
@@ -81,7 +81,7 @@ jobs:
       with:
         name: elkeid_driver_aliyun_linux3
         path: ${{steps.extract-aliyun_linux3.outputs.destination}}
-  build_amazonlinux:
+  build_amazonlinux_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -97,7 +97,7 @@ jobs:
     - name: Build amazonlinux
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.amazonlinux
+        file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux
         push: true
         tags: elkeidteam/elkeid_driver_amazonlinux:latest
     - name: Docker Hub Description amazonlinux
@@ -118,7 +118,7 @@ jobs:
       with:
         name: elkeid_driver_amazonlinux
         path: ${{steps.extract-amazonlinux.outputs.destination}}
-  build_amazonlinux510:
+  build_amazonlinux510_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -134,7 +134,7 @@ jobs:
     - name: Build amazonlinux510
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.amazonlinux510
+        file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux510
         push: true
         tags: elkeidteam/elkeid_driver_amazonlinux510:latest
     - name: Docker Hub Description amazonlinux510
@@ -155,7 +155,7 @@ jobs:
       with:
         name: elkeid_driver_amazonlinux510
         path: ${{steps.extract-amazonlinux510.outputs.destination}}
-  build_amazonlinux54:
+  build_amazonlinux54_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -171,7 +171,7 @@ jobs:
     - name: Build amazonlinux54
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.amazonlinux54
+        file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux54
         push: true
         tags: elkeidteam/elkeid_driver_amazonlinux54:latest
     - name: Docker Hub Description amazonlinux54
@@ -192,7 +192,7 @@ jobs:
       with:
         name: elkeid_driver_amazonlinux54
         path: ${{steps.extract-amazonlinux54.outputs.destination}}
-  build_debian10:
+  build_debian10_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -208,7 +208,7 @@ jobs:
     - name: Build debian10
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.debian10
+        file: driver/dockerfiles.x86_64/Dockerfile.debian10
         push: true
         tags: elkeidteam/elkeid_driver_debian10:latest
     - name: Docker Hub Description debian10
@@ -229,7 +229,7 @@ jobs:
       with:
         name: elkeid_driver_debian10
         path: ${{steps.extract-debian10.outputs.destination}}
-  build_debian11:
+  build_debian11_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -245,7 +245,7 @@ jobs:
     - name: Build debian11
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.debian11
+        file: driver/dockerfiles.x86_64/Dockerfile.debian11
         push: true
         tags: elkeidteam/elkeid_driver_debian11:latest
     - name: Docker Hub Description debian11
@@ -266,7 +266,7 @@ jobs:
       with:
         name: elkeid_driver_debian11
         path: ${{steps.extract-debian11.outputs.destination}}
-  build_debian8:
+  build_debian8_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -282,7 +282,7 @@ jobs:
     - name: Build debian8
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.debian8
+        file: driver/dockerfiles.x86_64/Dockerfile.debian8
         push: true
         tags: elkeidteam/elkeid_driver_debian8:latest
     - name: Docker Hub Description debian8
@@ -303,7 +303,7 @@ jobs:
       with:
         name: elkeid_driver_debian8
         path: ${{steps.extract-debian8.outputs.destination}}
-  build_debian9:
+  build_debian9_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -319,7 +319,7 @@ jobs:
     - name: Build debian9
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.debian9
+        file: driver/dockerfiles.x86_64/Dockerfile.debian9
         push: true
         tags: elkeidteam/elkeid_driver_debian9:latest
     - name: Docker Hub Description debian9
@@ -340,7 +340,7 @@ jobs:
       with:
         name: elkeid_driver_debian9
         path: ${{steps.extract-debian9.outputs.destination}}
-  build_rhel6:
+  build_rhel6_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -356,7 +356,7 @@ jobs:
     - name: Build rhel6
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.rhel6
+        file: driver/dockerfiles.x86_64/Dockerfile.rhel6
         push: true
         tags: elkeidteam/elkeid_driver_rhel6:latest
     - name: Docker Hub Description rhel6
@@ -377,7 +377,7 @@ jobs:
       with:
         name: elkeid_driver_rhel6
         path: ${{steps.extract-rhel6.outputs.destination}}
-  build_rhel6_elrepo:
+  build_rhel6_elrepo_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -393,7 +393,7 @@ jobs:
     - name: Build rhel6_elrepo
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.rhel6_elrepo
+        file: driver/dockerfiles.x86_64/Dockerfile.rhel6_elrepo
         push: true
         tags: elkeidteam/elkeid_driver_rhel6_elrepo:latest
     - name: Docker Hub Description rhel6_elrepo
@@ -414,8 +414,8 @@ jobs:
       with:
         name: elkeid_driver_rhel6_elrepo
         path: ${{steps.extract-rhel6_elrepo.outputs.destination}}
-  build_rhel7:
-    runs-on: ubuntu-latest
+  build_rhel7_aarch64:
+    runs-on: [self-hosted,linux,ARM64]
     steps:
     - uses: actions/checkout@v2
       with:
@@ -430,7 +430,7 @@ jobs:
     - name: Build rhel7
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.rhel7
+        file: driver/dockerfiles.aarch64/Dockerfile.rhel7
         push: true
         tags: elkeidteam/elkeid_driver_rhel7:latest
     - name: Docker Hub Description rhel7
@@ -451,7 +451,44 @@ jobs:
       with:
         name: elkeid_driver_rhel7
         path: ${{steps.extract-rhel7.outputs.destination}}
-  build_rhel7_centosplus:
+  build_rhel7_x86_64:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx rhel7
+      uses: docker/setup-buildx-action@v1
+    - name: Build rhel7
+      uses: docker/build-push-action@v2
+      with:
+        file: driver/dockerfiles.x86_64/Dockerfile.rhel7
+        push: true
+        tags: elkeidteam/elkeid_driver_rhel7:latest
+    - name: Docker Hub Description rhel7
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_rhel7
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Extract rhel7
+      id: extract-rhel7
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeidteam/elkeid_driver_rhel7:latest
+        path: /ko_output/.
+    - name: Upload rhel7
+      uses: actions/upload-artifact@v3
+      with:
+        name: elkeid_driver_rhel7
+        path: ${{steps.extract-rhel7.outputs.destination}}
+  build_rhel7_centosplus_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -467,7 +504,7 @@ jobs:
     - name: Build rhel7_centosplus
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.rhel7_centosplus
+        file: driver/dockerfiles.x86_64/Dockerfile.rhel7_centosplus
         push: true
         tags: elkeidteam/elkeid_driver_rhel7_centosplus:latest
     - name: Docker Hub Description rhel7_centosplus
@@ -488,7 +525,7 @@ jobs:
       with:
         name: elkeid_driver_rhel7_centosplus
         path: ${{steps.extract-rhel7_centosplus.outputs.destination}}
-  build_rhel7_elrepo_lt:
+  build_rhel7_elrepo_lt_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -504,7 +541,7 @@ jobs:
     - name: Build rhel7_elrepo_lt
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.rhel7_elrepo_lt
+        file: driver/dockerfiles.x86_64/Dockerfile.rhel7_elrepo_lt
         push: true
         tags: elkeidteam/elkeid_driver_rhel7_elrepo_lt:latest
     - name: Docker Hub Description rhel7_elrepo_lt
@@ -525,7 +562,7 @@ jobs:
       with:
         name: elkeid_driver_rhel7_elrepo_lt
         path: ${{steps.extract-rhel7_elrepo_lt.outputs.destination}}
-  build_rhel7_elrepo_ml:
+  build_rhel7_elrepo_ml_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -541,7 +578,7 @@ jobs:
     - name: Build rhel7_elrepo_ml
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.rhel7_elrepo_ml
+        file: driver/dockerfiles.x86_64/Dockerfile.rhel7_elrepo_ml
         push: true
         tags: elkeidteam/elkeid_driver_rhel7_elrepo_ml:latest
     - name: Docker Hub Description rhel7_elrepo_ml
@@ -562,7 +599,7 @@ jobs:
       with:
         name: elkeid_driver_rhel7_elrepo_ml
         path: ${{steps.extract-rhel7_elrepo_ml.outputs.destination}}
-  build_rhel8:
+  build_rhel8_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -578,7 +615,7 @@ jobs:
     - name: Build rhel8
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.rhel8
+        file: driver/dockerfiles.x86_64/Dockerfile.rhel8
         push: true
         tags: elkeidteam/elkeid_driver_rhel8:latest
     - name: Docker Hub Description rhel8
@@ -599,7 +636,7 @@ jobs:
       with:
         name: elkeid_driver_rhel8
         path: ${{steps.extract-rhel8.outputs.destination}}
-  build_rhel8_elrepo_lt:
+  build_rhel8_elrepo_lt_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -615,7 +652,7 @@ jobs:
     - name: Build rhel8_elrepo_lt
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.rhel8_elrepo_lt
+        file: driver/dockerfiles.x86_64/Dockerfile.rhel8_elrepo_lt
         push: true
         tags: elkeidteam/elkeid_driver_rhel8_elrepo_lt:latest
     - name: Docker Hub Description rhel8_elrepo_lt
@@ -636,7 +673,7 @@ jobs:
       with:
         name: elkeid_driver_rhel8_elrepo_lt
         path: ${{steps.extract-rhel8_elrepo_lt.outputs.destination}}
-  build_rhel8_elrepo_ml:
+  build_rhel8_elrepo_ml_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -652,7 +689,7 @@ jobs:
     - name: Build rhel8_elrepo_ml
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.rhel8_elrepo_ml
+        file: driver/dockerfiles.x86_64/Dockerfile.rhel8_elrepo_ml
         push: true
         tags: elkeidteam/elkeid_driver_rhel8_elrepo_ml:latest
     - name: Docker Hub Description rhel8_elrepo_ml
@@ -673,7 +710,7 @@ jobs:
       with:
         name: elkeid_driver_rhel8_elrepo_ml
         path: ${{steps.extract-rhel8_elrepo_ml.outputs.destination}}
-  build_rhel8_plus:
+  build_rhel8_plus_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -689,7 +726,7 @@ jobs:
     - name: Build rhel8_plus
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.rhel8_plus
+        file: driver/dockerfiles.x86_64/Dockerfile.rhel8_plus
         push: true
         tags: elkeidteam/elkeid_driver_rhel8_plus:latest
     - name: Docker Hub Description rhel8_plus
@@ -710,7 +747,7 @@ jobs:
       with:
         name: elkeid_driver_rhel8_plus
         path: ${{steps.extract-rhel8_plus.outputs.destination}}
-  build_tlinux24:
+  build_tlinux24_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -726,7 +763,7 @@ jobs:
     - name: Build tlinux24
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.tlinux24
+        file: driver/dockerfiles.x86_64/Dockerfile.tlinux24
         push: true
         tags: elkeidteam/elkeid_driver_tlinux24:latest
     - name: Docker Hub Description tlinux24
@@ -747,7 +784,7 @@ jobs:
       with:
         name: elkeid_driver_tlinux24
         path: ${{steps.extract-tlinux24.outputs.destination}}
-  build_tlinux31:
+  build_tlinux31_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -763,7 +800,7 @@ jobs:
     - name: Build tlinux31
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.tlinux31
+        file: driver/dockerfiles.x86_64/Dockerfile.tlinux31
         push: true
         tags: elkeidteam/elkeid_driver_tlinux31:latest
     - name: Docker Hub Description tlinux31
@@ -784,7 +821,7 @@ jobs:
       with:
         name: elkeid_driver_tlinux31
         path: ${{steps.extract-tlinux31.outputs.destination}}
-  build_ubuntu1204:
+  build_ubuntu1204_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -800,7 +837,7 @@ jobs:
     - name: Build ubuntu1204
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.ubuntu1204
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1204
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1204:latest
     - name: Docker Hub Description ubuntu1204
@@ -821,7 +858,7 @@ jobs:
       with:
         name: elkeid_driver_ubuntu1204
         path: ${{steps.extract-ubuntu1204.outputs.destination}}
-  build_ubuntu1404_k3:
+  build_ubuntu1404_k3_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -837,7 +874,7 @@ jobs:
     - name: Build ubuntu1404_k3
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.ubuntu1404_k3
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1404_k3
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1404_k3:latest
     - name: Docker Hub Description ubuntu1404_k3
@@ -858,7 +895,7 @@ jobs:
       with:
         name: elkeid_driver_ubuntu1404_k3
         path: ${{steps.extract-ubuntu1404_k3.outputs.destination}}
-  build_ubuntu1404_k4:
+  build_ubuntu1404_k4_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -874,7 +911,7 @@ jobs:
     - name: Build ubuntu1404_k4
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.ubuntu1404_k4
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1404_k4
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1404_k4:latest
     - name: Docker Hub Description ubuntu1404_k4
@@ -895,7 +932,7 @@ jobs:
       with:
         name: elkeid_driver_ubuntu1404_k4
         path: ${{steps.extract-ubuntu1404_k4.outputs.destination}}
-  build_ubuntu1604_auzre:
+  build_ubuntu1604_auzre_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -911,7 +948,7 @@ jobs:
     - name: Build ubuntu1604_auzre
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.ubuntu1604_auzre
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_auzre
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_auzre:latest
     - name: Docker Hub Description ubuntu1604_auzre
@@ -932,7 +969,7 @@ jobs:
       with:
         name: elkeid_driver_ubuntu1604_auzre
         path: ${{steps.extract-ubuntu1604_auzre.outputs.destination}}
-  build_ubuntu1604_aws:
+  build_ubuntu1604_aws_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -948,7 +985,7 @@ jobs:
     - name: Build ubuntu1604_aws
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.ubuntu1604_aws
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_aws
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_aws:latest
     - name: Docker Hub Description ubuntu1604_aws
@@ -969,7 +1006,7 @@ jobs:
       with:
         name: elkeid_driver_ubuntu1604_aws
         path: ${{steps.extract-ubuntu1604_aws.outputs.destination}}
-  build_ubuntu1604_k410:
+  build_ubuntu1604_k410_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -985,7 +1022,7 @@ jobs:
     - name: Build ubuntu1604_k410
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.ubuntu1604_k410
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k410
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_k410:latest
     - name: Docker Hub Description ubuntu1604_k410
@@ -1006,7 +1043,7 @@ jobs:
       with:
         name: elkeid_driver_ubuntu1604_k410
         path: ${{steps.extract-ubuntu1604_k410.outputs.destination}}
-  build_ubuntu1604_k413:
+  build_ubuntu1604_k413_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -1022,7 +1059,7 @@ jobs:
     - name: Build ubuntu1604_k413
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.ubuntu1604_k413
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k413
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_k413:latest
     - name: Docker Hub Description ubuntu1604_k413
@@ -1043,7 +1080,7 @@ jobs:
       with:
         name: elkeid_driver_ubuntu1604_k413
         path: ${{steps.extract-ubuntu1604_k413.outputs.destination}}
-  build_ubuntu1604_k44:
+  build_ubuntu1604_k44_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -1059,7 +1096,7 @@ jobs:
     - name: Build ubuntu1604_k44
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.ubuntu1604_k44
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k44
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_k44:latest
     - name: Docker Hub Description ubuntu1604_k44
@@ -1080,7 +1117,7 @@ jobs:
       with:
         name: elkeid_driver_ubuntu1604_k44
         path: ${{steps.extract-ubuntu1604_k44.outputs.destination}}
-  build_ubuntu1604_k48:
+  build_ubuntu1604_k48_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -1096,7 +1133,7 @@ jobs:
     - name: Build ubuntu1604_k48
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.ubuntu1604_k48
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k48
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_k48:latest
     - name: Docker Hub Description ubuntu1604_k48
@@ -1117,7 +1154,7 @@ jobs:
       with:
         name: elkeid_driver_ubuntu1604_k48
         path: ${{steps.extract-ubuntu1604_k48.outputs.destination}}
-  build_ubuntu1804:
+  build_ubuntu1804_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -1133,7 +1170,7 @@ jobs:
     - name: Build ubuntu1804
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.ubuntu1804
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1804:latest
     - name: Docker Hub Description ubuntu1804
@@ -1154,7 +1191,7 @@ jobs:
       with:
         name: elkeid_driver_ubuntu1804
         path: ${{steps.extract-ubuntu1804.outputs.destination}}
-  build_ubuntu1804_aws:
+  build_ubuntu1804_aws_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -1170,7 +1207,7 @@ jobs:
     - name: Build ubuntu1804_aws
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.ubuntu1804_aws
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804_aws
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1804_aws:latest
     - name: Docker Hub Description ubuntu1804_aws
@@ -1191,7 +1228,7 @@ jobs:
       with:
         name: elkeid_driver_ubuntu1804_aws
         path: ${{steps.extract-ubuntu1804_aws.outputs.destination}}
-  build_ubuntu1804_azure:
+  build_ubuntu1804_azure_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -1207,7 +1244,7 @@ jobs:
     - name: Build ubuntu1804_azure
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.ubuntu1804_azure
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804_azure
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1804_azure:latest
     - name: Docker Hub Description ubuntu1804_azure
@@ -1228,7 +1265,7 @@ jobs:
       with:
         name: elkeid_driver_ubuntu1804_azure
         path: ${{steps.extract-ubuntu1804_azure.outputs.destination}}
-  build_ubuntu2004:
+  build_ubuntu2004_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -1244,7 +1281,7 @@ jobs:
     - name: Build ubuntu2004
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.ubuntu2004
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2004:latest
     - name: Docker Hub Description ubuntu2004
@@ -1265,7 +1302,7 @@ jobs:
       with:
         name: elkeid_driver_ubuntu2004
         path: ${{steps.extract-ubuntu2004.outputs.destination}}
-  build_ubuntu2004_aws:
+  build_ubuntu2004_aws_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -1281,7 +1318,7 @@ jobs:
     - name: Build ubuntu2004_aws
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.ubuntu2004_aws
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004_aws
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2004_aws:latest
     - name: Docker Hub Description ubuntu2004_aws
@@ -1302,7 +1339,7 @@ jobs:
       with:
         name: elkeid_driver_ubuntu2004_aws
         path: ${{steps.extract-ubuntu2004_aws.outputs.destination}}
-  build_ubuntu2004_azure:
+  build_ubuntu2004_azure_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -1318,7 +1355,7 @@ jobs:
     - name: Build ubuntu2004_azure
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.ubuntu2004_azure
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004_azure
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2004_azure:latest
     - name: Docker Hub Description ubuntu2004_azure
@@ -1339,7 +1376,7 @@ jobs:
       with:
         name: elkeid_driver_ubuntu2004_azure
         path: ${{steps.extract-ubuntu2004_azure.outputs.destination}}
-  build_ubuntu2204:
+  build_ubuntu2204_x86_64:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -1355,7 +1392,7 @@ jobs:
     - name: Build ubuntu2204
       uses: docker/build-push-action@v2
       with:
-        file: driver/dockerfiles/Dockerfile.ubuntu2204
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2204
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2204:latest
     - name: Docker Hub Description ubuntu2204
