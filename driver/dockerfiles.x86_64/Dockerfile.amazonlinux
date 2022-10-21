@@ -1,0 +1,14 @@
+FROM amazonlinux:2
+RUN yum update -y && yum install -y initscripts;
+RUN yum install -y gcc make git || true
+RUN yum install -y kernel-headers dkms  || true
+RUN for eachversion in `yum --showduplicates list available kernel-devel | grep kernel-devel.x86_64 | awk '{print $2}'` ; do yum install --downloadonly --downloaddir=/root kernel-devel-$eachversion.x86_64 || true ; done;
+
+RUN yum clean all
+RUN rm -rf /var/cache/yum/*
+RUN rpm -i --nodeps --force /root/kernel-devel-*amzn2.x86_64.rpm
+RUN rm -f  /root/kernel-devel-*amzn2.x86_64.rpm
+
+ADD . /elkeid
+WORKDIR /elkeid/driver
+RUN bash ./build_script/x86_64/batch_compile.sh
