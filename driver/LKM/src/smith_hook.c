@@ -3087,24 +3087,30 @@ void delete_file_handler(int type, char *path)
 
 int security_path_rmdir_pre_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
-    void *tmp;
     char *pname_buf = NULL;
     char *pathstr = DEFAULT_RET_STR;
+    struct path *dir = (void *)p_regs_get_arg1(regs);
+    struct dentry *de;
 
-    if (IS_PRIVATE((struct inode *)p_regs_get_arg1(regs)))
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 0, 0)
+    if (unlikely(IS_PRIVATE(d_backing_inode(dir->dentry))))
         return 0;
+#else
+    if (unlikely(IS_PRIVATE(dir->dentry->d_inode)))
+        return 0;
+#endif
 
     pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
     if (pname_buf) {
-        tmp = (void *)p_regs_get_arg2(regs);
-        if (IS_ERR_OR_NULL(tmp)) {
+        de = (void *)p_regs_get_arg2(regs);
+        if (IS_ERR_OR_NULL(de)) {
             smith_kfree(pname_buf);
             return 0;
         }
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
-        pathstr = dentry_path_raw((struct dentry *)tmp, pname_buf, PATH_MAX);
+        pathstr = dentry_path_raw(de, pname_buf, PATH_MAX);
 #else
-        pathstr = __dentry_path((struct dentry *)tmp, pname_buf, PATH_MAX);
+        pathstr = __dentry_path(de, pname_buf, PATH_MAX);
 #endif
 
         if (IS_ERR(pathstr))
@@ -3131,24 +3137,30 @@ int rm_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 
 int security_path_unlink_pre_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
-    void *tmp;
     char *pname_buf = NULL;
     char *pathstr = DEFAULT_RET_STR;
+    struct path *dir = (void *)p_regs_get_arg1(regs);
+    struct dentry *de;
 
-    if (IS_PRIVATE((struct inode *)p_regs_get_arg1(regs)))
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 0, 0)
+    if (unlikely(IS_PRIVATE(d_backing_inode(dir->dentry))))
         return 0;
+#else
+    if (unlikely(IS_PRIVATE(dir->dentry->d_inode)))
+        return 0;
+#endif
 
     pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
     if (pname_buf) {
-        tmp = (void *)p_regs_get_arg2(regs);
-        if (IS_ERR_OR_NULL(tmp)) {
+        de = (void *)p_regs_get_arg2(regs);
+        if (IS_ERR_OR_NULL(de)) {
             smith_kfree(pname_buf);
             return 0;
         }
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
-        pathstr = dentry_path_raw((struct dentry *)tmp, pname_buf, PATH_MAX);
+        pathstr = dentry_path_raw(de, pname_buf, PATH_MAX);
 #else
-        pathstr = __dentry_path((struct dentry *)tmp, pname_buf, PATH_MAX);
+        pathstr = __dentry_path(de, pname_buf, PATH_MAX);
 #endif
         if (IS_ERR(pathstr))
             pathstr = DEFAULT_RET_STR;
