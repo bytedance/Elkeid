@@ -1,11 +1,18 @@
 package com.security.smith;
 
+import com.lmax.disruptor.EventHandler;
+import com.lmax.disruptor.InsufficientCapacityException;
+import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.dsl.Disruptor;
+import com.lmax.disruptor.util.DaemonThreadFactory;
 import com.security.smith.asm.SmithClassVisitor;
 import com.security.smith.asm.SmithClassWriter;
 import com.security.smith.client.Operate;
-import com.security.smith.client.ProbeClient;
-import com.security.smith.client.ProbeNotify;
+import com.security.smith.client.Client;
+import com.security.smith.client.MessageHandler;
+import com.security.smith.client.message.*;
 import com.security.smith.log.SmithLogger;
+import com.security.smith.module.Patcher;
 import com.security.smith.type.*;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -14,14 +21,17 @@ import org.objectweb.asm.*;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.lang.instrument.UnmodifiableClassException;
+import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.util.*;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerArray;
@@ -30,12 +40,29 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class SmithProbe implements ClassFileTransformer, ProbeNotify {
+public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHandler<Trace> {
     private static final SmithProbe ourInstance = new SmithProbe();
-    private static final int TRACE_QUEUE_SIZE = 1000;
+    private static final int TRACE_BUFFER_SIZE = 1024;
     private static final int CLASS_MAX_ID = 30;
     private static final int METHOD_MAX_ID = 20;
     private static final int DEFAULT_QUOTA = 12000;
+
+    private Boolean disable;
+    private Instrumentation inst;
+    private final Client client;
+    private final Heartbeat heartbeat;
+    private final Disruptor<Trace> disruptor;
+    private final Map<String, SmithClass> smithClasses;
+    private final Map<String, Patcher> patchers;
+    private final Map<Pair<Integer, Integer>, Filter> filters;
+    private final Map<Pair<Integer, Integer>, Block> blocks;
+    private final Map<Pair<Integer, Integer>, Integer> limits;
+    private final AtomicIntegerArray[] quotas;
+
+    enum Action {
+        STOP,
+        START
+    }
 
     public static SmithProbe getInstance() {
         return ourInstance;
@@ -43,15 +70,17 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
 
     public SmithProbe() {
         disable = false;
-        clientConnected = false;
 
-        smithClasses = new HashMap<>();
-        smithFilters = new ConcurrentHashMap<>();
-        smithBlocks = new ConcurrentHashMap<>();
-        smithLimits = new ConcurrentHashMap<>();
-        probeClient = new ProbeClient(this);
-        traceQueue = new ArrayBlockingQueue<>(TRACE_QUEUE_SIZE);
-        smithQuotas = Stream.generate(() -> new AtomicIntegerArray(METHOD_MAX_ID)).limit(CLASS_MAX_ID).toArray(AtomicIntegerArray[]::new);
+        smithClasses = new ConcurrentHashMap<>();
+        patchers = new ConcurrentHashMap<>();
+        filters = new ConcurrentHashMap<>();
+        blocks = new ConcurrentHashMap<>();
+        limits = new ConcurrentHashMap<>();
+
+        heartbeat = new Heartbeat();
+        client = new Client(this);
+        disruptor = new Disruptor<>(Trace::new, TRACE_BUFFER_SIZE, DaemonThreadFactory.INSTANCE);
+        quotas = Stream.generate(() -> new AtomicIntegerArray(METHOD_MAX_ID)).limit(CLASS_MAX_ID).toArray(AtomicIntegerArray[]::new);
     }
 
     public void setInst(Instrumentation inst) {
@@ -74,21 +103,19 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
         inst.addTransformer(this, true);
         reloadClasses();
 
-        Thread clientThread = new Thread(probeClient::start);
+        Thread clientThread = new Thread(client::start);
 
         clientThread.setDaemon(true);
         clientThread.start();
 
-        Thread traceThread = new Thread(this::probeTraceThread);
-
-        traceThread.setDaemon(true);
-        traceThread.start();
+        disruptor.handleEventsWith(this);
+        disruptor.start();
 
         new Timer(true).schedule(
                 new TimerTask() {
                     @Override
                     public void run() {
-                        resetQuotas();
+                        onTimer();
                     }
                 },
                 0,
@@ -114,7 +141,7 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
     }
 
     public void detect(int classID, int methodID, Object[] args) {
-        SmithBlock block = smithBlocks.get(new ImmutablePair<>(classID, methodID));
+        Block block = blocks.get(new ImmutablePair<>(classID, methodID));
 
         if (block == null)
             return;
@@ -129,83 +156,83 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
         }
     }
 
-    public void trace(int classID, int methodID, Object[] args, Object ret) {
-        if (!clientConnected)
-            return;
-
+    public void trace(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
         if (classID >= CLASS_MAX_ID || methodID >= METHOD_MAX_ID)
             return;
 
         while (true) {
-            int quota = smithQuotas[classID].get(methodID);
+            int quota = quotas[classID].get(methodID);
 
             if (quota <= 0)
                 return;
 
-            if (smithQuotas[classID].compareAndSet(methodID, quota, quota - 1))
+            if (quotas[classID].compareAndSet(methodID, quota, quota - 1))
                 break;
         }
 
-        SmithTrace smithTrace = new SmithTrace();
+        RingBuffer<Trace> ringBuffer = disruptor.getRingBuffer();
 
-        smithTrace.setClassID(classID);
-        smithTrace.setMethodID(methodID);
-        smithTrace.setRet(ret);
-        smithTrace.setArgs(args);
-        smithTrace.setStackTrace(Thread.currentThread().getStackTrace());
+        try {
+            long sequence = ringBuffer.tryNext();
 
-        traceQueue.offer(smithTrace);
-    }
+            Trace trace = ringBuffer.get(sequence);
 
-    private void probeTraceThread() {
-        SmithLogger.logger.info("probe trace thread start");
+            trace.setClassID(classID);
+            trace.setMethodID(methodID);
+            trace.setBlocked(blocked);
+            trace.setRet(ret);
+            trace.setArgs(args);
+            trace.setStackTrace(Thread.currentThread().getStackTrace());
 
-        while (true) {
-            try {
-                SmithTrace smithTrace = traceQueue.take();
-                SmithFilter filter = smithFilters.get(new ImmutablePair<>(smithTrace.getClassID(), smithTrace.getMethodID()));
+            ringBuffer.publish(sequence);
+        } catch (InsufficientCapacityException ignored) {
 
-                if (filter == null) {
-                    probeClient.write(Operate.traceOperate, smithTrace);
-                    continue;
-                }
-
-                Predicate<SmithMatchRule> pred = rule -> {
-                    Object[] args = smithTrace.getArgs();
-
-                    if (rule.getIndex() >= args.length)
-                        return false;
-
-                    return Pattern.compile(rule.getRegex()).matcher(args[rule.getIndex()].toString()).find();
-                };
-
-                SmithMatchRule[] include = filter.getInclude();
-                SmithMatchRule[] exclude = filter.getExclude();
-
-                if (include.length > 0 && Arrays.stream(include).noneMatch(pred))
-                    continue;
-
-                if (exclude.length > 0 && Arrays.stream(exclude).anyMatch(pred))
-                    continue;
-
-                probeClient.write(Operate.traceOperate, smithTrace);
-            } catch (InterruptedException e) {
-                SmithLogger.exception(e);
-            }
         }
     }
 
-    private void resetQuotas() {
+    @Override
+    public void onEvent(Trace trace, long sequence, boolean endOfBatch) {
+        Filter filter = filters.get(new ImmutablePair<>(trace.getClassID(), trace.getMethodID()));
+
+        if (filter == null) {
+            client.write(Operate.TRACE, trace);
+            return;
+        }
+
+        Predicate<MatchRule> pred = rule -> {
+            Object[] args = trace.getArgs();
+
+            if (rule.getIndex() >= args.length)
+                return false;
+
+            return Pattern.compile(rule.getRegex()).matcher(args[rule.getIndex()].toString()).find();
+        };
+
+        MatchRule[] include = filter.getInclude();
+        MatchRule[] exclude = filter.getExclude();
+
+        if (include.length > 0 && Arrays.stream(include).noneMatch(pred))
+            return;
+
+        if (exclude.length > 0 && Arrays.stream(exclude).anyMatch(pred))
+            return;
+
+        client.write(Operate.TRACE, trace);
+    }
+
+    private void onTimer() {
+        client.write(Operate.HEARTBEAT, heartbeat);
+
         for (int i = 0; i < CLASS_MAX_ID; i++) {
             for (int j = 0; j < METHOD_MAX_ID; j++) {
-                Integer quota = smithLimits.get(new ImmutablePair<>(i, j));
+                Integer quota = limits.get(new ImmutablePair<>(i, j));
 
                 if (quota == null) {
-                    smithQuotas[i].set(j, DEFAULT_QUOTA);
+                    quotas[i].set(j, DEFAULT_QUOTA);
                     continue;
                 }
 
-                smithQuotas[i].set(j, quota);
+                quotas[i].set(j, quota);
             }
         }
     }
@@ -246,18 +273,6 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
     }
 
     @Override
-    public void onConnect() {
-        SmithLogger.logger.info("on connect");
-        clientConnected = true;
-    }
-
-    @Override
-    public void onDisconnect() {
-        SmithLogger.logger.info("on disconnect");
-        clientConnected = false;
-    }
-
-    @Override
     public void onConfig(String config) {
         SmithLogger.logger.info("on config: " + config);
 
@@ -279,7 +294,7 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
     @Override
     public void onControl(int action) {
         SmithLogger.logger.info("on control: " + action);
-        disable = action == emControlAction.stopAction.ordinal();
+        disable = action == Action.STOP.ordinal();
         reloadClasses();
     }
 
@@ -287,7 +302,7 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
     public void onDetect() {
         SmithLogger.logger.info("on detect");
 
-        Set<SmithJar> smithJars = new HashSet<>();
+        Set<Jar> jars = new HashSet<>();
 
         for (Class<?> cl : inst.getAllLoadedClasses()) {
             CodeSource codeSource = cl.getProtectionDomain().getCodeSource();
@@ -295,74 +310,101 @@ public class SmithProbe implements ClassFileTransformer, ProbeNotify {
             if (codeSource == null)
                 continue;
 
-            SmithJar smithJar = new SmithJar();
-            smithJar.setPath(codeSource.getLocation().toString());
+            Jar jar = new Jar();
+            jar.setPath(codeSource.getLocation().toString());
 
-            if (smithJars.contains(smithJar))
+            if (jars.contains(jar))
                 continue;
 
             Package pkg = cl.getPackage();
 
-            smithJar.setSpecificationTitle(pkg.getSpecificationTitle());
-            smithJar.setSpecificationVersion(pkg.getSpecificationVersion());
-            smithJar.setImplementationTitle(pkg.getImplementationTitle());
-            smithJar.setImplementationVersion(pkg.getImplementationVersion());
+            jar.setSpecificationTitle(pkg.getSpecificationTitle());
+            jar.setSpecificationVersion(pkg.getSpecificationVersion());
+            jar.setImplementationTitle(pkg.getImplementationTitle());
+            jar.setImplementationVersion(pkg.getImplementationVersion());
 
-            smithJars.add(smithJar);
+            jars.add(jar);
         }
 
-        probeClient.write(Operate.detectOperate, Collections.singletonMap("jars", smithJars));
+        client.write(Operate.DETECT, Collections.singletonMap("jars", jars));
     }
 
     @Override
-    public void onFilter(SmithFilter[] filters) {
-        smithFilters.clear();
+    public void onFilter(FilterConfig config) {
+        filters.clear();
 
-        for (SmithFilter filter : filters) {
-            smithFilters.put(
+        for (Filter filter : config.getFilters()) {
+            filters.put(
                     new ImmutablePair<>(filter.getClassID(), filter.getMethodID()),
                     filter
             );
         }
+
+        heartbeat.setFilter(config.getUUID());
     }
 
     @Override
-    public void onBlock(SmithBlock[] blocks) {
-        smithBlocks.clear();
+    public void onBlock(BlockConfig config) {
+        blocks.clear();
 
-        for (SmithBlock block : blocks) {
-            smithBlocks.put(
+        for (Block block : config.getBlocks()) {
+            blocks.put(
                     new ImmutablePair<>(block.getClassID(), block.getMethodID()),
                     block
             );
         }
+
+        heartbeat.setBlock(config.getUUID());
     }
 
     @Override
-    public void onLimit(SmithLimit[] limits) {
-        smithLimits.clear();
+    public void onLimit(LimitConfig config) {
+        limits.clear();
 
-        for (SmithLimit limit : limits) {
-            smithLimits.put(
+        for (Limit limit : config.getLimits()) {
+            limits.put(
                     new ImmutablePair<>(limit.getClassID(), limit.getMethodID()),
                     limit.getQuota()
             );
         }
+
+        heartbeat.setLimit(config.getUUID());
     }
 
-    enum emControlAction {
-        stopAction,
-        startAction,
-    }
+    @Override
+    public void onPatch(PatchConfig config) {
+        for (Patch patch : config.getPatches()) {
+            if (patchers.containsKey(patch.getClassName()))
+                continue;
 
-    private Boolean disable;
-    private Boolean clientConnected;
-    private Instrumentation inst;
-    private final ProbeClient probeClient;
-    private final ArrayBlockingQueue<SmithTrace> traceQueue;
-    private final Map<String, SmithClass> smithClasses;
-    private final Map<Pair<Integer, Integer>, SmithFilter> smithFilters;
-    private final Map<Pair<Integer, Integer>, SmithBlock> smithBlocks;
-    private final Map<Pair<Integer, Integer>, Integer> smithLimits;
-    private final AtomicIntegerArray[] smithQuotas;
+            try (URLClassLoader loader = new URLClassLoader(new URL[]{patch.getUrl()})) {
+                Patcher patcher = loader.loadClass(patch.getClassName())
+                        .asSubclass(Patcher.class)
+                        .getConstructor(Instrumentation.class)
+                        .newInstance(inst);
+
+                patcher.install();
+
+                patchers.put(patch.getClassName(), patcher);
+            } catch (IOException | ClassNotFoundException | NoSuchMethodException | InvocationTargetException |
+                     InstantiationException | IllegalAccessException e) {
+                SmithLogger.exception(e);
+            }
+        }
+
+        Set<String> active = Arrays.stream(config.getPatches()).map(Patch::getClassName).collect(Collectors.toSet());
+
+        patchers.keySet().stream().filter(name -> !active.contains(name)).forEach(
+                name -> {
+                    Patcher patcher = patchers.remove(name);
+
+                    if (patcher == null)
+                        return;
+
+                    patcher.uninstall();
+                }
+        );
+
+        heartbeat.setPatch(config.getUUID());
+    }
 }

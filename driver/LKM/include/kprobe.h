@@ -61,6 +61,21 @@
 #define arg5(pt_regs)	((pt_regs)->regs[5])
 #define arg6(pt_regs)	((pt_regs)->regs[6])
 #define arg7(pt_regs)	((pt_regs)->regs[7])
+#elif defined(CONFIG_ARCH_RV64I)
+#define SC_ARCH_REGS_TO_ARGS(x, ...)	\
+	__KPROBE_MAP(x,__KPROBE_ARGS		\
+		     ,,regs->a0,,regs->a1,,regs->a2	\
+		     ,,regs->a3,,regs->a4,,regs->a5	\
+		     ,,regs->a6,,regs->a7)
+
+#define arg0(pt_regs)	((pt_regs)->a0)
+#define arg1(pt_regs)	((pt_regs)->a1)
+#define arg2(pt_regs)	((pt_regs)->a2)
+#define arg3(pt_regs)	((pt_regs)->a3)
+#define arg4(pt_regs)	((pt_regs)->a4)
+#define arg5(pt_regs)	((pt_regs)->a5)
+#define arg6(pt_regs)	((pt_regs)->a6)
+#define arg7(pt_regs)	((pt_regs)->a7)
 #else
 #error "Unsupported architecture"
 #endif

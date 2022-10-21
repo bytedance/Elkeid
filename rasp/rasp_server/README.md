@@ -1,10 +1,7 @@
 # RASP Server
 
-* An UNIX Socket server communicate with probe
-
-
-### build
+* build
 
 ```shell
-make build
+
 ```

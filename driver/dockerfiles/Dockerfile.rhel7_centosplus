@@ -1,0 +1,10 @@
+FROM cern/cc7-base:latest AS rhel7
+
+
+RUN yum install -y wget perl gcc make tree elfutils-libelf-devel yumdownloader; 
+RUN yum groupinstall -y  "Development Tools"; 
+RUN mkdir /root/headers
+
+ADD . /elkeid
+WORKDIR /elkeid/driver
+RUN bash ./batch_compile_el7_centosplus.sh

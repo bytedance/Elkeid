@@ -370,6 +370,18 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
                         __be32 * dip4, struct in6_addr *dip6, int *dport,
                         pid_t * socket_pid, int *sa_family)
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)
+
+    /* fput() can not be called in atomic context */
+    *sip4 = *dip4 = 0;
+    *sport = *dport = 0;
+    memset(sip6, 0, sizeof(*sip6));
+    memset(dip6, 0, sizeof(*dip6));
+    *socket_pid = 0;
+    *sa_family = 0;
+
+#else
+
     int it = 0, socket_check = 0;
 
     char fd_buff[24];
@@ -448,7 +460,7 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
                             break;
 #if IS_ENABLED(CONFIG_IPV6)
                             case AF_INET6:
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(CENTOS_CHECK)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(IPV6_SUPPORT)
 						    memcpy(dip6, &(sk->sk_v6_daddr), sizeof(sk->sk_v6_daddr));
 						    memcpy(sip6, &(sk->sk_v6_rcv_saddr), sizeof(sk->sk_v6_rcv_saddr));
 						    *sport = ntohs(inet->inet_sport);
@@ -494,6 +506,8 @@ next_task:
 
     if (task)
         smith_put_task_struct(task);
+
+#endif
 
     return;
 }
@@ -720,13 +734,13 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
             case AF_INET6:
 			    sk = socket->sk;
 			    inet = (struct inet_sock *)sk;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(CENTOS_CHECK)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(IPV6_SUPPORT)
 			    if (inet->inet_dport) {
 				    //dip6 = &((struct sockaddr_in6 *)&tmp_dirp)->sin6_addr;
 				    dip6 = &(sk->sk_v6_daddr);
 				    sip6 = &(sk->sk_v6_rcv_saddr);
 				    sport = ntohs(inet->inet_sport);
-				    dport = ntohs(((struct sockaddr_in6 *)&tmp_dirp)->sin6_port);
+				    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
 				    if(dport == 0)
 				        dport = ntohs(inet->inet_dport);
 				    flag = 1;
@@ -737,7 +751,7 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 				    dip6 = &(inet->pinet6->daddr);
 				    sip6 = &(inet->pinet6->saddr);
 				    sport = ntohs(inet->inet_sport);
-				    dport = ntohs(((struct sockaddr_in6 *)&tmp_dirp)->sin6_port);
+				    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
 				    if(dport)
 				        dport = ntohs(inet->inet_dport);
 				    flag = 1;
@@ -748,7 +762,7 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 				    dip6 = &(inet->pinet6->daddr);
 				    sip6 = &(inet->pinet6->saddr);
 				    sport = ntohs(inet->sport);
-				    dport = ntohs(((struct sockaddr_in6 *)&tmp_dirp)->sin6_port);
+				    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
 				    if(dport)
 				        dport = ntohs(inet->dport);
 				    flag = 1;
@@ -840,7 +854,7 @@ int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
             break;
 #if IS_ENABLED(CONFIG_IPV6)
         case AF_INET6:
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(CENTOS_CHECK)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(IPV6_SUPPORT)
 		    if (inet->inet_dport) {
 			    dip6 = &(sk->sk_v6_daddr);
 			    sip6 = &(sk->sk_v6_rcv_saddr);
@@ -1012,8 +1026,8 @@ char *smith_query_exe_path(char **alloc, int len, int min)
 
 int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
-    int sa_family = -1;
-    int dport = 0, sport = 0;
+    int sa_family = -1, dport = 0, sport = 0;
+    int rc = regs_return_value(regs);
 
     __be32 dip4;
     __be32 sip4;
@@ -1034,16 +1048,21 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     struct in6_addr sip6;
     struct file *file;
     struct execve_data *data;
-    struct tty_struct *tty;
+    struct tty_struct *tty = NULL;
 
+     /* query kretprobe instance for current call */
     data = (struct execve_data *)ri->data;
-    exe_path = smith_query_exe_path(&buffer, PATH_MAX, 128);
+
+    /* ignore the failures that target doesn't exist */
+    if (rc == -ENOENT)
+        goto release_data;
 
     tty = get_current_tty();
     if(tty && strlen(tty->name) > 0)
         tty_name = tty->name;
 
     //exe filter check and argv filter check
+    exe_path = smith_query_exe_path(&buffer, PATH_MAX, 128);
     if (execve_exe_check(exe_path) || execve_argv_check(data->argv))
         goto out;
 
@@ -1082,7 +1101,7 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
                      dip4, dport, sip4, sport,
                      pid_tree, tty_name, socket_pid,
                      data->ssh_connection, data->ld_preload,
-                     regs_return_value(regs));
+                     rc);
     }
 #if IS_ENABLED(CONFIG_IPV6)
     else if (sa_family == AF_INET6) {
@@ -1092,7 +1111,7 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 			      &dip6, dport, &sip6, sport,
 			      pid_tree, tty_name, socket_pid,
 			      data->ssh_connection, data->ld_preload,
-			      regs_return_value(regs));
+			      rc);
 	}
 #endif
     else {
@@ -1101,36 +1120,30 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
                               tmp_stdin, tmp_stdout,
                               pid_tree, tty_name,
                               data->ssh_connection, data->ld_preload,
-                              regs_return_value(regs));
+                              rc);
     }
 
 out:
     if (pname_buf)
         smith_kfree(pname_buf);
-
     if (stdin_buf)
         smith_kfree(stdin_buf);
-
     if (stdout_buf)
         smith_kfree(stdout_buf);
-
-    if (buffer)
-        smith_kfree(buffer);
-
-    if (data->free_argv)
-        smith_kfree(data->argv);
-
     if (pid_tree)
         smith_kfree(pid_tree);
-
-    if (data->free_ld_preload)
-        smith_kfree(data->ld_preload);
-
-    if (data->free_ssh_connection)
-        smith_kfree(data->ssh_connection);
-
+    if (buffer)
+        smith_kfree(buffer);
     if(tty)
         tty_kref_put(tty);
+
+release_data:
+    if (data->free_argv)
+        smith_kfree(data->argv);
+    if (data->free_ld_preload)
+        smith_kfree(data->ld_preload);
+    if (data->free_ssh_connection)
+        smith_kfree(data->ssh_connection);
 
     return 0;
 }
@@ -1786,9 +1799,6 @@ int udp_recvmsg_entry_handler(struct kretprobe_instance *ri,
     struct msghdr *msg;
     struct udp_recvmsg_data *data;
 
-    /* counting udpv4_recvmsg callings */
-    smith_count_dnsv4_kretprobe();
-
     data = (struct udp_recvmsg_data *) ri->data;
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 9)
@@ -1869,6 +1879,10 @@ int udp_recvmsg_entry_handler(struct kretprobe_instance *ri,
     return -EINVAL;
 
 do_kretprobe:
+
+    /* counting dns requests */
+    smith_count_dnsv4_kretprobe();
+
     return 0;
 }
 
@@ -1884,9 +1898,6 @@ int udpv6_recvmsg_entry_handler(struct kretprobe_instance *ri,
 	void *tmp_msg;
 	void *tmp_sk;
 	int flags;
-
-    /* counting udpv6_recvmsg callings */
-    smith_count_dnsv6_kretprobe();
 
 	data = (struct udp_recvmsg_data *)ri->data;
 
@@ -1935,7 +1946,7 @@ int udpv6_recvmsg_entry_handler(struct kretprobe_instance *ri,
 	if (inet->dport == 13568 || inet->dport == 59668)
 #endif
 	{
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(CENTOS_CHECK)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(IPV6_SUPPORT)
 		if (inet->inet_dport) {
 			data->dip6 = &(sk->sk_v6_daddr);
 			data->sip6 = &(sk->sk_v6_rcv_saddr);
@@ -1983,6 +1994,10 @@ int udpv6_recvmsg_entry_handler(struct kretprobe_instance *ri,
 	return -EINVAL;
 
 do_kretprobe:
+
+    /* counting dns requests */
+    smith_count_dnsv6_kretprobe();
+
     return 0;
 }
 #endif
@@ -1992,17 +2007,16 @@ void unregister_udp_recvmsg_kprobe(void);
 int register_udpv6_recvmsg_kprobe(void);
 void unregister_udpv6_recvmsg_kprobe(void);
 
-#define SMITH_DNS_THRESHOLD   (5000) /* DNS threshold */
-#define SMITH_UDP_THRESHOLD   (6000) /* UDP threshold */
-#define SMITH_DNS_KRP_INTERVAL  (10) /* 10 seconds */
-#define SMITH_DNS_NET_INTERVAL  (60) /* 60 seconds, must < 500 otherwise may overflow atomic_t */
+#define SMITH_DNS_THRESHOLD      (800) /* DNS threshold: ops/s */
+#define SMITH_UDP_THRESHOLD      (80000) /* UDP threshold: ops/s */
+#define SMITH_DNS_KRP_INTERVAL   (10) /* 10 seconds */
+#define SMITH_DNS_NET_INTERVAL   (20) /* 20 seconds, WARNING: atomic_t may overflow */
 
 struct smith_dns_switch {
     atomic_t armed ____cacheline_aligned_in_smp;  /* kretprobe registration status */
     atomic_t krp ____cacheline_aligned_in_smp;    /* udp_recvmsg kretprobe handling count */
     atomic_t ops ____cacheline_aligned_in_smp;    /* udp in traffic count */
     uint64_t start ____cacheline_aligned_in_smp;  /* start time stamp of counting */
-    uint64_t anchor ____cacheline_aligned_in_smp; /* anchor time stamp */
     int     *regs;                                /* kretprobe registration result */
     int (*enable)(void);
     void (*disable)(void);
@@ -2015,43 +2029,45 @@ static void smith_count_dnsv4_kretprobe(void)
     atomic_inc(&g_dns_v4_switch.krp);
 }
 
+/* turn off kretprobe if dns requests exceed thredhold */
 static void smith_dns_kretprobe(struct smith_dns_switch *ds)
 {
-    uint64_t now = smith_get_seconds();
+    uint64_t now = smith_get_seconds(), delta;
 
-    if (ds->start + SMITH_DNS_KRP_INTERVAL < now) {
-        if (atomic_read(&ds->krp) > SMITH_DNS_THRESHOLD * (now - ds->start)) {
+    delta = now - ds->start;
+    if (delta > SMITH_DNS_KRP_INTERVAL) {
+        if (atomic_read(&ds->krp) > delta * SMITH_DNS_THRESHOLD ||
+            atomic_read(&ds->ops) > delta * SMITH_UDP_THRESHOLD ){
             /* trying to avoid concurrent issue */
-            if (atomic_cmpxchg(&ds->armed, 1, 0) == 1) {
-                atomic_set(&ds->ops, 0);
-                ds->anchor = smith_get_seconds();
+            if (atomic_cmpxchg(&ds->armed, 1, 0) == 1)
                 ds->disable();
-            }
         }
-        atomic_set(&ds->krp, 0);  /* inaccurate for SMP, but acceptable */
+        atomic_set(&ds->krp, 0);
+        atomic_set(&ds->ops, 0);
         ds->start = smith_get_seconds();
     }
 }
 
+/* try to trun on kretprobe for udp_recvmsg */
 static void smith_dns_try_switch(struct smith_dns_switch *ds)
 {
-    uint64_t now = smith_get_seconds();
+    uint64_t now = smith_get_seconds(), delta;
 
     if (0 == DNS_HOOK || atomic_read(&ds->armed) || *(ds->regs))
         return;
 
-    if (ds->anchor + SMITH_DNS_NET_INTERVAL < now) {
-        if (atomic_read(&ds->ops) < SMITH_UDP_THRESHOLD * (now - ds->anchor)) {
+    delta = now - ds->start;
+    if (delta > SMITH_DNS_NET_INTERVAL) {
+        if (atomic_read(&ds->ops) < delta * SMITH_UDP_THRESHOLD) {
             /* trying to avoid concurrent issue */
             if (atomic_cmpxchg(&ds->armed, 0, 1) == 0) {
-                atomic_set(&ds->krp, 0);
-                ds->start = smith_get_seconds();
                 if (ds->enable())
                     atomic_set(&ds->armed, 0);
             }
         }
-        atomic_set(&ds->ops, 0);  /* inaccurate for SMP, but acceptable */
-        ds->anchor = smith_get_seconds();
+        atomic_set(&ds->krp, 0);
+        atomic_set(&ds->ops, 0);
+        ds->start = smith_get_seconds();
     }
 }
 
@@ -2079,7 +2095,11 @@ static unsigned int smith_nf_udp_v4_handler(
 #endif
     )
 {
-    atomic_inc(&g_dns_v4_switch.ops);
+    struct iphdr *iph = ip_hdr(skb);
+
+    /* only counting udp packets */
+    if (iph->protocol == IPPROTO_UDP)
+        atomic_inc(&g_dns_v4_switch.ops);
     return NF_ACCEPT;
 }
 
@@ -2117,7 +2137,11 @@ static unsigned int smith_nf_udp_v6_handler(
 #endif
     )
 {
-    atomic_inc(&g_dns_v6_switch.ops);
+    struct iphdr *iph = ip_hdr(skb);
+
+    /* only counting udp packets */
+    if (iph->protocol == IPPROTO_UDP)
+        atomic_inc(&g_dns_v6_switch.ops);
     return NF_ACCEPT;
 }
 #endif
@@ -2182,10 +2206,10 @@ static int smith_dns_work_handler(void *argu)
 {
     unsigned long timeout = msecs_to_jiffies(1000);
 
-    /* reset anchor timestamp */
-    g_dns_v4_switch.anchor = smith_get_seconds();
+    /* reset start timestamp */
+    g_dns_v4_switch.start = smith_get_seconds();
 #if IS_ENABLED(CONFIG_IPV6)
-    g_dns_v6_switch.anchor = smith_get_seconds();
+    g_dns_v6_switch.start = smith_get_seconds();
 #endif
 
     do {
@@ -2210,7 +2234,11 @@ static int smith_dns_work_handler(void *argu)
 #endif
     } while (!kthread_should_stop());
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
+    kthread_complete_and_exit(NULL, 0);
+#else
     do_exit(0);
+#endif
     return 0;
 }
 
@@ -3154,13 +3182,13 @@ void exit_handler(int type)
 
 int exit_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
-    exit_handler(0);
+    exit_handler(1);
     return 0;
 }
 
 int exit_group_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
-    exit_handler(1);
+    exit_handler(0);
     return 0;
 }
 
@@ -3390,22 +3418,20 @@ struct kprobe ptrace_kprobe = {
         .pre_handler = ptrace_pre_handler,
 };
 
-struct kretprobe udp_recvmsg_kretprobe_value = {
+struct kretprobe udp_recvmsg_kretprobe = {
         .kp.symbol_name = "udp_recvmsg",
         .data_size = sizeof(struct udp_recvmsg_data),
         .handler = udp_recvmsg_handler,
         .entry_handler = udp_recvmsg_entry_handler,
 };
-struct kretprobe udp_recvmsg_kretprobe;
 
 #if IS_ENABLED(CONFIG_IPV6)
-struct kretprobe udpv6_recvmsg_kretprobe_value = {
+struct kretprobe udpv6_recvmsg_kretprobe = {
 	    .kp.symbol_name = "udpv6_recvmsg",
 	    .data_size = sizeof(struct udp_recvmsg_data),
 	    .handler = udp_recvmsg_handler,
 	    .entry_handler = udpv6_recvmsg_entry_handler,
 };
-struct kretprobe udpv6_recvmsg_kretprobe;
 
 struct kretprobe ip6_datagram_connect_kretprobe = {
 	    .kp.symbol_name = "ip6_datagram_connect",
@@ -3569,10 +3595,31 @@ static struct notifier_block smith_usb_notifier = {
         .notifier_call = smith_usb_ncb,
 };
 
+/*
+ * set minimal of maxactive as 32 to avoid possible missings
+ * of kretprobe events, especially for NON-PREEMPTED systems
+ * with small number of CPU cores (ex: 2-core KVM guest)
+ */
+static int smith_register_kretprobe(struct kretprobe *kr)
+{
+    int ninsts = max_t(int, 32, 2 * num_present_cpus());
+    if (kr->maxactive < ninsts)
+        kr->maxactive = ninsts;
+    return register_kretprobe(kr);
+}
+
+static void smith_unregister_kretprobe(struct kretprobe *kr)
+{
+    unregister_kretprobe(kr);
+
+    /* set addr to NULL to enable re-registeration */
+    kr->kp.addr = NULL;
+}
+
 int register_bind_kprobe(void)
 {
     int ret;
-    ret = register_kretprobe(&bind_kretprobe);
+    ret = smith_register_kretprobe(&bind_kretprobe);
 
     if (ret == 0)
         bind_kprobe_state = 0x1;
@@ -3582,7 +3629,7 @@ int register_bind_kprobe(void)
 
 void unregister_bind_kprobe(void)
 {
-    unregister_kretprobe(&bind_kretprobe);
+    smith_unregister_kretprobe(&bind_kretprobe);
 }
 
 int register_call_usermodehelper_exec_kprobe(void)
@@ -3668,7 +3715,7 @@ void unregister_link_kprobe(void)
 int register_execve_kprobe(void)
 {
     int ret;
-    ret = register_kretprobe(&execve_kretprobe);
+    ret = smith_register_kretprobe(&execve_kretprobe);
     if (ret == 0)
         execve_kretprobe_state = 0x1;
 
@@ -3679,7 +3726,7 @@ int register_execve_kprobe(void)
 int register_execveat_kprobe(void)
 {
 	int ret;
-	ret = register_kretprobe(&execveat_kretprobe);
+	ret = smith_register_kretprobe(&execveat_kretprobe);
 	if (ret == 0)
 		execveat_kretprobe_state = 0x1;
 
@@ -3691,7 +3738,7 @@ int register_execveat_kprobe(void)
 int register_compat_execve_kprobe(void)
 {
 	int ret;
-	ret = register_kretprobe(&compat_execve_kretprobe);
+	ret = smith_register_kretprobe(&compat_execve_kretprobe);
 	if (ret == 0)
 		compat_execve_kretprobe_state = 0x1;
 
@@ -3700,14 +3747,14 @@ int register_compat_execve_kprobe(void)
 
 void unregister_compat_execve_kprobe(void)
 {
-	unregister_kretprobe(&compat_execve_kretprobe);
+	smith_unregister_kretprobe(&compat_execve_kretprobe);
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
 int register_compat_execveat_kprobe(void)
 {
 	int ret;
-	ret = register_kretprobe(&compat_execveat_kretprobe);
+	ret = smith_register_kretprobe(&compat_execveat_kretprobe);
 	if (ret == 0)
 		compat_execveat_kretprobe_state = 0x1;
 
@@ -3716,20 +3763,20 @@ int register_compat_execveat_kprobe(void)
 
 void unregister_compat_execveat_kprobe(void)
 {
-	unregister_kretprobe(&compat_execveat_kretprobe);
+	smith_unregister_kretprobe(&compat_execveat_kretprobe);
 }
 #endif
 #endif
 
 void unregister_execve_kprobe(void)
 {
-    unregister_kretprobe(&execve_kretprobe);
+    smith_unregister_kretprobe(&execve_kretprobe);
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
 void unregister_execveat_kprobe(void)
 {
-	unregister_kretprobe(&execveat_kretprobe);
+	smith_unregister_kretprobe(&execveat_kretprobe);
 }
 #endif
 
@@ -3752,8 +3799,7 @@ void unregister_ptrace_kprobe(void)
 int register_udp_recvmsg_kprobe(void)
 {
     int ret;
-    udp_recvmsg_kretprobe = udp_recvmsg_kretprobe_value;
-    ret = register_kretprobe(&udp_recvmsg_kretprobe);
+    ret = smith_register_kretprobe(&udp_recvmsg_kretprobe);
 
     if (ret == 0)
         udp_recvmsg_kprobe_state = 0x1;
@@ -3763,7 +3809,7 @@ int register_udp_recvmsg_kprobe(void)
 
 void unregister_udp_recvmsg_kprobe(void)
 {
-    unregister_kretprobe(&udp_recvmsg_kretprobe);
+    smith_unregister_kretprobe(&udp_recvmsg_kretprobe);
     udp_recvmsg_kprobe_state = 0;
 }
 
@@ -3771,8 +3817,7 @@ void unregister_udp_recvmsg_kprobe(void)
 int register_udpv6_recvmsg_kprobe(void)
 {
 	int ret;
-    udpv6_recvmsg_kretprobe = udpv6_recvmsg_kretprobe_value;
-	ret = register_kretprobe(&udpv6_recvmsg_kretprobe);
+	ret = smith_register_kretprobe(&udpv6_recvmsg_kretprobe);
 
 	if (ret == 0)
 		udpv6_recvmsg_kprobe_state = 0x1;
@@ -3782,14 +3827,14 @@ int register_udpv6_recvmsg_kprobe(void)
 
 void unregister_udpv6_recvmsg_kprobe(void)
 {
-	unregister_kretprobe(&udpv6_recvmsg_kretprobe);
+	smith_unregister_kretprobe(&udpv6_recvmsg_kretprobe);
     udpv6_recvmsg_kprobe_state = 0;
 }
 
 int register_ip6_datagram_connect_kprobe(void)
 {
 	int ret;
-	ret = register_kretprobe(&ip6_datagram_connect_kretprobe);
+	ret = smith_register_kretprobe(&ip6_datagram_connect_kretprobe);
 
 	if (ret == 0)
 		ip6_datagram_connect_kprobe_state = 0x1;
@@ -3799,13 +3844,13 @@ int register_ip6_datagram_connect_kprobe(void)
 
 void unregister_ip6_datagram_connect_kprobe(void)
 {
-	unregister_kretprobe(&ip6_datagram_connect_kretprobe);
+	smith_unregister_kretprobe(&ip6_datagram_connect_kretprobe);
 }
 
 int register_tcp_v6_connect_kprobe(void)
 {
 	int ret;
-	ret = register_kretprobe(&tcp_v6_connect_kretprobe);
+	ret = smith_register_kretprobe(&tcp_v6_connect_kretprobe);
 
 	if (ret == 0)
 		tcp_v6_connect_kprobe_state = 0x1;
@@ -3815,14 +3860,14 @@ int register_tcp_v6_connect_kprobe(void)
 
 void unregister_tcp_v6_connect_kprobe(void)
 {
-	unregister_kretprobe(&tcp_v6_connect_kretprobe);
+	smith_unregister_kretprobe(&tcp_v6_connect_kretprobe);
 }
 #endif
 
 int register_ip4_datagram_connect_kprobe(void)
 {
     int ret;
-    ret = register_kretprobe(&ip4_datagram_connect_kretprobe);
+    ret = smith_register_kretprobe(&ip4_datagram_connect_kretprobe);
 
     if (ret == 0)
         ip4_datagram_connect_kprobe_state = 0x1;
@@ -3832,13 +3877,13 @@ int register_ip4_datagram_connect_kprobe(void)
 
 void unregister_ip4_datagram_connect_kprobe(void)
 {
-    unregister_kretprobe(&ip4_datagram_connect_kretprobe);
+    smith_unregister_kretprobe(&ip4_datagram_connect_kretprobe);
 }
 
 int register_tcp_v4_connect_kprobe(void)
 {
     int ret;
-    ret = register_kretprobe(&tcp_v4_connect_kretprobe);
+    ret = smith_register_kretprobe(&tcp_v4_connect_kretprobe);
 
     if (ret == 0)
         tcp_v4_connect_kprobe_state = 0x1;
@@ -3848,13 +3893,13 @@ int register_tcp_v4_connect_kprobe(void)
 
 void unregister_tcp_v4_connect_kprobe(void)
 {
-    unregister_kretprobe(&tcp_v4_connect_kretprobe);
+    smith_unregister_kretprobe(&tcp_v4_connect_kretprobe);
 }
 
 int register_connect_syscall_kprobe(void)
 {
     int ret;
-    ret = register_kretprobe(&connect_syscall_kretprobe);
+    ret = smith_register_kretprobe(&connect_syscall_kretprobe);
 
     if (ret == 0)
         connect_syscall_kprobe_state = 0x1;
@@ -3864,13 +3909,13 @@ int register_connect_syscall_kprobe(void)
 
 void unregister_connect_syscall_kprobe(void)
 {
-    unregister_kretprobe(&connect_syscall_kretprobe);
+    smith_unregister_kretprobe(&connect_syscall_kretprobe);
 }
 
 int register_accept_kprobe(void)
 {
     int ret;
-    ret = register_kretprobe(&accept_kretprobe);
+    ret = smith_register_kretprobe(&accept_kretprobe);
 
     if (ret == 0)
         accept_kretprobe_state = 0x1;
@@ -3880,13 +3925,13 @@ int register_accept_kprobe(void)
 
 void unregister_accept_kprobe(void)
 {
-    unregister_kretprobe(&accept_kretprobe);
+    smith_unregister_kretprobe(&accept_kretprobe);
 }
 
 int register_accept4_kprobe(void)
 {
     int ret;
-    ret = register_kretprobe(&accept4_kretprobe);
+    ret = smith_register_kretprobe(&accept4_kretprobe);
 
     if (ret == 0)
         accept4_kretprobe_state = 0x1;
@@ -3896,7 +3941,7 @@ int register_accept4_kprobe(void)
 
 void unregister_accept4_kprobe(void)
 {
-    unregister_kretprobe(&accept4_kretprobe);
+    smith_unregister_kretprobe(&accept4_kretprobe);
 }
 
 int register_create_file_kprobe(void)
@@ -3998,7 +4043,7 @@ void unregister_prctl_kprobe(void)
 int register_update_cred_kprobe(void)
 {
     int ret;
-    ret = register_kretprobe(&update_cred_kretprobe);
+    ret = smith_register_kretprobe(&update_cred_kretprobe);
     if (ret == 0)
         update_cred_kprobe_state = 0x1;
 
@@ -4007,7 +4052,7 @@ int register_update_cred_kprobe(void)
 
 void unregister_update_cred_kprobe(void)
 {
-    unregister_kretprobe(&update_cred_kretprobe);
+    smith_unregister_kretprobe(&update_cred_kretprobe);
 }
 
 int register_mprotect_kprobe(void)
@@ -4103,7 +4148,7 @@ void unregister_nanosleep_kprobe(void)
 int register_security_path_rmdir_kprobe(void)
 {
     int ret;
-    ret = register_kretprobe(&security_path_rmdir_kprobe);
+    ret = smith_register_kretprobe(&security_path_rmdir_kprobe);
     if (ret == 0)
         security_path_rmdir_kprobe_state = 0x1;
 
@@ -4112,13 +4157,13 @@ int register_security_path_rmdir_kprobe(void)
 
 void unregister_security_path_rmdir_kprobe(void)
 {
-    unregister_kretprobe(&security_path_rmdir_kprobe);
+    smith_unregister_kretprobe(&security_path_rmdir_kprobe);
 }
 
 int register_security_path_unlink_kprobe(void)
 {
     int ret;
-    ret = register_kretprobe(&security_path_unlink_kprobe);
+    ret = smith_register_kretprobe(&security_path_unlink_kprobe);
     if (ret == 0)
         security_path_unlink_kprobe_state = 0x1;
 
@@ -4127,7 +4172,7 @@ int register_security_path_unlink_kprobe(void)
 
 void unregister_security_path_unlink_kprobe(void)
 {
-    unregister_kretprobe(&security_path_unlink_kprobe);
+    smith_unregister_kretprobe(&security_path_unlink_kprobe);
 }
 
 int register_kill_kprobe(void)

@@ -4,9 +4,6 @@
 [submodule "rasp/pangolin"]
 	path = rasp/pangolin
 	url = https://github.com/Hackerl/pangolin
-[submodule "rasp/python/python-inject/cmake"]
-	path = rasp/python/python-inject/cmake
-	url = https://github.com/Hackerl/cmake-3rd
 [submodule "rasp/jvm/jattach"]
 	path = rasp/jvm/jattach
 	url = https://github.com/apangin/jattach.git
@@ -15,4 +12,13 @@
 	url = https://github.com/karelzak/util-linux.git
 [submodule "rasp/golang/tiny-regex-c"]
 	path = rasp/golang/tiny-regex-c
+	url = https://github.com/Hackerl/tiny-regex-c
+[submodule "plugins/scanner/clamav-mussels-cookbook"]
+	path = plugins/scanner/clamav-mussels-cookbook
+	url = https://github.com/kulukami/clamav-mussels-cookbook.git
+[submodule "rasp/php/tiny-regex-c"]
+	path = rasp/php/tiny-regex-c
+	url = https://github.com/Hackerl/tiny-regex-c
+[submodule "rasp/python/python-probe/rasp/probe/tiny-regex-c"]
+	path = rasp/python/python-probe/rasp/probe/tiny-regex-c
 	url = https://github.com/Hackerl/tiny-regex-c

@@ -48,7 +48,7 @@ Other Data
 
 
 
-## Front-end display
+## Front-end Display (Community Edition)
 * 主机详情
 <img src="png/console1.png" style="float:left;"/>
 * 资产详情
@@ -71,6 +71,11 @@ Other Data
 <img src="png/Lark.png" width="40%" style="float:left;"/>
 
 *Lark Group*
+
+
+
+如果对Elkeid企业版感兴趣请联系: elkeid@bytedance.com
+
 
 ## License
 * Elkeid Driver: GPLv2

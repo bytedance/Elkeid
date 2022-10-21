@@ -15,22 +15,15 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Set up JDK 11
-      uses: actions/setup-java@v2
-      with:
-        java-version: '11'
-        distribution: 'adopt'
-
     - name: Set up Go
       uses: actions/setup-go@v2
       with:
         go-version: 1.16
 
-    - name: Prerequisites
-      run: sudo apt install autopoint gettext
-
     - name: Build RASP
-      run: make -C rasp build
+      run: |
+        curl -fsSL https://lf3-static.bytednsdoc.com/obj/eden-cn/laahweh7uhwbps/php-headers.tar.gz | tar -xz -C rasp/php
+        docker run --rm -v $(pwd):/Elkeid -e MAKEFLAGS="-j$(nproc)" hackerl/rasp-toolchain make -C /Elkeid/rasp build STATIC=TRUE PY_PREBUILT=TRUE CC=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-gcc CXX=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-g++ LD=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-ld CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-ld GNU_CC=/opt/gcc-10.4.0/bin/gcc GNU_CXX=/opt/gcc-10.4.0/bin/g++ PHP_HEADERS=/Elkeid/rasp/php/php-headers PYTHON2_INCLUDE=/usr/local/include/python2.7 PYTHON3_INCLUDE=/usr/local/include/python3.6m
 
     - name: Build Agent
       run: cd agent && go build -o elkeid-agent

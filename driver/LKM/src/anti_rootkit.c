@@ -56,29 +56,19 @@ static const char *find_hidden_module(unsigned long addr)
         if (!kobj || !kobj->mod)
             continue;
 
-#ifdef UBUNTU_CHECK
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
-		if (BETWEEN_PTR
-		    (addr, kobj->mod->core_layout.base,
-		     kobj->mod->core_layout.size))
+#ifdef KMOD_CORE_LAYOUT
+		/*
+		 * vanilla kernels (kernel.org): >= 4.5.0
+		 * ubuntu kernels: >= 4.4.0
+		 */
+		if (BETWEEN_PTR(addr, kobj->mod->core_layout.base,
+			kobj->mod->core_layout.size))
 			mod_name = kobj->mod->name;
 #else
-		if (BETWEEN_PTR
-		    (addr, kobj->mod->module_core, kobj->mod->core_size))
+		if (BETWEEN_PTR(addr, kobj->mod->module_core,
+			kobj->mod->core_size))
 			mod_name = kobj->mod->name;
 #endif
-#else //UBUNTU_CHECK
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
-        if (BETWEEN_PTR
-		    (addr, kobj->mod->core_layout.base,
-		     kobj->mod->core_layout.size))
-			mod_name = kobj->mod->name;
-#else
-        if (BETWEEN_PTR
-        (addr, kobj->mod->module_core, kobj->mod->core_size))
-            mod_name = kobj->mod->name;
-#endif
-#endif // UBUNTU_CHECK
     }
     spin_unlock(&mod_kset->list_lock);
 
@@ -185,7 +175,7 @@ static void analyze_modules(void)
 		}
 
 		kobj = container_of(cur, struct module_kobject, kobj);
-		if (kobj && kobj->mod && kobj->mod->name) {
+		if (kobj && kobj->mod) {
 			if (mod_find_module && !mod_find_module(kobj->mod->name))
 				mod_print(kobj->mod->name);
 		}
@@ -250,7 +240,11 @@ static int anti_rootkit_worker(void *argv)
         }
     } while (!kthread_should_stop());
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
+    kthread_complete_and_exit(NULL, 0);
+#else
     do_exit(0);
+#endif
     return 0;
 }
 

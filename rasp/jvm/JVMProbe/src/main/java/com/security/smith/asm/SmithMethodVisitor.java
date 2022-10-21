@@ -15,6 +15,18 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class SmithMethodVisitor extends AdviceAdapter {
+    private final int classID;
+    private final int methodID;
+    private final Type classType;
+    private final boolean canBlock;
+    private final boolean isStatic;
+    private final boolean isConstructor;
+    private final int returnVariable;
+    private final int argumentsVariable;
+    private final Label start;
+    private final Label end;
+    private final Label handler;
+
     private static final Map<String, Class<?>> smithProcessors = new HashMap<String, Class<?>>() {{
         put("byte[]", ByteArrayProcessor.class);
         put("int[]", IntegerArrayProcessor.class);
@@ -163,6 +175,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
         push(methodID);
         loadLocal(argumentsVariable);
         loadLocal(returnVariable);
+        push(false);
 
         invokeVirtual(
                 Type.getType(SmithProbe.class),
@@ -173,16 +186,15 @@ public class SmithMethodVisitor extends AdviceAdapter {
                                 Type.INT_TYPE,
                                 Type.INT_TYPE,
                                 Type.getType(Object[].class),
-                                Type.getType(Object.class)
+                                Type.getType(Object.class),
+                                Type.BOOLEAN_TYPE
                         }
                 )
         );
     }
 
     @Override
-    public void visitEnd() {
-        super.visitEnd();
-
+    public void visitMaxs(final int maxStack, final int maxLocals) {
         mark(end);
         mark(handler);
 
@@ -238,6 +250,13 @@ public class SmithMethodVisitor extends AdviceAdapter {
         loadLocal(argumentsVariable);
         visitInsn(Opcodes.ACONST_NULL);
 
+        if (!canBlock) {
+            push(false);
+        } else {
+            loadLocal(returnVariable + 1);
+            instanceOf(Type.getType(SecurityException.class));
+        }
+
         invokeVirtual(
                 Type.getType(SmithProbe.class),
                 new Method(
@@ -247,13 +266,16 @@ public class SmithMethodVisitor extends AdviceAdapter {
                                 Type.INT_TYPE,
                                 Type.INT_TYPE,
                                 Type.getType(Object[].class),
-                                Type.getType(Object.class)
+                                Type.getType(Object.class),
+                                Type.BOOLEAN_TYPE
                         }
                 )
         );
 
         loadLocal(returnVariable + 1);
         throwException();
+
+        super.visitMaxs(maxStack, maxLocals);
     }
 
     void processObject(String name) {
@@ -273,17 +295,4 @@ public class SmithMethodVisitor extends AdviceAdapter {
                 )
         );
     }
-
-    private final int classID;
-    private final int methodID;
-    private final Type classType;
-    private final boolean canBlock;
-    private final boolean isStatic;
-    private final boolean isConstructor;
-
-    private final int returnVariable;
-    private final int argumentsVariable;
-    private final Label start;
-    private final Label end;
-    private final Label handler;
 }

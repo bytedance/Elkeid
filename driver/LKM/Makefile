@@ -9,25 +9,45 @@ MODULE_DIR		:= $(KBUILD_EXTMOD)
 ldflags-y		+= -r -T $(MODULE_DIR)/kprobe.lds
 ccflags-y		+= -I$(MODULE_DIR)/include -I$(MODULE_DIR)
 
-UBUNTU_CHECK := $(shell bash $(MODULE_DIR)/ubuntu_check.sh)
-ifeq ($(UBUNTU_CHECK),DISTRIB_ID=Ubuntu)
-ccflags-y += -D UBUNTU_CHECK
+K_S_PATH	:= /lib/modules/$(KERNEL_HEAD)/source/include
+K_B_PATH	:= /lib/modules/$(KERNEL_HEAD)/build/include
+K_K_PATH	:= /usr/src/kernels/$(KERNEL_HEAD)/include
+
+KMOD_FILES := $(K_S_PATH)/linux/module.h $(K_B_PATH)/linux/module.h $(K_K_PATH)/linux/module.h
+KMOD_CORE_LAYOUT := $(shell sh -c "grep -s module_core\; $(KMOD_FILES)")
+ifeq ($(KMOD_CORE_LAYOUT),)
+ccflags-y += -D KMOD_CORE_LAYOUT
 endif
 
-CENTOS_CHECK := $(shell bash $(MODULE_DIR)/centos_check.sh)
-ifeq ($(CENTOS_CHECK),NAME="CentOS Linux")
-ccflags-y += -D CENTOS_CHECK
-else ifeq ($(CENTOS_CHECK),NAME="EulerOS")
-ccflags-y += -D CENTOS_CHECK
+KGID_CRED_FILES := $(K_S_PATH)/linux/cred.h $(K_B_PATH)/linux/cred.h $(K_K_PATH)/linux/cred.h
+KGID_XIDS_FILES := $(K_S_PATH)/linux/uidgid.h $(K_B_PATH)/linux/uidgid.h $(K_K_PATH)/linux/uidgid.h
+KGID_STRUCT_CHECK := $(shell sh -c "grep -s fsgid\; $(KGID_CRED_FILES) | grep kgid_t")
+ifneq ($(KGID_STRUCT_CHECK),)
+ccflags-y += -D KGID_STRUCT_CHECK
+KGID_CONFIG_CHECK := $(shell sh -c "grep -s CONFIG_UIDGID_STRICT_TYPE_CHECKS $(KGID_XIDS_FILES)")
+ifneq ($(KGID_CONFIG_CHECK),)
+ccflags-y += -D KGID_CONFIG_CHECK
+endif
+endif
+
+IPV6_FILES := $(K_S_PATH)/net/sock.h $(K_B_PATH)/net/sock.h $(K_K_PATH)/net/sock.h
+IPV6_SUPPORT := $(shell sh -c "grep -s skc_v6_daddr\; $(IPV6_FILES)")
+ifneq ($(IPV6_SUPPORT),)
+ccflags-y += -D IPV6_SUPPORT
 endif
 
 TRACE_EVENTS_HEADER		:=  /lib/modules/$(KERNEL_HEAD)/build/include/linux/trace_events.h
 TRACE_EVENTS_HEADER_V   := $(TRACE_EVENTS_HEADER)
 TRACE_EVENTS_HEADER_CHECK := $(shell test -e $(TRACE_EVENTS_HEADER_V))
 
-$(warning  $(TRACE_EVENTS_HEADER_CHECK))
 ifeq ($(TRACE_EVENTS_HEADER_CHECK),$(TRACE_EVENTS_HEADER))
 ccflags-y += -D SMITH_TRACE_EVENTS
+endif
+
+PROCFS_H_FILES := $(K_S_PATH)/linux/proc_fs.h $(K_B_PATH)/linux/proc_fs.h $(K_K_PATH)/linux/proc_fs.h
+PROCFS_PDE_DATA := $(shell sh -c "grep -s pde_data $(PROCFS_H_FILES)")
+ifneq ($(PROCFS_PDE_DATA),)
+ccflags-y += -D SMITH_PROCFS_PDE_DATA
 endif
 
 else

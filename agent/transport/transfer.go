@@ -9,8 +9,9 @@ import (
 	"time"
 
 	"github.com/bytedance/Elkeid/agent/agent"
-	"github.com/bytedance/Elkeid/agent/core"
+	"github.com/bytedance/Elkeid/agent/buffer"
 	"github.com/bytedance/Elkeid/agent/host"
+	"github.com/bytedance/Elkeid/agent/log"
 	"github.com/bytedance/Elkeid/agent/plugin"
 	"github.com/bytedance/Elkeid/agent/proto"
 	"github.com/bytedance/Elkeid/agent/transport/connection"
@@ -56,7 +57,7 @@ func startTransfer(ctx context.Context, wg *sync.WaitGroup) {
 				continue
 			}
 		}
-		zap.S().Infof("get connection successfully:idc %v,region %v,netmode %v", connection.IDC.Load(), connection.Region.Load(), connection.NetMode.Load().(string))
+		zap.S().Infof("get connection successfully:idc %v,region %v,netmode %v", connection.IDC.Load(), connection.Region.Load(), connection.NetMode.Load())
 		retries = 0
 		var client proto.Transfer_TransferClient
 		subCtx, cancel := context.WithCancel(ctx)
@@ -97,25 +98,10 @@ func handleSend(ctx context.Context, wg *sync.WaitGroup, client proto.Transfer_T
 			return
 		case <-ticker.C:
 			{
-				core.Mu.Lock()
-				if core.Offset != 0 {
-					zap.S().Debugf("will send %v recs", core.Offset)
-					nbuf := make([]*proto.EncodedRecord, 0, core.Offset)
-					for _, v := range core.Buf[:core.Offset] {
-						switch t := v.(type) {
-						case *proto.EncodedRecord:
-							nbuf = append(nbuf, t)
-						case *proto.Record:
-							data, _ := t.Data.Marshal()
-							rec := core.Get()
-							rec.DataType = t.DataType
-							rec.Timestamp = t.Timestamp
-							rec.Data = data
-							nbuf = append(nbuf, rec)
-						}
-					}
+				recs := buffer.ReadEncodedRecords()
+				if len(recs) != 0 {
 					err := client.Send(&proto.PackagedData{
-						Records:      nbuf,
+						Records:      recs,
 						AgentId:      agent.ID,
 						IntranetIpv4: host.PrivateIPv4.Load().([]string),
 						IntranetIpv6: host.PrivateIPv6.Load().([]string),
@@ -125,19 +111,13 @@ func handleSend(ctx context.Context, wg *sync.WaitGroup, client proto.Transfer_T
 						Version:      agent.Version,
 						Product:      agent.Product,
 					})
-					for _, v := range nbuf {
-						v.Data = v.Data[:0]
-						core.Put(v)
-					}
-					if err == nil {
-						atomic.AddUint64(&txCnt, uint64(core.Offset))
-						core.Offset = 0
+					if err != nil {
+						zap.S().Error(err)
 					} else {
-						core.Mu.Unlock()
-						return
+						atomic.AddUint64(&txCnt, uint64(len(recs)))
 					}
+					buffer.PutEncodedRecords(recs)
 				}
-				core.Mu.Unlock()
 			}
 		}
 	}
@@ -159,6 +139,18 @@ func handleReceive(ctx context.Context, wg *sync.WaitGroup, client proto.Transfe
 			// 给agent的任务
 			if cmd.Task.ObjectName == agent.Product {
 				switch cmd.Task.DataType {
+				case 1050:
+					req := UploadRequest{}
+					err = json.Unmarshal([]byte(cmd.Task.Data), &req)
+					if err != nil {
+						log.ErrorWithToken(cmd.Task.Token, err)
+					} else {
+						req.token = cmd.Task.Token
+						err = UploadFile(req)
+						if err != nil {
+							log.ErrorWithToken(cmd.Task.Token, err)
+						}
+					}
 				//set metadata
 				case 1051:
 					req := map[string]interface{}{}
@@ -174,7 +166,7 @@ func handleReceive(ctx context.Context, wg *sync.WaitGroup, client proto.Transfe
 									"--idc="+idc).
 									CombinedOutput()
 								if err != nil {
-									zap.S().Error("set idc failed: ", string(out), ", "+err.Error())
+									log.ErrorWithToken(cmd.Task.Token, "set idc failed: ", string(out), ", "+err.Error())
 								} else {
 									connection.IDC.Store(idc)
 								}
@@ -190,12 +182,12 @@ func handleReceive(ctx context.Context, wg *sync.WaitGroup, client proto.Transfe
 										"--region="+region).
 										CombinedOutput()
 									if err != nil {
-										zap.S().Error("set region failed: ", string(out), ", "+err.Error())
+										log.ErrorWithToken(cmd.Task.Token, "set region failed: ", string(out), ", "+err.Error())
 									} else {
 										connection.Region.Store(region)
 									}
 								} else {
-									zap.S().Error("can't find region: " + region)
+									log.ErrorWithToken(cmd.Task.Token, "can't find region: "+region)
 								}
 							}
 						}

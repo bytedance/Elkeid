@@ -11,8 +11,8 @@ enum emGolangVersion {
     VERSION118
 };
 
-class CLineTable {
-#define gLineTable zero::Singleton<CLineTable>::getInstance()
+class LineTable {
+#define gLineTable zero::Singleton<LineTable>::getInstance()
 public:
     bool load();
     bool load(const std::string& file);
@@ -20,8 +20,8 @@ public:
     bool load(const char *table);
 
 public:
-    bool getFunc(unsigned int index, CFunc &func);
-    bool findFunc(uintptr_t address, CFunc &func);
+    bool getFunc(unsigned int index, Func &func);
+    bool findFunc(uintptr_t address, Func &func);
 
 public:
     int getPCValue(unsigned int offset, uintptr_t entry, uintptr_t targetPC) const;
@@ -30,7 +30,7 @@ private:
     bool step(const unsigned char **p, uintptr_t *pc, int *value, bool first) const;
 
 private:
-    CFuncTablePtr getFuncTable() const;
+    FuncTablePtr getFuncTable() const;
 
 public:
     emGolangVersion mVersion;

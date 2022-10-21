@@ -31,6 +31,9 @@
 -dontwarn rasp.io.netty.**
 -keep class rasp.io.netty.** {*;}
 
+-dontwarn rasp.com.lmax.disruptor.**
+-keep class rasp.com.lmax.disruptor.** {*;}
+
 -keep class rasp.com.fasterxml.jackson.** {*;}
 
 -keepclassmembers class * extends rasp.com.fasterxml.jackson.databind.ser.std.StdSerializer {
@@ -41,13 +44,15 @@
     <init>(...);
 }
 
--keep class com.security.smith.processor.* {*;}
 -keep class com.security.smith.type.* {*;}
+-keep class com.security.smith.module.* {*;}
+-keep class com.security.smith.processor.* {*;}
+-keep class com.security.smith.client.message.* {*;}
 
 -keep class com.security.smith.SmithAgent {*;}
 
 -keep class com.security.smith.SmithProbe {
     public void detect(int, int, java.lang.Object[]);
-    public void trace(int, int, java.lang.Object[], java.lang.Object);
+    public void trace(int, int, java.lang.Object[], java.lang.Object, boolean);
     public static com.security.smith.SmithProbe getInstance();
 }

@@ -11,11 +11,11 @@ buildscript {
 }
 
 plugins {
+    id 'java-library'
     id 'com.github.johnrengelman.shadow' version '6.0.0'
-    id 'java'
 }
 
-group 'org.example'
+group 'com.security'
 version '1.0-SNAPSHOT'
 
 repositories {
@@ -24,16 +24,18 @@ repositories {
 
 dependencies {
     testImplementation group: 'junit', name: 'junit', version: '4.12'
-    implementation group: 'org.ow2.asm', name: 'asm-tree', version: '8.0.1'
-    implementation group: 'org.ow2.asm', name: 'asm-commons', version: '8.0.1'
+    implementation group: 'org.ow2.asm', name: 'asm-tree', version: '9.3'
+    implementation group: 'org.ow2.asm', name: 'asm-commons', version: '9.3'
     implementation group: 'org.yaml', name: 'snakeyaml', version: '1.26'
     implementation group: 'io.netty', name: 'netty-all', version: '4.1.51.Final'
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.11.2'
     implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.11'
+    implementation group: 'com.lmax', name: 'disruptor', version: '3.4.4'
+    api group: 'org.javassist', name: 'javassist', version: '3.29.0-GA'
 }
 
 compileJava {
-    options.release = 8
+    options.release.set(8)
 }
 
 jar {
@@ -99,7 +101,9 @@ task genDict {
 
 shadowJar {
     relocate 'io.netty', 'rasp.io.netty'
+    relocate 'com.lmax.disruptor', 'rasp.com.lmax.disruptor'
     relocate 'com.fasterxml.jackson', 'rasp.com.fasterxml.jackson'
+    relocate 'javassist', 'rasp.javassist'
     relocate 'META-INF/native/libnetty', 'META-INF/native/librasp_netty'
 }
 

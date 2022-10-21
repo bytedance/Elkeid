@@ -1,39 +1,49 @@
 #include "smith_message.h"
 #include <unistd.h>
 #include <ctime>
+#include <go/symbol/build_info.h>
 
 constexpr auto RUNTIME = "golang";
 constexpr auto PROBE_VERSION = "1.0.0";
 
-void to_json(nlohmann::json &j, const CSmithMessage &m) {
+void to_json(nlohmann::json &j, const SmithMessage &message) {
     static pid_t pid = getpid();
 
-    j = nlohmann::json {
-        {"pid", pid},
-        {"runtime", RUNTIME},
-        {"runtime_version", gBuildInfo->mVersion},
-        {"time", std::time(nullptr)},
-        {"message_type", m.operate},
-        {"probe_version", PROBE_VERSION},
-        {"data", m.data}
+    j = {
+            {"pid",             pid},
+            {"runtime",         RUNTIME},
+            {"runtime_version", gBuildInfo->mVersion},
+            {"time",            std::time(nullptr)},
+            {"message_type",    message.operate},
+            {"probe_version",   PROBE_VERSION},
+            {"data",            message.data}
     };
 }
 
-void from_json(const nlohmann::json &j, CSmithMessage &m) {
-    j.at("message_type").get_to(m.operate);
-    j.at("data").get_to(m.data);
+void from_json(const nlohmann::json &j, SmithMessage &message) {
+    j.at("message_type").get_to(message.operate);
+    j.at("data").get_to(message.data);
 }
 
-void to_json(nlohmann::json &j, const CSmithTrace &t) {
-    j = nlohmann::json {
-        {"class_id", t.classID},
-        {"method_id", t.methodID}
+void to_json(nlohmann::json &j, const Heartbeat &heartbeat) {
+    j = {
+            {"filter", heartbeat.filter},
+            {"block",  heartbeat.block},
+            {"limit",  heartbeat.limit}
+    };
+}
+
+void to_json(nlohmann::json &j, const Trace &trace) {
+    j = {
+            {"class_id",  trace.classID},
+            {"method_id", trace.methodID},
+            {"blocked",   trace.blocked}
     };
 
-    for (int i = 0; i < t.count; i++)
-        j["args"].push_back(std::string(t.args[i], ARG_LENGTH).c_str());
+    for (int i = 0; i < trace.count; i++)
+        j["args"].push_back(std::string(trace.args[i], ARG_LENGTH).c_str());
 
-    for (const auto& stackTrace: t.stackTrace) {
+    for (const auto &stackTrace: trace.stackTrace) {
         if (stackTrace.pc == 0)
             break;
 
@@ -51,45 +61,60 @@ void to_json(nlohmann::json &j, const CSmithTrace &t) {
     }
 }
 
-void to_json(nlohmann::json &j, const CModule &m) {
-    j = nlohmann::json {
-        {"path", m.path},
-        {"version", m.version},
-        {"sum", m.sum}
+void to_json(nlohmann::json &j, const Module &module) {
+    j = {
+            {"path",    module.path},
+            {"version", module.version},
+            {"sum",     module.sum}
     };
 
-    if (m.replace)
-        j["replace"] = *m.replace;
+    if (module.replace)
+        j["replace"] = *module.replace;
 }
 
-void to_json(nlohmann::json &j, const CModuleInfo &i) {
-    j = nlohmann::json {
-        {"path", i.path},
-        {"main", i.main},
-        {"deps", i.deps}
+void to_json(nlohmann::json &j, const ModuleInfo &moduleInfo) {
+    j = {
+            {"path", moduleInfo.path},
+            {"main", moduleInfo.main},
+            {"deps", moduleInfo.deps}
     };
 }
 
-void from_json(const nlohmann::json &j, CMatchRule &r) {
-    j.at("index").get_to(r.index);
-    j.at("regex").get_to(r.regex);
+void from_json(const nlohmann::json &j, MatchRule &matchRule) {
+    j.at("index").get_to(matchRule.index);
+    j.at("regex").get_to(matchRule.regex);
 }
 
-void from_json(const nlohmann::json &j, CFilter &f) {
-    j.at("class_id").get_to(f.classId);
-    j.at("method_id").get_to(f.methodID);
-    j.at("include").get_to(f.include);
-    j.at("exclude").get_to(f.exclude);
+void from_json(const nlohmann::json &j, Filter &filter) {
+    j.at("class_id").get_to(filter.classID);
+    j.at("method_id").get_to(filter.methodID);
+    j.at("include").get_to(filter.include);
+    j.at("exclude").get_to(filter.exclude);
 }
 
-void from_json(const nlohmann::json &j, CBlock &b) {
-    j.at("class_id").get_to(b.classId);
-    j.at("method_id").get_to(b.methodID);
-    j.at("rules").get_to(b.rules);
+void from_json(const nlohmann::json &j, Block &block) {
+    j.at("class_id").get_to(block.classID);
+    j.at("method_id").get_to(block.methodID);
+    j.at("rules").get_to(block.rules);
 }
 
-void from_json(const nlohmann::json &j, CLimit &l) {
-    j.at("class_id").get_to(l.classId);
-    j.at("method_id").get_to(l.methodID);
-    j.at("quota").get_to(l.quota);
+void from_json(const nlohmann::json &j, Limit &limit) {
+    j.at("class_id").get_to(limit.classID);
+    j.at("method_id").get_to(limit.methodID);
+    j.at("quota").get_to(limit.quota);
+}
+
+void from_json(const nlohmann::json &j, FilterConfig &config) {
+    j.at("uuid").get_to(config.uuid);
+    j.at("filters").get_to(config.filters);
+}
+
+void from_json(const nlohmann::json &j, BlockConfig &config) {
+    j.at("uuid").get_to(config.uuid);
+    j.at("blocks").get_to(config.blocks);
+}
+
+void from_json(const nlohmann::json &j, LimitConfig &config) {
+    j.at("uuid").get_to(config.uuid);
+    j.at("limits").get_to(config.limits);
 }

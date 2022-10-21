@@ -1,7 +1,9 @@
-use crate::process::ProcessInfo;
+use librasp::process::ProcessInfo;
 use serde::Serialize;
 use serde_json::to_string;
 use std::{collections::HashMap, ffi::OsString};
+use log::error;
+use crate::utils;
 
 /* convert hashmap to json string */
 #[derive(Serialize, Debug)]
@@ -80,5 +82,12 @@ pub fn make_report(
     );
     report.insert("try_attach_count", process.try_attach_count.to_string());
     report.insert("attached_count", process.attached_count.to_string());
+    report.insert("uptime", match utils::count_uptime(process.start_time.unwrap_or(0 as f32)){
+        Ok(t) => t.to_string(),
+        Err(e) => {
+            error!("count uptime failed: {}", e);
+            0.to_string()
+        },
+    });
     report
 }

@@ -1,11 +1,11 @@
 build:
-	cargo build --bin elkeid_rasp --release --features bin_mode
+	cargo build --bin elkeid_rasp --release
 
 build-debug:
-	cargo build --bin elkeid_rasp --features bin_mode
+	cargo build --bin elkeid_rasp
 
 build-musl:
-	cargo build --bin elkeid_rasp --release --target x86_64-unknown-linux-musl --features bin_mode
+	cargo build --bin elkeid_rasp --release --target x86_64-unknown-linux-musl
 
 clean:
 	cargo clean

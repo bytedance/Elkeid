@@ -22,6 +22,9 @@ type Module struct {
 	ModuleType  string             `json:"module_type" bson:"module_type"`
 	User        string             `json:"module_user" bson:"user"`
 }
+const (
+	AgentDefaultName = "elkeid-agent"
+)
 
 // CreateModule 创建一个组件
 func CreateModule(c *gin.Context) {
@@ -33,12 +36,12 @@ func CreateModule(c *gin.Context) {
 		return
 	}
 
-	// agent名字必须是mongoosev3-agent
+	// agent名字必须是AgentDefaultName
 	if module.ModuleType == "agent" {
 		if module.Name == "agent" {
-			module.Name = "mongoosev3-agent"
+			module.Name = AgentDefaultName
 		} else {
-			common.CreateResponse(c, common.UnknownErrorCode, "agent's name must be mongoosev3-agent")
+			common.CreateResponse(c, common.UnknownErrorCode, "agent's name must be " + AgentDefaultName)
 			return
 		}
 	}
@@ -141,12 +144,12 @@ func UpdateModule(c *gin.Context) {
 		return
 	}
 	if module.Name == "agent" {
-		module.Name = "mongoosev3-agent"
+		module.Name = AgentDefaultName
 	}
 
 	// 不允许修改agent name
-	if module.ModuleType == "agent" && module.Name != "mongoosev3-agent" {
-		common.CreateResponse(c, common.UnknownErrorCode, "agent's name must be mongoosev3-agent")
+	if module.ModuleType == "agent" && module.Name != AgentDefaultName {
+		common.CreateResponse(c, common.UnknownErrorCode, "agent's name must be " + AgentDefaultName)
 		return
 	}
 
@@ -274,7 +277,7 @@ func GetModuleId(c *gin.Context) {
 	}
 
 	if module.Name == "agent" {
-		module.Name = "mongoosev3-agent"
+		module.Name = AgentDefaultName
 	}
 
 	// 获取组件ID

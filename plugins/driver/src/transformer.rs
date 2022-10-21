@@ -398,6 +398,9 @@ impl Transformer {
                 values[27] = &socket_argv;
                 let ppid_argv = self.argv_cache.get(values[3]);
                 values[28] = &ppid_argv;
+                if PPID_ARGV_WHITELIST.contains(ppid_argv.as_slice()) {
+                    return Ok(0);
+                }
                 let pgid_argv = self.argv_cache.get(values[4]);
                 if PGID_ARGV_WHITELIST.contains(pgid_argv.as_slice()) {
                     return Ok(0);

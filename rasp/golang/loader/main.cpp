@@ -1,4 +1,4 @@
-#include "elf/loader.h"
+#include <elf/loader.h>
 #include <zero/log.h>
 #include <csignal>
 #include <go/symbol/build_info.h>
@@ -7,7 +7,14 @@
 #include <go/api/api.h>
 #include <asm/api_hook.h>
 
-int main(int argc, char **argv, char **env) {
+/*
+ * Usually elf loader does not need to perform relocation work, but we need to hook golang runtime in advance.
+ * So we manually resolve relocation entry, just for "R_X86_64_RELATIVE" type.
+ * */
+
+constexpr auto TASK_COMM_LEN = 16;
+
+int main(int argc, char **argv, char **envp) {
     INIT_CONSOLE_LOG(zero::INFO);
 
     if (argc < 2) {
@@ -15,10 +22,60 @@ int main(int argc, char **argv, char **env) {
         return -1;
     }
 
-    CELFLoader loader;
+    elf_context_t ctx[2] = {};
 
-    if (!loader.load(argv[1]))
+    if (load_elf(argv[1], ctx) < 0)
         return -1;
+
+    ELFIO::elfio reader;
+
+    if (!reader.load(argv[1]))
+        return -1;
+
+    if (reader.get_type() == ET_DYN) {
+        std::vector<ELFIO::segment *> loads;
+
+        std::copy_if(
+                reader.segments.begin(),
+                reader.segments.end(),
+                std::back_inserter(loads),
+                [](const auto &i) {
+                    return i->get_type() == PT_LOAD;
+                });
+
+        uintptr_t minVA = std::min_element(
+                loads.begin(),
+                loads.end(),
+                [](const auto &i, const auto &j) {
+                    return i->get_virtual_address() < j->get_virtual_address();
+                }).operator*()->get_virtual_address() & ~(PAGE_SIZE - 1);
+
+        for (const auto &section: reader.sections) {
+            if (section->get_type() != SHT_RELA)
+                continue;
+
+            ELFIO::relocation_section_accessor relocations(reader, section);
+
+            for (ELFIO::Elf_Xword i = 0; i < relocations.get_entries_num(); i++) {
+                ELFIO::Elf64_Addr offset = 0;
+                ELFIO::Elf64_Addr symbolValue = 0;
+                std::string symbolName;
+                ELFIO::Elf_Word type = 0;
+                ELFIO::Elf_Sxword addend = 0;
+                ELFIO::Elf_Sxword calcValue = 0;
+
+                if (!relocations.get_entry(i, offset, symbolValue, symbolName, type, addend, calcValue)) {
+                    LOG_ERROR("get relocation entry %lu failed", i);
+                    return -1;
+                }
+
+                if (type != R_X86_64_RELATIVE)
+                    continue;
+
+                *(size_t *) (ctx[0].base + offset - minVA) = (ctx[0].base + calcValue - minVA);
+            }
+        }
+    }
 
     sigset_t mask = {};
     sigset_t origin_mask = {};
@@ -30,40 +87,40 @@ int main(int argc, char **argv, char **env) {
         return -1;
     }
 
-    if (!gLineTable->load(argv[1], loader.mProgramBase)) {
+    if (!gLineTable->load(argv[1], ctx[0].base)) {
         LOG_ERROR("line table load failed");
         return -1;
     }
 
-    if (gBuildInfo->load(argv[1], loader.mProgramBase)) {
+    if (gBuildInfo->load(argv[1], ctx[0].base)) {
         LOG_INFO("go version: %s", gBuildInfo->mVersion.c_str());
 
-        CInterfaceTable table = {};
+        InterfaceTable table = {};
 
-        if (!table.load(argv[1], loader.mProgramBase)) {
+        if (!table.load(argv[1], ctx[0].base)) {
             LOG_ERROR("interface table load failed");
             return -1;
         }
 
-        table.findByFuncName("errors.(*errorString).Error", (go::interface_item **)CAPIBase::errorInterface());
+        table.findByFuncName("errors.(*errorString).Error", (go::interface_item **) APIBase::errorInterface());
     }
 
     gSmithProbe->start();
 
-    for (const auto &api : GOLANG_API) {
+    for (const auto &api: GOLANG_API) {
         for (unsigned int i = 0; i < gLineTable->mFuncNum; i++) {
-            CFunc func = {};
+            Func func = {};
 
             if (!gLineTable->getFunc(i, func))
                 break;
 
             const char *name = func.getName();
-            void *entry = (void *)func.getEntry();
+            void *entry = (void *) func.getEntry();
 
             if ((api.ignoreCase ? strcasecmp(api.name, name) : strcmp(api.name, name)) == 0) {
                 LOG_INFO("hook %s: %p", name, entry);
 
-                if (hookAPI(entry, (void *)api.metadata.entry, api.metadata.origin) < 0) {
+                if (hookAPI(entry, (void *) api.metadata.entry, api.metadata.origin) < 0) {
                     LOG_WARNING("hook %s failed", name);
                     break;
                 }
@@ -74,7 +131,12 @@ int main(int argc, char **argv, char **env) {
     }
 
     pthread_sigmask(SIG_SETMASK, &origin_mask, nullptr);
-    loader.jump(argc - 1, argv + 1, env);
+    pthread_setname_np(
+            pthread_self(),
+            std::filesystem::path(argv[1]).filename().string().substr(0, TASK_COMM_LEN - 1).c_str()
+    );
+
+    jump_to_entry(ctx, argc - 1, argv + 1, envp);
 
     return 0;
 }
