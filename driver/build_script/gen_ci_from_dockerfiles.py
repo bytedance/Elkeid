@@ -24,14 +24,14 @@ def gen_job(vminfo):
             "runs-on": runs_on,
             "steps": [
                 OrderedDict({
-                    "uses": "actions/checkout@v2",
+                    "uses": "actions/checkout@v3",
                     "with": {
                         "submodules": "recursive"
                     }
                 }),
                 OrderedDict({
                     "name": "Login to Docker Hub",
-                    "uses": "docker/login-action@v1",
+                    "uses": "docker/login-action@v2",
                     "with": {
                         "username": "${{secrets.DOCKERHUB_USERNAME}}",
                         "password": "${{secrets.DOCKERHUB_TOKEN}}"
@@ -39,7 +39,7 @@ def gen_job(vminfo):
                 }),
                 OrderedDict({
                     "name": "Set up Docker Buildx "+vmname,
-                    "uses": "docker/setup-buildx-action@v1"
+                    "uses": "docker/setup-buildx-action@v2"
                 }),
 
                 OrderedDict({
