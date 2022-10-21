@@ -21,7 +21,7 @@ jobs:
     - name: Set up Docker Buildx aliyun_linux2
       uses: docker/setup-buildx-action@v2
     - name: Build aliyun_linux2
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.aliyun_linux2
         push: true
@@ -58,7 +58,7 @@ jobs:
     - name: Set up Docker Buildx aliyun_linux3
       uses: docker/setup-buildx-action@v2
     - name: Build aliyun_linux3
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.aliyun_linux3
         push: true
@@ -95,7 +95,7 @@ jobs:
     - name: Set up Docker Buildx amazonlinux
       uses: docker/setup-buildx-action@v2
     - name: Build amazonlinux
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux
         push: true
@@ -132,7 +132,7 @@ jobs:
     - name: Set up Docker Buildx amazonlinux510
       uses: docker/setup-buildx-action@v2
     - name: Build amazonlinux510
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux510
         push: true
@@ -169,7 +169,7 @@ jobs:
     - name: Set up Docker Buildx amazonlinux54
       uses: docker/setup-buildx-action@v2
     - name: Build amazonlinux54
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux54
         push: true
@@ -206,7 +206,7 @@ jobs:
     - name: Set up Docker Buildx debian10
       uses: docker/setup-buildx-action@v2
     - name: Build debian10
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.debian10
         push: true
@@ -243,7 +243,7 @@ jobs:
     - name: Set up Docker Buildx debian11
       uses: docker/setup-buildx-action@v2
     - name: Build debian11
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.debian11
         push: true
@@ -280,7 +280,7 @@ jobs:
     - name: Set up Docker Buildx debian8
       uses: docker/setup-buildx-action@v2
     - name: Build debian8
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.debian8
         push: true
@@ -317,7 +317,7 @@ jobs:
     - name: Set up Docker Buildx debian9
       uses: docker/setup-buildx-action@v2
     - name: Build debian9
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.debian9
         push: true
@@ -354,7 +354,7 @@ jobs:
     - name: Set up Docker Buildx rhel6
       uses: docker/setup-buildx-action@v2
     - name: Build rhel6
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.rhel6
         push: true
@@ -391,7 +391,7 @@ jobs:
     - name: Set up Docker Buildx rhel6_elrepo
       uses: docker/setup-buildx-action@v2
     - name: Build rhel6_elrepo
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.rhel6_elrepo
         push: true
@@ -428,7 +428,7 @@ jobs:
     - name: Set up Docker Buildx rhel7
       uses: docker/setup-buildx-action@v2
     - name: Build rhel7
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.aarch64/Dockerfile.rhel7
         push: true
@@ -465,7 +465,7 @@ jobs:
     - name: Set up Docker Buildx rhel7
       uses: docker/setup-buildx-action@v2
     - name: Build rhel7
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7
         push: true
@@ -502,7 +502,7 @@ jobs:
     - name: Set up Docker Buildx rhel7_centosplus
       uses: docker/setup-buildx-action@v2
     - name: Build rhel7_centosplus
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7_centosplus
         push: true
@@ -539,7 +539,7 @@ jobs:
     - name: Set up Docker Buildx rhel7_elrepo_lt
       uses: docker/setup-buildx-action@v2
     - name: Build rhel7_elrepo_lt
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7_elrepo_lt
         push: true
@@ -576,7 +576,7 @@ jobs:
     - name: Set up Docker Buildx rhel7_elrepo_ml
       uses: docker/setup-buildx-action@v2
     - name: Build rhel7_elrepo_ml
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7_elrepo_ml
         push: true
@@ -613,7 +613,7 @@ jobs:
     - name: Set up Docker Buildx rhel8
       uses: docker/setup-buildx-action@v2
     - name: Build rhel8
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8
         push: true
@@ -650,7 +650,7 @@ jobs:
     - name: Set up Docker Buildx rhel8_elrepo_lt
       uses: docker/setup-buildx-action@v2
     - name: Build rhel8_elrepo_lt
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8_elrepo_lt
         push: true
@@ -687,7 +687,7 @@ jobs:
     - name: Set up Docker Buildx rhel8_elrepo_ml
       uses: docker/setup-buildx-action@v2
     - name: Build rhel8_elrepo_ml
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8_elrepo_ml
         push: true
@@ -724,7 +724,7 @@ jobs:
     - name: Set up Docker Buildx rhel8_plus
       uses: docker/setup-buildx-action@v2
     - name: Build rhel8_plus
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8_plus
         push: true
@@ -761,7 +761,7 @@ jobs:
     - name: Set up Docker Buildx tlinux24
       uses: docker/setup-buildx-action@v2
     - name: Build tlinux24
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.tlinux24
         push: true
@@ -798,7 +798,7 @@ jobs:
     - name: Set up Docker Buildx tlinux31
       uses: docker/setup-buildx-action@v2
     - name: Build tlinux31
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.tlinux31
         push: true
@@ -835,7 +835,7 @@ jobs:
     - name: Set up Docker Buildx ubuntu1204
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1204
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1204
         push: true
@@ -872,7 +872,7 @@ jobs:
     - name: Set up Docker Buildx ubuntu1404_k3
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1404_k3
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1404_k3
         push: true
@@ -909,7 +909,7 @@ jobs:
     - name: Set up Docker Buildx ubuntu1404_k4
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1404_k4
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1404_k4
         push: true
@@ -946,7 +946,7 @@ jobs:
     - name: Set up Docker Buildx ubuntu1604_auzre
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_auzre
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_auzre
         push: true
@@ -983,7 +983,7 @@ jobs:
     - name: Set up Docker Buildx ubuntu1604_aws
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_aws
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_aws
         push: true
@@ -1020,7 +1020,7 @@ jobs:
     - name: Set up Docker Buildx ubuntu1604_k410
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_k410
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k410
         push: true
@@ -1057,7 +1057,7 @@ jobs:
     - name: Set up Docker Buildx ubuntu1604_k413
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_k413
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k413
         push: true
@@ -1094,7 +1094,7 @@ jobs:
     - name: Set up Docker Buildx ubuntu1604_k44
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_k44
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k44
         push: true
@@ -1131,7 +1131,7 @@ jobs:
     - name: Set up Docker Buildx ubuntu1604_k48
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_k48
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k48
         push: true
@@ -1168,7 +1168,7 @@ jobs:
     - name: Set up Docker Buildx ubuntu1804
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1804
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804
         push: true
@@ -1205,7 +1205,7 @@ jobs:
     - name: Set up Docker Buildx ubuntu1804_aws
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1804_aws
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804_aws
         push: true
@@ -1242,7 +1242,7 @@ jobs:
     - name: Set up Docker Buildx ubuntu1804_azure
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1804_azure
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804_azure
         push: true
@@ -1279,7 +1279,7 @@ jobs:
     - name: Set up Docker Buildx ubuntu2004
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu2004
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004
         push: true
@@ -1316,7 +1316,7 @@ jobs:
     - name: Set up Docker Buildx ubuntu2004_aws
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu2004_aws
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004_aws
         push: true
@@ -1353,7 +1353,7 @@ jobs:
     - name: Set up Docker Buildx ubuntu2004_azure
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu2004_azure
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004_azure
         push: true
@@ -1390,7 +1390,7 @@ jobs:
     - name: Set up Docker Buildx ubuntu2204
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu2204
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2204
         push: true

@@ -44,7 +44,7 @@ def gen_job(vminfo):
 
                 OrderedDict({
                     "name": "Build "+vmname,
-                    "uses": "docker/build-push-action@v2",
+                    "uses": "docker/build-push-action@v3",
                     "with": {
                         "file": dockerpath + "/Dockerfile."+vmname,
                         "push": True,
