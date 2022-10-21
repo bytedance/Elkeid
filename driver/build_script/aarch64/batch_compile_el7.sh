@@ -22,7 +22,7 @@ do
     KV=$each_tag.aarch64
 
     disableGcc8
-    if [[ $each_tag == 4.18*]]; then
+    if [[ $each_tag == 4.18* ]]; then
         enableGcc8
     fi
     
