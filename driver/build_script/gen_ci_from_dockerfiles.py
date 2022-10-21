@@ -25,6 +25,9 @@ def gen_job(vminfo):
             "steps": [
                 OrderedDict({
                     "uses": "actions/checkout@v3",
+                    "with": {
+                        "submodules": "false"
+                    }
                 }),
                 OrderedDict({
                     "name": "Login to Docker Hub",
@@ -43,6 +46,7 @@ def gen_job(vminfo):
                     "name": "Build "+vmname,
                     "uses": "docker/build-push-action@v3",
                     "with": {
+                        "context":".",
                         "file": dockerpath + "/Dockerfile."+vmname,
                         "push": True,
                         "tags": "elkeidteam/elkeid_driver_"+vmname+":latest"

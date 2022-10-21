@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -21,6 +23,7 @@ jobs:
     - name: Build aliyun_linux2
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.aliyun_linux2
         push: true
         tags: elkeidteam/elkeid_driver_aliyun_linux2:latest
@@ -46,6 +49,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -56,6 +61,7 @@ jobs:
     - name: Build aliyun_linux3
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.aliyun_linux3
         push: true
         tags: elkeidteam/elkeid_driver_aliyun_linux3:latest
@@ -81,6 +87,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -91,6 +99,7 @@ jobs:
     - name: Build amazonlinux
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux
         push: true
         tags: elkeidteam/elkeid_driver_amazonlinux:latest
@@ -116,6 +125,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -126,6 +137,7 @@ jobs:
     - name: Build amazonlinux510
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux510
         push: true
         tags: elkeidteam/elkeid_driver_amazonlinux510:latest
@@ -151,6 +163,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -161,6 +175,7 @@ jobs:
     - name: Build amazonlinux54
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux54
         push: true
         tags: elkeidteam/elkeid_driver_amazonlinux54:latest
@@ -186,6 +201,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -196,6 +213,7 @@ jobs:
     - name: Build debian10
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.debian10
         push: true
         tags: elkeidteam/elkeid_driver_debian10:latest
@@ -221,6 +239,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -231,6 +251,7 @@ jobs:
     - name: Build debian11
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.debian11
         push: true
         tags: elkeidteam/elkeid_driver_debian11:latest
@@ -256,6 +277,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -266,6 +289,7 @@ jobs:
     - name: Build debian8
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.debian8
         push: true
         tags: elkeidteam/elkeid_driver_debian8:latest
@@ -291,6 +315,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -301,6 +327,7 @@ jobs:
     - name: Build debian9
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.debian9
         push: true
         tags: elkeidteam/elkeid_driver_debian9:latest
@@ -326,6 +353,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -336,6 +365,7 @@ jobs:
     - name: Build rhel6
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel6
         push: true
         tags: elkeidteam/elkeid_driver_rhel6:latest
@@ -361,6 +391,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -371,6 +403,7 @@ jobs:
     - name: Build rhel6_elrepo
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel6_elrepo
         push: true
         tags: elkeidteam/elkeid_driver_rhel6_elrepo:latest
@@ -396,6 +429,8 @@ jobs:
     runs-on: [self-hosted,linux,ARM64]
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -406,6 +441,7 @@ jobs:
     - name: Build rhel7
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.aarch64/Dockerfile.rhel7
         push: true
         tags: elkeidteam/elkeid_driver_rhel7:latest
@@ -431,6 +467,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -441,6 +479,7 @@ jobs:
     - name: Build rhel7
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7
         push: true
         tags: elkeidteam/elkeid_driver_rhel7:latest
@@ -466,6 +505,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -476,6 +517,7 @@ jobs:
     - name: Build rhel7_centosplus
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7_centosplus
         push: true
         tags: elkeidteam/elkeid_driver_rhel7_centosplus:latest
@@ -501,6 +543,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -511,6 +555,7 @@ jobs:
     - name: Build rhel7_elrepo_lt
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7_elrepo_lt
         push: true
         tags: elkeidteam/elkeid_driver_rhel7_elrepo_lt:latest
@@ -536,6 +581,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -546,6 +593,7 @@ jobs:
     - name: Build rhel7_elrepo_ml
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7_elrepo_ml
         push: true
         tags: elkeidteam/elkeid_driver_rhel7_elrepo_ml:latest
@@ -571,6 +619,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -581,6 +631,7 @@ jobs:
     - name: Build rhel8
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8
         push: true
         tags: elkeidteam/elkeid_driver_rhel8:latest
@@ -606,6 +657,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -616,6 +669,7 @@ jobs:
     - name: Build rhel8_elrepo_lt
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8_elrepo_lt
         push: true
         tags: elkeidteam/elkeid_driver_rhel8_elrepo_lt:latest
@@ -641,6 +695,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -651,6 +707,7 @@ jobs:
     - name: Build rhel8_elrepo_ml
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8_elrepo_ml
         push: true
         tags: elkeidteam/elkeid_driver_rhel8_elrepo_ml:latest
@@ -676,6 +733,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -686,6 +745,7 @@ jobs:
     - name: Build rhel8_plus
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8_plus
         push: true
         tags: elkeidteam/elkeid_driver_rhel8_plus:latest
@@ -711,6 +771,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -721,6 +783,7 @@ jobs:
     - name: Build tlinux24
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.tlinux24
         push: true
         tags: elkeidteam/elkeid_driver_tlinux24:latest
@@ -746,6 +809,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -756,6 +821,7 @@ jobs:
     - name: Build tlinux31
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.tlinux31
         push: true
         tags: elkeidteam/elkeid_driver_tlinux31:latest
@@ -781,6 +847,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -791,6 +859,7 @@ jobs:
     - name: Build ubuntu1204
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1204
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1204:latest
@@ -816,6 +885,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -826,6 +897,7 @@ jobs:
     - name: Build ubuntu1404_k3
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1404_k3
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1404_k3:latest
@@ -851,6 +923,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -861,6 +935,7 @@ jobs:
     - name: Build ubuntu1404_k4
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1404_k4
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1404_k4:latest
@@ -886,6 +961,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -896,6 +973,7 @@ jobs:
     - name: Build ubuntu1604_auzre
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_auzre
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_auzre:latest
@@ -921,6 +999,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -931,6 +1011,7 @@ jobs:
     - name: Build ubuntu1604_aws
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_aws
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_aws:latest
@@ -956,6 +1037,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -966,6 +1049,7 @@ jobs:
     - name: Build ubuntu1604_k410
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k410
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_k410:latest
@@ -991,6 +1075,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1001,6 +1087,7 @@ jobs:
     - name: Build ubuntu1604_k413
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k413
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_k413:latest
@@ -1026,6 +1113,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1036,6 +1125,7 @@ jobs:
     - name: Build ubuntu1604_k44
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k44
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_k44:latest
@@ -1061,6 +1151,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1071,6 +1163,7 @@ jobs:
     - name: Build ubuntu1604_k48
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k48
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_k48:latest
@@ -1096,6 +1189,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1106,6 +1201,7 @@ jobs:
     - name: Build ubuntu1804
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1804:latest
@@ -1131,6 +1227,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1141,6 +1239,7 @@ jobs:
     - name: Build ubuntu1804_aws
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804_aws
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1804_aws:latest
@@ -1166,6 +1265,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1176,6 +1277,7 @@ jobs:
     - name: Build ubuntu1804_azure
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804_azure
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1804_azure:latest
@@ -1201,6 +1303,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1211,6 +1315,7 @@ jobs:
     - name: Build ubuntu2004
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2004:latest
@@ -1236,6 +1341,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1246,6 +1353,7 @@ jobs:
     - name: Build ubuntu2004_aws
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004_aws
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2004_aws:latest
@@ -1271,6 +1379,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1281,6 +1391,7 @@ jobs:
     - name: Build ubuntu2004_azure
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004_azure
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2004_azure:latest
@@ -1306,6 +1417,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1316,6 +1429,7 @@ jobs:
     - name: Build ubuntu2204
       uses: docker/build-push-action@v3
       with:
+        context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2204
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2204:latest
