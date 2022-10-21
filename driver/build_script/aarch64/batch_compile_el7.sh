@@ -9,7 +9,7 @@ enableGcc8(){
     export CXX=/opt/rh/devtoolset-8/root/usr/bin/c++
 }
 
-disableGcc8{
+disableGcc8(){
     unset CC
     unset CPP
     unset CXX
