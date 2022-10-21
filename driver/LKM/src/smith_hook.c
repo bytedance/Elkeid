@@ -3397,7 +3397,7 @@ struct kretprobe compat_execve_kretprobe = {
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0)
 struct kretprobe compat_execveat_kretprobe = {
-	    .kp.symbol_name = P_GET_SYSCALL_NAME(execveat),
+	    .kp.symbol_name = P_GET_COMPAT_SYSCALL_NAME(execveat),
 	    .entry_handler = compat_execveat_entry_handler,
 	    .data_size = sizeof(struct execve_data),
 	    .handler = execve_handler,
