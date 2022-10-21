@@ -21,10 +21,10 @@ do
     rpm --force -i /root/headers/kernel-devel-$each_tag.aarch64.rpm || true
     KV=$each_tag.aarch64
 
+    disableGcc8
     if [[ $each_tag == 4.18*]]; then
         enableGcc8
     fi
-
     
     KVERSION=$KV make -C ./LKM clean || true 
     BATCH=true KVERSION=$KV make -C ./LKM -j all | tee /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_arm64.log || true 
