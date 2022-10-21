@@ -11,7 +11,6 @@ wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.tuna.tsi
 wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.tuna.tsinghua.edu.cn/cc/8.3/BaseOS/x86_64/os/Packages/';  \
 wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.tuna.tsinghua.edu.cn/cc/8.4/BaseOS/x86_64/os/Packages/';  \
 wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.tuna.tsinghua.edu.cn/cc/8.5/BaseOS/x86_64/os/Packages/'; \
-
 wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'http://repos-va.psychz.net/centos/8-stream/BaseOS/x86_64/os/Packages/';
 
 RUN rpm --force -i /root/headers/*.rpm || true
