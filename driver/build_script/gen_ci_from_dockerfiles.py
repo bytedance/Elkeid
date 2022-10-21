@@ -25,9 +25,6 @@ def gen_job(vminfo):
             "steps": [
                 OrderedDict({
                     "uses": "actions/checkout@v3",
-                    "with": {
-                        "submodules": "recursive"
-                    }
                 }),
                 OrderedDict({
                     "name": "Login to Docker Hub",

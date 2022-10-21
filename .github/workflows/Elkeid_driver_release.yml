@@ -8,8 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -45,8 +43,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -82,8 +78,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -119,8 +113,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -156,8 +148,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -193,8 +183,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -230,8 +218,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -267,8 +253,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -304,8 +288,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -341,8 +323,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -378,8 +358,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -415,8 +393,6 @@ jobs:
     runs-on: [self-hosted,linux,ARM64]
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -452,8 +428,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -489,8 +463,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -526,8 +498,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -563,8 +533,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -600,8 +568,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -637,8 +603,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -674,8 +638,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -711,8 +673,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -748,8 +708,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -785,8 +743,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -822,8 +778,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -859,8 +813,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -896,8 +848,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -933,8 +883,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -970,8 +918,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1007,8 +953,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1044,8 +988,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1081,8 +1023,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1118,8 +1058,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1155,8 +1093,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1192,8 +1128,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1229,8 +1163,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1266,8 +1198,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1303,8 +1233,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1340,8 +1268,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -1377,8 +1303,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-      with:
-        submodules: recursive
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
