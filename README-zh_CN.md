@@ -22,6 +22,7 @@ Elkeid是一个云原生的基于主机的安全(入侵检测与风险识别)解
   * [Journal Watcher](plugins/journal_watcher): 负责监测systemd日志的插件，目前支持ssh相关日志采集与上报
   * [Scanner Plugin](https://github.com/bytedance/Elkeid/blob/main/plugins/scanner): 负责在端上进行静态检测恶意文件的插件，目前支持yara
   * [RASP Plugin](https://github.com/bytedance/Elkeid/tree/main/rasp/plugin): 分析系统进程运行时，上报运行时信息，处理server下发的 attach 指令，收集各个探针上报的数据，并支持与探针通信。
+  * [Baseline Plugin](https://github.com/bytedance/Elkeid/tree/main/plugins/baseline): 负责在端上进行基线风险识别的插件，支持用户自定义基线规则。
 
 以上组件可以提供以下数据：
 <img src="png/data_index.png"/>
