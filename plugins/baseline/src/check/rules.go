@@ -77,16 +77,12 @@ func FileLineCheck(ruleStruct RuleStruct, resultMatch ResultMatchFunc) (result b
 	switch ruleStruct.Require {
 	case "":
 		break
-	case "close_ssh_passwd":
-		if IfCloseSshPasswd() {
+	case "allow_ssh_passwd":
+		if IfAllowSshPasswd() {
+			break
+		}else {
 			return true, nil
 		}
-		break
-	case "close_ssh_passwd_false":
-		if IfCloseSshPasswd() {
-			return false, nil
-		}
-		break
 	}
 
 	note := "#"
@@ -256,8 +252,8 @@ func IfDuplicateUser() bool {
 	return true
 }
 
-// IfCloseSshPasswd Determine whether the ssh password login is turned off
-func IfCloseSshPasswd() bool {
+// IfAllowSshPasswd Determine whether the ssh password login is turned open
+func IfAllowSshPasswd() bool {
 	file, _ := os.Open("/etc/ssh/sshd_config")
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -268,7 +264,7 @@ func IfCloseSshPasswd() bool {
 			continue
 		}
 		if strings.Contains(line, "PasswordAuthentication") {
-			if strings.Contains(line, "no") {
+			if strings.Contains(line, "yes") {
 				return true
 			}
 		}

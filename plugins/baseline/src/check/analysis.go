@@ -18,6 +18,11 @@ type RetBaselineInfo struct {
 
 type RetCheckInfo struct {
 	CheckId       int    `json:"check_id" bson:"check_id"`
+	Type 	string 		`json:"type" bson:"type"`
+	Title 	string 		`json:"title" bson:"title"`
+	Description 	string 	`json:"description" bson:"description"`
+	Solution 		string 	`json:"solution" bson:"solution"`
+	TypeCn 	string 		`json:"type_cn" bson:"type_cn"`
 	TitleCn       string `json:"title_cn" bson:"title_cn"`
 	DescriptionCn string `json:"description_cn" bson:"description_cn"`
 	SolutionCn    string `json:"solution_cn" bson:"solution_cn"`
@@ -81,9 +86,14 @@ func AnalysisBaseline(taskData TaskData) (retBaselineInfo RetBaselineInfo, err e
 		}
 		var retcheckInfo RetCheckInfo
 		retcheckInfo.CheckId = checkInfo.CheckId
+		retcheckInfo.TypeCn = checkInfo.TypeCn
 		retcheckInfo.TitleCn = checkInfo.TitleCn
 		retcheckInfo.DescriptionCn = checkInfo.DescriptionCn
 		retcheckInfo.SolutionCn = checkInfo.SolutionCn
+		retcheckInfo.Type = checkInfo.Type
+		retcheckInfo.Title = checkInfo.Title
+		retcheckInfo.Description = checkInfo.Description
+		retcheckInfo.Solution = checkInfo.Solution
 		ifPass, err := AnalysisRule(checkInfo.Check)
 		if err != nil {
 			retcheckInfo.Result = ErrorCode

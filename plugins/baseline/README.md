@@ -77,6 +77,41 @@ $(<)8$(&&)$(not)2  :  目标小于8且目标不为2
 ```
 #### check.condition
 由于规则的rule可能存在多个，因此可以通过condition字段定义规则之前的关系  
-all: 全部规则命中  
-any: 任一规则命中  
-none: 无规则命中  
+all: 全部规则命中,则通过检测  
+any: 任一规则命中,则通过检测  
+none: 无规则命中,则通过检测  
+## 下发任务
+### 任务下发
+```json
+{
+    "baseline_id": 1200, // 基线id
+    "check_id_list":[1,2,3] // 扫描检查项列表(空列表为全部扫描)
+}
+```
+### 结果回传
+```json
+{
+    "baseline_id": 1200,    // 基线id
+    "status": "success",    // 检测状态success|error
+    "msg": "",  // 错误原因
+    "check_list":[
+        "check_id": 1,  // 检查项id
+        "type": "",     // 类型(英文)
+        "title": "",   // 检查项标题(英文)
+        "description": "",  // 检查项描述(英文)
+        "solution": "",     // 解决方案(英文)
+        "type_cn": "",     // 类型
+        "title_cn": "",     // 检查项标题
+        "description_cn": "",   // 检查项描述
+        "solution_cn": "",  // 解决方案
+        "result": "",   // 检查结果
+        "msg": "",   // 错误原因
+    ]
+}
+检查结果：
+SuccessCode 		= 1  // 成功
+FailCode 			= 2  // 失败
+ErrorCode 			= -1 // 其他错误
+ErrorConfigWrite	= -2 // 配置编写不规范
+ErrorFile			= -3 // 文件读写异常
+```
