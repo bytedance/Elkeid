@@ -28,7 +28,7 @@ FetchContent_MakeAvailable(ELFIO)
 FetchContent_Declare(
         trap
         GIT_REPOSITORY https://github.com/Hackerl/trap
-        GIT_TAG master
+        GIT_TAG ccb0acc39faf8584c490d3ba34d788f4014f653e
 )
 
 FetchContent_MakeAvailable(trap)
@@ -36,7 +36,7 @@ FetchContent_MakeAvailable(trap)
 FetchContent_Declare(
         c-runtime
         GIT_REPOSITORY https://github.com/Hackerl/c-runtime
-        GIT_TAG master
+        GIT_TAG 77e47318432a39b4920b8d06610aea0b43138b23
 )
 
 FetchContent_MakeAvailable(c-runtime)
