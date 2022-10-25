@@ -28,19 +28,20 @@ while read A B C SUBROOT MOUNT JUNK
 [ $MOUNT = $FILESYS ] # More sanity check!
 SUBPATH=$(echo $REALPATH | sed s,^$FILESYS,,)
 DEVDEC=$(printf "%d %d" $(stat --format "0x%t 0x%T" $DEV))
-run_command="$NSENTER_PATH --target $PID --mount --uts --ipc --net --pid -- sh -c PATH=/usr/bin:/bin:/sbin"
-if  [ `$run_command "mount|grep $CONTPATH|wc -l"` -ne 0 ];then
+run_command="$NSENTER_PATH --target $PID --mount --uts --ipc --net --pid -- sh -c"
+if  [ `$run_command "export PATH=/usr/bin:/bin:/sbin;mount|grep $CONTPATH|wc -l"` -ne 0 ];then
     echo "container  mount dir $CONTPATH is mounting!"
     exit 0
 fi
-$run_command "[ -b $DEV ] ||mknod --mode 0600 $DEV b $DEVDEC"
-$run_command "mkdir /tmpmnt"
-$run_command "mount $DEV /tmpmnt"
-$run_command "mkdir -p $CONTPATH"
-$run_command "mount -o bind /tmpmnt/$SUBROOT/$SUBPATH $CONTPATH"
-$run_command "umount /tmpmnt"
-$run_command "rmdir /tmpmnt"
-check_result=`$run_command "mount|grep $CONTPATH|wc -l"`
+$run_command "export PATH=/usr/bin:/bin:/sbin;[ -b $DEV ] ||mknod --mode 0600 $DEV b $DEVDEC"
+$run_command "export PATH=/usr/bin:/bin:/sbin;mkdir /tmpmnt"
+$run_command "export PATH=/usr/bin:/bin:/sbin;mount $DEV /tmpmnt"
+$run_command "export PATH=/usr/bin:/bin:/sbin;mkdir -p $CONTPATH"
+$run_command "export PATH=/usr/bin:/bin:/sbin;mount -o bind /tmpmnt/$SUBROOT/$SUBPATH $CONTPATH"
+$run_command "export PATH=/usr/bin:/bin:/sbin;umount /tmpmnt"
+$run_command "export PATH=/usr/bin:/bin:/sbin;rmdir /tmpmnt"
+check_result=`$run_command "export PATH=/usr/bin:/bin:/sbin;mount|grep $CONTPATH|wc -l"`
+echo check_result
 if [ $check_result -ne 0 ];then
     echo "dynamic mount physics $HOSTPATH on $PID $CONTPATH is success!"
     exit 0
