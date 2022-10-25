@@ -553,6 +553,7 @@ impl RASPManager {
             pid.to_string().as_str(),
             "sh",
             "-c",
+            "PATH=/bin:/usr/bin:/sbin",
             format!(
                 "mkdir -p {} && echo '{}' > {} && mv {} {}",
                 config_dir, message, config_path_bak, config_path_bak, config_path
