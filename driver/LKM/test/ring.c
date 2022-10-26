@@ -388,10 +388,10 @@ int tb_unpack(void *de, int sde, void *se, int *rec)
     int in = 0, i = 1, out = 0, sse;
 
     if (*rec <= sizeof(u64) + sizeof(*it) * 2)
-        return 0;
+        return -EINVAL;
     it = sd_query_event(se, &sse);
     if (!it || sse > *rec)
-        return 0;
+        return -ENOENT;
     *rec = sse;
 
     /* skip ts + head + meta */
@@ -401,7 +401,7 @@ int tb_unpack(void *de, int sde, void *se, int *rec)
     /* timestamp */
     out = sd_u64toa(*((uint64_t *)se), de, sde);
     if (out <= 0)
-        return 0;
+        return out;
 #endif
 
     while (in < sse && out < sde) {
@@ -412,11 +412,11 @@ int tb_unpack(void *de, int sde, void *se, int *rec)
         if (!t && out)
             break;
         if (t >= sizeof(g_sd_types) / sizeof(struct sd_type_ent))
-            return 0;
+            return -ENOENT;
         if (!g_sd_types[t].unpack)
-            return 0;
+            return -ENOENT;
         if (g_sd_types[t].size != it[i].len)
-            return 0;
+            return -EPROTO;
 
         /* start deserializing */
         rc = g_sd_types[t].unpack(de + out, sde - out,
@@ -509,7 +509,7 @@ int tb_read_ring(char *msg, int len, int (*cb)(int *), int *ctx)
     int rc = 0, fd =tb->fd - 1;
 
     if (tb->fd <= 0)
-        return rc;
+        return -EBADFD;
 
     do {
 
@@ -519,11 +519,23 @@ int tb_read_ring(char *msg, int len, int (*cb)(int *), int *ctx)
             int ret, rec = tb->msgsz - tb->start;
             ret = tb_unpack(&msg[rc], len - rc,
                             &dat[tb->start], &rec);
+            /* len - rc: isn't long enough for new event */
+            if (rc && !ret)
+                break;
+
+            /* got error in unpacking or msg is too small */
             tb->start += rec;
             if (ret <= 0)
                 break;
 
+            /*
+             * vsnprintf returns the length of generated output,
+             * could be longer than size of input buffer, but it
+             * won't overflow
+             */
             rc += ret;
+            if (rc > len)
+                rc = len;
             if (rc >= len)
                 goto out;
         }
@@ -531,7 +543,7 @@ int tb_read_ring(char *msg, int len, int (*cb)(int *), int *ctx)
         if (rc || cb(ctx))
             break;
 
-        /* retrieve payloads from kernel to pool */
+        /* retrieve payloads from kernel to internal pool */
         tb->start = 0;
         tb->msgsz = read(fd, tb->pool, tb->bufsz - 1);
 
