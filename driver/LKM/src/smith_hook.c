@@ -353,8 +353,15 @@ static int __init kernel_symbols_init(void)
 
 static void to_print_privilege_escalation(const struct cred *current_cred, unsigned int p_cred_info[], char * pid_tree, int p_pid)
 {
+    char *exe_path = DEFAULT_RET_STR;
+    struct smith_tid *tid = NULL;
+
     char p_cred[128];
     char c_cred[128];
+
+    tid = smith_lookup_tid(current);
+    if (tid)
+        exe_path = tid->st_img->si_path;
 
     snprintf(p_cred, sizeof(p_cred), "%u|%u|%u|%u|%u|%u|%u|%u", p_cred_info[0], p_cred_info[1], p_cred_info[2], p_cred_info[3],
              p_cred_info[4], p_cred_info[5], p_cred_info[6], p_cred_info[7]);
@@ -364,7 +371,10 @@ static void to_print_privilege_escalation(const struct cred *current_cred, unsig
             _XID_VALUE(current_cred->fsuid), _XID_VALUE(current_cred->gid), _XID_VALUE(current_cred->egid),
             _XID_VALUE(current_cred->sgid), _XID_VALUE(current_cred->fsgid));
 
-    privilege_escalation_print(p_pid, pid_tree, p_cred, c_cred);
+    privilege_escalation_print(exe_path, p_pid, pid_tree, p_cred, c_cred);
+
+    if (tid)
+        smith_put_tid(tid);
 }
 
 static int smith_check_privilege_escalation(int limit, char *pid_tree)
