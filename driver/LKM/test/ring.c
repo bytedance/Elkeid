@@ -14,13 +14,15 @@
 
 #include "../include/trace.h"
 
+#define HAVE_EVENT_SINGLE   (1) /* tb_read_ring always returns with 1 record or nothing */
+
 /*
  * xfer:
  *
  * ring-buffer deserializing
  */
 
-int tb_hexdump(void *ptr, int len)
+static void tb_hexdump(void *ptr, int len)
 {
     uint8_t *dat = ptr;
     char str[18] = {0}, hex[50] = {0};
@@ -397,7 +399,7 @@ int tb_unpack(void *de, int sde, void *se, int *rec)
     /* skip ts + head + meta */
     in += sizeof(u64) + sizeof(*it) + sizeof(uint32_t);
 
-#if 0
+#if defined(HAVE_EVENT_TIMESTAMP)
     /* timestamp */
     out = sd_u64toa(*((uint64_t *)se), de, sde);
     if (out <= 0)
@@ -429,11 +431,13 @@ int tb_unpack(void *de, int sde, void *se, int *rec)
         out += rc;
     }
 
+#if !defined(HAVE_EVENT_SINGLE)
     /* filling record endian at the tail: SD_REC_ENDIAN */
     if (out && sde > out + 3) {
         *((uint32_t *)(de + out - 1)) = SD_REC_ENDIAN;
         out += 3;
     }
+#endif
 
     return out;
 }
@@ -536,8 +540,16 @@ int tb_read_ring(char *msg, int len, int (*cb)(int *), int *ctx)
             rc += ret;
             if (rc > len)
                 rc = len;
+
+#if defined(HAVE_EVENT_SINGLE)
+            /* fill only 1 event to user buffer and return */
+            if (rc > 0)
+                goto out;
+#else
+            /* try to fill up user buffer */
             if (rc >= len)
                 goto out;
+#endif
         }
 
         if (rc || cb(ctx))
