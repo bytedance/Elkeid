@@ -800,11 +800,14 @@ size_t smith_strnlen (const char *str, size_t maxlen)
             }
             char_ptr += sizeof(longword);
         } else {
-            while (char_ptr < end_ptr && *char_ptr)
-                char_ptr++;
+            do {
+                if (!*char_ptr)
+                    goto out;
+            } while (++char_ptr < end_ptr);
         }
     }
 
+out:
     if (char_ptr > end_ptr)
         char_ptr = end_ptr;
     return char_ptr - str;
@@ -821,7 +824,8 @@ size_t smith_strnlen (const char *str, size_t maxlen)
 #define TEST_STRNLEN_STR7  "_123456789012345678"
 #define TEST_STRNLEN_STR8  "__123456789012345678"
 #define TEST_STRNLEN_STR9  "___123456789012345678"
-static void smith_strnlen_test(void)
+#define TEST_STRNLEN_STRA  "___123456789012345\000 678"
+void smith_strnlen_test(void)
 {
     printk("STR0: %px %ld\n", TEST_STRNLEN_STR0, smith_strnlen(&TEST_STRNLEN_STR0[0], 128));
     printk("STR1: %px %ld\n", TEST_STRNLEN_STR1, smith_strnlen(&TEST_STRNLEN_STR1[1], 128));
@@ -833,5 +837,12 @@ static void smith_strnlen_test(void)
     printk("STR7: %px %ld\n", TEST_STRNLEN_STR7, smith_strnlen(&TEST_STRNLEN_STR7[1], 128));
     printk("STR8: %px %ld\n", TEST_STRNLEN_STR8, smith_strnlen(&TEST_STRNLEN_STR8[2], 128));
     printk("STR9: %px %ld\n", TEST_STRNLEN_STR9, smith_strnlen(&TEST_STRNLEN_STR9[3], 128));
+    printk("STRA: %px %ld\n", TEST_STRNLEN_STRA, smith_strnlen(&TEST_STRNLEN_STRA[0], 128));
+    printk("STRB: %px %ld\n", TEST_STRNLEN_STRA, smith_strnlen(&TEST_STRNLEN_STRA[1], 128));
+    printk("STRC: %px %ld\n", TEST_STRNLEN_STRA, smith_strnlen(&TEST_STRNLEN_STRA[2], 128));
+    printk("STRD: %px %ld\n", TEST_STRNLEN_STRA, smith_strnlen(&TEST_STRNLEN_STRA[3], 128));
+    printk("STRE: %px %ld\n", TEST_STRNLEN_STRA, smith_strnlen(&TEST_STRNLEN_STRA[4], 128));
+    printk("STRF: %px %ld\n", TEST_STRNLEN_STRA, smith_strnlen(&TEST_STRNLEN_STRA[5], 128));
+    printk("STRF: %px %ld\n", TEST_STRNLEN_STRA, smith_strnlen(&TEST_STRNLEN_STRA[6], 128));
 }
 #endif
