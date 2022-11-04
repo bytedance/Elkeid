@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <fcntl.h>
+#include <errno.h>
 
 #include <sys/time.h>
 #include <sys/types.h>
@@ -328,7 +329,7 @@ static inline int sd_xfer_unpack_ip4be(void *b, int l, void *v, int s, int *r)
 static inline int sd_xfer_unpack_ip6be(void *b, int l, void *v, int s, int *r)
 {
     uint16_t *d = (uint16_t *)(v);
-    *r = sizeof(struct ipaddr_v6);;
+    *r = sizeof(struct ipaddr_v6);
     return snprintf(b, l, "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x%c",
                     d[7], d[6], d[5], d[4], d[3], d[2], d[1], d[0], SD_SEP_ENTRY);
 }
@@ -343,8 +344,8 @@ static int sd_xfer_unpack_string(void *b, int l, void *v, int s, int *r)
         rc = pv[1];
         str = (char *)v + pv[0];
     } else {
-        rc = 6;
-        str = "(null)";
+        rc = 2;
+        str = "-5";
     }
     if (rc > l)
         return 0;
@@ -423,8 +424,11 @@ int tb_unpack(void *de, int sde, void *se, int *rec)
         /* start deserializing */
         rc = g_sd_types[t].unpack(de + out, sde - out,
                                   se + in, sse - in, &ri);
+        if (ri != g_sd_types[t].size)
+            return -EPROTO;
+
         /* user buffer might overflow */
-        if (rc <= 0 || ri != g_sd_types[t].size)
+        if (rc <= 0)
             return 0;
 
         in  += ri;
@@ -507,6 +511,17 @@ void tb_fini_ring(void)
 #define ALIGN(x, a) __ALIGN_MASK(x, (typeof(x))(a) - 1)
 #define __ALIGN_MASK(x, mask) (((x) + (mask)) & ~(mask))
 
+/*
+ * tb_read_ring返回值描述：
+ *
+ * >0: 正常情况
+ * =0: 无数据返回，一般是收到signal 或者 msg/len过小
+ *
+ * -EBADFD: b_init_ring不成功，或者 /proc/elkeid-endpoint的fd被关闭
+ * -ENOENT: 没有找到对应日志的格式信息，比如ringbuf的数据损坏
+ * -EPROTO: 日志长度 与 对应的格式描述 不符合，数据损坏的可能
+ *    ... : 系统函数read()返回-1时的错误码，已处理成负数
+ */
 int tb_read_ring(char *msg, int len, int (*cb)(int *), int *ctx)
 {
     struct tb_trace *tb = &g_tb_trace;
@@ -558,8 +573,9 @@ int tb_read_ring(char *msg, int len, int (*cb)(int *), int *ctx)
         /* retrieve payloads from kernel to internal pool */
         tb->start = 0;
         tb->msgsz = read(fd, tb->pool, tb->bufsz - 1);
-
-    } while (rc < len && tb->msgsz);
+        if (tb->msgsz < 0)
+            rc = -errno;
+    } while (rc < len && rc >= 0);
 
 out:
     return rc;
