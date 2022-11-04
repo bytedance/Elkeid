@@ -125,7 +125,7 @@ void smith_enum_img(void);
 struct smith_tid {
     struct hlist_hnod   st_node;
     uint64_t            st_start;   /* start time of current task */
-    uint32_t            st_pid;     /* thread id (per task) */
+    uint32_t            st_tgid;    /* process id / thread group id */
     uint32_t            st_sid;     /* session id (when being created) */
     char               *st_pid_tree;/* pid tree strings */
     struct smith_img   *st_img;     /* cache of exe path */
