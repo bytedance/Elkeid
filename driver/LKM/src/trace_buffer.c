@@ -853,13 +853,18 @@ size_t tb_nr_dirty_pages(struct tb_ring *buffer, int cpu)
  * Schedules a delayed work to wake up any task that is blocked on the
  * ring buffer waiters queue.
  */
-void tb_wake_up_waiters(struct tb_irq_work *work)
+static void tb_wake_up_waiters(struct tb_irq_work *work)
 {
 	wake_up_all(&work->waiters);
 	if (work->wakeup_full) {
 		work->wakeup_full = false;
 		wake_up_all(&work->full_waiters);
 	}
+}
+
+void tb_wake_up(struct tb_ring *buffer)
+{
+	buffer->irq_work.wakeup(&buffer->irq_work);
 }
 
 /**

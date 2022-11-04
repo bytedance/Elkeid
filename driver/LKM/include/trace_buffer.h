@@ -111,6 +111,7 @@ __tb_alloc(unsigned long size, unsigned flags, struct lock_class_key *key);
 	__tb_alloc((size), (flags), &__key);	\
 })
 
+void tb_wake_up(struct tb_ring *ring);
 int tb_wait(struct tb_ring *ring, int cpu, int full);
 void tb_free(struct tb_ring *ring);
 

@@ -163,7 +163,7 @@ static int trace_wait_pipe(struct file *filp)
             return ret;
     }
 
-    return 1;
+    return 0;
 }
 
 static inline int trace_next_cpu(int n, const struct cpumask *mask, int start, bool wrap)
@@ -237,7 +237,7 @@ static int trace_put_user(struct trace_instance *ti, char __user *ubuf,
 static ssize_t trace_read_pipe(struct file *filp, char __user *ubuf,
                                size_t cnt, loff_t *ppos)
 {
-    struct trace_instance *ti = filp->private_data;
+    struct trace_instance *ti;
     ssize_t rc = 0;
 
     /*
@@ -250,15 +250,20 @@ static ssize_t trace_read_pipe(struct file *filp, char __user *ubuf,
     if(fatal_signal_pending(current))
         goto out;
 
+    ti = filp->private_data;
+    if (!ti) {
+        rc = -EBADF;
+        goto out;
+    }
+
     if(!tb_record_is_on(ti->ring))
         goto out;
 
     rc = trace_wait_pipe(filp);
-    if (rc <= 0)
+    if (rc)
         goto out;
 
     /* stop when tracing is finished */
-    rc = 0;
     if (trace_is_empty(ti))
         goto out;
 
@@ -292,7 +297,17 @@ static int trace_release_pipe(struct inode *inode, struct file *file)
 {
     struct trace_instance *ti = file->private_data;
 
+    if (!ti)
+        return -EBADF;
+
+    /* wake up pipe consumers in waitqueue */
+    tb_wake_up(ti->ring);
+
+    mutex_lock(&g_trace_lock);
+    file->private_data = NULL;
     kfree(ti);
+    mutex_unlock(&g_trace_lock);
+
     module_put(THIS_MODULE);
 
     return 0;
