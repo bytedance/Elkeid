@@ -145,6 +145,8 @@ static __always_inline char *smith_d_path(const struct path *path, char *buf, in
     char *name = DEFAULT_RET_STR;
     if (buf) {
         name = smith_d_absolute_path(path, buf, buflen);
+        if (PTR_ERR(name) == -EINVAL && d_path != smith_d_absolute_path)
+            name = d_path(path, buf, buflen);
         if (IS_ERR(name))
             name = NAME_TOO_LONG;
     }
