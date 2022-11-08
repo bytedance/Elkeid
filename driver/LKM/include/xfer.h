@@ -246,7 +246,7 @@ struct ipaddr_v4 {
 
 #if defined(__SD_XFER_SE__)
 
-#define SD_MAX_SIZE_STR                     (16384 - 4)
+#define SD_MAX_SIZE_STR                     (16384 - 32)
 
 
 /*

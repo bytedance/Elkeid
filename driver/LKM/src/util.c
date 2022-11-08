@@ -696,13 +696,19 @@ u8 *smith_query_sb_uuid(struct super_block *sb)
 size_t smith_strnlen (const char *str, size_t maxlen)
 {
     const char *char_ptr, *end_ptr = str + maxlen;
+    const char *aligned;
     unsigned long longword, himagic, lomagic;
 
     if (!str || maxlen == 0)
         return 0;
 
-    if (unlikely (end_ptr < str))
+    if (unlikely (end_ptr < str)) {
         end_ptr = (const char *) ~0UL;
+        aligned = (const char *) ~(sizeof(longword) - 1UL);
+    } else {
+        unsigned long end = (unsigned long)end_ptr;
+        aligned = (const char *)(end & ~(sizeof(longword) - 1UL));
+    }
 
     /* Handle the first few characters by reading one character at a time.
        Do this until CHAR_PTR is aligned on a longword boundary.  */
@@ -710,7 +716,7 @@ size_t smith_strnlen (const char *str, size_t maxlen)
          ++char_ptr) {
         if (char_ptr >= end_ptr)
             return end_ptr - str;
-        else if (*char_ptr == '\0')
+        else if (*char_ptr == 0)
             return char_ptr - str;
     }
 
@@ -736,7 +742,7 @@ size_t smith_strnlen (const char *str, size_t maxlen)
     /* Instead of the traditional loop which tests each character,
        we will test a longword at a time.  The tricky part is testing
        if *any of the four* bytes in the longword in question are zero.  */
-    while (char_ptr < end_ptr) {
+    while (char_ptr < aligned) {
         /* We tentatively exit the loop if adding MAGIC_BITS to
 	       LONGWORD fails to change any of the hole bits of LONGWORD.
 
@@ -765,51 +771,25 @@ size_t smith_strnlen (const char *str, size_t maxlen)
 
 	       So it ignores everything except 128's, when they're aligned
 	       properly.  */
-        if (likely(char_ptr <= end_ptr - sizeof(longword))) {
-            longword = *((unsigned long *)char_ptr);
-            if ((longword - lomagic) & himagic)	{
-                /* Which of the bytes was the zero?  If none of them were, it was
-                a misfire; continue the search.  */
-                const char *cp = char_ptr;
-                char_ptr = cp;
-                if (cp[0] == 0)
-                    break;
-                char_ptr = cp + 1;
-                if (cp[1] == 0)
-                    break;
-                char_ptr = cp + 2;
-                if (cp[2] == 0)
-                    break;
-                char_ptr = cp + 3;
-                if (cp[3] == 0)
-                    break;
-                if (sizeof (longword) > 4) {
-                    char_ptr = cp + 4;
-                    if (cp[4] == 0)
-                        break;
-                    char_ptr = cp + 5;
-                    if (cp[5] == 0)
-                        break;
-                    char_ptr = cp + 6;
-                    if (cp[6] == 0)
-                        break;
-                    char_ptr = cp + 7;
-                    if (cp[7] == 0)
-                        break;
-                }
+        longword = *((unsigned long *)char_ptr);
+        if ((longword - lomagic) & himagic)	{
+            int i;
+            /* Is there a zero byte ? Continue search if misfires. */
+            for (i = 0; i < sizeof(longword); i++) {
+                if (char_ptr[i] == 0)
+                    return char_ptr + i - str;
+
             }
-            char_ptr += sizeof(longword);
-        } else {
-            do {
-                if (!*char_ptr)
-                    goto out;
-            } while (++char_ptr < end_ptr);
         }
+        char_ptr += sizeof(longword);
     }
 
-out:
-    if (char_ptr > end_ptr)
-        char_ptr = end_ptr;
+    while (char_ptr < end_ptr) {
+        if (!*char_ptr)
+            break;
+        char_ptr++;
+    }
+
     return char_ptr - str;
 }
 
@@ -824,7 +804,7 @@ out:
 #define TEST_STRNLEN_STR7  "_123456789012345678"
 #define TEST_STRNLEN_STR8  "__123456789012345678"
 #define TEST_STRNLEN_STR9  "___123456789012345678"
-#define TEST_STRNLEN_STRA  "___123456789012345\000 678"
+#define TEST_STRNLEN_STRA  "___123456789012345\000 6"
 void smith_strnlen_test(void)
 {
     printk("STR0: %px %ld\n", TEST_STRNLEN_STR0, smith_strnlen(&TEST_STRNLEN_STR0[0], 128));
@@ -843,6 +823,6 @@ void smith_strnlen_test(void)
     printk("STRD: %px %ld\n", TEST_STRNLEN_STRA, smith_strnlen(&TEST_STRNLEN_STRA[3], 128));
     printk("STRE: %px %ld\n", TEST_STRNLEN_STRA, smith_strnlen(&TEST_STRNLEN_STRA[4], 128));
     printk("STRF: %px %ld\n", TEST_STRNLEN_STRA, smith_strnlen(&TEST_STRNLEN_STRA[5], 128));
-    printk("STRF: %px %ld\n", TEST_STRNLEN_STRA, smith_strnlen(&TEST_STRNLEN_STRA[6], 128));
+    printk("STRG: %px %ld\n", TEST_STRNLEN_STRA, smith_strnlen(&TEST_STRNLEN_STRA[6], 128));
 }
 #endif
