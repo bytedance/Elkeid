@@ -364,8 +364,16 @@ PHP_MINFO_FUNCTION (php_probe) {
     php_info_print_table_end();
 }
 
+zend_module_dep php_probe_module_dep[] = {
+        ZEND_MOD_REQUIRED("standard")
+        ZEND_MOD_CONFLICTS("xdebug")
+        ZEND_MOD_END
+};
+
 zend_module_entry php_probe_module_entry = {
-        STANDARD_MODULE_HEADER,
+        STANDARD_MODULE_HEADER_EX,
+        nullptr,
+        php_probe_module_dep,
         "php probe",
         nullptr,
         PHP_MINIT(php_probe),
