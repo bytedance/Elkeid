@@ -40,7 +40,8 @@ SD_XFER_DEFINE( NAME(security_inode4_create),
                      ELEMENT(__be32, sip),
                      ELEMENT(int, sport),
                      ELEMENT(pid_t, socket_pid),
-                     ELEMENT(char *, s_id)
+                     ELEMENT(char *, s_id),
+                     ELEMENT(char *, pid_tree)
                 ),
 
                 XFER(ENTRY_COMMON(602),
@@ -51,7 +52,8 @@ SD_XFER_DEFINE( NAME(security_inode4_create),
                      ENTRY_U16(sport, sport),
                      ENTRY_U16(sa_family, 2),
                      ENTRY_U32(socket_pid, socket_pid),
-                     ENTRY_STL(s_id, s_id, 32)
+                     ENTRY_STL(s_id, s_id, 32),
+                     ENTRY_STR(pid_tree, pid_tree)
                 )
 )
 
@@ -59,7 +61,8 @@ SD_XFER_DEFINE( NAME(security_inode_create_nosocket),
 
                 PROT(ELEMENT(char *, exe_path),
                      ELEMENT(char *, pathstr),
-                     ELEMENT(char *, s_id)
+                     ELEMENT(char *, s_id),
+                     ELEMENT(char *, pid_tree)
                 ),
 
                 XFER(ENTRY_COMMON(602),
@@ -70,7 +73,8 @@ SD_XFER_DEFINE( NAME(security_inode_create_nosocket),
                      ENTRY_S8(sport, -1),
                      ENTRY_S8(sa_family, -1),
                      ENTRY_S8(socket_pid, -1),
-                     ENTRY_STL(s_id, s_id, 32)
+                     ENTRY_STL(s_id, s_id, 32),
+                     ENTRY_STR(pid_tree, pid_tree)
                 )
 )
 
@@ -85,7 +89,8 @@ SD_XFER_DEFINE( NAME(security_inode6_create),
                      ELEMENT(struct in6_addr *, sip),
                      ELEMENT(int, sport),
                      ELEMENT(pid_t, socket_pid),
-                     ELEMENT(char, * s_id)
+                     ELEMENT(char, * s_id),
+                     ELEMENT(char *, pid_tree)
                 ),
 
                 XFER(ENTRY_COMMON(602),
@@ -96,7 +101,8 @@ SD_XFER_DEFINE( NAME(security_inode6_create),
                      ENTRY_U16(sport, sport),
                      ENTRY_U16(sa_family, 10),
                      ENTRY_U32(socket_pid, socket_pid),
-                     ENTRY_STL(s_id, s_id, 32)
+                     ENTRY_STL(s_id, s_id, 32),
+                     ENTRY_STR(pid_tree, pid_tree)
                 )
 )
 #endif
@@ -111,7 +117,8 @@ SD_XFER_DEFINE( NAME(dns),
                      ELEMENT(int, opcode),
                      ELEMENT(int, rcode),
                      ELEMENT(char *, query),
-                     ELEMENT(int, type)
+                     ELEMENT(int, type),
+                     ELEMENT(char *, pid_tree)
                 ),
 
                 XFER(ENTRY_COMMON(601),
@@ -123,7 +130,8 @@ SD_XFER_DEFINE( NAME(dns),
                      ENTRY_U16(sport, sport),
                      ENTRY_INT(opcode, opcode),
                      ENTRY_INT(rcode, rcode),
-                     ENTRY_INT(type, type)
+                     ENTRY_INT(type, type),
+                     ENTRY_STR(pid_tree, pid_tree)
                    )
 )
 
@@ -138,7 +146,8 @@ SD_XFER_DEFINE( NAME(dns6),
                      ELEMENT(int, opcode),
                      ELEMENT(int, rcode),
                      ELEMENT(char *, query),
-                     ELEMENT(int, type)
+                     ELEMENT(int, type),
+                     ELEMENT(char *, pid_tree)
                 ),
 
                 XFER(ENTRY_COMMON(601),
@@ -150,7 +159,8 @@ SD_XFER_DEFINE( NAME(dns6),
                      ENTRY_U16(sport, sport),
                      ENTRY_INT(opcode, opcode),
                      ENTRY_INT(rcode, rcode),
-                     ENTRY_INT(type, type)
+                     ENTRY_INT(type, type),
+                     ENTRY_STR(pid_tree, pid_tree)
                 )
 )
 #endif
@@ -321,7 +331,8 @@ SD_XFER_DEFINE( NAME(connect4),
                      ELEMENT(char *, exe_path),
                      ELEMENT(__be32, sip),
                      ELEMENT(int, sport),
-                     ELEMENT(int, retval)
+                     ELEMENT(int, retval),
+                     ELEMENT(char *, pid_tree)
                  ),
 
                 XFER(ENTRY_COMMON(42),
@@ -330,7 +341,8 @@ SD_XFER_DEFINE( NAME(connect4),
                      ENTRY_U16(dport, dport),
                      ENTRY_IP4(sip, sip),
                      ENTRY_U16(sport, sport),
-                     ENTRY_INT(retval, retval)
+                     ENTRY_INT(retval, retval),
+                     ENTRY_STR(pid_tree, pid_tree)
                 )
 )
 
@@ -342,7 +354,8 @@ SD_XFER_DEFINE( NAME(connect6),
                      ELEMENT(char *, exe_path),
                      ELEMENT(struct in6_addr *, sip),
                      ELEMENT(int, sport),
-                     ELEMENT(int, retval)
+                     ELEMENT(int, retval),
+                     ELEMENT(char *, pid_tree)
                 ),
 
                 XFER(ENTRY_COMMON(42),
@@ -351,7 +364,8 @@ SD_XFER_DEFINE( NAME(connect6),
                      ENTRY_U16(dport, dport),
                      ENTRY_IP6(sip, sip),
                      ENTRY_U16(sport, sport),
-                     ENTRY_INT(retval, retval)
+                     ENTRY_INT(retval, retval),
+                     ENTRY_STR(pid_tree, pid_tree)
                 )
 )
 #endif
@@ -380,14 +394,16 @@ SD_XFER_DEFINE( NAME(bind),
                 PROT(ELEMENT(char *, exe_path),
                      ELEMENT(struct in_addr *, in_addr),
                      ELEMENT(int, sport),
-                     ELEMENT(int, retval)
+                     ELEMENT(int, retval),
+                     ELEMENT(char *, pid_tree)
                 ),
 
                 XFER(ENTRY_COMMON(49),
                      ENTRY_U16(sa_family, 2),
                      ENTRY_IP4(in_addr, in_addr->s_addr),
                      ENTRY_U16(sport, sport),
-                     ENTRY_INT(retval, retval)
+                     ENTRY_INT(retval, retval),
+                     ENTRY_STR(pid_tree, pid_tree)
                 )
 )
 
@@ -397,14 +413,16 @@ SD_XFER_DEFINE( NAME(bind6),
                 PROT(ELEMENT(char *, exe_path),
                      ELEMENT(struct in6_addr *, in6_addr),
                      ELEMENT(int, sport),
-                     ELEMENT(int, retval)
+                     ELEMENT(int, retval),
+                     ELEMENT(char *, pid_tree)
                 ),
 
                 XFER(ENTRY_COMMON(49),
                      ENTRY_U16(sa_family, 10),
                      ENTRY_IP6(in6_addr, in6_addr),
                      ENTRY_U16(sport, sport),
-                     ENTRY_INT(retval, retval)
+                     ENTRY_INT(retval, retval),
+                     ENTRY_STR(pid_tree, pid_tree)
                 )
 )
 #endif
@@ -490,9 +508,15 @@ SD_XFER_DEFINE( NAME(mprotect),
 
 SD_XFER_DEFINE( NAME(setsid),
 
-                PROT(ELEMENT(char *, exe_path), ELEMENT(int, newsid)),
+                PROT(ELEMENT(char *, exe_path),
+                     ELEMENT(int, newsid),
+                     ELEMENT(char *, pid_tree)
+                ),
 
-                XFER(ENTRY_COMMON(112), ENTRY_INT(newsid, newsid))
+                XFER(ENTRY_COMMON(112),
+                     ENTRY_INT(newsid, newsid),
+                     ENTRY_STR(pid_tree, pid_tree)
+                )
 
 )
 

@@ -56,9 +56,9 @@ static void __exit kprobes_exit(void)
 module_init(kprobes_init);
 module_exit(kprobes_exit);
 
-MODULE_INFO(homepage, "driver");
-MODULE_VERSION("1.8.0.0");
+MODULE_INFO(homepage, "https://github.com/bytedance/Elkeid/tree/main/driver");
+MODULE_VERSION("1.8.0.3");
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Will Chen <chenyue.will@bytedance.com>;Ping Shen <shenping.matt@bytedance.com>");
+MODULE_AUTHOR("Elkeid Team <elkeid@bytedance.com>");
 MODULE_DESCRIPTION("Elkied Driver is the core component of Elkeid HIDS project");

@@ -1,0 +1,21 @@
+mongoose-driver-dkms (1.8.0.3) stable; urgency=medium
+
+  * pidtree added to connect/dns/create/setsid/bind
+  * return codes of tb_read_ring() reformated
+  * softlock in smith_strnlen with unaligned string
+  * d_absolute_path failures with piped stdin/stdout
+
+ -- Elkeid Team <elkeid@bytedance.com>  Fri, 11 Nov 2022 14:59:43 +0800
+
+mongoose-driver-dkms (1.8.0.2) stable; urgency=medium
+
+  * Fix sa_family field and tb_read_ring returns 1 record now.
+
+ -- Elkeid Team <elkeid@bytedance.com>  Wed, 02 Nov 2022 15:20:34 +0800
+
+mongoose-driver-dkms (1.8.0.1) stable; urgency=medium
+
+  * 1.8.0.1: https://bytedance.feishu.cn/docx/doxcngdBUbqakiDSTrjJxwigxmh 
+
+ -- Elkeid Team <elkeid@bytedance.com>  Mon, 26 Sep 2022 18:00:00 +0800
+
