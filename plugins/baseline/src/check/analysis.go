@@ -18,6 +18,7 @@ type RetBaselineInfo struct {
 
 type RetCheckInfo struct {
 	CheckId       int    `json:"check_id" bson:"check_id"`
+	Security string `json:"security" bson:"security"`
 	Type 	string 		`json:"type" bson:"type"`
 	Title 	string 		`json:"title" bson:"title"`
 	Description 	string 	`json:"description" bson:"description"`
@@ -86,6 +87,7 @@ func AnalysisBaseline(taskData TaskData) (retBaselineInfo RetBaselineInfo, err e
 		}
 		var retcheckInfo RetCheckInfo
 		retcheckInfo.CheckId = checkInfo.CheckId
+		retcheckInfo.Security = checkInfo.Security
 		retcheckInfo.TypeCn = checkInfo.TypeCn
 		retcheckInfo.TitleCn = checkInfo.TitleCn
 		retcheckInfo.DescriptionCn = checkInfo.DescriptionCn
