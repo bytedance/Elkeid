@@ -65,7 +65,7 @@ pub struct Kmod {
 impl Kmod {
     pub fn new(mut client: Client) -> Result<Self> {
         check_crash()?;
-        Self::install()?;
+        Self::install(&mut client)?;
         let controler = match OpenOptions::new().write(true).open(CONTROL_PATH) {
             Ok(f) => f,
             Err(err) => {
@@ -196,7 +196,7 @@ impl Kmod {
             });
         Ok(res)
     }
-    fn install() -> Result<()> {
+    fn install(client: &mut Client) -> Result<()> {
         // 判断目前加载的版本是否是最新版本
         if let Ok(version) = read_to_string(format!("/sys/module/{}/version", KMOD_NAME)) {
             if version.contains(KMOD_VERSION) {
@@ -241,6 +241,22 @@ impl Kmod {
                         &CString::new("").unwrap(),
                         kmod::ModuleInitFlags::empty(),
                     )
+                    .or_else(|_| {
+                        match Command::new("insmod")
+                            .arg(ko_dst)
+                            .env("PATH", "/sbin:/usr/sbin")
+                            .output()
+                        {
+                            Err(err) => Err(err.into()),
+                            Ok(output) => {
+                                if !output.status.success() {
+                                    return Err(anyhow!(String::from_utf8(output.stderr).unwrap()));
+                                } else {
+                                    return Ok(());
+                                }
+                            }
+                        }
+                    })
                     .map_err(|err| anyhow!("load module failed: {}", err));
                 }
             }
@@ -259,23 +275,46 @@ impl Kmod {
         loop {
             match download(&src, &ko_dst) {
                 Ok(_) => break,
-                Err(err) => match err.downcast::<reqwest::Error>() {
-                    Ok(err) => {
-                        if let Some(status) = err.status() {
-                            if status == 500 || status == 404 {
+                Err(err) => {
+                    let mut rec = Record::new();
+                    rec.set_data_type(901);
+                    rec.set_timestamp(
+                        SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs() as i64,
+                    );
+                    rec.mut_data()
+                        .fields
+                        .insert("kmod_version".into(), KMOD_VERSION.into());
+                    rec.mut_data()
+                        .fields
+                        .insert("kernel_version".into(), uname().release().into());
+                    rec.mut_data().fields.insert(
+                        "arch".into(),
+                        match ARCH {
+                            "x86_64" => "amd64",
+                            "aarch64" => "arm64",
+                            default => default,
+                        }
+                        .into(),
+                    );
+                    client.send_record(&rec).unwrap();
+                    match err.downcast::<ureq::Error>() {
+                        Ok(inner_err) => match inner_err {
+                            ureq::Error::Status(500, _) | ureq::Error::Status(404, _) => {
                                 warn!("cann't download driver kmod temporary, sleeping...");
                                 std::thread::sleep(std::time::Duration::from_secs(3600));
-                            } else {
-                                return Err(err.into());
                             }
-                        } else {
+                            _ => {
+                                return Err(inner_err.into());
+                            }
+                        },
+                        Err(err) => {
                             return Err(err.into());
                         }
-                    }
-                    Err(err) => {
-                        return Err(err.into());
-                    }
-                },
+                    };
+                }
             }
         }
         let file = File::open(&ko_dst)?;

@@ -1,9 +1,9 @@
 use std::{
     fs::{read, File},
     hash::Hasher,
-    intrinsics::copy,
     io::{ErrorKind, Read},
     num::NonZeroU32,
+    os::unix::prelude::OsStrExt,
     str,
 };
 
@@ -15,6 +15,7 @@ use governor::{
 use hex::encode;
 use lru_cache::LruCache;
 use twox_hash::XxHash64;
+use users::{Users, UsersCache};
 pub struct NsCache {
     cache: LruCache<Vec<u8>, Vec<u8>>,
     limiter: RateLimiter<NotKeyed, InMemoryState, DefaultClock>,
@@ -176,42 +177,24 @@ impl HashCache {
     }
 }
 pub struct UserCache {
-    cache: LruCache<Vec<u8>, Vec<u8>>,
+    cache: UsersCache,
 }
 impl UserCache {
-    pub fn new(cap: usize) -> Self {
+    pub fn new() -> Self {
         Self {
-            cache: LruCache::new(cap),
+            cache: UsersCache::new(),
         }
     }
     pub fn get(&mut self, uid_s: &[u8]) -> Vec<u8> {
-        return match self.cache.get_mut(uid_s) {
-            Some(v) => v.to_owned(),
-            None => {
-                if let Ok(uid) = str::from_utf8(uid_s).unwrap_or_default().parse::<u32>() {
-                    unsafe {
-                        let rt = libc::getpwuid(uid);
-                        if !rt.is_null() {
-                            let mut v = vec![0; libc::strlen((*rt).pw_name)];
-                            copy(
-                                (*rt).pw_name,
-                                v.as_mut_ptr() as *mut i8,
-                                libc::strlen((*rt).pw_name),
-                            );
-                            self.put(uid_s.to_vec(), v.clone());
-                            v
-                        } else {
-                            b"-3".to_vec()
-                        }
-                    }
-                } else {
-                    b"-3".to_vec()
-                }
+        if let Ok(uid) = str::from_utf8(uid_s).unwrap_or_default().parse::<u32>() {
+            if let Some(u) = self.cache.get_user_by_uid(uid) {
+                u.name().as_bytes().to_vec()
+            } else {
+                b"-3".to_vec()
             }
-        };
-    }
-    pub fn put(&mut self, key: Vec<u8>, value: Vec<u8>) {
-        self.cache.insert(key, value);
+        } else {
+            b"-3".to_vec()
+        }
     }
 }
 
