@@ -3,7 +3,7 @@ use std::{collections::HashSet, time::Duration};
 use ipnet::{Ipv4Net, Ipv6Net};
 use iprange::IpRange;
 use lazy_static::lazy_static;
-pub const KMOD_VERSION: &str = "1.7.0.4";
+pub const KMOD_VERSION: &str = "1.7.0.6";
 pub const KMOD_NAME: &str = "hids_driver";
 pub const PIPE_PATH: &str = "/proc/elkeid-endpoint";
 pub const CONTROL_PATH: &str = "/dev/hids_driver_allowlist";
