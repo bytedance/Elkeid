@@ -12,15 +12,13 @@
 
 ## Introduction
 
-**Elkeid** 不仅具备传统的 **HIDS(Host Intrusion Detection System)** 的对于主机层入侵检测和恶意文件识别的能力，且对容器内的恶意行为也可以很好的识别，部署在宿主机即可以满足宿主机与其上容器内的反入侵安全需求，并且 **Elkeid** 底层强大的内核态数据采集能力可以满足大部分安全运营人员对于主机层数据的渴望。
+1. **Elkeid** 不仅具备传统的 **HIDS(Host Intrusion Detection System)** 的对于主机层入侵检测和恶意文件识别的能力，且对容器内的恶意行为也可以很好的识别，部署在宿主机即可以满足宿主机与其上容器内的反入侵安全需求，并且 **Elkeid** 底层强大的内核态数据采集能力可以满足大部分安全运营人员对于主机层数据的渴望。
 
-对于运行的业务 **Elkeid** 具备 **RASP** 能力可以注入到业务进程内进行反入侵保护，不仅运维人员不需要再安装一个 Agent，业务也无需重启。
+2. 对于运行的业务 **Elkeid** 具备 **RASP** 能力可以注入到业务进程内进行反入侵保护，不仅运维人员不需要再安装一个 Agent，业务也无需重启。
 
-对于 **K8s** 本身 **Elkeid** 支持接入**K8s Auditing Log** 对 **K8s** 系统进行入侵检测和风险识别。
+3. 对于 **K8s** 本身 **Elkeid** 支持接入**K8s Auditing Log** 对 **K8s** 系统进行入侵检测和风险识别。
 
-**Elkeid** 的规则引擎 **Elkeid HUB** 也可以很好的和外部多系统进行联动对接。
-
-
+4. **Elkeid** 的规则引擎 **Elkeid HUB** 也可以很好的和外部多系统进行联动对接。
 
 **Ekeid** 将这些能力都很好的融合在一个平台内，满足不同工作负载的复杂安全需求的同时，还能实现多组件能力关联，更难得的是每个组件均经过字节跳动海量数据和多年的实战检验。
 
@@ -42,17 +40,17 @@
 <img src="server/docs/server_new.png"/>
 
 ##  Elkeid Host Ability
-* **[Elkeid Agent](https://github.com/bytedance/Elkeid/blob/main/agent/README-zh_CN.md)** 用户态 Agent，负责管理各个端上能力组件并与 **Elkeid Agent Center** 通信
-* **[Elkeid Driver](https://github.com/bytedance/Elkeid/blob/main/driver/README-zh_CN.md)** 负责 Linux Kernel 层采集数据，兼容容器，并能够检测常见 Rootkit
+* **[Elkeid Agent](agent/README-zh_CN.md)** 用户态 Agent，负责管理各个端上能力组件并与 **Elkeid Agent Center** 通信
+* **[Elkeid Driver](driver/README-zh_CN.md)** 负责 Linux Kernel 层采集数据，兼容容器，并能够检测常见 Rootkit
 * **[Elkeid RASP](rasp)** 支持 CPython、Golang、JVM、NodeJS、PHP 的运行时数据采集探针，支持动态注入到运行时
 * **Elkeid Agent Plugin List**
   * [Driver Plugin](plugins/driver): 负责与 **Elkeid Driver** 通信，处理其传递的数据等
   * [Collector Plugin](plugins/collector): 负责端上的资产/关键信息采集工作，如用户，定时任务，包信息等
   * [Journal Watcher](plugins/journal_watcher): 负责监测systemd日志的插件，目前支持ssh相关日志采集与上报
-  * [Scanner Plugin](https://github.com/bytedance/Elkeid/blob/main/plugins/scanner): 负责在端上进行静态检测恶意文件的插件，支持 Yara
-  * [RASP Plugin](https://github.com/bytedance/Elkeid/tree/main/rasp/plugin): 分析系统进程运行时，上报运行时信息，处理下发的 Attach 指令，收集各个探针上报的数据
-  * [Baseline Plugin](https://github.com/bytedance/Elkeid/tree/main/plugins/baseline): 负责在端上进行基线风险识别的插件
-* Elkeid 数据说明：
+  * [Scanner Plugin](plugins/scanner): 负责在端上进行静态检测恶意文件的插件，支持 Yara
+  * [RASP Plugin](rasp/plugin): 分析系统进程运行时，上报运行时信息，处理下发的 Attach 指令，收集各个探针上报的数据
+  * [Baseline Plugin](plugins/baseline): 负责在端上进行基线风险识别的插件
+* [Elkeid 数据说明](server/docs/Elkeid_Data.csv)
 
 
 ## Elkeid Backend Ability
@@ -78,10 +76,13 @@
 | RASP 入侵检测能力     | 少量样例                 | 完整版                    |
 | K8S 入侵检测          | 少量样例                 | 完整版                    |
 | K8S 威胁分析          | :ng_man:                 | :white_check_mark:        |
-| 告警溯源能力          | :ng_man:                 | :white_check_mark:        |
+| 告警溯源(行为溯源)    | :ng_man:                 | :white_check_mark:        |
+| 告警溯源(驻留溯源)    | :ng_man:                 | :white_check_mark:        |
 | 告警白名单            | :white_check_mark:       | :white_check_mark:        |
 | 多告警聚合能力        | :ng_man:                 | :white_check_mark:        |
-| 威胁处置              | :ng_man:                 | :white_check_mark:        |
+| 威胁处置(进程)        | :ng_man:                 | :white_check_mark:        |
+| 威胁处置(网络)        | :ng_man:                 | :white_check_mark:        |
+| 威胁处置(文件)        | :ng_man:                 | :white_check_mark:        |
 | 文件隔离箱            | :ng_man:                 | :white_check_mark:        |
 | 漏洞检测              | :white_check_mark:       | :white_check_mark:        |
 | 漏洞库版本            | 少量情报                 | 完整版                    |
@@ -90,6 +91,7 @@
 | RASP 热补丁           | :ng_man:                 | :white_check_mark:        |
 | 病毒扫描              | :white_check_mark:       | :white_check_mark:        |
 | 用户行为日志分析      | :ng_man:                 | :white_check_mark:        |
+| 插件管理              | :ng_man:                 | :white_check_mark:        |
 | 系统监控              | :white_check_mark:       | :white_check_mark:        |
 | 系统管理              | :white_check_mark:       | :white_check_mark:        |
 | Windows 支持          | :ng_man:                 | :white_check_mark:        |
