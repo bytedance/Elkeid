@@ -1,0 +1,20 @@
+FROM debian:jessie AS jessie
+
+RUN apt update
+RUN apt install  -y apt-utils apt-transport-https ca-certificates debian-archive-keyring
+RUN apt install -y gcc build-essential libelf-dev; 
+RUN apt install -y linux-compiler-gcc* || true
+RUN apt install -y linux-kbuild*;
+RUN apt install -y -f \
+linux-headers-4.9.0-0.bpo.12-all-amd64 \
+linux-headers-4.9.0-0.bpo.11-all-amd64 \
+linux-headers-4.9-amd64 \
+linux-headers-3.16.0-6-all-amd64 \
+linux-headers-3.16.0-11-amd64 \
+linux-headers-amd64 || true
+
+
+
+ADD . /elkeid
+WORKDIR /elkeid/driver
+RUN bash ./build_script/x86_64/batch_compile.sh

@@ -1,0 +1,17 @@
+FROM ubuntu:bionic AS bionic_aws
+
+RUN echo 'deb http://archive.ubuntu.com/ubuntu/ bionic main \n\
+deb http://archive.ubuntu.com/ubuntu bionic-updates main\n\
+deb http://security.ubuntu.com/ubuntu bionic-security main\n\
+' > /etc/apt/sources.list;
+
+RUN apt update;
+RUN apt install -y gcc build-essential dkms;
+RUN apt-get -y install linux-headers-*-aws || true
+RUN apt clean all
+
+ADD . /elkeid
+WORKDIR /elkeid/driver
+RUN bash ./build_script/x86_64/batch_compile.sh
+
+RUN apt-get -y remove linux-headers-*-aws || true
