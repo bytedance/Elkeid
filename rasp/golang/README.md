@@ -6,8 +6,6 @@
     Golang runtime application self-protection.
     <br />
     <br />
-    <a href="sample">View Demo</a>
-    ·
     <a href="https://github.com/bytedance/Elkeid/issues">Report Bug</a>
     ·
     <a href="https://github.com/bytedance/Elkeid/issues">Request Feature</a>

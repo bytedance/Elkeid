@@ -79,10 +79,30 @@ func setDialOptions(ca, privkey, cert []byte, svrName string) {
 	certPool.AppendCertsFromPEM(ca)
 	keyPair, _ := tls.X509KeyPair(cert, privkey)
 	dialOptions = append(dialOptions, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
-		Certificates: []tls.Certificate{keyPair},
-		ServerName:   svrName,
-		ClientAuth:   tls.RequireAndVerifyClientCert,
-		RootCAs:      certPool,
+		Certificates:       []tls.Certificate{keyPair},
+		ClientAuth:         tls.RequireAndVerifyClientCert,
+		RootCAs:            certPool,
+		InsecureSkipVerify: true,
+		VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+			certs := make([]*x509.Certificate, len(rawCerts))
+			for i, asn1Data := range rawCerts {
+				cert, err := x509.ParseCertificate(asn1Data)
+				if err != nil {
+					return errors.New("tls: failed to parse certificate from server: " + err.Error())
+				}
+				certs[i] = cert
+			}
+			opts := x509.VerifyOptions{
+				Roots:         certPool,
+				DNSName:       svrName,
+				Intermediates: x509.NewCertPool(),
+			}
+			for _, cert := range certs[1:] {
+				opts.Intermediates.AddCert(cert)
+			}
+			_, err := certs[0].Verify(opts)
+			return err
+		},
 	})), grpc.WithStatsHandler(&DefaultStatsHandler), grpc.WithBlock(), grpc.WithReturnConnectionError(), grpc.FailOnNonTempDialError(true))
 }
 

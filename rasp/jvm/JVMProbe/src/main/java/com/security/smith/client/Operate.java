@@ -1,13 +1,14 @@
 package com.security.smith.client;
 
 public enum Operate {
-    exitOperate,
-    heartBeatsOperate,
-    traceOperate,
-    configOperate,
-    controlOperate,
-    detectOperate,
-    filterOperate,
-    blockOperate,
-    limitOperate
+    EXIT,
+    HEARTBEAT,
+    TRACE,
+    CONFIG,
+    CONTROL,
+    DETECT,
+    FILTER,
+    BLOCK,
+    LIMIT,
+    PATCH
 }

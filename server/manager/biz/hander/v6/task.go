@@ -346,7 +346,7 @@ func ControlAgent(c *gin.Context) {
 	} else if createTask.Action == "agt_reboot" {
 		tType = "Agent_Task"
 		agentConfigTask.Data.Task = AgentTaskMsg{
-			Name:     v1.TaskAgentName,
+			Name:     AgentDefaultName,
 			DataType: v1.AgentRebootType,
 		}
 	} else {

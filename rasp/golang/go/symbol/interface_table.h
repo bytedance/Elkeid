@@ -4,7 +4,7 @@
 #include <string>
 #include <go/type/interface.h>
 
-class CInterfaceTable {
+class InterfaceTable {
 public:
     bool load();
     bool load(const std::string& file);

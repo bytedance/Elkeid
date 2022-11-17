@@ -3,8 +3,6 @@
 
 #include "basic.h"
 
-#pragma pack(push, 1)
-
 namespace go {
     struct net_address {
         go::string network;
@@ -37,7 +35,5 @@ namespace go {
 
     METADATA(unix_address, go::string, go::string)
 }
-
-#pragma pack(pop)
 
 #endif //GO_PROBE_NET_H
