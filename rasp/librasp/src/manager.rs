@@ -412,7 +412,16 @@ impl RASPManager {
 
     fn create_elkeid_rasp_dir() -> AnyhowResult<()> {
         info!("create /var/run/elkeid_rasp");
-        fs_extra::dir::create("/var/run/elkeid_rasp", false)?;
+        match fs_extra::dir::create("/var/run/elkeid_rasp", false) {
+            Ok(_) => {},
+            Err(e) => {
+                warn!("create dir /var/run/elkeid_rasp failed: {}", e);
+            }
+        };
+        let path = Path::new("/var/run/elkeid_rasp");
+        if !path.exists() {
+            return Err(anyhow!("can not found /var/run/elkeid_rasp"));
+        }
         Ok(())
     }
 
