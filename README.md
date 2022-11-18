@@ -29,7 +29,7 @@ Elkeid has the following key capabilities:
 It should be noted that there are differences between the **Elkeid** **open source version** and the full version. The current open source capabilities mainly include:
 
 * All on-device capabilities, that is, on-device data/asset/partial collection capabilities, kernel-state data collection capabilities, RASP probe parts, etc., and are consistent with the internal version of ByteDance;
-* All access layer capabilities, namely Agent Center, service discovery, etc., are consistent with the internal version of ByteDance;
+* All backend capabilities, namely Agent Center, service discovery, etc., are consistent with the internal version of ByteDance;
 * Provide a community edition rule engine, namely Elkeid HUB, and use it as an example with a small number of strategies;
 * Provides community version of Elkeid Console and some supporting capabilities.
 
@@ -173,7 +173,7 @@ Therefore, it is necessary to have complete anti-intrusion and risk perception c
 
 ## About Elkeid Enterprise Edition
 
-Elkeid Enterprise Edition supports separate strategy sales, as well as full capacity sales.
+Elkeid Enterprise Edition supports separate intrusion detection rules(like the HIDS, RASP, K8s) sales, as well as full capacity sales.
 
 If interested in Elkeid Enterprise Edition please contact elkeid@bytedance.com
 
