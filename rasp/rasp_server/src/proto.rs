@@ -234,8 +234,8 @@ pub struct ProbeConfigLimit {
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ProbeConfigPatch {
     pub class_name: String,
-    pub path: String,
-    pub file_download_url: Option<Vec<String>>,
+    pub url: Option<String>,
+    pub path: Option<String>,
     pub sum_hash: Option<String>,
 }
 
