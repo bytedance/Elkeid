@@ -52,8 +52,8 @@ Therefore, it is necessary to have complete anti-intrusion and risk perception c
     * [Scanner Plugin](https://github.com/bytedance/Elkeid/tree/main/plugins/scanner): Responsible for static detection of malicious files on the host, currently supports yara.
     * [RASP Plugin](https://github.com/bytedance/Elkeid/tree/main/rasp/plugin): Responsible for managing RASP components and processing data collected from RASP.
     * [Baseline Plugin](https://github.com/bytedance/Elkeid/tree/main/plugins/baseline): Responsible for detecting baseline risks based on baseline check policies.
-* [Elkeid Data Format](server/docs/ElkeidData.xlsx)
-* [Elkeid Data Usage Tutorial](elkeidup/raw_data_usage_tutorial.md)
+* [**Elkeid Data Format**](server/docs/ElkeidData.xlsx)
+* [**Elkeid Data Usage Tutorial**](elkeidup/raw_data_usage_tutorial.md)
 
 
 ## Elkeid Backend Ability
@@ -79,11 +79,11 @@ Therefore, it is necessary to have complete anti-intrusion and risk perception c
 | Asset Collection Enhancements                          | :ng_man:                 | :white_check_mark:        |
 | K8s asset collection                                   | :white_check_mark:       | :white_check_mark:        |
 | Exposure and Vulnerability Analysis                    | :ng_man:                 | :white_check_mark:        |
-| Host/Container Basic Intrusion Detection               | `少量样例`               | :white_check_mark:        |
+| Host/Container Basic Intrusion Detection               | `few samples`            | :white_check_mark:        |
 | Host/Container Behavioral Sequence Intrusion Detection | :ng_man:                 | :white_check_mark:        |
-| RASP Basic Intrusion Detection                         | `少量样例`               | :white_check_mark:        |
+| RASP Basic Intrusion Detection                         | `few samples`            | :white_check_mark:        |
 | RASP Behavioral Sequence Intrusion Detection           | :ng_man:                 | :white_check_mark:        |
-| K8S Basic Intrusion Detection                          | `少量样例`               | :white_check_mark:        |
+| K8S Basic Intrusion Detection                          | `few samples`            | :white_check_mark:        |
 | K8S Behavioral Sequence Intrusion Detection            | :ng_man:                 | :white_check_mark:        |
 | K8S Threat Analysis                                    | :ng_man:                 | :white_check_mark:        |
 | Alarm traceability (behavior traceability)             | :ng_man:                 | :white_check_mark:        |
@@ -94,9 +94,9 @@ Therefore, it is necessary to have complete anti-intrusion and risk perception c
 | Threat Repsonse (Network)                              | :ng_man:                 | :white_check_mark:        |
 | Threat Repsonse (File)                                 | :ng_man:                 | :white_check_mark:        |
 | File isolation                                         | :ng_man:                 | :white_check_mark:        |
-| Vulnerability discovery                                | `少量情报`               | :white_check_mark:        |
+| Vulnerability discovery                                | `few vuln info`          | :white_check_mark:        |
 | Vulnerability information hot update                   | :ng_man:                 | :white_check_mark:        |
-| Baseline check                                         | `少量基线`               | :white_check_mark:        |
+| Baseline check                                         | `few baseline rules`     | :white_check_mark:        |
 | Application Vulnerability Hotfix                       | :ng_man:                 | :white_check_mark:        |
 | Virus scan                                             | :white_check_mark:       | :white_check_mark:        |
 | User behavior log analysis                             | :ng_man:                 | :white_check_mark:        |
@@ -113,48 +113,48 @@ Therefore, it is necessary to have complete anti-intrusion and risk perception c
 
 
 ## Front-end Display (Community Edition)
-**安全概览**
+**Security overview**
 <img src="/Users/admin/code/Elkeid/png/console0.png" style="float:left;"/>
 
-**容器集群安全告警**
+**K8s security alert list**
 
 <img src="/Users/admin/code/Elkeid/png/console1.png" style="float:left;"/>
 
-**容器集群工作负载信息**
+**K8s pod list**
 
 <img src="/Users/admin/code/Elkeid/png/console2.png" style="float:left;"/>
 
 ****
 
-**主机概览**
+**Host overview**
 
 <img src="/Users/admin/code/Elkeid/png/console3.png" style="float:left;"/>
 
-**资产指纹**
+**Resource fingerprint**
 
 <img src="/Users/admin/code/Elkeid/png/console4.png" style="float:left;"/>
 
-**安全告警**
+**intrusion alert overwiew**
 
 <img src="/Users/admin/code/Elkeid/png/console5.png" style="float:left;"/>
 
-**漏洞信息**
+**Vulnerability**
 
 <img src="/Users/admin/code/Elkeid/png/console6.png" style="float:left;"/>
 
-**基线检查**
+**Baseline check**
 
 <img src="/Users/admin/code/Elkeid/png/console7.png" style="float:left;"/>
 
-**病毒扫描**
+**Virus scan**
 
 <img src="/Users/admin/code/Elkeid/png/console8.png" style="float:left;"/>
 
-**后端监控**
+**Backend hosts monitoring**
 
 <img src="/Users/admin/code/Elkeid/png/console9.png" style="float:left;"/>
 
-**后端服务监控**
+**Backend service monitoring**
 
 <img src="png/console10.png" style="float:left;"/>
 
