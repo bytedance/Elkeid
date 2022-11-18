@@ -2,7 +2,7 @@
 
 English | [简体中文](README-zh_CN.md)
 
-**Elkeid** is an open source solution that can satisfy various workloads such as **hosts, containers and K8s, serverless**, etc. It is derived from the best practices of ByteDance.
+**Elkeid** is an open source solution that can meet the security requirements of various workloads such as **hosts, containers and K8s, and serverless**. It is derived from ByteDance's internal best practices.
 
 With the business development of enterprises, the situation of multi-cloud, cloud-native, and coexistence of multiple workloads has become more and more prominent. We hope that there can be a set of solutions that can meet the security requirements under different workloads, so **Elkeid** was born.
 
