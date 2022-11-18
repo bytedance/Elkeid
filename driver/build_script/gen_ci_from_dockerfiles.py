@@ -39,9 +39,14 @@ def gen_job(vminfo):
                 }),
                 OrderedDict({
                     "name": "Set up Docker Buildx "+vmname,
+                    "uses": "docker/setup-buildx-action@v2",
+                    "with": {
+                        "config": "/etc/buildkitd.toml",
+                    }
+                }) if aarch.endswith("aarch64") else OrderedDict({
+                    "name": "Set up Docker Buildx "+vmname,
                     "uses": "docker/setup-buildx-action@v2"
                 }),
-
                 OrderedDict({
                     "name": "Build "+vmname,
                     "uses": "docker/build-push-action@v3",
