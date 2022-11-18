@@ -438,6 +438,8 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx rhel7
       uses: docker/setup-buildx-action@v2
+      with:
+        config: /etc/buildkitd.toml
     - name: Build rhel7
       uses: docker/build-push-action@v3
       with:
