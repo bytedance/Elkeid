@@ -114,45 +114,45 @@ Therefore, it is necessary to have complete anti-intrusion and risk perception c
 
 ## Front-end Display (Community Edition)
 **Security overview**
-<img src="/Users/admin/code/Elkeid/png/console0.png" style="float:left;"/>
+<img src="png/console0.png" style="float:left;"/>
 
 **K8s security alert list**
 
-<img src="/Users/admin/code/Elkeid/png/console1.png" style="float:left;"/>
+<img src="png/console1.png" style="float:left;"/>
 
 **K8s pod list**
 
-<img src="/Users/admin/code/Elkeid/png/console2.png" style="float:left;"/>
+<img src="png/console2.png" style="float:left;"/>
 
 ****
 
 **Host overview**
 
-<img src="/Users/admin/code/Elkeid/png/console3.png" style="float:left;"/>
+<img src="png/console3.png" style="float:left;"/>
 
 **Resource fingerprint**
 
-<img src="/Users/admin/code/Elkeid/png/console4.png" style="float:left;"/>
+<img src="png/console4.png" style="float:left;"/>
 
 **intrusion alert overwiew**
 
-<img src="/Users/admin/code/Elkeid/png/console5.png" style="float:left;"/>
+<img src="png/console5.png" style="float:left;"/>
 
 **Vulnerability**
 
-<img src="/Users/admin/code/Elkeid/png/console6.png" style="float:left;"/>
+<img src="png/console6.png" style="float:left;"/>
 
 **Baseline check**
 
-<img src="/Users/admin/code/Elkeid/png/console7.png" style="float:left;"/>
+<img src="png/console7.png" style="float:left;"/>
 
 **Virus scan**
 
-<img src="/Users/admin/code/Elkeid/png/console8.png" style="float:left;"/>
+<img src="png/console8.png" style="float:left;"/>
 
 **Backend hosts monitoring**
 
-<img src="/Users/admin/code/Elkeid/png/console9.png" style="float:left;"/>
+<img src="png/console9.png" style="float:left;"/>
 
 **Backend service monitoring**
 
