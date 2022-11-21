@@ -3,23 +3,6 @@ mkdir -p /ko_output
 BUILD_VERSION=$(cat LKM/src/init.c | grep MODULE_VERSION | awk -F '"' '{print $2}')
 KO_NAME=$(grep "MODULE_NAME" ./LKM/Makefile | grep -m 1 ":=" | awk '{print $3}')
 
-enableGcc9(){
-    export CC=/opt/rh/devtoolset-9/root/usr/bin/gcc
-    export CPP=/opt/rh/devtoolset-9/root/usr/bin/cpp
-    export CXX=/opt/rh/devtoolset-9/root/usr/bin/c++
-}
-
-enableGcc10(){
-    export CC=/opt/rh/devtoolset-10/root/usr/bin/gcc
-    export CPP=/opt/rh/devtoolset-10/root/usr/bin/cpp
-    export CXX=/opt/rh/devtoolset-10/root/usr/bin/c++
-}
-
-disableGcc(){
-    unset CC
-    unset CPP
-    unset CXX
-}
 
 for each_lt_version in `curl https://mirrors.portworx.com/mirrors/http/mirrors.coreix.net/elrepo-archive-archive/kernel/el8/x86_64/RPMS/ | grep el8.elrepo.x86_64.rpm | grep kernel-lt-devel | sed -r 's/.*href="([^"]+).*/\1/g' | sed -r 's/kernel-lt-devel-([^"]+).el8.elrepo.x86_64.rpm/\1/g'`
 do 
