@@ -2,10 +2,6 @@ FROM cern/c8-base:latest AS rhel8
 
 RUN yum install -y wget perl gcc make tree elfutils-libelf-devel pciutils-libs; 
 RUN yum groupinstall -y  "Development Tools"; 
-RUN yum install -y centos-release-scl
-RUN yum install -y devtoolset-8
-RUN yum install -y devtoolset-9
-RUN yum install -y devtoolset-10
 
 RUN mkdir -p /ko_output
 
