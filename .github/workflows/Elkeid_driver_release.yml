@@ -22,20 +22,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.aliyun_linux2
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_aliyun_linux2:latest
+        tags: elkeidteam/elkeid_driver_aliyun_linux2_x86_64:latest
     - name: Docker Hub Description aliyun_linux2
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_aliyun_linux2
+        repository: elkeidteam/elkeid_driver_aliyun_linux2_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract aliyun_linux2
       id: extract-aliyun_linux2
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_aliyun_linux2:latest
+        image: elkeidteam/elkeid_driver_aliyun_linux2_x86_64:latest
         path: /ko_output/.
     - name: Upload aliyun_linux2
       uses: actions/upload-artifact@v3
@@ -60,20 +61,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.aliyun_linux3
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_aliyun_linux3:latest
+        tags: elkeidteam/elkeid_driver_aliyun_linux3_x86_64:latest
     - name: Docker Hub Description aliyun_linux3
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_aliyun_linux3
+        repository: elkeidteam/elkeid_driver_aliyun_linux3_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract aliyun_linux3
       id: extract-aliyun_linux3
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_aliyun_linux3:latest
+        image: elkeidteam/elkeid_driver_aliyun_linux3_x86_64:latest
         path: /ko_output/.
     - name: Upload aliyun_linux3
       uses: actions/upload-artifact@v3
@@ -98,20 +100,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_amazonlinux:latest
+        tags: elkeidteam/elkeid_driver_amazonlinux_x86_64:latest
     - name: Docker Hub Description amazonlinux
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_amazonlinux
+        repository: elkeidteam/elkeid_driver_amazonlinux_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract amazonlinux
       id: extract-amazonlinux
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_amazonlinux:latest
+        image: elkeidteam/elkeid_driver_amazonlinux_x86_64:latest
         path: /ko_output/.
     - name: Upload amazonlinux
       uses: actions/upload-artifact@v3
@@ -136,20 +139,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux510
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_amazonlinux510:latest
+        tags: elkeidteam/elkeid_driver_amazonlinux510_x86_64:latest
     - name: Docker Hub Description amazonlinux510
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_amazonlinux510
+        repository: elkeidteam/elkeid_driver_amazonlinux510_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract amazonlinux510
       id: extract-amazonlinux510
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_amazonlinux510:latest
+        image: elkeidteam/elkeid_driver_amazonlinux510_x86_64:latest
         path: /ko_output/.
     - name: Upload amazonlinux510
       uses: actions/upload-artifact@v3
@@ -174,20 +178,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux54
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_amazonlinux54:latest
+        tags: elkeidteam/elkeid_driver_amazonlinux54_x86_64:latest
     - name: Docker Hub Description amazonlinux54
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_amazonlinux54
+        repository: elkeidteam/elkeid_driver_amazonlinux54_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract amazonlinux54
       id: extract-amazonlinux54
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_amazonlinux54:latest
+        image: elkeidteam/elkeid_driver_amazonlinux54_x86_64:latest
         path: /ko_output/.
     - name: Upload amazonlinux54
       uses: actions/upload-artifact@v3
@@ -212,20 +217,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.debian10
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_debian10:latest
+        tags: elkeidteam/elkeid_driver_debian10_x86_64:latest
     - name: Docker Hub Description debian10
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_debian10
+        repository: elkeidteam/elkeid_driver_debian10_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract debian10
       id: extract-debian10
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_debian10:latest
+        image: elkeidteam/elkeid_driver_debian10_x86_64:latest
         path: /ko_output/.
     - name: Upload debian10
       uses: actions/upload-artifact@v3
@@ -250,20 +256,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.debian11
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_debian11:latest
+        tags: elkeidteam/elkeid_driver_debian11_x86_64:latest
     - name: Docker Hub Description debian11
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_debian11
+        repository: elkeidteam/elkeid_driver_debian11_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract debian11
       id: extract-debian11
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_debian11:latest
+        image: elkeidteam/elkeid_driver_debian11_x86_64:latest
         path: /ko_output/.
     - name: Upload debian11
       uses: actions/upload-artifact@v3
@@ -288,20 +295,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.debian8
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_debian8:latest
+        tags: elkeidteam/elkeid_driver_debian8_x86_64:latest
     - name: Docker Hub Description debian8
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_debian8
+        repository: elkeidteam/elkeid_driver_debian8_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract debian8
       id: extract-debian8
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_debian8:latest
+        image: elkeidteam/elkeid_driver_debian8_x86_64:latest
         path: /ko_output/.
     - name: Upload debian8
       uses: actions/upload-artifact@v3
@@ -326,20 +334,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.debian9
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_debian9:latest
+        tags: elkeidteam/elkeid_driver_debian9_x86_64:latest
     - name: Docker Hub Description debian9
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_debian9
+        repository: elkeidteam/elkeid_driver_debian9_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract debian9
       id: extract-debian9
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_debian9:latest
+        image: elkeidteam/elkeid_driver_debian9_x86_64:latest
         path: /ko_output/.
     - name: Upload debian9
       uses: actions/upload-artifact@v3
@@ -364,20 +373,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel6
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_rhel6:latest
+        tags: elkeidteam/elkeid_driver_rhel6_x86_64:latest
     - name: Docker Hub Description rhel6
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_rhel6
+        repository: elkeidteam/elkeid_driver_rhel6_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel6
       id: extract-rhel6
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_rhel6:latest
+        image: elkeidteam/elkeid_driver_rhel6_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel6
       uses: actions/upload-artifact@v3
@@ -402,20 +412,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel6_elrepo
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_rhel6_elrepo:latest
+        tags: elkeidteam/elkeid_driver_rhel6_elrepo_x86_64:latest
     - name: Docker Hub Description rhel6_elrepo
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_rhel6_elrepo
+        repository: elkeidteam/elkeid_driver_rhel6_elrepo_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel6_elrepo
       id: extract-rhel6_elrepo
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_rhel6_elrepo:latest
+        image: elkeidteam/elkeid_driver_rhel6_elrepo_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel6_elrepo
       uses: actions/upload-artifact@v3
@@ -442,20 +453,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.aarch64/Dockerfile.rhel7
+        load: true
         push: true
-        tags: elkeidteam/elkeid_driver_rhel7:latest
+        tags: elkeidteam/elkeid_driver_rhel7_aarch64:latest
     - name: Docker Hub Description rhel7
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_rhel7
+        repository: elkeidteam/elkeid_driver_rhel7_aarch64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7
       id: extract-rhel7
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_rhel7:latest
+        image: elkeidteam/elkeid_driver_rhel7_aarch64:latest
         path: /ko_output/.
     - name: Upload rhel7
       uses: actions/upload-artifact@v3
@@ -480,20 +492,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_rhel7:latest
+        tags: elkeidteam/elkeid_driver_rhel7_x86_64:latest
     - name: Docker Hub Description rhel7
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_rhel7
+        repository: elkeidteam/elkeid_driver_rhel7_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7
       id: extract-rhel7
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_rhel7:latest
+        image: elkeidteam/elkeid_driver_rhel7_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel7
       uses: actions/upload-artifact@v3
@@ -518,20 +531,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7_centosplus
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_rhel7_centosplus:latest
+        tags: elkeidteam/elkeid_driver_rhel7_centosplus_x86_64:latest
     - name: Docker Hub Description rhel7_centosplus
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_rhel7_centosplus
+        repository: elkeidteam/elkeid_driver_rhel7_centosplus_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7_centosplus
       id: extract-rhel7_centosplus
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_rhel7_centosplus:latest
+        image: elkeidteam/elkeid_driver_rhel7_centosplus_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel7_centosplus
       uses: actions/upload-artifact@v3
@@ -556,20 +570,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7_elrepo_lt
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_rhel7_elrepo_lt:latest
+        tags: elkeidteam/elkeid_driver_rhel7_elrepo_lt_x86_64:latest
     - name: Docker Hub Description rhel7_elrepo_lt
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_rhel7_elrepo_lt
+        repository: elkeidteam/elkeid_driver_rhel7_elrepo_lt_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7_elrepo_lt
       id: extract-rhel7_elrepo_lt
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_rhel7_elrepo_lt:latest
+        image: elkeidteam/elkeid_driver_rhel7_elrepo_lt_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel7_elrepo_lt
       uses: actions/upload-artifact@v3
@@ -594,20 +609,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7_elrepo_ml
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_rhel7_elrepo_ml:latest
+        tags: elkeidteam/elkeid_driver_rhel7_elrepo_ml_x86_64:latest
     - name: Docker Hub Description rhel7_elrepo_ml
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_rhel7_elrepo_ml
+        repository: elkeidteam/elkeid_driver_rhel7_elrepo_ml_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7_elrepo_ml
       id: extract-rhel7_elrepo_ml
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_rhel7_elrepo_ml:latest
+        image: elkeidteam/elkeid_driver_rhel7_elrepo_ml_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel7_elrepo_ml
       uses: actions/upload-artifact@v3
@@ -632,20 +648,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_rhel8:latest
+        tags: elkeidteam/elkeid_driver_rhel8_x86_64:latest
     - name: Docker Hub Description rhel8
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_rhel8
+        repository: elkeidteam/elkeid_driver_rhel8_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel8
       id: extract-rhel8
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_rhel8:latest
+        image: elkeidteam/elkeid_driver_rhel8_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel8
       uses: actions/upload-artifact@v3
@@ -670,20 +687,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8_elrepo_lt
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_rhel8_elrepo_lt:latest
+        tags: elkeidteam/elkeid_driver_rhel8_elrepo_lt_x86_64:latest
     - name: Docker Hub Description rhel8_elrepo_lt
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_rhel8_elrepo_lt
+        repository: elkeidteam/elkeid_driver_rhel8_elrepo_lt_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel8_elrepo_lt
       id: extract-rhel8_elrepo_lt
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_rhel8_elrepo_lt:latest
+        image: elkeidteam/elkeid_driver_rhel8_elrepo_lt_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel8_elrepo_lt
       uses: actions/upload-artifact@v3
@@ -708,20 +726,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8_elrepo_ml
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_rhel8_elrepo_ml:latest
+        tags: elkeidteam/elkeid_driver_rhel8_elrepo_ml_x86_64:latest
     - name: Docker Hub Description rhel8_elrepo_ml
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_rhel8_elrepo_ml
+        repository: elkeidteam/elkeid_driver_rhel8_elrepo_ml_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel8_elrepo_ml
       id: extract-rhel8_elrepo_ml
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_rhel8_elrepo_ml:latest
+        image: elkeidteam/elkeid_driver_rhel8_elrepo_ml_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel8_elrepo_ml
       uses: actions/upload-artifact@v3
@@ -746,20 +765,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8_plus
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_rhel8_plus:latest
+        tags: elkeidteam/elkeid_driver_rhel8_plus_x86_64:latest
     - name: Docker Hub Description rhel8_plus
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_rhel8_plus
+        repository: elkeidteam/elkeid_driver_rhel8_plus_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel8_plus
       id: extract-rhel8_plus
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_rhel8_plus:latest
+        image: elkeidteam/elkeid_driver_rhel8_plus_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel8_plus
       uses: actions/upload-artifact@v3
@@ -784,20 +804,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.tlinux24
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_tlinux24:latest
+        tags: elkeidteam/elkeid_driver_tlinux24_x86_64:latest
     - name: Docker Hub Description tlinux24
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_tlinux24
+        repository: elkeidteam/elkeid_driver_tlinux24_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract tlinux24
       id: extract-tlinux24
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_tlinux24:latest
+        image: elkeidteam/elkeid_driver_tlinux24_x86_64:latest
         path: /ko_output/.
     - name: Upload tlinux24
       uses: actions/upload-artifact@v3
@@ -822,20 +843,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.tlinux31
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_tlinux31:latest
+        tags: elkeidteam/elkeid_driver_tlinux31_x86_64:latest
     - name: Docker Hub Description tlinux31
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_tlinux31
+        repository: elkeidteam/elkeid_driver_tlinux31_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract tlinux31
       id: extract-tlinux31
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_tlinux31:latest
+        image: elkeidteam/elkeid_driver_tlinux31_x86_64:latest
         path: /ko_output/.
     - name: Upload tlinux31
       uses: actions/upload-artifact@v3
@@ -860,20 +882,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1204
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_ubuntu1204:latest
+        tags: elkeidteam/elkeid_driver_ubuntu1204_x86_64:latest
     - name: Docker Hub Description ubuntu1204
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_ubuntu1204
+        repository: elkeidteam/elkeid_driver_ubuntu1204_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1204
       id: extract-ubuntu1204
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_ubuntu1204:latest
+        image: elkeidteam/elkeid_driver_ubuntu1204_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1204
       uses: actions/upload-artifact@v3
@@ -898,20 +921,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1404_k3
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_ubuntu1404_k3:latest
+        tags: elkeidteam/elkeid_driver_ubuntu1404_k3_x86_64:latest
     - name: Docker Hub Description ubuntu1404_k3
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_ubuntu1404_k3
+        repository: elkeidteam/elkeid_driver_ubuntu1404_k3_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1404_k3
       id: extract-ubuntu1404_k3
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_ubuntu1404_k3:latest
+        image: elkeidteam/elkeid_driver_ubuntu1404_k3_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1404_k3
       uses: actions/upload-artifact@v3
@@ -936,20 +960,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1404_k4
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_ubuntu1404_k4:latest
+        tags: elkeidteam/elkeid_driver_ubuntu1404_k4_x86_64:latest
     - name: Docker Hub Description ubuntu1404_k4
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_ubuntu1404_k4
+        repository: elkeidteam/elkeid_driver_ubuntu1404_k4_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1404_k4
       id: extract-ubuntu1404_k4
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_ubuntu1404_k4:latest
+        image: elkeidteam/elkeid_driver_ubuntu1404_k4_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1404_k4
       uses: actions/upload-artifact@v3
@@ -974,20 +999,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_auzre
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_ubuntu1604_auzre:latest
+        tags: elkeidteam/elkeid_driver_ubuntu1604_auzre_x86_64:latest
     - name: Docker Hub Description ubuntu1604_auzre
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_ubuntu1604_auzre
+        repository: elkeidteam/elkeid_driver_ubuntu1604_auzre_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_auzre
       id: extract-ubuntu1604_auzre
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_ubuntu1604_auzre:latest
+        image: elkeidteam/elkeid_driver_ubuntu1604_auzre_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1604_auzre
       uses: actions/upload-artifact@v3
@@ -1012,20 +1038,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_aws
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_ubuntu1604_aws:latest
+        tags: elkeidteam/elkeid_driver_ubuntu1604_aws_x86_64:latest
     - name: Docker Hub Description ubuntu1604_aws
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_ubuntu1604_aws
+        repository: elkeidteam/elkeid_driver_ubuntu1604_aws_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_aws
       id: extract-ubuntu1604_aws
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_ubuntu1604_aws:latest
+        image: elkeidteam/elkeid_driver_ubuntu1604_aws_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1604_aws
       uses: actions/upload-artifact@v3
@@ -1050,20 +1077,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k410
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_ubuntu1604_k410:latest
+        tags: elkeidteam/elkeid_driver_ubuntu1604_k410_x86_64:latest
     - name: Docker Hub Description ubuntu1604_k410
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_ubuntu1604_k410
+        repository: elkeidteam/elkeid_driver_ubuntu1604_k410_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_k410
       id: extract-ubuntu1604_k410
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_ubuntu1604_k410:latest
+        image: elkeidteam/elkeid_driver_ubuntu1604_k410_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1604_k410
       uses: actions/upload-artifact@v3
@@ -1088,20 +1116,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k413
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_ubuntu1604_k413:latest
+        tags: elkeidteam/elkeid_driver_ubuntu1604_k413_x86_64:latest
     - name: Docker Hub Description ubuntu1604_k413
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_ubuntu1604_k413
+        repository: elkeidteam/elkeid_driver_ubuntu1604_k413_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_k413
       id: extract-ubuntu1604_k413
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_ubuntu1604_k413:latest
+        image: elkeidteam/elkeid_driver_ubuntu1604_k413_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1604_k413
       uses: actions/upload-artifact@v3
@@ -1126,20 +1155,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k44
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_ubuntu1604_k44:latest
+        tags: elkeidteam/elkeid_driver_ubuntu1604_k44_x86_64:latest
     - name: Docker Hub Description ubuntu1604_k44
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_ubuntu1604_k44
+        repository: elkeidteam/elkeid_driver_ubuntu1604_k44_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_k44
       id: extract-ubuntu1604_k44
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_ubuntu1604_k44:latest
+        image: elkeidteam/elkeid_driver_ubuntu1604_k44_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1604_k44
       uses: actions/upload-artifact@v3
@@ -1164,20 +1194,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k48
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_ubuntu1604_k48:latest
+        tags: elkeidteam/elkeid_driver_ubuntu1604_k48_x86_64:latest
     - name: Docker Hub Description ubuntu1604_k48
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_ubuntu1604_k48
+        repository: elkeidteam/elkeid_driver_ubuntu1604_k48_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_k48
       id: extract-ubuntu1604_k48
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_ubuntu1604_k48:latest
+        image: elkeidteam/elkeid_driver_ubuntu1604_k48_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1604_k48
       uses: actions/upload-artifact@v3
@@ -1202,20 +1233,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_ubuntu1804:latest
+        tags: elkeidteam/elkeid_driver_ubuntu1804_x86_64:latest
     - name: Docker Hub Description ubuntu1804
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_ubuntu1804
+        repository: elkeidteam/elkeid_driver_ubuntu1804_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1804
       id: extract-ubuntu1804
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_ubuntu1804:latest
+        image: elkeidteam/elkeid_driver_ubuntu1804_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1804
       uses: actions/upload-artifact@v3
@@ -1240,20 +1272,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804_aws
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_ubuntu1804_aws:latest
+        tags: elkeidteam/elkeid_driver_ubuntu1804_aws_x86_64:latest
     - name: Docker Hub Description ubuntu1804_aws
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_ubuntu1804_aws
+        repository: elkeidteam/elkeid_driver_ubuntu1804_aws_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1804_aws
       id: extract-ubuntu1804_aws
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_ubuntu1804_aws:latest
+        image: elkeidteam/elkeid_driver_ubuntu1804_aws_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1804_aws
       uses: actions/upload-artifact@v3
@@ -1278,20 +1311,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804_azure
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_ubuntu1804_azure:latest
+        tags: elkeidteam/elkeid_driver_ubuntu1804_azure_x86_64:latest
     - name: Docker Hub Description ubuntu1804_azure
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_ubuntu1804_azure
+        repository: elkeidteam/elkeid_driver_ubuntu1804_azure_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1804_azure
       id: extract-ubuntu1804_azure
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_ubuntu1804_azure:latest
+        image: elkeidteam/elkeid_driver_ubuntu1804_azure_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1804_azure
       uses: actions/upload-artifact@v3
@@ -1316,20 +1350,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_ubuntu2004:latest
+        tags: elkeidteam/elkeid_driver_ubuntu2004_x86_64:latest
     - name: Docker Hub Description ubuntu2004
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_ubuntu2004
+        repository: elkeidteam/elkeid_driver_ubuntu2004_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2004
       id: extract-ubuntu2004
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_ubuntu2004:latest
+        image: elkeidteam/elkeid_driver_ubuntu2004_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu2004
       uses: actions/upload-artifact@v3
@@ -1354,20 +1389,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004_aws
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_ubuntu2004_aws:latest
+        tags: elkeidteam/elkeid_driver_ubuntu2004_aws_x86_64:latest
     - name: Docker Hub Description ubuntu2004_aws
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_ubuntu2004_aws
+        repository: elkeidteam/elkeid_driver_ubuntu2004_aws_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2004_aws
       id: extract-ubuntu2004_aws
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_ubuntu2004_aws:latest
+        image: elkeidteam/elkeid_driver_ubuntu2004_aws_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu2004_aws
       uses: actions/upload-artifact@v3
@@ -1392,20 +1428,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004_azure
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_ubuntu2004_azure:latest
+        tags: elkeidteam/elkeid_driver_ubuntu2004_azure_x86_64:latest
     - name: Docker Hub Description ubuntu2004_azure
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_ubuntu2004_azure
+        repository: elkeidteam/elkeid_driver_ubuntu2004_azure_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2004_azure
       id: extract-ubuntu2004_azure
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_ubuntu2004_azure:latest
+        image: elkeidteam/elkeid_driver_ubuntu2004_azure_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu2004_azure
       uses: actions/upload-artifact@v3
@@ -1430,20 +1467,21 @@ jobs:
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2204
+        load: false
         push: true
-        tags: elkeidteam/elkeid_driver_ubuntu2204:latest
+        tags: elkeidteam/elkeid_driver_ubuntu2204_x86_64:latest
     - name: Docker Hub Description ubuntu2204
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_ubuntu2204
+        repository: elkeidteam/elkeid_driver_ubuntu2204_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2204
       id: extract-ubuntu2204
       uses: shrink/actions-docker-extract@v1
       with:
-        image: elkeidteam/elkeid_driver_ubuntu2204:latest
+        image: elkeidteam/elkeid_driver_ubuntu2204_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu2204
       uses: actions/upload-artifact@v3

@@ -15,10 +15,7 @@ disableGcc8(){
     unset CXX
 }
 
-mkdir -p /ko_output
-BUILD_VERSION=$(cat LKM/src/init.c | grep MODULE_VERSION | awk -F '"' '{print $2}')
-KO_NAME=$(grep "MODULE_NAME" ./LKM/Makefile | grep -m 1 ":=" | awk '{print $3}')
-
+echo "BUILD_VERSION=" $BUILD_VERSION
 
 for each_tag in `yum --showduplicates list kernel-devel --enablerepo=C7.{3.4,5,6,7,8,9}.* | grep kernel-devel | awk -c '{print $2}'`
 do 
