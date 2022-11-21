@@ -3,6 +3,30 @@ mkdir -p /ko_output
 BUILD_VERSION=$(cat LKM/src/init.c | grep MODULE_VERSION | awk -F '"' '{print $2}')
 KO_NAME=$(grep "MODULE_NAME" ./LKM/Makefile | grep -m 1 ":=" | awk '{print $3}')
 
+enableGcc8(){
+    export CC=/opt/rh/devtoolset-8/root/usr/bin/gcc
+    export CPP=/opt/rh/devtoolset-8/root/usr/bin/cpp
+    export CXX=/opt/rh/devtoolset-8/root/usr/bin/c++
+}
+
+enableGcc9(){
+    export CC=/opt/rh/devtoolset-9/root/usr/bin/gcc
+    export CPP=/opt/rh/devtoolset-9/root/usr/bin/cpp
+    export CXX=/opt/rh/devtoolset-9/root/usr/bin/c++
+}
+
+enableGcc10(){
+    export CC=/opt/rh/devtoolset-10/root/usr/bin/gcc
+    export CPP=/opt/rh/devtoolset-10/root/usr/bin/cpp
+    export CXX=/opt/rh/devtoolset-10/root/usr/bin/c++
+}
+
+disableGcc(){
+    unset CC
+    unset CPP
+    unset CXX
+}
+
 yum remove -y kernel-devel kernel-lt-devel kernel-ml-devel &> /dev/null
 yum remove -y kernel-tools kernel-lt-tools kernel-ml-tools  &> /dev/null
 yum remove -y kernel-tools-libs kernel-lt-tools-libs kernel-ml-tools-libs   &> /dev/null
@@ -33,6 +57,19 @@ do
     if [[ $each_ml_version =~ $SPECS_VERSION ]]
     then
         cp /usr/bin/objtool /usr/src/kernels/$each_ml_version.el7.elrepo.x86_64/tools/objtool/objtool 
+    fi
+
+    disableGcc
+    if [[ $each_tag == 4.18* ]] || [[ $each_tag == 4.19* ]] || [[ $each_tag == 4.20* ]] || [[ $each_tag == 5.*]]; then
+        enableGcc8
+    fi
+
+    if [[ $each_tag == 5.10.* ]] || [[ $each_tag == 5.11.* ]] || [[ $each_tag == 5.12.* ]] || [[ $each_tag == 5.13.* ]] || [[ $each_tag == 5.14.* ]] || [[ $each_tag == 5.15.* ]] || [[ $each_tag == 5.16.* ]] || [[ $each_tag == 5.17.* ]] || [[ $each_tag == 5.18.* ]] || [[ $each_tag == 5.19.* ]] || [[ $each_tag == 5.20.* ]] ; then
+        enableGcc9
+    fi
+
+    if [[ $each_tag == 6.* ]]; then
+        enableGcc10
     fi
 
     rpm -i --force ./kernel*.rpm 
