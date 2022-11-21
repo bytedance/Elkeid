@@ -47,6 +47,7 @@ def gen_job(vminfo):
                     "name": "Set up Docker Buildx "+vmname,
                     "uses": "docker/setup-buildx-action@v2"
                 }),
+
                 OrderedDict({
                     "name": "Build "+vmname,
                     "uses": "docker/build-push-action@v3",
@@ -54,9 +55,10 @@ def gen_job(vminfo):
                         "context":".",
                         "file": dockerpath + "/Dockerfile."+vmname,
                         "push": True,
-                        "tags": "elkeidteam/elkeid_driver_"+vmname+":latest"
+                        "tags": "elkeidteam/elkeid_driver_"+vmname+"_"+aarch+":latest",
+                        "load": True if aarch.endswith("aarch64") else False,
                     }
-                }),
+                }) ,
 
                 OrderedDict({
                     "name": "Docker Hub Description "+vmname,
@@ -64,7 +66,7 @@ def gen_job(vminfo):
                     "with": {
                         "username": "${{secrets.DOCKERHUB_USERNAME}}",
                         "password": "${{secrets.DOCKERHUB_TOKEN}}",
-                        "repository": "elkeidteam/elkeid_driver_"+vmname,
+                        "repository": "elkeidteam/elkeid_driver_"+vmname+"_"+aarch,
                         "short-description": "${{github.event.repository.description}}",
                     }
                 }),
@@ -74,7 +76,7 @@ def gen_job(vminfo):
                     "id": "extract-"+vmname,
                     "uses": "shrink/actions-docker-extract@v1",
                     "with": {
-                        "image": "elkeidteam/elkeid_driver_"+vmname+":latest",
+                        "image": "elkeidteam/elkeid_driver_"+vmname+"_"+aarch+":latest",
                         "path": "/ko_output/."
                     }
                 }),
