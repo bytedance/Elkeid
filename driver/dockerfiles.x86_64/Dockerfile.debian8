@@ -1,13 +1,13 @@
 FROM debian:jessie AS jessie
 
 RUN apt update
-RUN apt install -y apt-utils apt-transport-https || true
-RUN apt install -y ca-certificates || true
-RUN apt install -y debian-archive-keyring || true
+RUN apt install --yes --force-yes apt-utils apt-transport-https || true
+RUN apt install --yes --force-yes ca-certificates || true
+RUN apt install --yes --force-yes debian-archive-keyring || true
 RUN apt install --yes --force-yes gcc build-essential libelf-dev; 
-RUN apt install -y linux-compiler-gcc* || true
-RUN apt install -y linux-kbuild*;
-RUN apt install -y -f \
+RUN apt install --yes --force-yes linux-compiler-gcc* || true
+RUN apt install --yes --force-yes linux-kbuild*;
+RUN apt install --yes --force-yes \
 linux-headers-4.9.0-0.bpo.12-all-amd64 \
 linux-headers-4.9.0-0.bpo.11-all-amd64 \
 linux-headers-4.9-amd64 \
