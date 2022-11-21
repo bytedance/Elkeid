@@ -412,7 +412,7 @@ impl RASPManager {
 
     fn create_elkeid_rasp_dir() -> AnyhowResult<()> {
         info!("create /var/run/elkeid_rasp/com/security/patch");
-        match fs_extra::dir::create("/var/run/elkeid_rasp/com/security/patch", false) {
+        match fs_extra::dir::create_all("/var/run/elkeid_rasp/com/security/patch", false) {
             Ok(_) => {},
             Err(e) => {
                 warn!("create dir /var/run/elkeid_rasp/com/security/patch failed: {}", e);
