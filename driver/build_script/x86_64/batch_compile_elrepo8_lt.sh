@@ -14,6 +14,14 @@ do
     yum remove -y kernel-tools kernel-lt-tools kernel-ml-tools  &> /dev/null
     yum remove -y kernel-tools-libs kernel-lt-tools-libs kernel-ml-tools-libs   &> /dev/null
 
+    if [[ $each_tag == 5.10.* ]] || [[ $each_tag == 5.11.* ]] || [[ $each_tag == 5.12.* ]] || [[ $each_tag == 5.13.* ]] || [[ $each_tag == 5.14.* ]] || [[ $each_tag == 5.15.* ]] || [[ $each_tag == 5.16.* ]] || [[ $each_tag == 5.17.* ]] || [[ $each_tag == 5.18.* ]] || [[ $each_tag == 5.19.* ]] || [[ $each_tag == 5.20.* ]] ; then
+        enableGcc9
+    fi
+
+    if [[ $each_tag == 6.* ]]; then
+        enableGcc10
+    fi
+
     rpm -i --force ./kernel*.rpm 
     rm -f ./kernel*.rpm 
     KV=$each_lt_version.el8.elrepo.x86_64
