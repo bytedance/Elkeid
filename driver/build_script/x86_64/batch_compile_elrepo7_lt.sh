@@ -3,6 +3,30 @@ mkdir -p /ko_output
 BUILD_VERSION=$(cat LKM/src/init.c | grep MODULE_VERSION | awk -F '"' '{print $2}')
 KO_NAME=$(grep "MODULE_NAME" ./LKM/Makefile | grep -m 1 ":=" | awk '{print $3}')
 
+enableGcc8(){
+    export CC=/opt/rh/devtoolset-8/root/usr/bin/gcc
+    export CPP=/opt/rh/devtoolset-8/root/usr/bin/cpp
+    export CXX=/opt/rh/devtoolset-8/root/usr/bin/c++
+}
+
+enableGcc9(){
+    export CC=/opt/rh/devtoolset-9/root/usr/bin/gcc
+    export CPP=/opt/rh/devtoolset-9/root/usr/bin/cpp
+    export CXX=/opt/rh/devtoolset-9/root/usr/bin/c++
+}
+
+enableGcc10(){
+    export CC=/opt/rh/devtoolset-10/root/usr/bin/gcc
+    export CPP=/opt/rh/devtoolset-10/root/usr/bin/cpp
+    export CXX=/opt/rh/devtoolset-10/root/usr/bin/c++
+}
+
+disableGcc(){
+    unset CC
+    unset CPP
+    unset CXX
+}
+
 for each_lt_version in `curl https://mirrors.portworx.com/mirrors/http/mirrors.coreix.net/elrepo-archive-archive/kernel/el7/x86_64/RPMS/ | grep el7.elrepo.x86_64.rpm | grep kernel-lt-devel | sed -r 's/.*href="([^"]+).*/\1/g' | sed -r 's/kernel-lt-devel-([^"]+).el7.elrepo.x86_64.rpm/\1/g'`
 do 
     wget -q "https://mirrors.portworx.com/mirrors/http/mirrors.coreix.net/elrepo-archive-archive/kernel/el7/x86_64/RPMS/kernel-lt-devel"-$each_lt_version.el7.elrepo.x86_64.rpm
@@ -12,6 +36,20 @@ do
     yum remove -y kernel-devel kernel-lt-devel kernel-ml-devel &> /dev/null
     yum remove -y kernel-tools kernel-lt-tools kernel-ml-tools &> /dev/null
     yum remove -y kernel-tools-libs kernel-lt-tools-libs kernel-ml-tools-libs &> /dev/null
+
+    disableGcc
+    if [[ $each_tag == 4.18* ]] || [[ $each_tag == 4.19* ]] || [[ $each_tag == 4.20* ]] || [[ $each_tag == 5.*]]; then
+        enableGcc8
+    fi
+
+    if [[ $each_tag == 5.10.* ]] || [[ $each_tag == 5.11.* ]] || [[ $each_tag == 5.12.* ]] || [[ $each_tag == 5.13.* ]] || [[ $each_tag == 5.14.* ]] || [[ $each_tag == 5.15.* ]] || [[ $each_tag == 5.16.* ]] || [[ $each_tag == 5.17.* ]] || [[ $each_tag == 5.18.* ]] || [[ $each_tag == 5.19.* ]] || [[ $each_tag == 5.20.* ]] ; then
+        enableGcc9
+    fi
+
+    if [[ $each_tag == 6.* ]]; then
+        enableGcc10
+    fi
+
     
     rpm -i --force ./kernel*.rpm 
     rm -f ./kernel*.rpm 
