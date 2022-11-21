@@ -83,7 +83,7 @@ def gen_job(vminfo):
                     "uses": "actions/upload-artifact@v3",
                     "with": {
                         "path": "${{steps.extract-"+vmname+".outputs.destination}}",
-                        "name": "elkeid_driver_"+vmname
+                        "name": "elkeid_driver_"+vmname+"_"+aarch
                     }
                 })
             ]
