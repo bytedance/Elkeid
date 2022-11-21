@@ -411,8 +411,8 @@ impl RASPManager {
     }
 
     fn create_elkeid_rasp_dir() -> AnyhowResult<()> {
-        info!("create /var/run/elkeid_rasp");
-        fs_extra::dir::create("/var/run/elkeid_rasp", false)?;
+        info!("create /var/run/elkeid_rasp/com/security/patch");
+        fs_extra::dir::create("/var/run/elkeid_rasp/com/security/patch", false)?;
         Ok(())
     }
 
