@@ -4,7 +4,7 @@ RUN apt update
 RUN apt install -y apt-utils apt-transport-https || true
 RUN apt install -y ca-certificates || true
 RUN apt install -y debian-archive-keyring || true
-RUN apt install -y gcc build-essential libelf-dev; 
+RUN apt install --yes --force-yes gcc build-essential libelf-dev; 
 RUN apt install -y linux-compiler-gcc* || true
 RUN apt install -y linux-kbuild*;
 RUN apt install -y -f \

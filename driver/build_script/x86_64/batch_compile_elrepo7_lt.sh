@@ -38,11 +38,11 @@ do
     yum remove -y kernel-tools-libs kernel-lt-tools-libs kernel-ml-tools-libs &> /dev/null
 
     disableGcc
-    if [[ $each_tag == 4.18* ]] || [[ $each_tag == 4.19* ]] || [[ $each_tag == 4.20* ]] || [[ $each_tag == 5.*]]; then
+    if [[ $each_tag == 4.18* || $each_tag == 4.19*  ||  $each_tag == 4.20* || $each_tag == 5.* ]]; then
         enableGcc8
     fi
 
-    if [[ $each_tag == 5.10.* ]] || [[ $each_tag == 5.11.* ]] || [[ $each_tag == 5.12.* ]] || [[ $each_tag == 5.13.* ]] || [[ $each_tag == 5.14.* ]] || [[ $each_tag == 5.15.* ]] || [[ $each_tag == 5.16.* ]] || [[ $each_tag == 5.17.* ]] || [[ $each_tag == 5.18.* ]] || [[ $each_tag == 5.19.* ]] || [[ $each_tag == 5.20.* ]] ; then
+    if [[ $each_tag == 5.10.* || $each_tag == 5.11.*  ||  $each_tag == 5.12.*  ||  $each_tag == 5.13.*  ||  $each_tag == 5.14.*  ||  $each_tag == 5.15.*  ||  $each_tag == 5.16.*  ||  $each_tag == 5.17.*  || $each_tag == 5.18.*  ||  $each_tag == 5.19.*  ||  $each_tag == 5.20.* ]] ; then
         enableGcc9
     fi
 
