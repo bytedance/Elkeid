@@ -454,7 +454,7 @@ jobs:
         context: .
         file: driver/dockerfiles.aarch64/Dockerfile.rhel7
         load: true
-        push: true
+        push: false
         tags: elkeidteam/elkeid_driver_rhel7_aarch64:latest
     - name: Docker Hub Description rhel7
       uses: peter-evans/dockerhub-description@v3

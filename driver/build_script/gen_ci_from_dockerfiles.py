@@ -54,7 +54,7 @@ def gen_job(vminfo):
                     "with": {
                         "context":".",
                         "file": dockerpath + "/Dockerfile."+vmname,
-                        "push": True,
+                        "push": False if aarch.endswith("aarch64") else True,
                         "tags": "elkeidteam/elkeid_driver_"+vmname+"_"+aarch+":latest",
                         "load": True if aarch.endswith("aarch64") else False,
                     }
