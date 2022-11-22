@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -121,6 +122,53 @@ impl RASPManager {
         Ok(())
     }
 
+    pub fn patch_message_handle(
+        &self,
+        valid_messages: &mut Vec<PidMissingProbeConfig>,
+        pid: i32,
+    ) -> AnyhowResult<Vec<PidMissingProbeConfig>> {
+        for valid_m in valid_messages.iter_mut() {
+            if let Some(patches) = valid_m.data.patches.as_mut() {
+                let mut delete_index = Vec::new();
+                for (index, patch) in patches.iter_mut().enumerate() {
+                    if patch.path.is_none() {
+                        delete_index.push(index);
+                        continue;
+                    }
+                    let path_path_str = patch.path.clone().unwrap();
+                    let patch_path = Path::new(&path_path_str);
+                    // check patch exist
+                    if !patch_path.exists() {
+                        delete_index.push(index);
+                        continue;
+                    } else {
+                        let patch_file_name = patch_path.file_name().unwrap_or(OsStr::new("")).to_string_lossy();
+                        if patch_file_name == "" {
+                            delete_index.push(index);
+                            continue;
+                        }
+                        let dest_path = format!("/proc/{}/root", pid);
+                        match self.copy_file_from_to_dest(path_path_str.clone(), dest_path.clone()) {
+                            Ok(_) => {
+                                patch.path = None;
+                                patch.url = Some("file:///var/run/elkeid-agent/rasp/".to_string());
+                            }
+                            Err(e) => {
+                                error!("copy patch failed: {}", e);
+                                delete_index.push(index);
+                                continue;
+                            }
+                        }
+                    }
+                }
+                for index in delete_index.iter() {
+                    patches.remove(*index);
+                }
+            }
+        }
+        Ok(valid_messages.clone())
+    }
+
     pub fn send_message_to_probe(&mut self, pid: i32, mnt_namespace: &String, message: &String) -> AnyhowResult<()> {
         // try to write probe to dir
         let nspid = ProcessInfo::read_nspid(pid)?.ok_or(anyhow!("can not fetch nspid: {}", pid))?;
@@ -129,7 +177,7 @@ impl RASPManager {
         let mut messages: Vec<libraspserver::proto::PidMissingProbeConfig> = serde_json::from_str(message)?;
         let mut valid_messages: Vec<libraspserver::proto::PidMissingProbeConfig> = Vec::new();
         if messages.len() <= 0 {
-            for message_type in [6,7,8,9] {
+            for message_type in [6, 7, 8, 9] {
                 messages.push(PidMissingProbeConfig {
                     message_type,
                     data: ProbeConfigData::empty(message_type)?,
@@ -151,9 +199,10 @@ impl RASPManager {
                     }
                 };
                 valid_messages.push(m.clone());
-
             }
         }
+        // handle patches
+        let valid_messages = self.patch_message_handle(&mut valid_messages, pid)?;
         for valid_m in valid_messages.iter() {
             let m_string = match serde_json::to_string(&valid_m) {
                 Ok(s) => s,
@@ -339,6 +388,10 @@ impl RASPManager {
         using_mount: bool,
     ) -> AnyhowResult<Self> {
         Self::clean_prev_lib()?;
+        Self::create_elkeid_rasp_dir(
+            &String::from("/var/run/elkeid-agent"),
+            &String::from("/rasp/com/security/patch"),
+        )?;
         match comm_mode {
             "thread" => {
                 Ok(RASPManager {
@@ -356,9 +409,32 @@ impl RASPManager {
                 })
             }
             _ => {
-                Err(anyhow!("{} is not a vavild comm mode", comm_mode))
+                Err(anyhow!("{} is not a vaild comm mode", comm_mode))
             }
         }
+    }
+
+    fn create_elkeid_rasp_dir(agent_runtime_path: &String, rasp_runtime_path: &String) -> AnyhowResult<()> {
+        info!("create rasp runtime path: {}", rasp_runtime_path);
+        // dose Agent create `agent_runtime_path`?
+        if !Path::new(agent_runtime_path).exists() {
+            return Err(anyhow!("can not found agent runtime path: {}", agent_runtime_path));
+        }
+        let rasp_runtime_path_full = format!("{}{}", agent_runtime_path, rasp_runtime_path);
+        let path = Path::new(&rasp_runtime_path_full);
+        if path.exists() {
+            return Ok(());
+        }
+        match fs_extra::dir::create_all(&rasp_runtime_path_full, false) {
+            Ok(_) => {}
+            Err(e) => {
+                warn!("create dir failed: {} {}", rasp_runtime_path_full, e);
+            }
+        };
+        if !path.exists() {
+            return Err(anyhow!("can not create rasp runtime dir: {}", rasp_runtime_path_full));
+        }
+        Ok(())
     }
 
     fn clean_prev_lib() -> AnyhowResult<()> {
@@ -442,7 +518,7 @@ impl RASPManager {
         return match copy(from.clone(), format!("{}/{}", dest_root, from), &options) {
             Ok(_) => Ok(()),
             Err(e) => {
-                warn!("can nout copy: {}", e);
+                warn!("can not copy: {}", e);
                 Err(anyhow!(
 		    "copy failed: from {} to {}: {}",
 		    from,
@@ -462,8 +538,8 @@ impl RASPManager {
         let root_dir = format!("/proc/{}/root", pid);
         self.copy_to_dest(root_dir)
     }
-    pub fn can_copy(&self, _mnt_namesapce: &String) -> bool {
-        // !self.namespace_tracer.server_state(&mnt_namesapce).is_some()
+    pub fn can_copy(&self, _mnt_namespace: &String) -> bool {
+        // !self.namespace_tracer.server_state(&mnt_namespace).is_some()
         true
     }
     pub fn root_dir(pid: i32) -> String {
@@ -499,7 +575,7 @@ impl MntNamespaceTracer {
         }
     }
 
-    pub fn detele_namespace(&mut self, mnt_namespace: String) {
+    pub fn delete_namespace(&mut self, mnt_namespace: String) {
         self.tracer.remove(&mnt_namespace);
     }
 
@@ -601,4 +677,45 @@ fn read_dir<P>(path: P) -> AnyhowResult<Vec<fs::DirEntry>>
             entry.map_err(|err| anyhow!("Failed to read file '{:?}': {}", path.as_ref(), err))
         })
         .collect()
+}
+
+
+#[cfg(test)]
+mod tests {
+    use libraspserver::proto::ProbeConfigPatch;
+    use super::*;
+
+    #[test]
+    fn patch_message() {
+        let fake_patch = ProbeConfigPatch {
+            class_name: "CVE202144228".to_string(),
+            url: Some("file:///var/run/elkeid_rasp/".into()),
+            path: Some("/run/elkeid_rasp/com/security/patch/CVE202144228".into()),
+            sum_hash: None,
+        };
+        let mut fake_patches = Vec::new();
+        fake_patches.push(fake_patch);
+        let mut fake_configs = Vec::new();
+        fake_configs.push(
+            PidMissingProbeConfig {
+                message_type: 9,
+                data: ProbeConfigData {
+                    uuid: "fake".to_string(),
+                    blocks: None,
+                    filters: None,
+                    limits: None,
+                    patches: Some(fake_patches),
+                },
+            }
+        );
+        let fake_manager = RASPManager {
+            namespace_tracer: MntNamespaceTracer::new(),
+            thread_comm: None,
+            process_comm: None,
+        };
+        println!("{:?}", fake_configs);
+        let _ = fake_manager.patch_message_handle(&mut fake_configs, 35432).unwrap();
+        let result = 2 + 2;
+        assert_eq!(result, 4);
+    }
 }
