@@ -137,9 +137,7 @@ class MessageDecoder extends ReplayingDecoder<Void> {
         byte[] buffer = new byte[(int) payloadSize];
         in.readBytes(buffer);
 
-        ObjectMapper objectMapper = new ObjectMapper();
-
-        Message message = objectMapper.readValue(buffer, Message.class);
+        Message message = new ObjectMapper().readValue(buffer, Message.class);
 
         if (message != null)
             out.add(message);
