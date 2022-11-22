@@ -235,7 +235,9 @@ pub struct ProbeConfigLimit {
 pub struct ProbeConfigPatch {
     pub class_name: String,
     pub url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sum_hash: Option<String>,
 }
 
