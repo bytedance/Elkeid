@@ -127,35 +127,35 @@ impl RASPManager {
         pid: i32,
     ) -> AnyhowResult<Vec<PidMissingProbeConfig>> {
         for valid_m in valid_messages.iter_mut() {
-            if let Some(patches) =  valid_m.data.patches.as_mut() {
+            if let Some(patches) = valid_m.data.patches.as_mut() {
                 let mut delete_index = Vec::new();
                 for (index, patch) in patches.iter_mut().enumerate() {
                     if patch.path.is_none() {
                         delete_index.push(index);
-                        continue
+                        continue;
                     }
                     let path_path_str = patch.path.clone().unwrap();
                     let patch_path = Path::new(&path_path_str);
                     // check patch exist
                     if !patch_path.exists() {
                         delete_index.push(index);
-                        continue
+                        continue;
                     } else {
                         let patch_file_name = patch_path.file_name().unwrap_or(OsStr::new("")).to_string_lossy();
                         if patch_file_name == "" {
                             delete_index.push(index);
-                            continue
+                            continue;
                         }
                         let dest_path = format!("/proc/{}/root", pid);
                         match self.copy_file_from_to_dest(path_path_str.clone(), dest_path.clone()) {
                             Ok(_) => {
                                 patch.path = None;
-                                patch.url = Some("file:///var/run/elkeid_rasp/".to_string());
+                                patch.url = Some("file:///var/run/elkeid-agent/rasp/".to_string());
                             }
                             Err(e) => {
                                 error!("copy patch failed: {}", e);
                                 delete_index.push(index);
-                                continue
+                                continue;
                             }
                         }
                     }
@@ -175,7 +175,7 @@ impl RASPManager {
         let mut messages: Vec<libraspserver::proto::PidMissingProbeConfig> = serde_json::from_str(message)?;
         let mut valid_messages: Vec<libraspserver::proto::PidMissingProbeConfig> = Vec::new();
         if messages.len() <= 0 {
-            for message_type in [6,7,8,9] {
+            for message_type in [6, 7, 8, 9] {
                 messages.push(PidMissingProbeConfig {
                     message_type,
                     data: ProbeConfigData::empty(message_type)?,
@@ -197,7 +197,6 @@ impl RASPManager {
                     }
                 };
                 valid_messages.push(m.clone());
-
             }
         }
         // handle patches
@@ -387,7 +386,10 @@ impl RASPManager {
         using_mount: bool,
     ) -> AnyhowResult<Self> {
         Self::clean_prev_lib()?;
-        Self::create_elkeid_rasp_dir()?;
+        Self::create_elkeid_rasp_dir(
+            &String::from("/var/run/elkeid-agent"),
+            &String::from("/rasp/com/security/patch"),
+        )?;
         match comm_mode {
             "thread" => {
                 Ok(RASPManager {
@@ -410,17 +412,25 @@ impl RASPManager {
         }
     }
 
-    fn create_elkeid_rasp_dir() -> AnyhowResult<()> {
-        info!("create /var/run/elkeid_rasp/com/security/patch");
-        match fs_extra::dir::create_all("/var/run/elkeid_rasp/com/security/patch", false) {
-            Ok(_) => {},
+    fn create_elkeid_rasp_dir(agent_runtime_path: &String, rasp_runtime_path: &String) -> AnyhowResult<()> {
+        info!("create rasp runtime path: {}", rasp_runtime_path);
+        // dose Agent create `agent_runtime_path`?
+        if !Path::new(agent_runtime_path).exists() {
+            return Err(anyhow!("can not found agent runtime path: {}", agent_runtime_path));
+        }
+        let rasp_runtime_path_full = format!("{}{}", agent_runtime_path, rasp_runtime_path);
+        let path = Path::new(&rasp_runtime_path_full);
+        if path.exists() {
+            return Ok(());
+        }
+        match fs_extra::dir::create_all(&rasp_runtime_path_full, false) {
+            Ok(_) => {}
             Err(e) => {
-                warn!("create dir /var/run/elkeid_rasp/com/security/patch failed: {}", e);
+                warn!("create dir failed: {} {}", rasp_runtime_path_full, e);
             }
         };
-        let path = Path::new("/var/run/elkeid_rasp/com/security/patch");
         if !path.exists() {
-            return Err(anyhow!("can not found /var/run/elkeid_rasp/com/security/patch"));
+            return Err(anyhow!("can not create rasp runtime dir: {}", rasp_runtime_path_full));
         }
         Ok(())
     }
@@ -671,6 +681,7 @@ fn read_dir<P>(path: P) -> AnyhowResult<Vec<fs::DirEntry>>
 mod tests {
     use libraspserver::proto::ProbeConfigPatch;
     use super::*;
+
     #[test]
     fn patch_message() {
         let fake_patch = ProbeConfigPatch {
@@ -690,14 +701,14 @@ mod tests {
                     blocks: None,
                     filters: None,
                     limits: None,
-                    patches: Some(fake_patches)
-                }
+                    patches: Some(fake_patches),
+                },
             }
         );
         let fake_manager = RASPManager {
             namespace_tracer: MntNamespaceTracer::new(),
             thread_comm: None,
-            process_comm: None
+            process_comm: None,
         };
         println!("{:?}", fake_configs);
         let _ = fake_manager.patch_message_handle(&mut fake_configs, 35432).unwrap();
