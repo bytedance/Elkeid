@@ -1,6 +1,7 @@
 package com.security.smith.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.security.smith.client.message.*;
@@ -129,7 +130,8 @@ public class Client implements EventHandler {
                 SmithLogger.logger.info("filter: " + message.getData().toString());
 
                 ObjectMapper objectMapper = new ObjectMapper()
-                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+                        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
                 try {
                     messageHandler.onFilter(
@@ -149,7 +151,8 @@ public class Client implements EventHandler {
                 SmithLogger.logger.info("block: " + message.getData().toString());
 
                 ObjectMapper objectMapper = new ObjectMapper()
-                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+                        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
                 try {
                     messageHandler.onBlock(
@@ -169,7 +172,8 @@ public class Client implements EventHandler {
                 SmithLogger.logger.info("limit: " + message.getData().toString());
 
                 ObjectMapper objectMapper = new ObjectMapper()
-                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+                        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
                 try {
                     messageHandler.onLimit(
@@ -189,7 +193,8 @@ public class Client implements EventHandler {
                 SmithLogger.logger.info("patch: " + message.getData().toString());
 
                 ObjectMapper objectMapper = new ObjectMapper()
-                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+                        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
                 try {
                     messageHandler.onPatch(
@@ -218,7 +223,8 @@ public class Client implements EventHandler {
         SmithLogger.logger.info("read message file: " + path);
 
         ObjectMapper objectMapper = new ObjectMapper()
-                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
         try {
             for (Message message : objectMapper.readValue(path.toFile(), Message[].class))
