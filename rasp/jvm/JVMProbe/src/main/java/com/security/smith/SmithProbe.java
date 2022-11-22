@@ -115,6 +115,16 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 new TimerTask() {
                     @Override
                     public void run() {
+                        onDetect();
+                    }
+                },
+                TimeUnit.MINUTES.toMillis(1)
+        );
+
+        new Timer(true).schedule(
+                new TimerTask() {
+                    @Override
+                    public void run() {
                         onTimer();
                     }
                 },
@@ -374,8 +384,12 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     @Override
     public void onPatch(PatchConfig config) {
         for (Patch patch : config.getPatches()) {
-            if (patchers.containsKey(patch.getClassName()))
+            SmithLogger.logger.info("install patch: " + patch.getClassName());
+
+            if (patchers.containsKey(patch.getClassName())) {
+                SmithLogger.logger.info("ignore installed patch: " + patch.getClassName());
                 continue;
+            }
 
             try (URLClassLoader loader = new URLClassLoader(new URL[]{patch.getUrl()})) {
                 Patcher patcher = loader.loadClass(patch.getClassName())
@@ -396,6 +410,8 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
         patchers.keySet().stream().filter(name -> !active.contains(name)).forEach(
                 name -> {
+                    SmithLogger.logger.info("uninstall patch: " + name);
+
                     Patcher patcher = patchers.remove(name);
 
                     if (patcher == null)
