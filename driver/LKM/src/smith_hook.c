@@ -4027,8 +4027,8 @@ errorout:
  * sys_exit tracepoint events for successful execve or execveat syscalls will be
  * bypassed. Failed execve or execveat still have notification callbacks.
  *
- * Here we are using process_exec tracepoint as a suppliment to handle exec events.
- * Lucily that kernels with ARM64 support are newer than 3.4.
+ * Here we are using process_exec tracepoint as a supplement to handle exec events.
+ * Luckily that kernels with ARM64 support are newer than 3.4.
  *
  * This bug is to be fixed in 5.20 and later, more details:
  * 1) https://git.kernel.org/pub/scm/linux/kernel/git/arm64/linux.git/commit/?id=de6921856f99
