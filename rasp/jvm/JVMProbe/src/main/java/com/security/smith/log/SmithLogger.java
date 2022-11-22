@@ -19,7 +19,7 @@ public class SmithLogger {
         try {
             String filename = String.format("/tmp/JVMProbe.%d.%d.log", ProcessHelper.getCurrentPID(), Instant.now().getEpochSecond());
 
-            FileHandler handler = new FileHandler(filename, true);
+            FileHandler handler = new FileHandler(filename, 5 * 1024 * 1024, 5);
             logger.addHandler(handler);
 
             SimpleFormatter formatter = new SimpleFormatter();

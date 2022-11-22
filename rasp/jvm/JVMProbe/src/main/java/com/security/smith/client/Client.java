@@ -2,7 +2,7 @@ package com.security.smith.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.security.smith.client.message.*;
 import com.security.smith.common.ProcessHelper;
 import com.security.smith.log.SmithLogger;
@@ -81,7 +81,7 @@ public class Client implements EventHandler {
             return;
 
         ObjectMapper objectMapper = new ObjectMapper()
-                .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
 
         Message message = new Message();
 
@@ -126,10 +126,10 @@ public class Client implements EventHandler {
                 break;
 
             case FILTER: {
-                SmithLogger.logger.info("filter");
+                SmithLogger.logger.info("filter: " + message.getData().toString());
 
                 ObjectMapper objectMapper = new ObjectMapper()
-                        .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
 
                 try {
                     messageHandler.onFilter(
@@ -146,10 +146,10 @@ public class Client implements EventHandler {
             }
 
             case BLOCK: {
-                SmithLogger.logger.info("block");
+                SmithLogger.logger.info("block: " + message.getData().toString());
 
                 ObjectMapper objectMapper = new ObjectMapper()
-                        .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
 
                 try {
                     messageHandler.onBlock(
@@ -166,10 +166,10 @@ public class Client implements EventHandler {
             }
 
             case LIMIT: {
-                SmithLogger.logger.info("limit");
+                SmithLogger.logger.info("limit: " + message.getData().toString());
 
                 ObjectMapper objectMapper = new ObjectMapper()
-                        .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
 
                 try {
                     messageHandler.onLimit(
@@ -186,10 +186,10 @@ public class Client implements EventHandler {
             }
 
             case PATCH: {
-                SmithLogger.logger.info("patch");
+                SmithLogger.logger.info("patch: " + message.getData().toString());
 
                 ObjectMapper objectMapper = new ObjectMapper()
-                        .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
 
                 try {
                     messageHandler.onPatch(
@@ -210,11 +210,15 @@ public class Client implements EventHandler {
     private void readMessage() {
         Path path = Paths.get(MESSAGE_DIRECTORY, String.format("%d.json", ProcessHelper.getCurrentPID()));
 
-        if (!Files.exists(path))
+        if (!Files.exists(path)) {
+            SmithLogger.logger.info("message file not exist: " + path);
             return;
+        }
+
+        SmithLogger.logger.info("read message file: " + path);
 
         ObjectMapper objectMapper = new ObjectMapper()
-                .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
 
         try {
             for (Message message : objectMapper.readValue(path.toFile(), Message[].class))
