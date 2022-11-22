@@ -17,6 +17,12 @@
 #include "../include/xfer.h"
 
 /*
+ * length of event format description
+ */
+#define SD_XFER_META_SIZE(...)      ((SD_N_ARGS(__VA_ARGS__) + 3) * sizeof(uint32_t) * 2)
+#define SD_XFER_META_XFER(...)      SD_XFER_META_SIZE(__VA_ARGS__)
+
+/*
  * prototypes of event elements
  */
 
@@ -60,8 +66,8 @@
 
 #define SD_XFER_DEFINE_P(n, p, x)                               \
     SD_XFER_DEFINE_E(n, p, x);                                  \
-    struct sd_item_ent SD_XFER_PROTO_##n[] = {                  \
-        {{0}, {0}},                                             \
+    static struct sd_item_ent SD_XFER_PROTO_##n[] = {           \
+        {{SD_XFER_META_##x}, {SD_XFER_TYPEID_##n}},             \
         {{sizeof(struct SD_XFER_EVENT_##n)},                    \
         SD_TYPE_##x,                                            \
         {{0}, {0}} };
@@ -71,7 +77,9 @@
 #include "../include/kprobe_print.h"
 #include "../include/anti_rootkit_print.h"
 
-#define SD_XFER_DEFINE_X(n, p, x) {sizeof(SD_XFER_PROTO_##n), 0, SD_XFER_PROTO_##n},
+#define SD_XFER_DEFINE_X(n, p, x)                               \
+            { sizeof(SD_XFER_PROTO_##n), SD_XFER_TYPEID_##n,    \
+              SD_XFER_PROTO_##n },
 #undef SD_XFER_DEFINE
 #define SD_XFER_DEFINE(n, p, x) SD_XFER_DEFINE_X(n, p, x)
 
@@ -86,19 +94,9 @@ static struct sd_event_point g_sd_events[] = {
     };
 #define N_SD_EVENTS (sizeof(g_sd_events)/sizeof(struct sd_event_point))
 
-static int inline sd_init_events(void)
-{
-    int i;
-
-    for (i = 0; i < N_SD_EVENTS; i++) {
-        g_sd_events[i].eid = i + 1;
-        g_sd_events[i].ent[0].eid = i + 1;
-        g_sd_events[i].ent[0].meta = g_sd_events[i].fmt;
-    }
-
-    return 0;
-}
-
+/*
+ * user interface exported via /proc
+ */
 #define PROC_ENDPOINT	"elkeid-endpoint"
 
 struct tb_ring *g_trace_ring;
@@ -376,8 +374,6 @@ static const struct proc_ops trace_pipe_fops = {
 
 static int __init print_event_init(void)
 {
-    sd_init_events();
-
     g_trace_ring = tb_alloc(RB_BUFFER_SIZE, TB_FL_OVERWRITE);
     if (!g_trace_ring)
         return -ENOMEM;

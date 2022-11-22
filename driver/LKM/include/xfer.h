@@ -452,6 +452,22 @@ static inline void *tb_memcpy(void *to, void *from, size_t len)
     return memmove(to, from, len);
 }
 
+/*
+ * unique id of HIDS event (eg: 602 can have 3 event formats, thus 3 ids)
+ */
+#define SD_XFER_TYPEID_NAME(x)      XFER_TYPEID_##x
+#undef  SD_XFER_DEFINE
+#define SD_XFER_DEFINE(n, p, x)     SD_XFER_TYPEID_##n,
+
+enum sd_xfer_typeid {
+    XFER_TYPEID_null = 0,
+#include "../include/kprobe_print.h"
+#include "../include/anti_rootkit_print.h"
+};
+
+/*
+ * event logging routines
+ */
 #define SD_PACK_ENTRY_XID(v)            __ev->e_xid = v
 #define SD_PACK_ENTRY_U8(n, v)          __ev->d_##n = v
 #define SD_PACK_ENTRY_S8(n, v)          __ev->d_##n = v
@@ -548,7 +564,6 @@ static inline void *tb_memcpy(void *to, void *from, size_t len)
 
 #define SD_XFER_DEFINE_N(n, p, x)                               \
     SD_XFER_DEFINE_E(n, p, x);                                  \
-    extern struct sd_item_ent SD_XFER_PROTO_##n[];              \
     static inline int SD_XFER(n, SD_DECL_##p)                   \
     {                                                           \
         struct SD_XFER_EVENT_##n *__ev;                         \
@@ -567,7 +582,7 @@ static inline void *tb_memcpy(void *to, void *from, size_t len)
         if (likely(__tr_event)) {                               \
             __ev = tb_event_data(__tr_event);                   \
             __ev->e_head.size = __tr_size;                      \
-            __ev->e_head.eid = SD_XFER_PROTO_##n[0].eid;        \
+            __ev->e_head.eid = SD_XFER_TYPEID_##n;              \
             __ev->e_meta = sizeof(*__ev);                       \
             SD_ENTS_PACK_##x                                    \
             tb_unlock_commit(g_trace_ring, __tr_event);         \
@@ -575,6 +590,7 @@ static inline void *tb_memcpy(void *to, void *from, size_t len)
         }                                                       \
         return 0;                                               \
     }
+#undef SD_XFER_DEFINE
 #define SD_XFER_DEFINE(n, p, x) SD_XFER_DEFINE_N(n, p, x)
 
 #endif /* __SD_XFER_SE__ */
