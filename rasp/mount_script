@@ -27,12 +27,14 @@ while read A B C SUBROOT MOUNT JUNK
 
 [ $MOUNT = $FILESYS ] # More sanity check!
 SUBPATH=$(echo $REALPATH | sed s,^$FILESYS,,)
-DEVDEC=$(printf "%d %d" $(stat --format "0x%t 0x%T" $DEV))
+REALDEV=$(readlink --canonicalize $DEV)
+DEVDEC=$(printf "%d %d" $(stat --format "0x%t 0x%T" $REALDEV))
 run_command="$NSENTER_PATH --target $PID --mount --uts --ipc --net --pid -- /bin/sh -c"
 if  [ `$run_command "export PATH=/usr/bin:/bin:/sbin;mount|grep $CONTPATH|wc -l"` -ne 0 ];then
     echo "container  mount dir $CONTPATH is mounting!"
     exit 0
 fi
+$run_command "export PATH=/usr/bin:/bin:/sbin;mkdir -p $(dirname $DEV)"
 $run_command "export PATH=/usr/bin:/bin:/sbin;[ -b $DEV ] ||mknod --mode 0600 $DEV b $DEVDEC"
 $run_command "export PATH=/usr/bin:/bin:/sbin;mkdir /tmpmnt"
 $run_command "export PATH=/usr/bin:/bin:/sbin;mount $DEV /tmpmnt"
