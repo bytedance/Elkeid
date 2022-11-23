@@ -29,19 +29,15 @@ bool callUserFunction(
     zval_ptr_dtor(&function);
 #else
     INIT_ZVAL(function)
-    ZVAL_STRING(&function, name, 0);
+    ZVAL_STRING(&function, name, 0); // "duplicate" is 0, no need to free.
 
     std::unique_ptr<zval *[]> params = std::make_unique<zval *[]>(argc);
 
     for (uint32_t i = 0; i < argc; i++)
         params[i] = &argv[i];
 
-    if (call_user_function(table, &object, &function, ret, argc, params.get() TSRMLS_CC) != SUCCESS) {
-        zval_dtor(&function);
+    if (call_user_function(table, &object, &function, ret, argc, params.get() TSRMLS_CC) != SUCCESS)
         return false;
-    }
-
-    zval_dtor(&function);
 #endif
 
     return true;
