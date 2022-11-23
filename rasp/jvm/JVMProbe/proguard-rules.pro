@@ -34,6 +34,7 @@
 -dontwarn rasp.com.lmax.disruptor.**
 -keep class rasp.com.lmax.disruptor.** {*;}
 
+-keep class rasp.javassist.** {*;}
 -keep class rasp.com.fasterxml.jackson.** {*;}
 
 -keepclassmembers class * extends rasp.com.fasterxml.jackson.databind.ser.std.StdSerializer {
