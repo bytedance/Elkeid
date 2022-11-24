@@ -4,7 +4,7 @@
 English | [简体中文](README-zh_CN.md)
 ## System Architecture
 
-<img src="docs/server.png"/>
+<img src="docs/server_new.png"/>
 
 ## Overview
 Elkeid Server contains 5 modules:：
