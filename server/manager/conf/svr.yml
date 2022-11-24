@@ -13,7 +13,7 @@ http:
     VUjQhmNlUHDotni9: sfhSDLz124J80ioGIyuWsTX9lDxwFdpk
   apiauth:
     enable: true
-    secret: ASpQO2kzFcosGHavUP9BJkn5pcFGIjeg
+    secret: x2rfv2HH7qmBThlxyFDFESEReTLmV0balFPMDR
 
 ############################# Manager Log Settings #############################
 # log.path: where to write logging data.
@@ -23,7 +23,7 @@ http:
 #         WarnLevel = 1
 #         ErrorLevel = 2
 log:
-  path: ./log/svr.log
+  path: /opt/tiger/toutiao/log/run/svr.log
   loglevel: 0
 
 ############################# Service Discovery Settings #############################
@@ -32,21 +32,21 @@ log:
 # credentials:  use to identify the manager when requesting the sd,
 #               ak/sk must be added to the configuration file for service discovery(notice ak is case-insensitive)
 sd:
-  addrs: ["127.0.0.1:8088"]
+  addrs: ["findyou.byted.org"]
   name: hids_manage
   credentials:
-    ak: vEVL5zEvSiXDY1EI
-    sk: 2FfQR1FzxRqJRraOw4DGFH7UJieccrGi
+    ak: f14b589spo703396
+    sk: 264c6b57235c616e8766fe0a23faa94a
 
 ############################# Agent Center Settings #############################
 # name: the name of the Agent Center registered to the service discovery,which used to find the Agent Center address.
 # credentials:  use to identify the manager when requesting the server,
 #               ak/sk must be added to the configuration file of the Agent Center.(notice ak is case-insensitive)
 server:
-  name: hids_svr
+  name: security.hids.mongoose_svr_v3
   credentials:
-    ak: 0376b2a4c481sef5
-    sk: 60b29se7164027072799f565eb964d91
+    ak: f14b589spo703396
+    sk: 264c6b57235c616e8766fe0a23faa94a
 
 
 ############################# Redis Settings #############################
@@ -54,12 +54,38 @@ server:
 # passwd: password,which can be empty.
 # mastername：if a MasterName is passed a sentinel-backed FailoverClient will be returned
 redis:
-  addrs: ["127.0.0.1:6379"]
+  addrs: ["bytedance.redis.mongoose-svr-v3"]
   passwd:
   mastername:
 
 
 ############################# Mongodb Settings #############################
 mongo:
-  uri: mongodb://hids:I7ILUz7WhOJUWygy@127.0.0.1:27000/hids_server?authSource=hids_server
-  dbname: hids_server
+  uri: mongodb+consul+token://bytedance.bytedoc.mongoose_svr_v3/mongoose_svr_v3?connectTimeoutMS=2000
+  dbname: mongoose_svr_v3
+
+hub:
+  credentials:
+    ak: 0376b2a4c481sef5
+    sk: 60b29se7164027072799f565eb964d91
+  plugin_ns: elkeid_hub
+
+trace:
+  enable: true
+  cluster: "security.hids.agentsmith_hub_online"
+  input_id: "hids_driver_v3"
+  ruleset_id: "rule_rasp_handle_rawdata"
+
+endpoint:
+  enable: true
+
+es:
+  psm: "search.apigateway.proxy"
+  gzip: false
+  sniff: false
+  user: "agentsmith_hub_write"
+  password: "A4KHnJMvt"
+  cluster: "byte.es.agentsmith_hub_write"
+
+agent:
+  name: "mongoosev3-agent"

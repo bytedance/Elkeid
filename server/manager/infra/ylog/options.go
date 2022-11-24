@@ -8,6 +8,7 @@ type Options struct {
 	Level      int
 }
 
+//goland:noinspection GoUnusedConst
 const (
 	DebugLevel int = iota - 1
 	InfoLevel
