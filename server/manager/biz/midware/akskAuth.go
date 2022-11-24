@@ -6,7 +6,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -16,11 +17,6 @@ import (
 	"github.com/bytedance/Elkeid/server/manager/infra"
 	"github.com/gin-gonic/gin"
 	"github.com/levigross/grequests"
-)
-
-var (
-	AK = infra.AccessKey
-	SK = infra.SecretKey
 )
 
 func getSecKec(ak string) string {
@@ -50,46 +46,12 @@ func hmacSha256(data string, secret string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func beforeRequestFunc(req *http.Request) error {
-	var (
-		timestamp   = fmt.Sprintf(`%d`, time.Now().Unix())
-		err         error
-		requestBody []byte
-	)
-
-	if req.Body != nil {
-		requestBody, err = ioutil.ReadAll(req.Body)
-		if err != nil {
-			return err
-		}
-		//读取完重新设置回去
-		req.Body.Close()
-		req.Body = ioutil.NopCloser(bytes.NewBuffer(requestBody))
-	} else {
-		requestBody = []byte{}
-	}
-	sign := generateSign(req.Method, formatURLPath(req.URL.Path), req.URL.RawQuery, AK, timestamp, SK, requestBody)
-	req.Header.Add("AccessKey", AK)
-	req.Header.Add("Signature", sign)
-	req.Header.Add("TimeStamp", timestamp)
-	return nil
-}
-
 func formatURLPath(in string) string {
 	in = strings.TrimSpace(in)
 	if strings.HasSuffix(in, "/") {
 		return in[:len(in)-1]
 	}
 	return in
-}
-
-func AuthRequestOption() *grequests.RequestOptions {
-	option := &grequests.RequestOptions{
-		InsecureSkipVerify: true,
-		BeforeRequest:      beforeRequestFunc,
-		RequestTimeout:     5 * time.Second,
-	}
-	return option
 }
 
 func AKSKAuth() gin.HandlerFunc {
@@ -127,13 +89,13 @@ func AKSKAuth() gin.HandlerFunc {
 			abort(c, "User not exist")
 			return
 		}
-		requestBody, err = ioutil.ReadAll(c.Request.Body)
+		requestBody, err = io.ReadAll(c.Request.Body)
 		if err != nil {
 			abort(c, err.Error())
 			return
 		}
-		c.Request.Body.Close()
-		c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(requestBody))
+		_ = c.Request.Body.Close()
+		c.Request.Body = io.NopCloser(bytes.NewBuffer(requestBody))
 
 		serverSign = generateSign(c.Request.Method, formatURLPath(c.Request.URL.Path), c.Request.URL.RawQuery, ak, timeStamp, sk, requestBody)
 		if serverSign != sign {
@@ -159,13 +121,14 @@ func beforeRequestFuncWithKey(req *http.Request, ak, sk string) error {
 	)
 
 	if req.Body != nil {
-		requestBody, err = ioutil.ReadAll(req.Body)
+		requestBody, err = io.ReadAll(req.Body)
 		if err != nil {
+			ylog.Errorf("beforeRequestFuncWithKey", "ioutil.ReadAll error %s", err.Error())
 			return err
 		}
 		//Reset after reading
-		req.Body.Close()
-		req.Body = ioutil.NopCloser(bytes.NewBuffer(requestBody))
+		_ = req.Body.Close()
+		req.Body = io.NopCloser(bytes.NewBuffer(requestBody))
 	} else {
 		requestBody = []byte{}
 	}
@@ -178,20 +141,21 @@ func beforeRequestFuncWithKey(req *http.Request, ak, sk string) error {
 
 func innerBeforeRequestFunc(req *http.Request) error {
 	for k, v := range infra.InnerAuth {
-		beforeRequestFuncWithKey(req, k, v)
-		return nil
+		return beforeRequestFuncWithKey(req, k, v)
 	}
 	return nil
 }
 
+func hubBeforeRequestFunc(req *http.Request) error {
+	return beforeRequestFuncWithKey(req, infra.HubAK, infra.HubSK)
+}
+
 func sdBeforeRequestFunc(req *http.Request) error {
-	beforeRequestFuncWithKey(req, infra.SdAK, infra.SdSK)
-	return nil
+	return beforeRequestFuncWithKey(req, infra.SdAK, infra.SdSK)
 }
 
 func svrBeforeRequestFunc(req *http.Request) error {
-	beforeRequestFuncWithKey(req, infra.SvrAK, infra.SvrSK)
-	return nil
+	return beforeRequestFuncWithKey(req, infra.SvrAK, infra.SvrSK)
 }
 
 func SvrAuthRequestOption() *grequests.RequestOptions {
@@ -214,6 +178,14 @@ func InnerAuthRequestOption() *grequests.RequestOptions {
 	option := &grequests.RequestOptions{
 		InsecureSkipVerify: true,
 		BeforeRequest:      innerBeforeRequestFunc,
+	}
+	return option
+}
+
+func HubAuthRequestOption() *grequests.RequestOptions {
+	option := &grequests.RequestOptions{
+		InsecureSkipVerify: true,
+		BeforeRequest:      hubBeforeRequestFunc,
 	}
 	return option
 }
