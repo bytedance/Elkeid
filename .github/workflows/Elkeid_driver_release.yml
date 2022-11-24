@@ -456,13 +456,8 @@ jobs:
         load: true
         push: false
         tags: elkeidteam/elkeid_driver_rhel7_aarch64:latest
-    - name: Docker Hub Description rhel7
-      uses: peter-evans/dockerhub-description@v3
-      with:
-        password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_rhel7_aarch64
-        short-description: ${{github.event.repository.description}}
-        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Docker Hub Description Skipped rhel7
+      run: echo Docker Hub Description Skipped
     - name: Extract rhel7
       id: extract-rhel7
       uses: shrink/actions-docker-extract@v1
