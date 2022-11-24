@@ -2,10 +2,11 @@ package ylog
 
 import (
 	"fmt"
+	"os"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
-	"os"
 )
 
 const (
@@ -19,6 +20,9 @@ var defaultLogger *YLog
 
 func InitLogger(logger *YLog) {
 	defaultLogger = logger
+}
+func GetLogger() (logger *YLog) {
+	return defaultLogger
 }
 
 // Logger
@@ -88,6 +92,9 @@ func (l *YLog) Printf(format string, v ...interface{}) {
 func (l *YLog) Println(v ...interface{}) {
 	l.provider.Info(l.msg, zap.Any("info", v))
 }
+func (l *YLog) GetProvider() *zap.Logger {
+	return l.provider
+}
 
 func Fatalf(msg string, format string, v ...interface{}) {
 	if defaultLogger == nil {
@@ -109,6 +116,7 @@ func Errorf(msg string, format string, v ...interface{}) {
 	}
 }
 
+//goland:noinspection GoUnusedExportedFunction
 func Warnf(msg string, format string, v ...interface{}) {
 	if defaultLogger == nil {
 		fmt.Printf(format+"\n", v...)

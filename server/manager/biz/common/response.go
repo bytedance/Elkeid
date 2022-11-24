@@ -21,6 +21,13 @@ const (
 	RemoteAllFailedErrorCode
 	ProjectIDRespect
 	SomeFieldIsNull
+	ExceedLimitErrorCode
+	SSO_ERROR
+	OTPErrorCode
+	PasswordNeedChanged
+	NeedCaptchaCheck
+	LoginIpNotInWhiteList
+	UserLocked
 )
 
 var ErrorDescriptions = map[int]string{
@@ -39,6 +46,12 @@ var ErrorDescriptions = map[int]string{
 	SomeFieldIsNull:          "SOME FIELD IS NUL",
 	TimeOutErrorCode:         "get result timeout",
 	RemoteAllFailedErrorCode: "all remote instance failed",
+	SSO_ERROR:                "sso error",
+	OTPErrorCode:             "otp required",
+	PasswordNeedChanged:      "password has not been updated for a long time",
+	NeedCaptchaCheck:         "need captcha check",
+	LoginIpNotInWhiteList:    "login ip not in whitelist",
+	UserLocked:               "user locked",
 }
 
 type Response struct {

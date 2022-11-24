@@ -1,29 +1,47 @@
 package midware
 
 import (
+	"context"
 	"crypto/sha1"
 	"errors"
 	"fmt"
+	"github.com/bytedance/Elkeid/server/manager/infra"
+	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
+	"github.com/bytedance/Elkeid/server/manager/internal/login"
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
+	"github.com/rs/xid"
 	"io"
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/bytedance/Elkeid/server/manager/infra"
-	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt"
 )
 
-var whiteUrlList = []string{"/api/v1/user/login",
-	"/api/v1/agent/subTask/updateSubTask",
+var whiteUrlList = []string{
+	"/api/v6/investigate/file/DownloadFileByToken",
+	"/api/v1/agent/heartbeat/join",
+	"/api/v1/agent/heartbeat/evict",
+	"/api/v1/user/login",
+	"/api/v1/user/sso_url",
+	"/api/v1/user/sso_logout",
+	"/api/v1/user/sso_token",
+	"/api/v1/agent/updateSubTask",
+	"/api/v1/agent/subTask/update",
+	"/api/v6/shared/Upload",
 	"/api/v1/agent/queryInfo",
+	"/api/v6/kube/inner/cluster/list",
+	"/api/v6/component/GetComponentInstances",
+	"/api/v6/user/getCaptcha",
 	"/api/v6/systemRouter/InsertAlert"}
 
 type AuthClaims struct {
 	Username string `json:"username"`
 	jwt.StandardClaims
 }
+
+const (
+	JWTExpireMinute = 720
+)
 
 var APITokenSecret = []byte(infra.Secret)
 
@@ -60,7 +78,10 @@ func VerifyToken(tokenString string, secret []byte) (*jwt.MapClaims, error) {
 
 func checkPassword(password, salt, hash string) bool {
 	t := sha1.New()
-	io.WriteString(t, password+salt)
+	_, err := io.WriteString(t, password+salt)
+	if err != nil {
+		return false
+	}
 	if fmt.Sprintf("%x", t.Sum(nil)) == hash {
 		return true
 	}
@@ -69,25 +90,36 @@ func checkPassword(password, salt, hash string) bool {
 
 func GenPassword(password, salt string) string {
 	t := sha1.New()
-	io.WriteString(t, password+salt)
+	_, err := io.WriteString(t, password+salt)
+	if err != nil {
+		return ""
+	}
 	return fmt.Sprintf("%x", t.Sum(nil))
 }
 
-func CheckUser(username, password, salt, hash string) (string, error) {
-	if !checkPassword(password, salt, hash) {
-		return "", errors.New("verify password failed")
+func CheckUser(username, password string) (*login.User, error) {
+	u := login.GetUser(username)
+	if u == nil {
+		return nil, errors.New("user not found")
 	}
 
-	tokenString, err := CreateToken(
-		AuthClaims{
-			Username: username,
-			StandardClaims: jwt.StandardClaims{
-				ExpiresAt: time.Now().Add(120 * time.Minute).Unix(),
-			},
+	if !checkPassword(password, u.Salt, u.Password) {
+		return u, errors.New("verify password failed")
+	}
+	return u, nil
+}
+
+func GeneralJwtToken(userName string) (string, error) {
+	return CreateToken(AuthClaims{
+		Username: userName,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(JWTExpireMinute * time.Minute).Unix(),
 		},
-		APITokenSecret,
-	)
-	return tokenString, err
+	}, APITokenSecret)
+}
+
+func GeneralSession() string {
+	return fmt.Sprintf("seesion-%s-%s", xid.New(), xid.New())
 }
 
 func TokenAuth() gin.HandlerFunc {
@@ -115,42 +147,42 @@ func TokenAuth() gin.HandlerFunc {
 			return
 		}
 
-		payload, err := VerifyToken(token, APITokenSecret)
-		if err != nil {
-			ylog.Errorf("AuthRequired", err.Error())
-			c.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
+		var userName string
+		if strings.HasPrefix(token, "seesion-") {
+			userName = infra.Grds.Get(context.Background(), token).Val()
+			if userName == "" {
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
 
-		if payload == nil {
-			c.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
-
-		currentUser, ok := (*payload)["username"]
-		if currentUser == "" || !ok {
-			c.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
-
-		if int64((*payload)["exp"].(float64)) < time.Now().Add(20*time.Minute).Unix() {
-			tokenString, err := CreateToken(
-				AuthClaims{
-					Username: currentUser.(string),
-					StandardClaims: jwt.StandardClaims{
-						ExpiresAt: time.Now().Add(120 * time.Minute).Unix(),
-					},
-				},
-				APITokenSecret,
-			)
+			err := infra.Grds.Expire(context.Background(), token, time.Duration(login.GetLoginSessionTimeoutMinute())*time.Minute).Err()
+			if err != nil {
+				ylog.Errorf("TokenAuth", "Expire error %s", err.Error())
+			}
+		} else {
+			//jwt
+			payload, err := VerifyToken(token, APITokenSecret)
 			if err != nil {
 				ylog.Errorf("AuthRequired", err.Error())
-			} else {
-				c.Header("token", tokenString)
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
 			}
+
+			if payload == nil {
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
+
+			currentUser, ok := (*payload)["username"]
+			if currentUser == "" || !ok {
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
+			userName = currentUser.(string)
 		}
-		c.Header("user", currentUser.(string))
-		c.Set("user", currentUser.(string))
+
+		c.Header("user", userName)
+		c.Set("user", userName)
 		c.Next()
 		return
 	}
