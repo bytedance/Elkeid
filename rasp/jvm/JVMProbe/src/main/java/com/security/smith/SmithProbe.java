@@ -1,5 +1,8 @@
 package com.security.smith;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.InsufficientCapacityException;
 import com.lmax.disruptor.RingBuffer;
@@ -18,8 +21,6 @@ import com.security.smith.type.*;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.objectweb.asm.*;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.Constructor;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -88,12 +89,14 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
 
     public void init() {
-        Yaml yaml = new Yaml(new Constructor(SmithClass.class));
+        ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
         InputStream inputStream = this.getClass().getResourceAsStream("/class.yaml");
 
-        for (Object object : yaml.loadAll(inputStream)) {
-            SmithClass smithClass = (SmithClass) object;
-            smithClasses.put(smithClass.getName(), smithClass);
+        try {
+            for (SmithClass smithClass : objectMapper.readValue(inputStream, SmithClass[].class))
+                smithClasses.put(smithClass.getName(), smithClass);
+        } catch (IOException e) {
+            SmithLogger.exception(e);
         }
     }
 
@@ -290,11 +293,13 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
         smithClasses.clear();
 
-        Yaml yaml = new Yaml(new Constructor(SmithClass.class));
+        ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
 
-        for (Object object : yaml.loadAll(config)) {
-            SmithClass smithClass = (SmithClass) object;
-            smithClasses.put(smithClass.getName(), smithClass);
+        try {
+            for (SmithClass smithClass : objectMapper.readValue(config, SmithClass[].class))
+                smithClasses.put(smithClass.getName(), smithClass);
+        } catch (JsonProcessingException e) {
+            SmithLogger.exception(e);
         }
 
         classes.addAll(smithClasses.keySet());
