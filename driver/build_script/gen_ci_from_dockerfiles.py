@@ -60,7 +60,11 @@ def gen_job(vminfo):
                     }
                 }) ,
 
+                
                 OrderedDict({
+                    "name": "Docker Hub Description Skipped "+vmname,
+                    "run": "echo Docker Hub Description Skipped",
+                }) if aarch.endswith("aarch64") else OrderedDict({
                     "name": "Docker Hub Description "+vmname,
                     "uses": "peter-evans/dockerhub-description@v3",
                     "with": {
@@ -69,7 +73,7 @@ def gen_job(vminfo):
                         "repository": "elkeidteam/elkeid_driver_"+vmname+"_"+aarch,
                         "short-description": "${{github.event.repository.description}}",
                     }
-                }),
+                }) ,
 
                 OrderedDict({
                     "name": "Extract "+vmname,
