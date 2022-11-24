@@ -72,7 +72,7 @@ Modify class bytecode by using [ASM](https://asm.ow2.io), transfer api call argu
    ```
 2. Build
    ```sh
-   mkdir -p output && ./gradlew proguard && cp build/libs/JVMProbe-1.0-SNAPSHOT-pro.jar output/SmithAgent.jar
+   mkdir -p output && ./gradlew shadow && cp build/libs/JVMProbe-1.0-SNAPSHOT-all.jar output/SmithAgent.jar
    ```
 
 

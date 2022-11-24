@@ -88,10 +88,7 @@ endif
 
 
 java-probe: ## build JVM probe
-	cd jvm/JVMProbe && mkdir -p output && BUILD_VERSION=${VERSION} ./gradlew proguard && cp build/libs/JVMProbe-1.0-SNAPSHOT-pro.jar output/SmithAgent.jar
-
-java-probe-example: ## build JVM probe example for test
-	cd jvm/JVMProbe && ./gradlew build:example
+	cd jvm/JVMProbe && mkdir -p output && BUILD_VERSION=${VERSION} ./gradlew shadow && cp build/libs/JVMProbe-1.0-SNAPSHOT-all.jar output/SmithAgent.jar
 
 java: java-attach java-probe ## java probe
 	@echo "build JVM probe"
