@@ -4,7 +4,7 @@
 [English](README.md) | 简体中文
 ## 后台架构图
 
-<img src="docs/server.png"/>
+<img src="docs/server_new.png"/>
 
 ## 概述
 Elkeid 后台大体包含5个模块：
