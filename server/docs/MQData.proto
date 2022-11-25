@@ -1,0 +1,29 @@
+syntax = "proto3";
+option go_package = "hids_pb";
+package hids_pb;
+
+//server -> bmq
+message MQData{
+  int32 data_type = 1;
+  int64 timestamp = 2;
+  Item body = 3;
+
+  string agent_id = 4;
+  string in_ipv4_list = 5;
+  string ex_ipv4_list = 6;
+  string in_ipv6_list = 7;
+  string ex_ipv6_list = 8;
+  string hostname = 9;
+  string version = 10;
+  string product = 11;
+
+  //server端补全字段
+  int64  time_pkg = 12;
+  string psm_name = 13;
+  string psm_path = 14;
+  string tags = 15;
+}
+
+message Item{
+  map<string,string> fields = 1;
+}
