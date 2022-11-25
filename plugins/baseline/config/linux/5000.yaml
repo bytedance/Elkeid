@@ -9,19 +9,12 @@ system:
 check_list:
   -
     check_id: 1
-    type: "weak password"
+    type: "WeakPassword"
     title: "System login weak password detection"
-    description: "Check if the system login is a weak password。"
-    solution: "Change the password used for system login, it is recommended to use uppercase + special character passwords"
+    description: "Check if the system login is a weak password"
+    solution: "Change the password used for system login, it is recommended to use uppercase and lowercase + special character passwords"
     security: "high"
     type_cn: "弱口令"
     title_cn: "系统登录弱口令检测"
     description_cn: "检查系统登录是否为弱口令。"
     solution_cn: "更改系统登录所使用的的口令，建议使用大小写+特殊字符的密码"
-    check:
-      condition: "none"
-      rules:
-        - type: ""
-          param:
-            - ""
-          result: ""
