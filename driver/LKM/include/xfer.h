@@ -246,7 +246,7 @@ struct ipaddr_v4 {
 
 #if defined(__SD_XFER_SE__)
 
-#define SD_MAX_SIZE_STR                     (16384 - 32)
+#define SD_MAX_SIZE_STR                     (3072)
 
 
 /*
@@ -326,7 +326,7 @@ struct ipaddr_v4 {
 #define SD_STRS_ENTRY_LONG(...)
 #define SD_STRS_ENTRY_ULONG(...)
 #define SD_STRS_ENTRY_STR(t, s)         int __l_##t = smith_strnlen(__v_##t, SD_MAX_SIZE_STR);
-#define SD_STRS_ENTRY_STL(t, s, l)      int __l_##t = smith_strnlen(__v_##t, min((int)(l), SD_MAX_SIZE_STR));
+#define SD_STRS_ENTRY_STL(t, s, l)      int __l_##t = smith_strnlen(__v_##t, min_t(int, (l), SD_MAX_SIZE_STR));
 
 #define SD_STRS_POINTER_U8(...)
 #define SD_STRS_POINTER_S8(...)

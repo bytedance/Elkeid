@@ -2044,7 +2044,7 @@ int write_pre_handler(struct kprobe *p, struct pt_regs *regs)
     pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
     file_path = smith_d_path(&(file)->f_path, pname_buf, PATH_MAX);
 
-    write_print(exe_path, file_path, kbuf);
+    write_print(exe_path, file_path, kbuf, len);
 
 out:
     if (pname_buf)

@@ -638,9 +638,16 @@ SD_XFER_DEFINE( NAME(security_path_unlink),
 
 SD_XFER_DEFINE( NAME(write),
 
-                PROT(ELEMENT(char *, exe_path), ELEMENT(char *, file), ELEMENT(char *, buf)),
+                PROT(ELEMENT(char *, exe_path),
+                     ELEMENT(char *, file),
+                     ELEMENT(char *, buf),
+                     ELEMENT(size_t, len)
+                ),
 
-                XFER(ENTRY_COMMON(1), ENTRY_STR(file, file), ENTRY_STR(buf, buf))
+                XFER(ENTRY_COMMON(1),
+                     ENTRY_STR(file, file),
+                     ENTRY_STL(buf, buf, len)
+                )
 )
 
 SD_XFER_DEFINE( NAME(file_permission_write),
