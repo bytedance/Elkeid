@@ -2059,37 +2059,35 @@ out:
 
 int openat_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
-    int filename_len = 0;
-
     char *exe_path = DEFAULT_RET_STR;
     struct smith_tid *tid = NULL;
     char *filename = NULL;
     char __user *filename_ori;
+    int filename_len = 0;
 
     filename_ori = (void *)p_get_arg2_syscall(regs);
     if (IS_ERR_OR_NULL(filename_ori))
         return 0;
 
-    filename_len = smith_strnlen_user((char __user *)filename_ori, PATH_MAX);
-    if (!filename_len || filename_len > PATH_MAX)
+    filename_len = smith_strnlen_user(filename_ori, PATH_MAX);
+    if (filename_len <= 0 || filename_len > PATH_MAX)
         return 0;
-
-    filename = smith_kmalloc((filename_len + 1) * sizeof(char), GFP_ATOMIC);
-    if(!filename)
-        return 0;
-
-    if(smith_copy_from_user(filename, (char __user *)filename_ori, filename_len))
-    goto out;
-
-    filename[filename_len] = '\0';
 
     tid = smith_lookup_tid(current);
     if (tid) {
-        exe_path = tid->st_img->si_path;
         // exe filter check
         if (execve_exe_check(exe_path))
             goto out;
+        exe_path = tid->st_img->si_path;
     }
+
+    filename = smith_kmalloc(filename_len + 1, GFP_ATOMIC);
+    if (!filename)
+        goto out;
+
+    if (smith_copy_from_user(filename, filename_ori, filename_len))
+        goto out;
+    filename[filename_len] = '\0';
 
     open_print(exe_path, filename, (int)p_get_arg3_syscall(regs),
                (umode_t)p_get_arg4_syscall(regs));
