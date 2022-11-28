@@ -3,248 +3,48 @@
 
 [English](README.md) | 简体中文
 ## 关于 Elkeid Agent
-Elkeid Agent 是一个用户态的程序，主要是用来转发其他功能插件发送来的数据以及通过远端下发的配置来控制其他插件。
+Agent提供端上组件的基本能力支撑，包括数据通信、资源监控、组件版本控制、文件传输、机器基础信息采集等。
 
-Elkeid Agent基于Golang构建，但其他功能插件可以用不同的语言去完成([目前已经支持Rust](support/rust)，下一个受到支持的语言是Golang)。
+Agent本身不提供安全能力，作为一个插件底座以系统服务的方式运行。各类功能插件的策略存放于服务器端的配置，Agent接收到相应的控制指令及配置后对自身及插件进行开启、关闭、升级等操作。
 
-插件是一个具有特定功能并且可以独立配置与更新的程序。当插件向Agent注册之后，插件的资源使用情况会被受到监视，并且插件本身产生的的日志也会被转发给Agent。
+Agent与Server之间采用bi-stream gRPC进行通信，基于自签名证书开启双向TLS验证，保障信道安全。其中，Agent -> Server 方向信息流动称为数据流，Server -> Agent 方向信息流动一般为控制流，使用protobuf的不同message类型。Agent本身支持客户端侧服务发现，也支持跨Region级别的通信配置，实现一个Agent包在多个网络隔离的环境下进行安装，基于底层一个TCP连接，在上层实现了Transfer与FileOp两种数据传输服务，支撑了插件本身的数据上报与Host中的文件交互。
 
-在[driver](driver/) 与 [journal_watcher](journal_watcher/)下你可以看到两个示例插件。前者用来解析并丰富Elkeid Driver从内核发来的数据，后者用来接受系统日志并产生与ssh相关的事件。
+Plugins作为安全能力插件，与Agent的进程关系一般为“父——子”进程。以两个pipe作为跨进程通信方式，[plugins](../plugins/lib) lib提供了Go与Rust的两个插件库，负责插件端信息的编码与发送。值得一提的是，插件发送数据后，会被编码为Protobuf二进制数据，Agent接收到后无需二次解编码，再其外层拼接好Header特征数据，直接传输给Server，一般情况下Server也无需解码，直接传输至后续数据流中，使用时进行解码，一定程度上降低了数据传输中多次编解码造成的额外性能开销。
 
-通过Agent-Plugin的这种模式，我们可以将基础模块(例如通信与控制和资源监控等)与功能模块(例如进程监控和文件监控以及漏洞分析等)解耦，进而实现动态增减相关模块。
-
-## 平台兼容性
-理论上，所有Linux下的发行版都是兼容的，但是只有Debian(包括Ubuntu)与RHEL(包括CentOS)经过了充分测试，对于Agent本身，支持amd64与arm64。
-
-另外，为了更好的与插件兼容，建议将Agent运行在物理机或者虚拟机，而不是容器中。
-
-为了功能的完整性，你可能需要以root权限运行Elkeid Agent。
-
-## 与Elkeid Server协同工作
-在编译前，请确认Agent所依赖的安全凭证以及证书与Server的保持一致，如果不一致请手动进行替换。详情请查看[更换Agent-AgentCenter通信证书](../server/docs/quick-start-zh_CN.md#Server编译和部署)
-
-Agent支持采用以下一种或多种方式连接到Server：
-* ServiceDiscovery
-* LoadBalance/Passthrough
-
-如果同时开启了多种方式，那么在连接时，优先级为：sd > load balance/passthrough (内网) >  load balance/passthrough (外网) 。并且，每种连接方式都可以配置多个目的地址，当处在复杂网络环境下时，这个功能十分有用，具体配置位于[`product.go`](transport/connection/product.go)文件中，可以根据需要进行修改，下面为一个样例：
-```
-  sd["sd-0"] = "sd-0.pri"
-  sd["sd-1"] = "sd-1.pri"
-  priLB["pri-0"] = "lb-0.pri"
-  priLB["pri-1"] = "lb-1.pri"
-  pubLB["pub-0"] = "lb-0.pub"
-  pubLB["pub-1"] = "lb-1.pub"
-```
-当建立连接时，首先会尝试从`sd-0.pri`或`sd-1.pri`获取Server的地址并建立连接；如果都失败，便尝试直接与`lb-0.pri`或`lb-1.pri`建立连接；如果依然连接失败，会直接与`lb-0.pub`或`lb-1.pub`建立连接。
-## 与Elkeid Driver协同工作
-Elkeid Driver作为Elkeid Agent的一个Plugin运行，由Manager API控制下发，具体请参见对应章节：[如何使用 Manager API](../server/README-zh_CN.md#api接口文档)。
-
-## 需要的编译环境
-* Golang 1.16(必需)
+Agent采用Go实现，在Linux下，通过systemd作为守护方式，受cgroup限制控制资源使用，支持aarch64与x86-64架构，最终编译、打包为deb与rpm包分发，格式均符合systemd及Debian、RHEL规范，可以直接提供至对应的软件仓库中进行后续版本维护。在后续版本中，将会发布用于Windows平台下的Agent。
+## 运行时要求
+Agent及Plugin提供的大部分功能需要以root权限运行在宿主机(Host)层面，在权限受限的容器中，部分功能可能会存在异常。
 ## 快速开始
-因为整个`插件-Agent-Server`体系具有一定上手门槛，所以在这里进一步阐述相关内容，以便大家可以快速开始本项目。
-> 快速开始的定义/目标：端上安全功能全部开启，Agent与Server连接正常，在Kafka可以正常看到相关数据。
-### 前提条件与依赖
-Server部署完成，工作正常。具体请查阅[Server部署文档](../server/server/docs/install-zh_CN.md)
+通过 [elkeidup](../elkeidup) 的完整部署，可以直接得到用于Debian/RHEL系列发行版的安装包，并按照 [Elkeid Console - 安装配置]() 界面的命令进行安装部署。
+## 手动编译
+### 环境要求
+* [Go](https://go.dev/) >= 1.18
+* [nFPM](https://nfpm.goreleaser.com/)
+* 成功部署的 [Server](../server/README-zh_CN.md) (包含所有组件)
+### 确认相关配置
+* 需要确保 `transport/connection` 目录下的 `ca.crt`、`client.key`、`client.crt` 三个文件与Agent Center `conf` 目录下的同名文件保持一致。
+* 需要确保 `transport/connection/product.go` 文件中的参数都配置妥当：
+    * 如果是手动部署的Server：
+        * `serviceDiscoveryHost["default"]` 需被赋值为 [ServiceDiscovery](../server/service_discovery) 服务或代理服务的内网监听地址与端口，例如：`serviceDiscoveryHost["default"] = "192.168.0.1:8088"`
+        * `privateHost["default"]` 需被赋值为 [AgentCenter](../server/agent_center) 服务或代理服务的内网监听地址与端口，例如：`privateHost["default"] = "192.168.0.1:6751"`
+        * 如有Server的公网接入点，`publicHost["default"]` 需被赋值为 [AgentCenter](../server/agent_center) 服务或代理服务的外网监听地址与端口，例如：`publicHost["default"]="203.0.113.1:6751"`
+    * 如果是通过 [elkeidup](../elkeidup) 部署的Server，可以根据部署Server机器的 `~/.elkeidup/elkeidup_config.yaml` 文件获得对应配置：
+        * 在配置文件中找到 Nginx 服务的IP，具体的配置项为 `nginx.sshhost[0].host`
+        * 在配置文件中找到 [ServiceDiscovery](../server/service_discovery) 服务的IP，具体的配置项为 `sd.sshhost[0].host`
+        * `serviceDiscoveryHost["default"]` 需被赋值为 [ServiceDiscovery](../server/service_discovery) 服务的IP，并将端口号设置为8088，例如：`serviceDiscoveryHost["default"] = "192.168.0.1:8088"`
+        * `privateHost["default"]` 需被赋值为 Nginx 服务的IP，并将端口号设置为8090，例如：`privateHost["default"] = "192.168.0.1:8090"`
+### 编译
+在Agent根目录，执行：
+```
+BUILD_VERSION=1.7.0.26 bash build.sh
+```
+在编译过程中，脚本会读取 `BUILD_VERSION` 环境变量设置版本信息，可根据实际需要进行修改。
 
-部署完成后，你应该获取了以下资源：
-* ServiceDiscovery地址(记为sd_host)及端口(记为sd_port)
-* Manager地址(记为ma_host)及端口(记为ma_port)
-* AgentCenter地址(记为ac_host)及端口(记为ac_port)
-* 安全凭证:ca.crt/client.crt/client.key
-### 配置Agent
-将上述安全凭证分别替换至[客户端CA证书](transport/connection/ca.crt);[客户端证书](transport/connection/client.crt);[客户端私钥](transport/connection/client.key)。
-
-修改[`product.go`](transport/connection/product.go)文件为以下内容：
-```
-package connection
-
-import _ "embed"
-
-//go:embed client.key
-var ClientKey []byte
-
-//go:embed client.crt
-var ClientCert []byte
-
-//go:embed ca.crt
-var CaCert []byte
-
-func init() {
-	sd["sd"] = "sd_host:sd_port"
-	priLB["ac"] = "ac_host:ac_port"  
-	setDialOptions(CaCert, ClientKey, ClientCert, "elkeid.com")
-}
-```
-### 编译Agent
-```
-mkdir output
-go build -o output/elkeid-agent
-```
-### 安装并启动Agent
-在获取上述二进制产物后，在终端机器进行安装部署：
-> 不同机器间需要分发产物，在这里不做阐述
-```
-mkdir -p /etc/elkeid
-cp output/elkeid-agent /etc/elkeid
-```
-后台启动即可：
-> 在这里没有提供进程守护与自保护，如有需要可以自行通过systemd/cron实现，这里不做要求
-```
-cd /etc/elkeid && /etc/elkeid/elkeid-agent &
-```
-### 验证Agent状态
-查看Agent日志，如果看到已经启动并不断有心跳数据打印到日志中，则部署成功；如果进程消失/无(空)日志/stderr有panic，则部署失败，如果确认自己部署步骤没问题，请提issue或者群里沟通。
-```
-ps aux|grep elkeid-agent
-cat /etc/elkeid/log/elkeid-agent.log
-```
-预期输出:
-```
-2021-04-15T15:32:57.937+0800    INFO    agent/main.go:67        Elkeid Agent:v1.6.0.0
-2021-04-15T15:32:57.937+0800    INFO    agent/main.go:68        AgentID:f4c6d306-3d4b-4eb7-abe7-b15757acbb27
-2021-04-15T15:32:57.937+0800    INFO    agent/main.go:69        PrivateIPv4:[10.0.0.1]
-2021-04-15T15:32:57.937+0800    INFO    agent/main.go:70        PublicIPv4:[]
-2021-04-15T15:32:57.937+0800    INFO    agent/main.go:71        PrivateIPv6:[fdbd:dc02:ff:1:1:225:85:27]
-2021-04-15T15:32:57.937+0800    INFO    agent/main.go:72        PublicIPv6:[]
-2021-04-15T15:32:57.937+0800    INFO    agent/main.go:73        Hostname:test
-2021-04-15T15:32:57.938+0800    INFO    report/report.go:119    map[cpu:0.00000 data_type:1000 io:12288 kernel_version:4-amd64 memory:12009472 net_type: platform:debian platform_version:9.13 plugins:[] slab:1271408 timestamp:1618471977]
-2021-04-15T15:32:58.118+0800    INFO    transport/client.go:69
-2021-04-15T15:33:27.939+0800    INFO    report/report.go:119    map[cpu:0.00101 data_type:1000 io:0 kernel_version:4-amd64 memory:14602240 net_type:sd platform:debian platform_version:9 plugins:[] slab:1273792 timestamp:1618472007]
-```
-可以看到日志里面打印出了AgentID:`f4c6d306-3d4b-4eb7-abe7-b15757acbb27`，我们下面将会以这个AgentID为例进行配置。
-### 编译插件
-在Agent启动完毕且状态正常后，说明Agent-Server已经建立了稳定的通信链路，但Agent本身只具有监控/通信/控制的功能，其他安全功能承载在其他插件上，所以我们需要对插件进行编译并下发。
-> 我们提供了预编好的插件，如果采用预编译插件可以直接**跳过这步**。
-* driver插件：参见[driver插件编译](driver/README-zh_CN.md#编译)
-* journal_watcher插件：参见[journal_watcher插件编译](journal_watcher/README-zh_CN.md#编译)
-* collector插件：参见[collector插件编译](collector/README-zh_CN.md#编译)
-
-编译完成后，你应该可以获得`driver` `journal_watcher` `collector`三个二进制文件。
-### 上传插件
-计算上述两个三进制文件`sha256`，并上传至可访问的文件服务器，并获得相应的下载地址：
-> 我们已经上传了预编译好的插件，如果采用预编译插件可以直接**跳过这步**，下面也会以我们预编译好的插件地址为例。
-* driver插件(sha256:`d817195d0ce10974427ed15ef9fa86345bd666db83f5168963af4bb46bbc08d6`)
-```
-https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg
-https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg
-https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg
-https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg
-```
-* journal_watcher插件(sha256:`a0c065514debf6f2109aa873ece86ec89b0e6ccedfa05c124b5863a4568ee20c`)
-```
-https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg
-https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg
-https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg
-https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg
-```
-* collector插件(sha256:`d2738190defe51c66afb00383cd06bf9ce20c3a73e7cdce3bb941de3d7b123d8`)
-```
-https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector-linux-amd64-1.6.0.1.pkg
-https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector-linux-amd64-1.6.0.1.pkg
-https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector-linux-amd64-1.6.0.1.pkg
-https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector-linux-amd64-1.6.0.1.pkg
-```
-### 配置插件
-在配置插件前需要鉴权Manager API：
-> 详细参见[API接口文档](../server/README-zh_CN.md#api接口文档)
->
-> 如果在部署Manager时修改了`username`和`password`，下面也记得做对应修改
->
-```
-curl --location --request POST 'http://m_host:m_port/api/v1/user/login' \
---data-raw '{
-    "username": "hids_test",
-    "password": "hids_test"
-}'
-```
-回应中带着鉴权的token（后面的其他接口请求都需要header带上这个token）：
-```
-{
-    "code": 0,
-    "msg": "success",
-    "data": {
-        "token": "BUVUDcxsaf%^&%4643667"
-    }
-}
-```
-将token加到配置插件的请求头中，并根据需要下发的AgentID、插件名、插件版本、插件sha256、插件下载地址编写请求body：
-```
-curl --location --request POST 'http://m_host:m_port/api/v1/agent/createTask/config' -H "token:BUVUDcxsaf%^&%4643667" --data-raw '{
-    "id_list": [
-        "f4c6d306-3d4b-4eb7-abe7-b15757acbb27"
-    ],
-    "data": {
-        "config": [
-            {
-                "name": "driver",
-                "download_url": [
-                    "https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg","https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg","https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg","https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg"
-                ],
-                "version": "1.6.0.0",
-                "sha256": "d817195d0ce10974427ed15ef9fa86345bd666db83f5168963af4bb46bbc08d6",
-                "detail": ""
-            },
-            {
-                "name": "journal_watcher",
-                "download_url": [
-                    "https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg","https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg","https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg","https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg"
-                ],
-                "version": "1.6.0.0",
-                "sha256": "a0c065514debf6f2109aa873ece86ec89b0e6ccedfa05c124b5863a4568ee20c",
-                "detail": ""
-            },
-	    {
-                "name": "collector",
-                "download_url": [
-                    "https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector-linux-amd64-1.6.0.1.pkg","https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector-linux-amd64-1.6.0.1.pkg","https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector-linux-amd64-1.6.0.1.pkg","https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/collector/collector-linux-amd64-1.6.0.1.pkg"
-                ],
-                "version": "1.6.0.1",
-                "sha256": "d2738190defe51c66afb00383cd06bf9ce20c3a73e7cdce3bb941de3d7b123d8",
-                "detail": ""
-            }
-        ]
-    }
-}'
-```
-在回应中，我们可以看到如下内容：
-```
-{"code":0,"msg":"success","data":{"count":1,"task_id":"1618474279380056335bbGGcn"}}
-```
-其中count代表有1台机器将要被配置，task_id：1618474279380056335bbGGcn是要执行的任务id。
-### 下发配置
-通过上述得到的task_id，我们构造以下请求：
-```
-curl --location --request POST 'http://m_host:m_port/api/v1/agent/controlTask' -H "token:BUVUDcxsaf%^&%4643667" --data-raw '{
-    "task_id": "1618474279380056335bbGGcn",
-    "action": "run",
-    "rolling_percent": 1,
-    "concurrence": 100
-}'
-```
-可以看到如下回应，说明配置已经下发：
-```
-{"code":0,"msg":"success","data":{"id_count":1,"jobID":"id-Agent_Config-1618474660501972408","taskID":"1618474279380056335bbGGcn"}}
-```
-### 验证配置
-在Agent的日志中，我们可以看到如下记录：
-```
-2021-04-15T16:17:40.537+0800    INFO    transport/client.go:69  Config:<Name:"driver" Version:"1.6.0.0" SHA256:"d817195d0ce10974427ed15ef9fa86345bd666db83f5168963af4bb46bbc08d6" DownloadURL:"https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg" DownloadURL:"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg" DownloadURL:"https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg" DownloadURL:"https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/driver/driver_1.6.0.0_amd64.plg" > Config:<Name:"journal_watcher" Version:"1.6.0.0" SHA256:"a0c065514debf6f2109aa873ece86ec89b0e6ccedfa05c124b5863a4568ee20c" DownloadURL:"https://lf3-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg" DownloadURL:"https://lf6-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg" DownloadURL:"https://lf9-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg" DownloadURL:"https://lf26-elkeid.bytetos.com/obj/elkeid-download/plugin/journal_watcher/journal_watcher_1.6.0.0_amd64.plg" > 
-```
-这说明接收到了插件下发的指令，进而我们可以看到插件加载相关日志：
-```
-2021-04-15T16:17:42.803+0800    INFO    plugin/plugin.go:162    Plugin work directory: /etc/elkeid/plugin/driver/
-2021-04-15T16:17:42.807+0800    INFO    plugin/server.go:126    Received a registration:{Pid:1746809 Name:driver Version:1.6.0.0}
-2021-04-15T16:17:42.807+0800    INFO    plugin/server.go:141    Plugin has been successfully connected:&{name:driver version:1.6.0.0 checksum:d817195d0ce10974427ed15ef9fa86345bd666db83f5168963af4bb46bbc08d6 cmd:0xc000388000 conn:0xc000314088 runtimePID:1746809 pgid:1746809 IO:253952 CPU:0 reader:0xc00007e200 exited:{Value:{v:false} _:[]} Counter:{_:[] v:0}}
-2021-04-15T16:17:43.649+0800    INFO    plugin/plugin.go:162    Plugin work directory: /etc/elkeid/plugin/journal_watcher/
-2021-04-15T16:17:43.650+0800    INFO    plugin/server.go:126    Received a registration:{Pid:1746883 Name:journal_watcher Version:1.6.0.0}
-2021-04-15T16:17:43.650+0800    INFO    plugin/server.go:141    Plugin has been successfully connected:&{name:journal_watcher version:1.6.0.0 checksum:a0c065514debf6f2109aa873ece86ec89b0e6ccedfa05c124b5863a4568ee20c cmd:0xc000162580 conn:0xc000010040 runtimePID:1746883 pgid:1746883 IO:0 CPU:0 reader:0xc000324180 exited:{Value:{v:false} _:[]} Counter:{_:[] v:0}}
-2021-04-15T16:17:57.939+0800    INFO    report/report.go:119    map[cpu:0.02274 data_type:1000 io:24526848 kernel_version:4-amd64 memory:18325504 net_type:sd platform:debian platform_version:9.13 plugins:[{"rss":9654272,"io":4399104,"cpu":0,"name":"driver","version":"1.6.0.0","pid":1746809,"qps":188.66666666666666},{"rss":8192,"io":0,"cpu":0,"name":"journal_watcher","version":"1.6.0.0","pid":1746883,"qps":0.03333333333333333}] slab:2868720 timestamp:1618474677]
-2021-04-15T16:18:27.939+0800    INFO    report/report.go:119    map[cpu:0.03518 data_type:1000 io:0 kernel_version:4-amd64 memory:17645568 net_type:sd platform:debian platform_version:9.13 plugins:[{"rss":13709312,"io":479232,"cpu":0.015414258189652063,"name":"driver","version":"1.6.0.0","pid":1746809,"qps":428.73333333333335},{"rss":8192,"io":0,"cpu":0,"name":"journal_watcher","version":"1.6.0.0","pid":1746883,"qps":0}] slab:2875588 timestamp:1618474707]
-```
-### 验证插件数据
-现在，可以从kafka里面消费数据了，里面包含所有插件和Agent上报的数据。
-
+编译成功后，在根目录的 `output` 目录下，应该可以看到2个deb与2个rpm文件，它们分别对应不同的系统架构。
+## 版本升级
+1. 如果没有创建过客户端类型的组件，请在 [Elkeid Console-组件管理]() 界面新建对应组件。
+2. 在 [Elkeid Console - 组件管理]() 界面，找到“elkeid-agent”条目，点击右侧“发布版本”，填写版本信息并上传对应平台与架构的文件，点击确认。
+3. 在 [Elkeid Console - 组件策略]() 界面，(如有)删除旧的“elkeid-agent”版本策略，点击“新建策略”，选中刚刚发布的版本，点击确认。后续新安装的Agent均会自升级到最新版本。
+4. 在 [Elkeid Console - 任务管理]() 界面，点击“新建任务”，选择全部主机，点击下一步，选择“同步配置”任务类型，点击确认。随后，在此页面找到刚刚创建的任务，点击运行，即可对存量旧版本Agent进行升级。
 ## License
 Elkeid Agent are distributed under the Apache-2.0 license.

@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -29,6 +30,10 @@ var (
 	serviceDiscoveryHost = map[string]string{}
 	privateHost          = map[string]string{}
 	publicHost           = map[string]string{}
+)
+
+const (
+	dialTimeout = 15 * time.Second
 )
 
 func init() {
@@ -70,7 +75,7 @@ func resolveServiceDiscovery(host string, count int) ([]string, error) {
 	}
 	svr := []string{}
 	for _, i := range c.Data {
-		svr = append(svr, i.IP+":"+strconv.Itoa(i.Port))
+		svr = append(svr, net.JoinHostPort(i.IP, strconv.Itoa(i.Port)))
 	}
 	return svr, nil
 }
@@ -140,7 +145,7 @@ func GetConnection(ctx context.Context) (*grpc.ClientConn, error) {
 		addrs, err = resolveServiceDiscovery(host, 10)
 		if err == nil {
 			for _, addr := range addrs {
-				context, cancel := context.WithTimeout(ctx, time.Second*3)
+				context, cancel := context.WithTimeout(ctx, dialTimeout)
 				defer cancel()
 				c, err = grpc.DialContext(context, addr, dialOptions...)
 				if err == nil {
@@ -154,7 +159,7 @@ func GetConnection(ctx context.Context) (*grpc.ClientConn, error) {
 	}
 	host, ok = privateHost[region]
 	if ok {
-		context, cancel := context.WithTimeout(ctx, time.Second*3)
+		context, cancel := context.WithTimeout(ctx, dialTimeout)
 		defer cancel()
 		c, err = grpc.DialContext(context, host, dialOptions...)
 		if err == nil {
@@ -166,7 +171,7 @@ func GetConnection(ctx context.Context) (*grpc.ClientConn, error) {
 	}
 	host, ok = publicHost[region]
 	if ok {
-		context, cancel := context.WithTimeout(ctx, time.Second*3)
+		context, cancel := context.WithTimeout(ctx, dialTimeout)
 		defer cancel()
 		c, err = grpc.DialContext(context, host, dialOptions...)
 		if err == nil {

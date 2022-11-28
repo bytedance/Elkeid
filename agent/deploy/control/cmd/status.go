@@ -48,12 +48,8 @@ to quickly create a Cobra application.`,
 				fmt.Println("agent is dead")
 			} else {
 				fmt.Println("agent is running, procs:")
-				var pids []int
-				var err error
-				pids, err = getProcTreeWithCgroup(p.Pid)
-				if err != nil {
-					pids, _ = getProcTreeWithProc(p.Pid)
-				}
+				pids, err := GetProcs(p.Pid)
+				cobra.CheckErr(err)
 				for _, pid := range pids {
 					fmt.Println(pid)
 				}
