@@ -1540,24 +1540,36 @@ jobs:
       with:
         path: ~/all_elkeid_drivers
     - name: Prepare artifact 1 mkdir
-      run: mkdir -p elkeid_driver/ko elkeid_driver/sign elkeid_driver/log
+      run: mkdir -p elkeid_driver/ko elkeid_driver/log
     - name: Prepare artifact 2-1 ko
       run: mv -f ~/all_elkeid_drivers/*/*.ko elkeid_driver/ko || true
     - name: Prepare artifact 2-2 sign
-      run: mv -f ~/all_elkeid_drivers/*/*.sign elkeid_driver/sign || true
+      run: mv -f ~/all_elkeid_drivers/*/*.sign elkeid_driver/ko || true
     - name: Prepare artifact 2-3 log
       run: mv -f ~/all_elkeid_drivers/*/*.log elkeid_driver/log || true
     - name: Pack artifact
-      run: zip -r elkeid_driver.zip elkeid_driver
+      run: XZ_DEFAULTS=-T 4 tar -cJf elkeid_driver_ko_${{github.ref}}.tar.xz elkeid_driver/ko
+    - name: Pack log
+      run: zip -r elkeid_driver_log.zip elkeid_driver/log
+    - name: Upload log
+      id: upload-build-log
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      with:
+        asset_content_type: application/zip
+        asset_name: elkeid_driver_log.zip
+        asset_path: ./elkeid_driver_log.zip
+        upload_url: ${{steps.create_release.outputs.upload_url}}
     - name: Upload Release Asset 
       id: upload-release-asset
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
       with:
-        asset_content_type: application/zip
-        asset_name: elkeid_driver.zip
-        asset_path: ./elkeid_driver.zip
+        asset_content_type: application/x-tar
+        asset_name: elkeid_driver_ko_${{github.ref}}.tar.xz
+        asset_path: ./elkeid_driver_ko_${{github.ref}}.tar.xz
         upload_url: ${{steps.create_release.outputs.upload_url}}
     needs:
     - build_debian9_x86_64
