@@ -2,18 +2,15 @@
 * 1. [ 关于 Scanner 插件](#Scanner)
 	* 1.1. [ 平台兼容性](#)
 	* 1.2. [Agent/后端 兼容性](#Agent)
-* 2. [ 配置](#-1)
-	* 2.1. [ [检控扫描目录配置](./src/config.rs)](#.srcconfig.rs)
-	* 2.2. [ [引擎配置](./src/model/engine/clamav/config.rs)](#.srcmodelengineclamavconfig.rs)
-	* 2.3. [可选 : 1.  [Clamav  Database配置](./src/model/engine/clamav/updater.rs)](#:1.ClamavDatabase.srcmodelengineclamavupdater.rs)
-	* 2.4. [可选 : 2. database 中的规则](#:2.database)
-* 3. [<font color=red>构建</font>](#fontcolorredfont)
-	* 3.1. [编译依赖](#-1)
-	* 3.2. [编译](#-1)
-	* 3.3. [Docker 完整编译环境](#Docker)
+* 2. [<font color=red>构建</font>](#fontcolorredfont)
+	* 2.1. [Docker 完整docker编译环境 & 编译产物](#Dockerdocker)
+	* 2.2. [编译](#-1)
+* 3. [ 自定义编译配置（可选）](#-1)
+	* 3.1. [ [检控扫描目录配置](./src/config.rs)](#.srcconfig.rs)
+	* 3.2. [ [引擎配置](./src/model/engine/clamav/config.rs)](#.srcmodelengineclamavconfig.rs)
+	* 3.3. [可选 : 1.  [Clamav  Database配置](./src/model/engine/clamav/updater.rs)](#:1.ClamavDatabase.srcmodelengineclamavupdater.rs)
+	* 3.4. [可选 : 2. database 中的规则](#:2.database)
 * 4. [插件任务](#-1)
-	* 4.1. [ 自定义目录扫描任务](#-1)
-	* 4.2. [ 全盘扫描任务](#-1)
 * 5. [上报数据类型](#-1)
 * 6. [已知问题](#-1)
 * 7. [License](#License)
@@ -38,153 +35,12 @@ Scanner 使用 [clamav 引擎](https://docs.clamav.net/Introduction.html)对系�
 ###  1.2. <a name='Agent'></a>Agent/后端 兼容性
 向前兼容： 1.7.X、1.8.X
 
-##  2. <a name='-1'></a> 配置
-在下列文件中，有一些常量，可根据实际情况进行配置（出于性能考虑，除规则外，建议保持默认）。
-* 检控扫描目录配置 [src/config.rs](./src/config.rs)
-* 引擎配置 [src/model/engine/clamav/config.rs](./src/model/engine/clamav/config.rs)
-* Database配置 [src/model/engine/clamav/updater.rs](./src/model/engine/clamav/updater.rs)
 
-###  2.1. <a name='.srcconfig.rs'></a> [检控扫描目录配置](./src/config.rs)
-* `SCAN_DIR_CONFIG` 定义扫描目录，以及递归深度
-* `SCAN_DIR_FILTER` 定义过滤目录，按照前缀匹配过滤扫描白名单
+##  2. <a name='fontcolorredfont'></a><font color=red>构建</font>
 
-###  2.2. <a name='.srcmodelengineclamavconfig.rs'></a> [引擎配置](./src/model/engine/clamav/config.rs)
-* `CLAMAV_MAX_FILESIZE` 定义扫描的文件的最大文件大小，跳过大文件
+开源版本通过 [Github Action](https://docs.github.com/cn/actions) 自动构建，完整编译环境与遍历流程可参考对应 Dockerfile。用户可通过 Dockerfile 创建 Docker 自动执行编译步骤。
 
-
-###  2.3. <a name=':1.ClamavDatabase.srcmodelengineclamavupdater.rs'></a>可选 : 1.  [Clamav  Database配置](./src/model/engine/clamav/updater.rs)
-
-
-通过如下 url 获取默认 database（解压密码为 `clamav_default_passwd`）:
-
-```bash
-wget http://lf26-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220817.zip
-
-#wget http://lf3-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220817.zip
-
-#wget http://lf6-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220817.zip
-
-#wget http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220817.zip
-```
-
-
-
-clamav scanner 插件会在启动时，从 `TMP_PATH/archive_db_default_XXXX.zip` 使用默认密码 `ARCHIVE_DB_PWD`, [加载本地database](src/model/engine/updater.rs) 。同时, 从  `ARCHIVE_DB_VERSION_FILE` 文件中检查 `ARCHIVE_DB_VERSION` ，并且检查密码 `ARCHIVE_DB_PWD`.
-
-更过逻辑细节参考代码 [src/model/engine/updater.rs](src/model/engine/updater.rs)
-
-###  2.4. <a name=':2.database'></a>可选 : 2. database 中的规则
-
-默认的 database 包括裁剪过的 clamav 官方数据库，以及开源的 yara 规则。
-```bash
-root@hostname$ ls
-main.ldb  main.ndb  online_XXXXX.yar
-```
-
-在 debian9+ 或 ubuntu18+的 linux 中，可以通过如下方式，从最新的 clamav 官方数据库中生成裁剪过的 clamav 数据库。
-```bash
-root@hostname$ bash ./db_updater.sh
-```
-
-更多细节参考 [clamav 官方文档](https://docs.clamav.net/manual/Signatures.html)
-
-* Notice
-    - There are currently a few [limitations](https://docs.clamav.net/manual/Signatures/YaraRules.html) on using YARA rules within ClamAV
-
-
-
-##  3. <a name='fontcolorredfont'></a><font color=red>构建</font>
-
-###  3.1. <a name='-1'></a>编译依赖
-```bash
-debian 9+ or ubuntu18+
-
-llvm
-musl-gcc
-cmake >= 3.15 (requried by clamav-buildchain)
-ninjia-build
-libclang >= 3.9 (requried by rust-bindgen)
-gcc >= 6.3 (suggested gcc 6.3.0 which is the default version in debian 9)
-libstdc++.a (libstdc++-6-dev in debian9, libstdc++-9-dev in ubuntu18)
-python3  >= 3.6 (requried by clamav-buildchain)
-python3-pip (requried by clamav-buildchain)
-```
-clamav source and buildchain ( seen in [./get_deps.sh](./get_deps.sh) and [./libclamav.sh](./libclamav.sh))
-
-
-* Rust 1.64.0+ stable 准备
-
-Please install [rust](https://www.rust-lang.org/tools/install) environment:
-```
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-# add build target x86_64-unknown-linux-gnu
-rustup target add x86_64-unknown-linux-gnu
-```
-
-* 运行脚本以获取 libclamav 编译链依赖
-```bash
-# 以 debian9 为例
-bash ./get_deps.sh
-```
-
-###  3.2. <a name='-1'></a>编译
-
-*  编译 libclamav 静态库和静态依赖库
-```bash
-# debian & ubuntu
-bash ./libclamav.sh
-```
-
-* 指定 `libstdc++` 的所在路径 `STDLIBCXX_STATIC_PATH` 
-
-    不同Linux发行版，不同的`libstdc++`版本，安装后对应不同的目录，需要手动指定 环境变量
-   - debian9 中安装 libstdc++-6-dev 版本，需要 `export STDLIBCXX_STATIC_PATH='/usr/lib/gcc/x86_64-linux-gnu/6/'`
-   - debian10 中安装 libstdc++-7-dev 版本，需要 `export STDLIBCXX_STATIC_PATH='/usr/lib/gcc/x86_64-linux-gnu/7/'`
-   - debian10 中安装 libstdc++-8-dev 版本，需要 `export STDLIBCXX_STATIC_PATH='/usr/lib/gcc/x86_64-linux-gnu/8/'`
-
-*  编译 elkeid clamav scanner 插件 和  cli 测试工具
-```bash
-# debian & ubuntu
-bash ./build.sh
-```
-
-*  检查静态二进制编译产物
-```
-ldd ./output/scanner
-#output
-   not a dynamic executable
-```
-
-* elkeid 插件 （包模式）
-
-插件下发格式.
-
-```json
-{
-    "id_list":[
-        "xxxxxxxx"
-    ],
-    "data":{
-        "config":[
-            {
-                "name":"scanner",
-                "version":"",
-                "download_url":[
-                    "http://xxxxxxxx/scanner-default-x86_64-3.1.9.6.tar.gz",
-                    "http://xxxxxxxx/scanner-default-x86_64-3.1.9.6.tar.gz"
-                ],
-                "type": "tar.gz",
-                "sha256": "sha256sum of scanner.tar.gz",
-                "signature": "sha256sum of scanner elf binary",
-                "detail":""
-            }
-        ]
-    },
-}
-```
-
-###  3.3. <a name='Docker'></a>Docker 完整编译环境
-
+###  2.1. <a name='Dockerdocker'></a>Docker 完整docker编译环境 & 编译产物
 * aarch64
     * [Dockerfile.aarch64](docker/Dockerfile.aarch64)
     * [CI.aarch64](../../.github/workflows/Elkeid_plugin_scanner_aarch64.yml)
@@ -245,77 +101,84 @@ ldd ./output/scanner
     }
     ```
 
+###  2.2. <a name='-1'></a>编译
+
+```bash
+# x86_64
+docker build -t scanner -f docker/Dockerfile.x86_64 ../../ 
+docker create --name scanner scanner
+docker cp scanner:/Elkeid/plugins/scanner/output/scanner-x86_64.tar.gz ./
+docker rm -f scanner
+
+# aarch64
+docker build -t scanner -f docker/Dockerfile.aarch64 ../../ 
+docker create --name scanner scanner
+docker cp scanner:/Elkeid/plugins/scanner/output/scanner-aarch64.tar.gz ./
+docker rm -f scanner
+```
+
+##  3. <a name='-1'></a> 自定义编译配置（可选）
+在下列文件中，有一些常量，可根据实际情况进行配置（出于性能考虑，除规则外，建议保持默认）。
+* 检控扫描目录配置 [src/config.rs](./src/config.rs)
+* 引擎配置 [src/model/engine/clamav/config.rs](./src/model/engine/clamav/config.rs)
+* Database配置 [src/model/engine/clamav/updater.rs](./src/model/engine/clamav/updater.rs)
+
+###  3.1. <a name='.srcconfig.rs'></a> [检控扫描目录配置](./src/config.rs)
+* `SCAN_DIR_CONFIG` 定义扫描目录，以及递归深度
+* `SCAN_DIR_FILTER` 定义过滤目录，按照前缀匹配过滤扫描白名单
+
+###  3.2. <a name='.srcmodelengineclamavconfig.rs'></a> [引擎配置](./src/model/engine/clamav/config.rs)
+* `CLAMAV_MAX_FILESIZE` 定义扫描的文件的最大文件大小，跳过大文件
+
+
+###  3.3. <a name=':1.ClamavDatabase.srcmodelengineclamavupdater.rs'></a>可选 : 1.  [Clamav  Database配置](./src/model/engine/clamav/updater.rs)
+
+
+通过如下 url 获取默认 database（解压密码为 `clamav_default_passwd`）:
+
+```bash
+wget http://lf26-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220817.zip
+
+#wget http://lf3-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220817.zip
+
+#wget http://lf6-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220817.zip
+
+#wget http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220817.zip
+```
+
+
+
+clamav scanner 插件会在启动时，从 `TMP_PATH/archive_db_default_XXXX.zip` 使用默认密码 `ARCHIVE_DB_PWD`, [加载本地database](src/model/engine/updater.rs) 。同时, 从  `ARCHIVE_DB_VERSION_FILE` 文件中检查 `ARCHIVE_DB_VERSION` ，并且检查密码 `ARCHIVE_DB_PWD`.
+
+更过逻辑细节参考代码 [src/model/engine/updater.rs](src/model/engine/updater.rs)
+
+###  3.4. <a name=':2.database'></a>可选 : 2. database 中的规则
+
+默认的 database 包括裁剪过的 clamav 官方数据库，以及开源的 yara 规则。
+```bash
+root@hostname$ ls
+main.ldb  main.ndb  online_XXXXX.yar
+```
+
+在 debian9+ 或 ubuntu18+的 linux 中，可以通过如下方式，从最新的 clamav 官方数据库中生成裁剪过的 clamav 数据库。
+```bash
+root@hostname$ bash ./db_updater.sh
+```
+
+更多细节参考 [clamav 官方文档](https://docs.clamav.net/manual/Signatures.html)
+
+* Notice
+    - There are currently a few [limitations](https://docs.clamav.net/manual/Signatures/YaraRules.html) on using YARA rules within ClamAV
+
 
 ##  4. <a name='-1'></a>插件任务
+scanner 插件任务支持
+* 指定目录扫描
+* 全盘扫描
+* 快速扫描
 
-通过 manager API 下发插件任务
-* 方式1.创建-执行
-    * 创建任务 : POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
-    * 执行任务 : POST http://{{IP}}:{PORT}/api/v1/agent/controlTask
-* 方式2.快速执行
-    * 快速执行 : POST http://{{IP}}:{PORT}/api/v1/agent/quickTask/task
-    ```json
-    {
-        "agent_id":"33623333-3365-4905-b417-331e183333ff",
-        "command": {
-            "task": {
-                "data_type":6053,
-                "name": "scanner",
-                "data": "{\"exe\":\"/usr/local/bin/xmirg\"}"
-            }
-        }
-    }
-    ```
+详情参考 Elkeid 前端使用文档 [xxxxx](xxxxxxxx)
 
-
-###  4.1. <a name='-1'></a> 自定义目录扫描任务
-* 创建扫描任务 POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
-
-data_type : 6053
-data : json strings
-- exe : The absolute path of the file (not dir) to be scanned.
-
-
-```json
-{
-    "tag": "test_all", // scan task for all the agent tagged as "test_all"
-    "id_list": [
-        "33623333-3365-4905-b417-331e183333ff"
-    ],
-    "data": {
-        "task": {
-            "data_type":6053,
-            "name": "scanner",
-            "data": "{\"exe\":\"/path/to/target\"}"
-        }
-    }
-}
-```
-
-###  4.2. <a name='-1'></a> 全盘扫描任务
-* 创建扫描任务 POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
-
-data_type : 6057
-data : json strings
-- mode : 全盘扫描模式，full 全盘扫描，quick 快速扫描（进程和配置的关键目录），默认 快速扫描
-- cpu_idle : 扫描过程占用 空闲 CPU 总资源的百分比，默认 仅使用单核10%
-- timeout : scanner 执行 全盘/快速扫描 默认的超时时间，超时候终止扫描，默认 48 小时
-
-```json
-{
-    "tag": "test_all", // scan task for all the agent tagged as "test_all"
-    "id_list": [
-        "33623333-3365-4905-b417-331e183333ff"
-    ],
-    "data": {
-        "task": {
-            "data_type":6057,
-            "name": "scanner",
-            "data": "{\"model\":\"/path/to/target\"}"
-        }
-    }
-}
-```
 
 ##  5. <a name='-1'></a>上报数据类型
 
