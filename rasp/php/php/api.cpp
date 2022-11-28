@@ -221,7 +221,7 @@ std::string toString(
 #endif
                 );
 
-            return "resource";
+            return zero::strings::format("resource(%s)", type);
         }
 
         default:
