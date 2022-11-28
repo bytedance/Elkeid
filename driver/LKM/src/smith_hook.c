@@ -25,6 +25,7 @@ static uint64_t ROOT_MNT_NS_ID;
 #define SANDBOX 0
 
 #define SMITH_MAX_ARG_STRINGS (16)
+#define SMITH_MAX_CMDLINE     SD_MAX_SIZE_STR
 
 // Hook on-off
 int CONNECT_HOOK = 1;
@@ -1058,8 +1059,8 @@ static void smith_trace_prepare_exec(struct execve_data *data)
     task_unlock(task);
 
     /* query argv of current task */
-    if (larg > 1024)
-        larg = 1024;
+    if (larg > SMITH_MAX_CMDLINE)
+        larg = SMITH_MAX_CMDLINE;
     if (!larg || !args)
         goto proc_env;
     parg = smith_kzalloc(larg, GFP_ATOMIC);
