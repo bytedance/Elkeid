@@ -36,16 +36,9 @@ func getAgentStat(now time.Time) {
 	rec.Data.Fields["platform"] = host.Platform
 	rec.Data.Fields["platform_family"] = host.PlatformFamily
 	rec.Data.Fields["platform_version"] = host.PlatformVersion
-	if idc, ok := connection.IDC.Load().(string); ok {
-		rec.Data.Fields["idc"] = idc
-	} else {
-		rec.Data.Fields["idc"] = "-"
-	}
-	if region, ok := connection.Region.Load().(string); ok {
-		rec.Data.Fields["region"] = region
-	} else {
-		rec.Data.Fields["region"] = "-"
-	}
+	rec.Data.Fields["state"], rec.Data.Fields["state_detail"] = agent.State()
+	rec.Data.Fields["idc"] = connection.IDC.Load().(string)
+	rec.Data.Fields["region"] = connection.Region.Load().(string)
 	rec.Data.Fields["net_mode"] = connection.NetMode.Load().(string)
 	s := connection.DefaultStatsHandler.GetStats(now)
 	// for all grpc
@@ -60,16 +53,17 @@ func getAgentStat(now time.Time) {
 		rec.Data.Fields["read_speed"] = strconv.FormatFloat(readSpeed, 'f', 8, 64)
 		rec.Data.Fields["write_speed"] = strconv.FormatFloat(writeSpeed, 'f', 8, 64)
 		rec.Data.Fields["pid"] = strconv.Itoa(os.Getpid())
-		rec.Data.Fields["fd_cnt"] = strconv.FormatInt(int64(fds), 10)
-		rec.Data.Fields["started_at"] = strconv.FormatInt(startAt, 10)
+		rec.Data.Fields["nfd"] = strconv.FormatInt(int64(fds), 10)
+		rec.Data.Fields["start_time"] = strconv.FormatInt(startAt, 10)
 	}
 	txTPS, rxTPX := transport.GetState(now)
 	// for transfer service
 	rec.Data.Fields["tx_tps"] = strconv.FormatFloat(txTPS, 'f', 8, 64)
 	rec.Data.Fields["rx_tps"] = strconv.FormatFloat(rxTPX, 'f', 8, 64)
 	rec.Data.Fields["du"] = strconv.FormatUint(resource.GetDirSize(agent.WorkingDirectory, "plugin"), 10)
-	rec.Data.Fields["grs"] = strconv.Itoa(runtime.NumGoroutine())
+	rec.Data.Fields["ngr"] = strconv.Itoa(runtime.NumGoroutine())
 	rec.Data.Fields["nproc"] = strconv.Itoa(runtime.NumCPU())
+	rec.Data.Fields["total_mem"] = strconv.FormatUint(resource.GetMemTotal(), 10)
 	if runtime.GOOS == "linux" {
 		loadavgBytes, err := os.ReadFile("/proc/loadavg")
 		if err == nil {
@@ -85,17 +79,19 @@ func getAgentStat(now time.Time) {
 				}
 			}
 		}
+		rec.Data.Fields["host_serial"], rec.Data.Fields["host_id"], rec.Data.Fields["host_model"], rec.Data.Fields["host_vendor"] = resource.GetHostInfo()
+		rec.Data.Fields["dns"] = resource.GetDNS()
+		rec.Data.Fields["gateway"] = resource.GetGateway()
 	}
-	rec.Data.Fields["boot_at"] = strconv.FormatUint(resource.GetBootTime(), 10)
-	cpuPercents, err := cpu.Percent(0, false)
-	if err != nil {
-		rec.Data.Fields["sys_cpu"] = strconv.FormatFloat(cpuPercents[0], 'f', 8, 64)
+	rec.Data.Fields["cpu_name"] = resource.GetCPUName()
+	rec.Data.Fields["boot_time"] = strconv.FormatUint(resource.GetBootTime(), 10)
+	if cpuPercents, err := cpu.Percent(0, false); err == nil && len(cpuPercents) != 0 {
+		rec.Data.Fields["cpu_usage"] = strconv.FormatFloat(cpuPercents[0]/100, 'f', 8, 64)
 	}
-	mem, err := mem.VirtualMemory()
-	if err != nil {
-		rec.Data.Fields["sys_mem"] = strconv.FormatFloat(mem.UsedPercent, 'f', 8, 64)
+	if mem, err := mem.VirtualMemory(); err == nil {
+		rec.Data.Fields["mem_usage"] = strconv.FormatFloat(mem.UsedPercent/100, 'f', 8, 64)
 	}
-	zap.S().Infof("agent heartbeat completed:%+v", rec.Data.Fields)
+	zap.S().Infof("agent heartbeat completed: %+v", rec.Data.Fields)
 	daemon.SdNotify(false, "WATCHDOG=1")
 	buffer.WriteRecord(rec)
 }
@@ -119,8 +115,8 @@ func getPlgStat(now time.Time) {
 				rec.Data.Fields["read_speed"] = strconv.FormatFloat(readSpeed, 'f', 8, 64)
 				rec.Data.Fields["write_speed"] = strconv.FormatFloat(writeSpeed, 'f', 8, 64)
 				rec.Data.Fields["pid"] = strconv.Itoa(plg.Pid())
-				rec.Data.Fields["fd_cnt"] = strconv.FormatInt(int64(fds), 10)
-				rec.Data.Fields["started_at"] = strconv.FormatInt(startAt, 10)
+				rec.Data.Fields["nfd"] = strconv.FormatInt(int64(fds), 10)
+				rec.Data.Fields["start_time"] = strconv.FormatInt(startAt, 10)
 			}
 			rec.Data.Fields["du"] = strconv.FormatUint(resource.GetDirSize(plg.GetWorkingDirectory(), ""), 10)
 			RxSpeed, TxSpeed, RxTPS, TxTPS := plg.GetState()
