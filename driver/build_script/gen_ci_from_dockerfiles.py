@@ -160,7 +160,7 @@ create_release_job = OrderedDict(
 
             OrderedDict({
                 "name": "Prepare artifact 1 mkdir",
-                "run": "mkdir -p elkeid_driver/ko elkeid_driver/sign elkeid_driver/log"
+                "run": "mkdir -p elkeid_driver/ko elkeid_driver/log"
             }),
 
             OrderedDict({
@@ -170,7 +170,7 @@ create_release_job = OrderedDict(
 
             OrderedDict({
                 "name": "Prepare artifact 2-2 sign",
-                "run": "mv -f ~/all_elkeid_drivers/*/*.sign elkeid_driver/sign || true"
+                "run": "mv -f ~/all_elkeid_drivers/*/*.sign elkeid_driver/ko || true"
             }),
 
             OrderedDict({
@@ -180,7 +180,27 @@ create_release_job = OrderedDict(
 
             OrderedDict({
                 "name": "Pack artifact",
-                "run": "zip -r elkeid_driver.zip elkeid_driver"
+                "run": "XZ_DEFAULTS='-T 4' tar -cJf elkeid_driver_ko_${{github.ref}}.tar.xz elkeid_driver/ko"
+            }),
+
+            OrderedDict({
+                "name": "Pack log",
+                "run": "zip -r elkeid_driver_log.zip elkeid_driver/log"
+            }),
+
+            OrderedDict({
+                "name": "Upload log",
+                "id": "upload-build-log",
+                "uses": "actions/upload-release-asset@v1",
+                "env": {
+                        "GITHUB_TOKEN": "${{secrets.GITHUB_TOKEN}}"
+                },
+                "with": {
+                    "upload_url": "${{steps.create_release.outputs.upload_url}}",
+                    "asset_path": "./elkeid_driver_log.zip",
+                    "asset_name": "elkeid_driver_log.zip",
+                    "asset_content_type": "application/zip"
+                },
             }),
 
             OrderedDict({
@@ -192,9 +212,9 @@ create_release_job = OrderedDict(
                 },
                 "with": {
                     "upload_url": "${{steps.create_release.outputs.upload_url}}",
-                    "asset_path": "./elkeid_driver.zip",
-                    "asset_name": "elkeid_driver.zip",
-                    "asset_content_type": "application/zip"
+                    "asset_path": "./elkeid_driver_ko_${{github.ref}}.tar.xz",
+                    "asset_name": "elkeid_driver_ko_${{github.ref}}.tar.xz",
+                    "asset_content_type": "application/x-tar"
                 },
             })
         ]
