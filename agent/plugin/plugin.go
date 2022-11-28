@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -19,12 +21,10 @@ import (
 )
 
 var (
-	m      = &sync.Map{}
-	syncCh = make(chan map[string]*proto.Config, 1)
-)
-
-var (
+	m                  = &sync.Map{}
+	syncCh             = make(chan map[string]*proto.Config, 1)
 	ErrDuplicatePlugin = errors.New("multiple load the same plugin")
+	validName, _       = regexp.Compile(`^[0-9A-Za-z_\-]*$`)
 )
 
 type Plugin struct {
@@ -39,6 +39,7 @@ type Plugin struct {
 	taskCh     chan proto.Task
 	done       chan struct{}
 	wg         *sync.WaitGroup
+	shutdown   bool
 	// 与上面的rx tx概念相反 是从plugin视角看待的
 	rxBytes uint64
 	txBytes uint64
@@ -82,7 +83,6 @@ func (p *Plugin) ReceiveData() (rec *proto.EncodedRecord, err error) {
 	}
 	te := 1
 
-	rec = buffer.GetEncodedRecord()
 	var dt, ts, e int
 
 	dt, e, err = readVarint(p.reader)
@@ -94,7 +94,6 @@ func (p *Plugin) ReceiveData() (rec *proto.EncodedRecord, err error) {
 		return
 	}
 	te += e + 1
-	rec.DataType = int32(dt)
 
 	ts, e, err = readVarint(p.reader)
 	if err != nil {
@@ -105,7 +104,6 @@ func (p *Plugin) ReceiveData() (rec *proto.EncodedRecord, err error) {
 		return
 	}
 	te += e + 1
-	rec.Timestamp = int64(ts)
 
 	if uint32(te) < l {
 		_, e, err = readVarint(p.reader)
@@ -114,6 +112,9 @@ func (p *Plugin) ReceiveData() (rec *proto.EncodedRecord, err error) {
 		}
 		te += e
 		ne := int(l) - te
+		rec = buffer.GetEncodedRecord(ne)
+		rec.DataType = int32(dt)
+		rec.Timestamp = int64(ts)
 		if cap(rec.Data) < ne {
 			rec.Data = make([]byte, ne)
 		} else {
@@ -151,7 +152,7 @@ func Get(name string) (*Plugin, bool) {
 }
 
 func GetAll() (plgs []*Plugin) {
-	m.Range(func(key, value interface{}) bool {
+	m.Range(func(key, value any) bool {
 		plg := value.(*Plugin)
 		plgs = append(plgs, plg)
 		return true
@@ -179,7 +180,7 @@ func Startup(ctx context.Context, wg *sync.WaitGroup) {
 		case <-ctx.Done():
 			zap.S().Info("context has been canceled, will shutdown all plugins")
 			subWg := &sync.WaitGroup{}
-			m.Range(func(key, value interface{}) bool {
+			m.Range(func(key, value any) bool {
 				subWg.Add(1)
 				plg := value.(*Plugin)
 				go func() {
@@ -205,6 +206,7 @@ func Startup(ctx context.Context, wg *sync.WaitGroup) {
 					}
 					if err != nil {
 						zap.S().Errorf("when load plugin %v:%v, an error occurred: %v", cfg.Name, cfg.Version, err)
+						agent.SetAbnormal(fmt.Sprintf("load plugin %v failed: %v", cfg.Name, err.Error()))
 					} else {
 						plg.Infof("plugin has been loaded")
 					}

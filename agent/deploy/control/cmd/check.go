@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,8 +16,7 @@ limitations under the License.
 package cmd
 
 import (
-	"os"
-	"os/exec"
+	"fmt"
 
 	"github.com/nightlyone/lockfile"
 	"github.com/spf13/cobra"
@@ -30,14 +29,21 @@ var checkCmd = &cobra.Command{
 	Short: "A brief description of your command",
 	Run: func(cmd *cobra.Command, args []string) {
 		if viper.GetString("service_type") == "sysvinit" {
+			ctlFile, _ := lockfile.New(ctlPidFile)
+			err := ctlFile.TryLock()
+			if err != nil {
+				cobra.CheckErr(fmt.Errorf("get ctl file lock failed: %v", err))
+			}
+			defer ctlFile.Unlock()
+
 			file, _ := lockfile.New(agentPidFile)
-			_, err := file.GetOwner()
+			_, err = file.GetOwner()
 			if err != nil {
 				err := sysvinitStart()
-				cobra.CheckErr(os.WriteFile(crontabFile, []byte(crontabContent), 0600))
-				exec.Command("service", "cron", "restart").Run()
-				exec.Command("service", "crond", "restart").Run()
-				cobra.CheckErr(err)
+				if err != nil {
+					ctlFile.Unlock()
+					cobra.CheckErr(fmt.Errorf("start service failed: %v", err))
+				}
 			} else {
 				// TODO: zombie state check
 			}

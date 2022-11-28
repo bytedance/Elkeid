@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os/exec"
 	"sync"
 	"sync/atomic"
@@ -57,7 +58,7 @@ func startTransfer(ctx context.Context, wg *sync.WaitGroup) {
 				continue
 			}
 		}
-		zap.S().Infof("get connection successfully:idc %v,region %v,netmode %v", connection.IDC.Load(), connection.Region.Load(), connection.NetMode.Load())
+		zap.S().Infof("get connection successfully: idc %v,region %v,netmode %v", connection.IDC.Load(), connection.Region.Load(), connection.NetMode.Load())
 		retries = 0
 		var client proto.Transfer_TransferClient
 		subCtx, cancel := context.WithCancel(ctx)
@@ -116,7 +117,9 @@ func handleSend(ctx context.Context, wg *sync.WaitGroup, client proto.Transfer_T
 					} else {
 						atomic.AddUint64(&txCnt, uint64(len(recs)))
 					}
-					buffer.PutEncodedRecords(recs)
+					for _, rec := range recs {
+						buffer.PutEncodedRecord(rec)
+					}
 				}
 			}
 		}
@@ -153,7 +156,7 @@ func handleReceive(ctx context.Context, wg *sync.WaitGroup, client proto.Transfe
 					}
 				//set metadata
 				case 1051:
-					req := map[string]interface{}{}
+					req := map[string]any{}
 					err = json.Unmarshal([]byte(cmd.Task.Data), &req)
 					if err != nil {
 						zap.S().Errorw("unmarshall data failed: "+err.Error(), "token", cmd.Task.Token)
@@ -212,6 +215,7 @@ func handleReceive(ctx context.Context, wg *sync.WaitGroup, client proto.Transfe
 			}
 			continue
 		}
+		agent.SetRunning()
 		// handle cfgs
 		cfgs := map[string]*proto.Config{}
 		for _, config := range cmd.Configs {
@@ -227,6 +231,7 @@ func handleReceive(ctx context.Context, wg *sync.WaitGroup, client proto.Transfe
 				return
 			} else {
 				zap.S().Error("update failed:", err)
+				agent.SetAbnormal(fmt.Sprintf("agent update failed: %v", err.Error()))
 			}
 		}
 		delete(cfgs, agent.Product)
@@ -236,6 +241,5 @@ func handleReceive(ctx context.Context, wg *sync.WaitGroup, client proto.Transfe
 			zap.S().Error(err)
 		}
 		continue
-
 	}
 }

@@ -5,10 +5,12 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -24,6 +26,7 @@ import (
 func (p *Plugin) Shutdown() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	p.shutdown = true
 	if p.IsExited() {
 		return
 	}
@@ -31,7 +34,7 @@ func (p *Plugin) Shutdown() {
 	p.tx.Close()
 	p.rx.Close()
 	select {
-	case <-time.After(time.Second * 30):
+	case <-time.After(time.Second * 10):
 		p.Warn("because of plugin exit's timeout, will kill it")
 		syscall.Kill(-p.cmd.Process.Pid, syscall.SIGKILL)
 		<-p.done
@@ -41,6 +44,9 @@ func (p *Plugin) Shutdown() {
 	}
 }
 func Load(ctx context.Context, config proto.Config) (plg *Plugin, err error) {
+	if validName.FindString(regexp.QuoteMeta(config.Name)) == "" {
+		return nil, fmt.Errorf("invalid config name: %s", config.Name)
+	}
 	loadedPlg, ok := m.Load(config.Name)
 	if ok {
 		loadedPlg := loadedPlg.(*Plugin)
@@ -125,9 +131,12 @@ func Load(ctx context.Context, config proto.Config) (plg *Plugin, err error) {
 		rx_r.Close()
 		tx_w.Close()
 		if err != nil {
-			plg.Errorf("plugin has exited with error:%v,code:%d", err, cmd.ProcessState.ExitCode())
+			plg.Errorf("plugin has exited with error: %v, code: %d", err, cmd.ProcessState.ExitCode())
 		} else {
 			plg.Infof("plugin has exited with code %d", cmd.ProcessState.ExitCode())
+		}
+		if !plg.shutdown {
+			agent.SetAbnormal(fmt.Sprintf("plugin %v exited with code %v unexpectedly", plg.Name(), cmd.ProcessState.ExitCode()))
 		}
 		close(plg.done)
 	}()
