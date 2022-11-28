@@ -247,7 +247,7 @@ PHP_RINIT_FUNCTION (php_probe) {
         if (!val)
             return "";
 
-        return {Z_STRVAL_P(val), (std::size_t) Z_STRLEN_P(val)};
+        return toString(val);
     };
 
     strncpy(PHP_PROBE_G(request).scheme, fetch(Z_ARRVAL_P(server), "REQUEST_SCHEME").c_str(), SMITH_FIELD_LENGTH - 1);
