@@ -1548,7 +1548,7 @@ jobs:
     - name: Prepare artifact 2-3 log
       run: mv -f ~/all_elkeid_drivers/*/*.log elkeid_driver/log || true
     - name: Pack artifact
-      run: tar -cJf elkeid_driver_ko_${{github.ref}}.tar.xz elkeid_driver/ko
+      run: tar -cJf elkeid_driver_ko.tar.xz elkeid_driver/ko
     - name: Pack log
       run: zip -r elkeid_driver_log.zip elkeid_driver/log
     - name: Upload log
@@ -1568,8 +1568,8 @@ jobs:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
       with:
         asset_content_type: application/x-tar
-        asset_name: elkeid_driver_ko_${{github.ref}}.tar.xz
-        asset_path: ./elkeid_driver_ko_${{github.ref}}.tar.xz
+        asset_name: elkeid_driver_ko.tar.xz
+        asset_path: ./elkeid_driver_ko.tar.xz
         upload_url: ${{steps.create_release.outputs.upload_url}}
     needs:
     - build_debian9_x86_64
