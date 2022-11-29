@@ -15,7 +15,7 @@ The Agent is implemented in Go. Under Linux, systemd is used as a guardian to co
 ## Runtime Requirements
 Most of the functions provided by Agent and Plugin need to run at the host level with root privileges. In containers with limited privileges, some functions may be abnormal.
 ## Quick Start
-Through the complete deployment of [elkeidup](../elkeidup), you can directly obtain the installation package for Debian/RHEL series distributions, and deploy according to the commands of the [Elkeid Console - Installation Configuration]() page.
+Through the complete deployment of [elkeidup](../elkeidup/README.md), you can directly obtain the installation package for Debian/RHEL series distributions, and deploy according to the commands of the [Elkeid Console - Installation Configuration]() page.
 ## Compiling from source
 ### Dependency Requirements
 * [Go](https://go.dev/) >= 1.18

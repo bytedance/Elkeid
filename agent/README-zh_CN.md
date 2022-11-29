@@ -15,7 +15,7 @@ Agent采用Go实现，在Linux下，通过systemd作为守护方式，受cgroup�
 ## 运行时要求
 Agent及Plugin提供的大部分功能需要以root权限运行在宿主机(Host)层面，在权限受限的容器中，部分功能可能会存在异常。
 ## 快速开始
-通过 [elkeidup](../elkeidup) 的完整部署，可以直接得到用于Debian/RHEL系列发行版的安装包，并按照 [Elkeid Console - 安装配置]() 界面的命令进行安装部署。
+通过 [elkeidup](../elkeidup/README-zh_CN.md) 的完整部署，可以直接得到用于Debian/RHEL系列发行版的安装包，并按照 [Elkeid Console - 安装配置]() 界面的命令进行安装部署。
 ## 手动编译
 ### 环境要求
 * [Go](https://go.dev/) >= 1.18
@@ -28,7 +28,7 @@ Agent及Plugin提供的大部分功能需要以root权限运行在宿主机(Host
         * `serviceDiscoveryHost["default"]` 需被赋值为 [ServiceDiscovery](../server/service_discovery) 服务或代理服务的内网监听地址与端口，例如：`serviceDiscoveryHost["default"] = "192.168.0.1:8088"`
         * `privateHost["default"]` 需被赋值为 [AgentCenter](../server/agent_center) 服务或代理服务的内网监听地址与端口，例如：`privateHost["default"] = "192.168.0.1:6751"`
         * 如有Server的公网接入点，`publicHost["default"]` 需被赋值为 [AgentCenter](../server/agent_center) 服务或代理服务的外网监听地址与端口，例如：`publicHost["default"]="203.0.113.1:6751"`
-    * 如果是通过 [elkeidup](../elkeidup) 部署的Server，可以根据部署Server机器的 `~/.elkeidup/elkeidup_config.yaml` 文件获得对应配置：
+    * 如果是通过 [elkeidup](../elkeidup/README-zh_CN.md) 部署的Server，可以根据部署Server机器的 `~/.elkeidup/elkeidup_config.yaml` 文件获得对应配置：
         * 在配置文件中找到 Nginx 服务的IP，具体的配置项为 `nginx.sshhost[0].host`
         * 在配置文件中找到 [ServiceDiscovery](../server/service_discovery) 服务的IP，具体的配置项为 `sd.sshhost[0].host`
         * `serviceDiscoveryHost["default"]` 需被赋值为 [ServiceDiscovery](../server/service_discovery) 服务的IP，并将端口号设置为8088，例如：`serviceDiscoveryHost["default"] = "192.168.0.1:8088"`

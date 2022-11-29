@@ -4,7 +4,7 @@ Journal Watcher 通过读取 sshd 的日志，并进行解析，生成sshd登陆
 ## 运行时要求
 支持主流的Linux发行版，包括CentOS、RHEL、Debian、Ubuntu、RockyLinux、OpenSUSE等。支持x86-64与aarch64架构。
 ## 快速开始
-通过 [elkeidup](../../elkeidup) 的完整部署，此插件默认开启。
+通过 [elkeidup](../../elkeidup/README-zh_CN.md) 的完整部署，此插件默认开启。
 ## 手动编译
 ### 环境要求
 * [Rust](https://www.rust-lang.org) >= 1.48.0
