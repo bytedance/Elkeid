@@ -1,33 +1,45 @@
 # Baseline
 
 English | [简体中文](README-zh_CN.md)  
-基线插件通过已有或自定义的基线策略对资产进行检测，来判断资产上的基线安全配置是否存在风险。基线插件每天定时扫描一次，同时也可以通过前端进行立即检查。
-## 平台兼容性
+The baseline plugin detects assets through existing or custom baseline policies to determine whether the baseline security configuration is risky. The baseline plugin scans regularly once a day, and can also be executed immediately through the front end.
+## Platform compatibility
 centos 6,7,8  
 debian 8,9,10  
 ubuntu 14.04-20.04  
-*(其余版本以及发行版理论兼容)*
+*(The rest of the versions and distributions are theoretically compatible)*
 
-## 需要的编译环境
+## Build environment required
 * Golang 1.16
 
-## 编译
-## 部署
-## 基线配置
-### 常规配置
-基线插件的规则通过yaml文件配置，其中主要包括一下字段(建议参照config文件下实际配置对比)：
+## Building
+```bash
+# x86_64
+go build -o baseline main.go
+tar -zcvf baseline-linux-x86_64.tar.gz baseline config
+mv baseline-linux-x86_64.tar.gz output
+# arch64
+GOARCH=arm64 go build -o baseline main.go
+tar -zcvf baseline-linux-x86_64.tar.gz baseline config
+mv baseline-linux-x86_64.tar.gz output
+```
+## Deployment
+Upload the product for deployment through the front-end component list
+
+## Baseline configuration
+### General configuration
+The rules of the baseline plugin are configured through yaml files, which mainly include the following fields (it is recommended to refer to the actual configuration under the config file):
 ```yaml
-check_id: 检查项id(int)
-type: "类型(英文)"
-title: "标题(英文)"
-description: "描述(英文)"
-solution: "解决方案(英文)"
-security: "安全等级(high/mid/low)"
-type_cn: "类型"
-title_cn: "标题"
-description_cn: "描述"
-solution_cn: "解决方案"
-check: # 检查规则（详见自定义规则）
+check_id:
+type: 
+title: 
+description:
+solution:
+security:
+type_cn:
+title_cn:
+description_cn:
+solution_cn:
+check:
     rules:
     - type: "file_line_check"
         param:
@@ -35,23 +47,23 @@ check: # 检查规则（详见自定义规则）
         filter: '\s*\t*PASS_MAX_DAYS\s*\t*(\d+)'
         result: '$(<=)90'
 ```
-### 自定义规则
-每个检查项配置中的"check.rules"字段即为匹配规则，下边对每个字段进行解释：
+### Custom rules
+The "check.rules" field in each check item configuration is the matching rule, and each field is explained below:
 #### rules.type
-检查方式，目前baseline插件适配的内置检测规则(src/check/rules.go)包括如下几种：  
-| 检测规则 | 含义 | 参数 | 返回值 |
+Checking type, the built-in detection rules currently adapted by the baseline plugin (src/check/rules.go) include：  
+| Checking rule | Meaning | Parameters | Return value |
 |  ----  | ----  |  ----  | ----  |
-| command_check  | 运行命令行语句 | 1：命令行语句<br>2：特殊参数(如*ignore_exit* 认为当命令行报错时认为通过检测) | 命令运行结果
-| file_line_check  | 遍历文件，逐行匹配 | 1：文件绝对路径<br>2：该行的flag（用于快速筛选行，减轻正则匹配的压力）<br>3：该文件的注释符(默认为#) | true/flase/正则筛选值
-| file_permission  | 检测文件权限是否符合安全配置 | 1： 文件绝对路径<br>2： 文件最小权限(基于8进制，如644) | true/false
-| if_flie_exist  | 判断文件是否存在 | 1： 文件绝对路径 | true/false
-| file_user_group  | 判断文件用户组 | 1： 文件绝对路径<br>2： 用户组id | true/false
-| file_md5_check  | 判断文件MD5是否一致 | 1： 文件绝对路径<br>2： MD5 | true/false
-| func_check  | 通过特殊基线规则判断 | 1： 目标规则 | true/false
+| command_check  | Check commands to be executed | 1：Command<br>2：Special parameter(e.g. *ignore_exit* suggests the check is passed with commands errors) | Command result
+| file_line_check  | Traverse file and check by line | 1：File absolute path<br>2：Flag（For quick filtering lines, reducing the pressure of regular matching）<br>3：File comments(default:#) | true/false/Regex match value
+| file_permission  | Check whether file permissions meet the security configuration | 1： File absolute path<br>2： File minimum permissions(octal based，e.g. 644) | true/false
+| if_flie_exist  | Check whether file exists | 1： File absolute path | true/false
+| file_user_group  | Check file user group | 1： File absolute path<br>2： User group id | true/false
+| file_md5_check  | Check whether file MD5 is consistent | 1： File absolute path<br>2： MD5 | true/false
+| func_check  | Check through special rules | 1：The function | true/false
 #### rules.param
-规则参数数组
+Array of rule parameters
 #### rules.require
-规则前提条件：一些安全基线配置可能会存在检测前提条件，如果满足了先决条件后才会存在安全隐患，如：
+Rule Prerequisites: Some security baseline configurations may have detection prerequisites, and security risks will only exist if the prerequisites are met, such as：
 ```yaml
 rules:
   - type: "file_line_check"
@@ -61,57 +73,57 @@ rules:
     filter: '^\s*MaxAuthTries\s*\t*(\d+)'
     result: '$(<)5'
 ```
-*allow_ssh_passwd*: 允许用户通过ssh密码登录
+*allow_ssh_passwd*: Allow users to login through ssh passwords.
 #### rules.result
-检测结果，支持int，string，bool类型结果，
-其中被*$()*为特殊检测语法，以下为部分语法示例：
-|  检测语法 | 说明 | 示例 | 示例含义 |
+Checking result，support int，string，bool,
+*$()* suggests special checking syntax, e.g.：
+|  Checking syntax | Description | Example | Example description |
 |  ----  | ----  |  ----  |  ----  |
-| $(&&) | 包含条件 | ok$(&&)success| 结果为ok或success |
-| $(<=) | 常见运算符 | $(<=)4| 结果小于等于4 |
-| $(not) | 结果取反 | $(not)error| 结果不为error |
+| $(&&) | AND | ok$(&&)success| The result is "ok" or "success" |
+| $(<=) | Common operators | $(<=)4| Result<=4 |
+| $(not) | INVERT | $(not)error| The result is not "error" |
 
-复杂示例：
+Complex example：
 ```
-$(<)8$(&&)$(not)2  :  目标小于8且目标不为2
+$(<)8$(&&)$(not)2  :  Result<8 and result is not 2
 ```
 #### check.condition
-由于规则的rule可能存在多个，因此可以通过condition字段定义规则之前的关系  
-all: 全部规则命中,则通过检测  
-any: 任一规则命中,则通过检测  
-none: 无规则命中,则通过检测  
-## 下发任务
-### 任务下发
+Since there may be multiple rules for a rule, the relationship between the rule can be defined through the condition field.  
+all: Check passed if all the rules are matched.
+any: Check passed if any of the rules is matched.
+none: Check passed if none of the rules is matched.  
+## Submit a task
+### Task issued
 ```json
 {
-    "baseline_id": 1200, // 基线id
-    "check_id_list":[1,2,3] // 扫描检查项列表(空列表为全部扫描)
+    "baseline_id": 1200,
+    "check_id_list":[1,2,3]
 }
 ```
-### 结果回传
+### Result return
 ```json
 {
-    "baseline_id": 1200,    // 基线id
-    "status": "success",    // 检测状态success|error
-    "msg": "",  // 错误原因
+    "baseline_id": 1200,
+    "status": "success", 
+    "msg": "",
     "check_list":[
-        "check_id": 1,  // 检查项id
-        "type": "",     // 类型(英文)
-        "title": "",   // 检查项标题(英文)
-        "description": "",  // 检查项描述(英文)
-        "solution": "",     // 解决方案(英文)
-        "type_cn": "",     // 类型
-        "title_cn": "",     // 检查项标题
-        "description_cn": "",   // 检查项描述
-        "solution_cn": "",  // 解决方案
-        "result": "",   // 检查结果
-        "msg": "",   // 错误原因
+        "check_id": 1,
+        "type": "",
+        "title": "",
+        "description": "",
+        "solution": "",
+        "type_cn": "",
+        "title_cn": "",
+        "description_cn": "",
+        "solution_cn": "",
+        "result": "", 
+        "msg": "",
     ]
 }
-检查结果：
-SuccessCode 		= 1  // 成功
-FailCode 			= 2  // 失败
-ErrorCode 			= -1 // 其他错误
-ErrorConfigWrite	= -2 // 配置编写不规范
-ErrorFile			= -3 // 文件读写异常
+Result：
+SuccessCode 		= 1
+FailCode 			= 2 
+ErrorCode 			= -1
+ErrorConfigWrite	= -2
+ErrorFile			= -3
 ```
