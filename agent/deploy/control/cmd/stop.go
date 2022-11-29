@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,30 +17,39 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 	"syscall"
 	"time"
 
-	"github.com/containerd/cgroups"
 	"github.com/nightlyone/lockfile"
 	"github.com/shirou/gopsutil/v3/process"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-func getProcTreeWithProc(pid int) (res []int, err error) {
-	if pid == 0 || pid == 1 {
-		return nil, errors.New("proc tree includes init")
+func CheckPids(pids []int) (res []int) {
+	for _, pid := range pids {
+		proc, _ := os.FindProcess(pid)
+		if err := proc.Signal(syscall.Signal(0)); err == nil {
+			res = append(res, pid)
+		}
+	}
+	return
+}
+
+func GetProcsFromProc(pid int) (res []int, err error) {
+	if pid < 2 {
+		return nil, errors.New("invalid pid")
 	}
 	var procs []*process.Process
 	procs, err = process.Processes()
 	if err == nil {
 		procMap := map[int32]struct{}{int32(pid): {}}
 		for _, proc := range procs {
-			if proc.Pid == 0 || proc.Pid == 1 {
-				return nil, errors.New("proc tree includes init")
+			if proc.Pid < 2 {
+				continue
 			}
 			ppid, err := proc.Ppid()
 			if err != nil {
@@ -48,11 +57,6 @@ func getProcTreeWithProc(pid int) (res []int, err error) {
 			}
 			if _, ok := procMap[ppid]; ok {
 				procMap[proc.Pid] = struct{}{}
-				continue
-			}
-			if exe, err := proc.Exe(); err == nil && strings.HasPrefix(exe, agentWorkDir) && os.Getpid() != int(proc.Pid) {
-				procMap[proc.Pid] = struct{}{}
-				continue
 			}
 		}
 		for k := range procMap {
@@ -61,64 +65,58 @@ func getProcTreeWithProc(pid int) (res []int, err error) {
 	}
 	return
 }
-func getProcTreeWithCgroup(pid int) (res []int, err error) {
-	var cg cgroups.Cgroup
-	cg, err = cgroups.Load(V1, cgroups.StaticPath(cgroupPath))
+func GetProcsFromCGroup() (res []int, err error) {
+	cgroup, err := LoadCGroup(serviceName)
 	if err != nil {
+		return nil, err
+	}
+	return cgroup.GetProcs("named")
+}
+func GetProcs(pid int) (res []int, err error) {
+	res, err = GetProcsFromCGroup()
+	if err == nil && len(res) != 0 {
 		return
 	}
-	var procs []cgroups.Process
-	procs, err = cg.Processes(cgroups.Cpu, false)
-	if err == nil {
-		for _, p := range procs {
-			if p.Pid == 0 || p.Pid == 1 {
-				return nil, errors.New("proc tree includes init")
-			}
-			res = append(res, int(p.Pid))
-		}
-	}
-	if len(res) == 0 {
-		err = errors.New("could not find procs")
-	}
-	return
+	return GetProcsFromProc(pid)
 }
-
 func sysvinitStop() error {
 	os.RemoveAll(crontabFile)
-	file, _ := lockfile.New(agentPidFile)
+	file, err := lockfile.New(agentPidFile)
+	if err != nil {
+		return err
+	}
 	p, err := file.GetOwner()
 	if err == nil {
-		var getProcTree func(int) (res []int, err error)
 		var pids []int
-		pids, err := getProcTreeWithCgroup(p.Pid)
-		// cgroup mode
-		if err == nil {
-			getProcTree = getProcTreeWithCgroup
-		} else {
-			// procfs mode
-			pids, _ = getProcTreeWithProc(p.Pid)
-			getProcTree = getProcTreeWithProc
+		pids, err := GetProcs(p.Pid)
+		if err != nil {
+			return err
 		}
 		for _, pid := range pids {
-			syscall.Kill(pid, syscall.SIGTERM)
+			syscall.Kill(-pid, syscall.SIGTERM)
 		}
 		ticker := time.NewTicker(time.Millisecond * time.Duration(100))
 		defer ticker.Stop()
 		timeout := time.NewTimer(time.Second * time.Duration(30))
+		i := 0
 		defer timeout.Stop()
-	OUT:
 		for {
 			select {
 			case <-ticker.C:
-				pids, _ := getProcTree(p.Pid)
+				pids = CheckPids(pids)
 				if len(pids) == 0 {
-					break OUT
+					return nil
 				}
+				if i%50 == 0 {
+					fmt.Printf("wait %v subprocess to exit...\n", len(pids))
+				}
+				i++
 			case <-timeout.C:
-				pids, _ := getProcTree(p.Pid)
+				fmt.Fprintln(os.Stderr, "stop timeout, will kill all subprocess...")
 				for _, pid := range pids {
-					syscall.Kill(pid, syscall.SIGKILL)
+					syscall.Kill(-pid, syscall.SIGKILL)
 				}
+				return nil
 			}
 		}
 	}
@@ -145,7 +143,7 @@ to quickly create a Cobra application.`,
 			os.RemoveAll(crontabFile)
 			exec.Command("service", "cron", "restart").Run()
 			exec.Command("service", "crond", "restart").Run()
-			sysvinitStop()
+			cobra.CheckErr(sysvinitStop())
 		}
 	},
 }

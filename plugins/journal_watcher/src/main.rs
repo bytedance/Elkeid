@@ -1,3 +1,4 @@
+use chrono::DateTime;
 use log::*;
 use parking_lot::Mutex;
 use pest::Parser;
@@ -23,6 +24,8 @@ pub struct Entry {
     message: String,
     #[serde(rename = "_PID")]
     pid: String,
+    #[serde(rename = "__REALTIME_TIMESTAMP")]
+    timestamp: String,
 }
 enum LogFormat {
     Json,
@@ -63,24 +66,6 @@ fn main() {
     let journalctl_c = journalctl.clone();
     let mut client_c = client.clone();
     let _ = thread::Builder::new()
-        .name("task_receive".to_owned())
-        .spawn(move || loop {
-            match client.receive() {
-                Ok(_) => {
-                    // handle task
-                }
-                Err(e) => {
-                    let mut journalctl = journalctl.lock();
-                    if let Some(journalctl) = journalctl.as_mut() {
-                        let _ = journalctl.kill();
-                    }
-                    *journalctl = None;
-                    error!("when receiving task,an error occurred:{}", e);
-                    return;
-                }
-            }
-        });
-    thread::Builder::new()
         .name("send_record".to_owned())
         .spawn(move || loop {
             let mut cmd: Command;
@@ -126,22 +111,39 @@ fn main() {
                 debug!("{}", line);
                 let entry = match format {
                     LogFormat::Json => match serde_json::from_str::<Entry>(&line) {
-                        Ok(entry) => entry,
+                        Ok(mut entry) => {
+                            // microsec -> sec
+                            if entry.timestamp.len() > 6 {
+                                entry.timestamp.truncate(entry.timestamp.len() - 6);
+                            } else {
+                                entry.timestamp = "0".into();
+                            }
+                            entry
+                        }
                         Err(err) => {
                             warn!("when parsing a line, an error occurred: {}", err);
                             continue;
                         }
                     },
                     LogFormat::Log => {
-                        let fields = line
-                            .splitn(7, |c: char| c.is_whitespace())
-                            .collect::<Vec<&str>>();
-                        if fields.len() != 7 || !fields[5].starts_with("sshd[") {
+                        let fields = line.split_whitespace().collect::<Vec<&str>>();
+                        if fields.len() < 6 || !fields[4].starts_with("sshd[") {
                             continue;
+                        }
+                        if let Ok(date) = DateTime::parse_from_str(
+                            format!("{} {} {}", fields[0], fields[1], fields[2]).as_str(),
+                            "%b %e %T",
+                        ) {
+                            Entry {
+                                pid: fields[4][4..].trim_end_matches("]").to_string(),
+                                message: fields[5..].join(" "),
+                                timestamp: date.timestamp().to_string(),
+                            }
                         } else {
                             Entry {
-                                pid: fields[4][5..].trim_end_matches("]").to_string(),
-                                message: fields[5].to_string(),
+                                pid: fields[4][4..].trim_end_matches("]").to_string(),
+                                message: fields[5..].join(" "),
+                                timestamp: "".into(),
                             }
                         }
                     }
@@ -218,12 +220,16 @@ fn main() {
                 } else {
                     continue;
                 };
-                rec.set_timestamp(
-                    SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .unwrap()
-                        .as_secs() as i64,
-                );
+                if let Ok(timestamp) = entry.timestamp.parse::<i64>() {
+                    rec.set_timestamp(timestamp);
+                } else {
+                    rec.set_timestamp(
+                        SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs() as i64,
+                    );
+                }
                 rec.mut_data()
                     .mut_fields()
                     .insert("pid".to_owned(), entry.pid);
@@ -256,6 +262,24 @@ fn main() {
                 return;
             }
             thread::sleep(Duration::from_secs(10));
+        });
+    thread::Builder::new()
+        .name("task_receive".to_owned())
+        .spawn(move || loop {
+            match client.receive() {
+                Ok(_) => {
+                    // handle task
+                }
+                Err(e) => {
+                    let mut journalctl = journalctl.lock();
+                    if let Some(journalctl) = journalctl.as_mut() {
+                        let _ = journalctl.kill();
+                    }
+                    *journalctl = None;
+                    error!("when receiving task,an error occurred:{}", e);
+                    return;
+                }
+            }
         })
         .unwrap()
         .join()

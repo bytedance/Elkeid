@@ -1,5 +1,9 @@
 #!/bin/bash
 set -e
-BUILD_VERSION="1.0.0.81"
+if [ -z "${BUILD_VERSION}" ];then
+        echo 'Please set BUILD_VERSION.'
+        exit 1
+fi
 mkdir -p output
-go build -o output/collector-linux-amd64-${BUILD_VERSION}.plg
+GOARCH=amd64 go build -o output/collector-linux-amd64-${BUILD_VERSION}.plg
+GOARCH=arm64 go build -o output/collector-linux-arm64-${BUILD_VERSION}.plg

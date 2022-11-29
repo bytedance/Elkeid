@@ -26,5 +26,9 @@ func init() {
 	} else {
 		IDC.Store("default")
 	}
-	Region.Store("default")
+	if region, ok := os.LookupEnv("specified_region"); ok {
+		Region.Store(region)
+	} else {
+		Region.Store("default")
+	}
 }
