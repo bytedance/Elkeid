@@ -5,7 +5,7 @@ The journal_watcher plugin reads and parses sshd logs to generate sshd login and
 Supports mainstream Linux distributions, including CentOS, RHEL, Debian, Ubuntu, RockyLinux, OpenSUSE, etc. Supports x86-64 and aarch64 architectures.
 ## Quick start
 Through the complete deployment of [elkeidup](../../elkeidup/README.md), this plugin is enabled by default.
-## Compiling from source
+## Compile from source
 ### Dependency requirements
 * [Rust](https://www.rust-lang.org) >= 1.48.0
 * [Rust x86_64-unknown-linux-musl aarch64-unknown-linux-musl  compile chain](https://doc.bccnsoft.com/docs/rust-1.36.0-docs-html/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html)

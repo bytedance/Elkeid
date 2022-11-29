@@ -7,7 +7,7 @@ Supports mainstream Linux distributions, including CentOS, RHEL, Debian, Ubuntu,
 The kernel version of the host needs to be in the supported list, if not, it needs to be compiled and uploaded separately, see [Description](../../elkeidup/README.md#agent-install-remark) for details.
 ## Quick start
 Through the complete deployment of [elkeidup](../../elkeidup/README.md), this plugin is enabled by default.
-## Compiling from source
+## Compile from source
 ### Dependency requirements
 * [Rust](https://www.rust-lang.org) >= 1.48.0
 * [Rust x86_64-unknown-linux-musl aarch64-unknown-linux-musl  compile chain](https://doc.bccnsoft.com/docs/rust-1.36.0-docs-html/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html)

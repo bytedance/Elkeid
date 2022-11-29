@@ -36,7 +36,7 @@ Agent及Plugin提供的大部分功能需要以root权限运行在宿主机(Host
 ### 编译
 在Agent根目录，执行：
 ```
-BUILD_VERSION=1.7.0.26 bash build.sh
+BUILD_VERSION=1.7.0.24 bash build.sh
 ```
 在编译过程中，脚本会读取 `BUILD_VERSION` 环境变量设置版本信息，可根据实际需要进行修改。
 
@@ -47,4 +47,4 @@ BUILD_VERSION=1.7.0.26 bash build.sh
 3. 在 [Elkeid Console - 组件策略]() 界面，(如有)删除旧的“elkeid-agent”版本策略，点击“新建策略”，选中刚刚发布的版本，点击确认。后续新安装的Agent均会自升级到最新版本。
 4. 在 [Elkeid Console - 任务管理]() 界面，点击“新建任务”，选择全部主机，点击下一步，选择“同步配置”任务类型，点击确认。随后，在此页面找到刚刚创建的任务，点击运行，即可对存量旧版本Agent进行升级。
 ## License
-Elkeid Agent are distributed under the Apache-2.0 license.
+Elkeid Agent is distributed under the Apache-2.0 license.
