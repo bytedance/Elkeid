@@ -15,7 +15,7 @@ driver 插件对 [内核模块](../../driver/README-zh_CN.md) 进行管理，并
 ### 确认相关配置
 * 需要确保 `src/config.rs` 中 `DOWNLOAD_HOSTS` 变量已配置为实际部署的Nginx服务地址：
     * 如果是手动部署的Server：需要确保将其配置为Nginx文件服务的地址，例如：`pub const DOWNLOAD_HOSTS: &'static [&'static str] = &["http://192.168.0.1:8080"];`
-    * 如果是通过 [elkeidup](../elkeidup/README-zh_CN.md) 部署的Server，可以根据部署Server机器的 `~/.elkeidup/elkeidup_config.yaml` 文件获得对应配置，具体配置项为 `nginx.sshhost[0].host`，并将端口号设置为8080，例如：`pub const DOWNLOAD_HOSTS: &'static [&'static str] = &["http://192.168.0.1:8080"];`
+    * 如果是通过 [elkeidup](../../elkeidup/README-zh_CN.md) 部署的Server，可以根据部署Server机器的 `~/.elkeidup/elkeidup_config.yaml` 文件获得对应配置，具体配置项为 `nginx.sshhost[0].host`，并将端口号设置为8080，例如：`pub const DOWNLOAD_HOSTS: &'static [&'static str] = &["http://192.168.0.1:8080"];`
 ### 编译
 在根目录，执行：
 ```

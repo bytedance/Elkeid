@@ -15,7 +15,7 @@ Through the complete deployment of [elkeidup](../../elkeidup/README.md), this pl
 ### Confirm related configuration
 * It is necessary to ensure that the `DOWNLOAD_HOSTS` variable in `src/config.rs` has been configured as the actual deployed Nginx service address:
      * If it is a manually deployed Server: you need to ensure that it is configured as the address of the Nginx file service, for example: `pub const DOWNLOAD_HOSTS: &'static [&'static str] = &["http://192.168.0.1:8080" ];`
-     * If the Server is deployed through [elkeidup](../elkeidup/README.md), the corresponding configuration can be obtained according to the `~/.elkeidup/elkeidup_config.yaml` file of the deployed Server host, and the specific configuration item is `nginx .sshhost[0].host`, then set the port number to 8080, for example: `pub const DOWNLOAD_HOSTS: &'static [&'static str] = &["http://192.168.0.1:8080"];`
+     * If the Server is deployed through [elkeidup](../../elkeidup/README.md), the corresponding configuration can be obtained according to the `~/.elkeidup/elkeidup_config.yaml` file of the deployed Server host, and the specific configuration item is `nginx .sshhost[0].host`, then set the port number to 8080, for example: `pub const DOWNLOAD_HOSTS: &'static [&'static str] = &["http://192.168.0.1:8080"];`
 ### Compile
 In the root directory, execute:
 ```
