@@ -18,7 +18,7 @@ The collector periodically collects various asset information on the host and pe
 Supports mainstream Linux distributions, including CentOS, RHEL, Debian, Ubuntu, RockyLinux, OpenSUSE, etc. Supports x86-64 and aarch64 architectures.
 ## Quick start
 Through the complete deployment of [elkeidup](../../elkeidup/README.md), this plugin is enabled by default.
-## Compiling from source
+## Compile from source
 ### Dependency requirements
 * [Go](https://go.dev/) >= 1.18
 ### Compile
@@ -29,7 +29,7 @@ BUILD_VERSION=1.7.0.140 bash build.sh
 During the compilation process, the script will read the `BUILD_VERSION` environment variable to set the version information, which can be modified according to actual needs.
 
 After the compilation is successful, you should see two plg files in the `output` directory of the root directory, which correspond to different system architectures.
-## 版本升级
+## Version Upgrade
 1. If no client component has been created, please create a new component in the [Elkeid Console-Component Management]() page.
 2. On the [Elkeid Console - Component Management]() page, find the "collector" entry, click "Release Version" on the right, fill in the version information and upload the files corresponding to the platform and architecture, and click OK.
 3. On the [Elkeid Console - Component Policy]() page, delete the old "collector" version policy (if any), click "New Policy", select the version just released, and click OK. Subsequent newly installed Agents will be self-upgraded to the latest version.
