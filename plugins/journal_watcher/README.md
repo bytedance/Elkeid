@@ -24,4 +24,4 @@ After the compilation is successful, you should see two plg files in the `output
 3. On the [Elkeid Console - Component Policy]() page, delete the old "journal_watcher" version policy (if any), click "New Policy", select the version just released, and click OK. Subsequent newly installed Agents will be self-upgraded to the latest version.
 4. On the [Elkeid Console - Task Management]() page, click "New Task", select all hosts, click Next, select the "Sync Configuration" task type, and click OK. Then, find the task you just created on this page, and click Run to upgrade the old version of the Agent.
 ## License
-journal_watcher plugin is distributed under the Apache-2.0 license.
+journal_watcher is distributed under the Apache-2.0 license.
