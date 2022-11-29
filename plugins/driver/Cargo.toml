@@ -14,10 +14,7 @@ prost = "0.7"
 libc = "0.2.0"
 anyhow = "1"
 nix = "0.20"
-reqwest = { version = "0.11", features = [
-    "blocking",
-    "rustls-tls",
-], default-features = false }
+ureq = { version = "2.4.0"}
 sha2 = "0.9"
 hex = "0.4"
 log = { version = "0.4", features = ["std"] }
@@ -33,3 +30,4 @@ plugins = { path = "../lib/rust" }
 parking_lot = "0.11"
 walkdir = "2.3"
 governor = "0.3.2"
+users = "0.11.0"

@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
-BUILD_VERSION="1.7.0.2"
-
 mkdir -p output
-RUSTFLAGS='-C link-arg=-s' cargo build --target x86_64-unknown-linux-musl --release
-cp target/x86_64-unknown-linux-musl/release/driver output/driver-linux-amd64-${BUILD_VERSION}.plg
+export RUSTFLAGS='-C link-arg=-s'
+cargo build --target x86_64-unknown-linux-musl --release
+cargo build --target aarch64-unknown-linux-musl --release
+cp target/x86_64-unknown-linux-musl/release/driver output/driver-default-x86_64-${BUILD_VERSION}.plg
+cp target/aarch64-unknown-linux-musl/release/driver output/driver-default-aarch64-${BUILD_VERSION}.plg
