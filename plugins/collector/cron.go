@@ -2,219 +2,136 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
-	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/bytedance/plugins"
+	"github.com/bytedance/Elkeid/plugins/collector/engine"
+	"github.com/bytedance/Elkeid/plugins/collector/utils"
+	plugins "github.com/bytedance/plugins"
 	"github.com/karrick/godirwalk"
-	"go.uber.org/zap"
+	"github.com/mitchellh/mapstructure"
 )
 
-type Cron struct {
-	Path     string `json:"path"`
-	Username string `json:"username"`
-	Schedule string `json:"schedule"`
-	Command  string `json:"command"`
-	Runparts string `json:"runparts"`
-	Checksum string `json:"checksum"`
+type CronHandler struct{}
+
+func (h *CronHandler) Name() string {
+	return "cron"
+}
+func (h *CronHandler) DataType() int {
+	return 5053
 }
 
-func parse(withUser bool, path string, file *os.File) (crons []Cron) {
-	r := bufio.NewScanner(io.LimitReader(file, 1024*1024))
-	checksum, _ := GetMd5ByPath(path)
+type Crontab struct {
+	Path     string `mapstructure:"path"`
+	Username string `mapstructure:"username"`
+	Schedule string `mapstructure:"schedule"`
+	Command  string `mapstructure:"command"`
+	Checksum string `mapstructure:"checksum"`
+}
+
+func parseCrontab(wu bool, path string) (ret []*Crontab, err error) {
+	var f *os.File
+	f, err = os.Open(path)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	md5, _ := utils.GetMd5(path, "")
+	r := bufio.NewScanner(io.LimitReader(f, 1024*1024))
 	for r.Scan() {
-		line := r.Text()
-		if line != "" && strings.TrimSpace(line)[0] == '#' {
+		line := strings.TrimSpace(r.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
 			continue
-		} else if strings.Contains(line, "@reboot") {
-			fields := strings.Fields(line)
-			cron := Cron{
-				Schedule: "@reboot",
-				Path:     path,
-				Checksum: checksum,
-			}
-			if len(fields) >= 2 {
-				if withUser {
-					cron.Username = file.Name()
-					cron.Command = strings.Join(fields[1:], " ")
-					runParts := false
-					for _, field := range fields[1:] {
-						if field == "run-parts" {
-							runParts = true
-							continue
-						}
-						if runParts && strings.HasPrefix(field, "/") {
-							dir, err := os.ReadDir(field)
-							if err != nil {
-								continue
-							}
-							for _, entry := range dir {
-								if entry.Type().Perm()&0111 != 0 {
-									if cron.Runparts != "" {
-										cron.Runparts += ","
-									}
-									cron.Runparts += entry.Name()
-								}
-							}
-							break
-						}
-					}
-				} else if len(fields) >= 3 {
-					cron.Username = fields[1]
-					cron.Command = strings.Join(fields[2:], " ")
-					runParts := false
-					for _, field := range fields[2:] {
-						if field == "run-parts" {
-							runParts = true
-							continue
-						}
-						if runParts && strings.HasPrefix(field, "/") {
-							dir, err := os.ReadDir(field)
-							if err != nil {
-								continue
-							}
-							for _, entry := range dir {
-								if entry.Type().Perm()&0111 != 0 {
-									if cron.Runparts != "" {
-										cron.Runparts += ","
-									}
-									cron.Runparts += entry.Name()
-								}
-							}
-							break
-						}
-					}
+		}
+		c := &Crontab{
+			Checksum: md5,
+			Path:     path,
+		}
+		fields := strings.Fields(line)
+		if strings.HasPrefix(line, "@") {
+			if wu {
+				if len(fields) < 3 {
+					continue
 				}
+				c.Schedule = fields[0]
+				c.Username = fields[1]
+				c.Command = strings.Join(fields[2:], " ")
+			} else {
+				if len(fields) < 2 {
+					continue
+				}
+				c.Username = f.Name()
+				c.Schedule = fields[0]
+				c.Command = strings.Join(fields[1:], " ")
 			}
-			crons = append(crons, cron)
 		} else {
-			fields := strings.Fields(line)
-			if len(fields) >= 6 {
-				cron := Cron{
-					Schedule: strings.Join(fields[0:5], " "),
-					Path:     path,
-					Checksum: checksum,
+			if wu {
+				if len(fields) < 7 {
+					continue
 				}
-				if withUser {
-					cron.Username = filepath.Base(file.Name())
-					cron.Command = strings.Join(fields[5:], " ")
-					runParts := false
-					for _, field := range fields[5:] {
-						if field == "run-parts" {
-							runParts = true
-							continue
-						}
-						if runParts && strings.HasPrefix(field, "/") {
-							dir, err := os.ReadDir(field)
-							if err != nil {
-								continue
-							}
-							for _, entry := range dir {
-								if entry.Type().Perm()&0111 != 0 {
-									if cron.Runparts != "" {
-										cron.Runparts += ","
-									}
-									cron.Runparts += entry.Name()
-								}
-							}
-							break
-						}
-					}
-				} else if len(fields) >= 7 {
-					cron.Username = fields[5]
-					cron.Command = strings.Join(fields[6:], " ")
-					runParts := false
-					for _, field := range fields[6:] {
-						if field == "run-parts" {
-							runParts = true
-							continue
-						}
-						if runParts && strings.HasPrefix(field, "/") {
-							dir, err := os.ReadDir(field)
-							if err != nil {
-								continue
-							}
-							for _, entry := range dir {
-								info, err := entry.Info()
-								if err != nil {
-									continue
-								}
-								if info.Mode().Perm()&0111 != 0 {
-									if cron.Runparts != "" {
-										cron.Runparts += ","
-									}
-									cron.Runparts += entry.Name()
-								}
-							}
-							break
-						}
-					}
+				c.Schedule = strings.Join(fields[:5], " ")
+				c.Username = fields[5]
+				c.Command = strings.Join(fields[6:], " ")
+			} else {
+				if len(fields) < 6 {
+					continue
 				}
-				crons = append(crons, cron)
+				c.Username = filepath.Base(f.Name())
+				c.Schedule = strings.Join(fields[:5], " ")
+				c.Command = strings.Join(fields[5:], " ")
 			}
 		}
+		ret = append(ret, c)
 	}
 	return
 }
 
-func GetCron() {
-	crons := []Cron{}
-	zap.S().Info("scanning crontab")
+func (h *CronHandler) Handle(c *plugins.Client, cache *engine.Cache, seq string) {
 	godirwalk.Walk("/var/spool/cron", &godirwalk.Options{
-		Callback: func(path string, de *godirwalk.Dirent) error {
-			if de.IsRegular() || de.IsSymlink() {
-				f, err := os.Open(path)
-				if err != nil {
-					return nil
+		Callback: func(osPathname string, directoryEntry *godirwalk.Dirent) error {
+			if ok, err := directoryEntry.IsDirOrSymlinkToDir(); err == nil && !ok {
+				if cs, err := parseCrontab(false, osPathname); err == nil {
+					for _, ct := range cs {
+						rec := &plugins.Record{
+							DataType:  int32(h.DataType()),
+							Timestamp: time.Now().Unix(),
+							Data: &plugins.Payload{
+								Fields: make(map[string]string, 7),
+							},
+						}
+						mapstructure.Decode(ct, &rec.Data.Fields)
+						rec.Data.Fields["package_seq"] = seq
+						c.SendRecord(rec)
+					}
 				}
-				crons = append(crons, parse(true, path, f)...)
-				f.Close()
 			}
 			return nil
-		}})
-	godirwalk.Walk("/etc/cron.d", &godirwalk.Options{
-		Callback: func(path string, de *godirwalk.Dirent) error {
-			if de.IsRegular() || de.IsSymlink() {
-				f, err := os.Open(path)
-				if err != nil {
-					return nil
-				}
-				crons = append(crons, parse(false, path, f)...)
-				f.Close()
-			}
-			return nil
-		}})
-	if f, e := os.Open("/etc/crontab"); e == nil {
-		crons = append(crons, parse(false, "/etc/crontab", f)...)
-		f.Close()
-	}
-	zap.S().Infof("scan crontab done, total: %v\n", len(crons))
-	data, _ := json.Marshal(crons)
-	rec := &plugins.Record{
-		DataType:  5003,
-		Timestamp: time.Now().Unix(),
-		Data: &plugins.Payload{
-			Fields: map[string]string{"data": string(data)},
 		},
-	}
-	Client.SendRecord(rec)
-}
-
-func init() {
-	go func() {
-		rand.Seed(time.Now().UnixNano())
-		time.Sleep(time.Second * time.Duration(rand.Intn(600)))
-		GetCron()
-		time.Sleep(time.Hour)
-		SchedulerMu.Lock()
-		Scheduler.AddFunc(fmt.Sprintf("%d %d * * *", rand.Intn(60), rand.Intn(6)), GetCron)
-		// Scheduler.AddFunc("@every 3m", GetCron)
-		SchedulerMu.Unlock()
-	}()
+		FollowSymbolicLinks: false,
+	})
+	godirwalk.Walk("/etc/cron.d", &godirwalk.Options{
+		Callback: func(osPathname string, directoryEntry *godirwalk.Dirent) error {
+			if ok, err := directoryEntry.IsDirOrSymlinkToDir(); err == nil && !ok {
+				if cs, err := parseCrontab(true, osPathname); err == nil {
+					for _, ct := range cs {
+						rec := &plugins.Record{
+							DataType:  int32(h.DataType()),
+							Timestamp: time.Now().Unix(),
+							Data: &plugins.Payload{
+								Fields: make(map[string]string, 7),
+							},
+						}
+						mapstructure.Decode(ct, &rec.Data.Fields)
+						rec.Data.Fields["package_seq"] = seq
+						c.SendRecord(rec)
+					}
+				}
+			}
+			return nil
+		},
+		FollowSymbolicLinks: false,
+	})
 }
