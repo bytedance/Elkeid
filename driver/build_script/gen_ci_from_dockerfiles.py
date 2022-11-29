@@ -180,7 +180,7 @@ create_release_job = OrderedDict(
 
             OrderedDict({
                 "name": "Pack artifact",
-                "run": "tar -cJf elkeid_driver_ko_${{github.ref}}.tar.xz elkeid_driver/ko"
+                "run": "tar -cJf elkeid_driver_ko.tar.xz elkeid_driver/ko"
             }),
 
             OrderedDict({
@@ -212,8 +212,8 @@ create_release_job = OrderedDict(
                 },
                 "with": {
                     "upload_url": "${{steps.create_release.outputs.upload_url}}",
-                    "asset_path": "./elkeid_driver_ko_${{github.ref}}.tar.xz",
-                    "asset_name": "elkeid_driver_ko_${{github.ref}}.tar.xz",
+                    "asset_path": "./elkeid_driver_ko.tar.xz",
+                    "asset_name": "elkeid_driver_ko.tar.xz",
                     "asset_content_type": "application/x-tar"
                 },
             })
