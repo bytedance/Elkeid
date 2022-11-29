@@ -16,7 +16,7 @@ The Agent is implemented in Go. Under Linux, systemd is used as a guardian to co
 Most of the functions provided by Agent and Plugin need to run at the host level with root privileges. In containers with limited privileges, some functions may be abnormal.
 ## Quick Start
 Through the complete deployment of [elkeidup](../elkeidup/README.md), you can directly obtain the installation package for Debian/RHEL series distributions, and deploy according to the commands of the [Elkeid Console - Installation Configuration]() page.
-## Compiling from source
+## Compile from source
 ### Dependency Requirements
 * [Go](https://go.dev/) >= 1.18
 * [nFPM](https://nfpm.goreleaser.com/)
@@ -36,7 +36,7 @@ Through the complete deployment of [elkeidup](../elkeidup/README.md), you can di
 ### Compile
 Chage to the root directory of agent source code, execute:
 ````
-BUILD_VERSION=1.7.0.26 bash build.sh
+BUILD_VERSION=1.7.0.24 bash build.sh
 ````
 During the compilation process, the script will read the `BUILD_VERSION` environment variable to set the version information, which can be modified according to actual needs.
 
@@ -47,4 +47,4 @@ After the compilation is successful, in the `output` directory of the root direc
 3. On the [Elkeid Console - Component Policy]() page, delete the old "elkeid-agent" version policy (if any), click "New Policy", select the version just released, and click OK. Subsequent newly installed Agents will be self-upgraded to the latest version.
 4. On the [Elkeid Console - Task Management]() page, click "New Task", select all hosts, click Next, select the "Sync Configuration" task type, and click OK. Then, find the task you just created on this page, and click Run to upgrade the old version of the Agent.
 ## License
-Elkeid Agent are distributed under the Apache-2.0 license.
+Elkeid Agent is distributed under the Apache-2.0 license.
