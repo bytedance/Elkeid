@@ -1,34 +1,51 @@
 package main
 
 import (
+	"math/rand"
 	"runtime"
 	"time"
 
+	"github.com/bytedance/Elkeid/plugins/collector/engine"
+	plugins "github.com/bytedance/plugins"
+	"github.com/bytedance/plugins/log"
+	"github.com/go-logr/zapr"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 func init() {
-	runtime.GOMAXPROCS(4)
+	runtime.GOMAXPROCS(8)
+	rand.Seed(time.Now().UnixNano())
 }
 
 func main() {
-	fileEncoder := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
-	fileWriter := zapcore.AddSync(&lumberjack.Logger{
-		Filename:   "collector.log",
-		MaxSize:    1, // megabytes
-		MaxBackups: 10,
-		MaxAge:     10,   //days
-		Compress:   true, // disabled by default
-	})
-	core := zapcore.NewTee(
-		zapcore.NewSamplerWithOptions(
-			zapcore.NewCore(fileEncoder, fileWriter, zap.InfoLevel), time.Second, 4, 1),
+	c := plugins.New()
+	l := log.New(
+		log.Config{
+			MaxSize:     1,
+			Path:        "collector.log",
+			FileLevel:   zapcore.InfoLevel,
+			RemoteLevel: zapcore.ErrorLevel,
+			MaxBackups:  10,
+			Compress:    true,
+			Client:      c,
+		},
 	)
+	defer l.Sync()
+	zap.ReplaceGlobals(l)
+	e := engine.New(c, zapr.NewLogger(l))
 
-	logger := zap.New(core, zap.AddCaller())
-	defer logger.Sync()
-	zap.ReplaceGlobals(logger)
-	Scheduler.Run()
+	e.AddHandler(time.Hour, &ProcessHandler{})
+	e.AddHandler(time.Hour, &PortHandler{})
+	e.AddHandler(time.Hour*6, &UserHandler{})
+	e.AddHandler(time.Hour*6, &CronHandler{})
+	e.AddHandler(time.Hour*6, &ServiceHandler{})
+	e.AddHandler(engine.BeforeDawn(), &SoftwareHandler{})
+	e.AddHandler(time.Minute*5, &ContainerHandler{})
+	e.AddHandler(engine.BeforeDawn(), &IntegrityHandler{})
+	e.AddHandler(time.Hour*6, &NetInterfaceHandler{})
+	e.AddHandler(time.Hour*6, &VolumeHandler{})
+	e.AddHandler(time.Hour, &KmodHandler{})
+	e.AddHandler(engine.BeforeDawn(), &AppHandler{})
+	e.Run()
 }
