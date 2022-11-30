@@ -49,7 +49,7 @@ cat elkeid_password
 
 ### 4、拷贝预编译ko(若需要)
 
-如果在执行elkeidup public中未同意声明，需要自行编译ko或下载release中的ko_{version}.tar.xz并解压获取其中的ko，然后将需要的ko和对应的sign文件拷贝到以下目录并修改文件权限，确保新安装agent有ko可以加载。
+如果在执行elkeidup deploy中未同意声明，需要自行编译ko或下载[release](../driver/README-zh_CN.md#我们提供部分预编译好的-ko-文件)中的ko_{version}.tar.xz并解压获取其中的ko，然后将需要的ko和对应的sign文件拷贝到以下目录并修改文件权限，确保新安装agent有ko可以加载。
 
 ```bash
 # ko 目录
@@ -137,7 +137,7 @@ cd /root/.elkeidup
 
 ### 6、拷贝预编译ko(若需要)
 
-如果在执行elkeidup deploy中未同意声明，需要自行编译ko或下载release中的ko_{version}.tar.xz并解压获取其中的ko，然后将需要的ko和对应的sign文件拷贝到以下目录并修改文件权限，确保新安装agent有ko可以加载。
+如果在执行elkeidup deploy中未同意声明，需要自行编译ko或下载[release](../driver/README-zh_CN.md#我们提供部分预编译好的-ko-文件)中的ko_{version}.tar.xz并解压获取其中的ko，然后将需要的ko和对应的sign文件拷贝到以下目录并修改文件权限，确保新安装agent有ko可以加载。
 
 ```bash
 # ko 目录
