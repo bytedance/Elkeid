@@ -3,13 +3,13 @@
 English | [简体中文](README-zh_CN.md)  
 The baseline plugin detects assets through existing or custom baseline policies to determine whether the baseline security configuration is risky. The baseline plugin scans regularly once a day, and can also be executed immediately through the front end.
 ## Platform compatibility
-centos 6,7,8  
-debian 8,9,10  
-ubuntu 14.04-20.04  
+- centos 6,7,8  
+- debian 8,9,10  
+- ubuntu 14.04-20.04  
 *(The rest of the versions and distributions are theoretically compatible)*
 
 ## Build environment required
-* Golang 1.16
+* [Go](https://go.dev/) >= 1.18
 
 ## Building
 ```bash
@@ -22,13 +22,18 @@ GOARCH=arm64 go build -o baseline main.go
 tar -zcvf baseline-linux-x86_64.tar.gz baseline config
 mv baseline-linux-x86_64.tar.gz output
 ```
-## Deployment
-Upload the product for deployment through the front-end component list
+
+After the compilation is successful, you should see two plg files in the `output` directory of the root directory, which correspond to different system architectures.
+## Version Upgrade
+1. If no client component has been created, please create a new component in the [Elkeid Console-Component Management](../../server/docs/console_tutorial/Elkeid_Console_manual.md#组件管理) page.
+2. On the [Elkeid Console - Component Management](../../server/docs/console_tutorial/Elkeid_Console_manual.md#组件管理) page, find the "collector" entry, click "Release Version" on the right, fill in the version information and upload the files corresponding to the platform and architecture, and click OK.
+3. On the [Elkeid Console - Component Policy](../../server/docs/console_tutorial/Elkeid_Console_manual.md#组件策略) page, delete the old "collector" version policy (if any), click "New Policy", select the version just released, and click OK. Subsequent newly installed Agents will be self-upgraded to the latest version.
+4. On the [Elkeid Console - Task Management](../../server/docs/console_tutorial/Elkeid_Console_manual.md#任务管理) page, click "New Task", select all hosts, click Next, select the "Sync Configuration" task type, and click OK. Then, find the task you just created on this page, and click Run to upgrade the old version of the Agent.
 
 ## Baseline configuration
 ### General configuration
 The rules of the baseline plugin are configured through yaml files, which mainly include the following fields (it is recommended to refer to the actual configuration under the config file):
-```yaml
+```
 check_id:
 type: 
 title: 
@@ -64,7 +69,7 @@ Checking type, the built-in detection rules currently adapted by the baseline pl
 Array of rule parameters
 #### rules.require
 Rule Prerequisites: Some security baseline configurations may have detection prerequisites, and security risks will only exist if the prerequisites are met, such as：
-```yaml
+```
 rules:
   - type: "file_line_check"
     require: "allow_ssh_passwd"
@@ -101,7 +106,7 @@ none: Check passed if none of the rules is matched.
 }
 ```
 ### Result return
-```json
+```
 {
     "baseline_id": 1200,
     "status": "success", 
@@ -120,9 +125,12 @@ none: Check passed if none of the rules is matched.
         "msg": "",
     ]
 }
+```
+
 Result：
+```
 SuccessCode 		= 1
-FailCode 			= 2 
+FailCode 			= 2
 ErrorCode 			= -1
 ErrorConfigWrite	= -2
 ErrorFile			= -3

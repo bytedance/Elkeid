@@ -30,9 +30,9 @@ BUILD_VERSION=1.7.0.140 bash build.sh
 
 编译成功后，在根目录的 `output` 目录下，应该可以看到2个deb与2个rpm文件，它们分别对应不同的系统架构。
 ## 版本升级
-1. 如果没有创建过客户端类型的组件，请在 [Elkeid Console-组件管理]() 界面新建对应组件。
-2. 在 [Elkeid Console - 组件管理]() 界面，找到“collector”条目，点击右侧“发布版本”，填写版本信息并上传对应平台与架构的文件，点击确认。
-3. 在 [Elkeid Console - 组件策略]() 界面，(如有)删除旧的“collector”版本策略，点击“新建策略”，选中刚刚发布的版本，点击确认。后续新安装的Agent的插件均会自升级到最新版本。
-4. 在 [Elkeid Console - 任务管理]() 界面，点击“新建任务”，选择全部主机，点击下一步，选择“同步配置”任务类型，点击确认。随后，在此页面找到刚刚创建的任务，点击运行，即可对存量旧版本插件进行升级。
+1. 如果没有创建过客户端类型的组件，请在 [Elkeid Console-组件管理](../../server/docs/console_tutorial/Elkeid_Console_manual.md#组件管理) 界面新建对应组件。
+2. 在 [Elkeid Console - 组件管理](../../server/docs/console_tutorial/Elkeid_Console_manual.md#组件管理) 界面，找到“collector”条目，点击右侧“发布版本”，填写版本信息并上传对应平台与架构的文件，点击确认。
+3. 在 [Elkeid Console - 组件策略](../../server/docs/console_tutorial/Elkeid_Console_manual.md#组件策略) 界面，(如有)删除旧的“collector”版本策略，点击“新建策略”，选中刚刚发布的版本，点击确认。后续新安装的Agent的插件均会自升级到最新版本。
+4. 在 [Elkeid Console - 任务管理](../../server/docs/console_tutorial/Elkeid_Console_manual.md#任务管理) 界面，点击“新建任务”，选择全部主机，点击下一步，选择“同步配置”任务类型，点击确认。随后，在此页面找到刚刚创建的任务，点击运行，即可对存量旧版本插件进行升级。
 ## License
 collector is distributed under the Apache-2.0 license.

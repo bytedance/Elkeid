@@ -3,32 +3,39 @@
 [English](README.md) | 简体中文  
 基线插件通过已有或自定义的基线策略对资产进行检测，来判断资产上的基线安全配置是否存在风险。基线插件每天定时扫描一次，同时也可以通过前端进行立即检查。
 ## 平台兼容性
-centos 6,7,8  
-debian 8,9,10  
-ubuntu 14.04-20.04  
+- centos 6,7,8  
+- debian 8,9,10  
+- ubuntu 14.04-20.04  
 *(其余版本以及发行版理论兼容)*
 
 ## 需要的编译环境
-* Golang 1.16
+* [Go](https://go.dev/) >= 1.18
 
 ## 编译
 ```bash
+rm -rf output
+mkdir output
 # x86_64
 go build -o baseline main.go
 tar -zcvf baseline-linux-x86_64.tar.gz baseline config
-mv baseline-linux-x86_64.tar.gz output
+mv baseline-linux-x86_64.tar.gz output/
 # arch64
 GOARCH=arm64 go build -o baseline main.go
 tar -zcvf baseline-linux-x86_64.tar.gz baseline config
-mv baseline-linux-x86_64.tar.gz output
+mv baseline-linux-x86_64.tar.gz output/
 ```
-## 部署
-通过前端组件列表，上传产物进行部署
+编译成功后，在根目录的 `output` 目录下，应该可以看到2个deb与2个rpm文件，它们分别对应不同的系统架构。
+
+## 版本升级
+1. 如果没有创建过客户端类型的组件，请在 [Elkeid Console-组件管理](../../server/docs/console_tutorial/Elkeid_Console_manual.md#组件管理) 界面新建对应组件。
+2. 在 [Elkeid Console - 组件管理](../../server/docs/console_tutorial/Elkeid_Console_manual.md#组件管理) 界面，找到“collector”条目，点击右侧“发布版本”，填写版本信息并上传对应平台与架构的文件，点击确认。
+3. 在 [Elkeid Console - 组件策略](../../server/docs/console_tutorial/Elkeid_Console_manual.md#组件策略) 界面，(如有)删除旧的“collector”版本策略，点击“新建策略”，选中刚刚发布的版本，点击确认。后续新安装的Agent的插件均会自升级到最新版本。
+4. 在 [Elkeid Console - 任务管理](../../server/docs/console_tutorial/Elkeid_Console_manual.md#任务管理) 界面，点击“新建任务”，选择全部主机，点击下一步，选择“同步配置”任务类型，点击确认。随后，在此页面找到刚刚创建的任务，点击运行，即可对存量旧版本插件进行升级。
 
 ## 基线配置
 ### 常规配置
 基线插件的规则通过yaml文件配置，其中主要包括以下字段(建议参照config文件下实际配置对比)：
-```yaml
+```
 check_id: 检查项id(int)
 type: "类型(英文)"
 title: "标题(英文)"
@@ -94,14 +101,15 @@ any: 任一规则命中,则通过检测
 none: 无规则命中,则通过检测  
 ## 下发任务
 ### 任务下发
-```json
+```
 {
     "baseline_id": 1200, // 基线id
     "check_id_list":[1,2,3] // 扫描检查项列表(空列表为全部扫描)
 }
 ```
+
 ### 结果回传
-```json
+```
 {
     "baseline_id": 1200,    // 基线id
     "status": "success",    // 检测状态success|error
@@ -120,7 +128,10 @@ none: 无规则命中,则通过检测
         "msg": "",   // 错误原因
     ]
 }
+```
+
 检查结果：
+```
 SuccessCode 		= 1  // 成功
 FailCode 			= 2  // 失败
 ErrorCode 			= -1 // 其他错误
