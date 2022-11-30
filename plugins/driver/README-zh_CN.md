@@ -4,7 +4,7 @@ driver 插件对 [内核模块](../../driver/README-zh_CN.md) 进行管理，并
 ## 运行时要求
 支持主流的Linux发行版，包括CentOS、RHEL、Debian、Ubuntu、RockyLinux、OpenSUSE等。支持x86-64与aarch64架构。
 
-主机的内核版本需要在支持的的列表中，如果不在，需要单独编译并上传，详见 [说明](../../elkeidup/README-zh_CN.md#agent-install-remark) 。
+主机的内核版本需要在支持的的列表中，如果不在，需要单独编译并上传，详见 [说明](../../elkeidup/deploy.md#agent-install-remark) 。
 ## 快速开始
 通过 [elkeidup](../../elkeidup/README-zh_CN.md) 的完整部署，此插件默认开启。
 ## 手动编译
