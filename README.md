@@ -53,7 +53,7 @@ Therefore, it is necessary to have complete anti-intrusion and risk perception c
     * [RASP Plugin](https://github.com/bytedance/Elkeid/tree/main/rasp/plugin): Responsible for managing RASP components and processing data collected from RASP.
     * [Baseline Plugin](https://github.com/bytedance/Elkeid/tree/main/plugins/baseline): Responsible for detecting baseline risks based on baseline check policies.
 * [**Elkeid Data Format**](server/docs/ElkeidData.xlsx)
-* [**Elkeid Data Usage Tutorial**](elkeidup/raw_data_usage_tutorial.md)
+* [**Elkeid Data Usage Tutorial**](elkeidup/raw_data_usage_tutorial/raw_data_usage_tutorial-zh_CN.md)
 
 
 ## Elkeid Backend Ability

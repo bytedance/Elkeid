@@ -5,31 +5,7 @@
 Elkeid 自动化部署工具
 
 ## Component List
-* Redis
-* Mongodb
-* Kafka
-* Zookeeper
-* Nginx
-* Elkeid Agent Center
-* Elkeid Manager
-* Elkeid Console
-* Elkeid Service Discovery
-* Elkeid HUB Community Version
-
-
-
-| **Name**          | 测试环境部署建议      | 生产环境部署建议      | 端口                               |
-| ----------------- | --------------------- | --------------------- | ---------------------------------- |
-| Redis             | 单台                  | 三台 哨兵模式         | 6379<br />26379                    |
-| Mongodb           | 单台                  | 三台 副本模式         | 27017                              |
-| Kafka/ZK          | 单台                  | 根据Agent数量计算     | 2181<br />9092                     |
-| Nginx             | 单台                  | 单台                  | 8080<br />8082<br />8089<br />8090 |
-| Service Discovery | 单台                  | 两台                  | 8088                               |
-| HUB               | 社区版HUB仅支持单节点 | 社区版HUB仅支持单节点 | 8091<br />8092                     |
-| Manager           | 单台                  | 两台                  | 6701                               |
-| Agent Center      | 单台                  | 根据Agent数量计算     | 6751<br />6752<br />6753           |
-
-
+[资源配置手册](./configuration.md)
 
 ## Instructions
 
@@ -40,81 +16,31 @@ Elkeid 自动化部署工具
 * 执行elkeidup的服务器需要能以root用户免密码ssh到所有的后端服务器上
 * 部署过程不可以手动打断
 * 仅可以使用局域网IP，不要使用 127.0.0.1 或者 hostname 或者公网IP
-* 访问 Elkeid Console 只能使用安装配置中填写的局域网IP，不可使用其他如公网IP
+* 安装后不要删除 `~/.elkeidup` 目录
+* 不要修改任何组件的密码，包括Elkeid Console(Manager)初始默认用户
 
-```bash
-#下载&解压，请根据release替换download url
-wget https://github.com/bytedance/Elkeid/releases/download/v1.7/elkeidup
-chmod a+x ./elkeidup
-wget https://github.com/bytedance/Elkeid/releases/download/v1.7/package_community.tar.gz
-tar -zxf package_community.tar.gz
+### 收集信息提示
 
-# get elkeidup help
-./elkeidup --help
-# 生成配置模版
-./elkeidup init
-#按需填写配置
-vim elkeid_server.yaml
-#后端组件自动化部署
-./elkeidup deploy --package package_community/ --config ./elkeid_server.yaml
-#检查状态
-./elkeidup status
-#查看组件地址与密码
-cat ~/.elkeidup/elkeid_passwd
-#自动化build agent与部分插件
-./elkeidup agent build --package package_community/
-#部署结束，根据前端引导进行agent部署
-```
+为了能更好的共建Elkeid开源社区，我们希望可以在您的试用或使用中收集以下必要信息，以便我们了解您的基础运行状况。我们需要参考相关信息制定后续规划，以及给出合理的资源占用评估。
+我们会尝试收集且仅收集以下信息，所有收集信息的逻辑和代码均位于已开源的manager中，预编译manager二进制与开源代码一致，您可以重新编译：
+1. 缺失预编译ko的内核版本，服务器架构(仅为arm64或amd64二选一，不涉及任何其他cpu机器信息)，仅在driver。
+2. agent center上agent的连接数，每30min收集一次。
+3. agent center上agent的qps，包含send和receive，每30min收集一次，取30min的平均值。
+4. hub input qps，每30min收集一次，取30min的平均值。
+5. redis qps，每30min收集一次，取30min的平均值。
+6. redis 内存占用，每30min收集一次，实时数值。
+7. kafka 生产和消费的qps，每30min收集一次，取30min的平均值。
+8. mongodb qps，每30min收集一次，取30min的平均值。
 
+> 如果您不同意收集请求，仅自动下载缺失的预编译ko一项功能无法使用，不影响其他功能。
 
-**必读事项**
+### Elkeid 完整部署
+[Elkeid 完整部署](./deploy.md)
 
-* **安装后不要删除 `~/.elkeidup` 目录**
-* **除了Kafka其他的组件的 install 字段必须为true**
-* **不要修改任何组件的密码，包括Elkeid Console(Manager)初始默认用户**
+### Elkeid HUB 单独部署
+[Elkeid HUB 单独部署](./deploy_hub.md)
 
-### Agent Install Remark
-* Driver 模块依赖预编译ko，具体支持列表参考：[ko_list](https://github.com/bytedance/Elkeid/blob/main/driver/ko_list.md)
-* 检测 Driver 是否存在的方式：`lsmod | grep hids_driver`
-* 如果测试机器kernel版本不在支持列表中，请自行编译ko文件和生成sign文件(sha256)，文件需要放置在nginx对应服务器的：`/elkeid/nginx/ElkeidAgent/agent/plugin/driver/ko`下，ko/sign文件的格式应该遵循：`hids_driver_1.7.0.4_{uname -r}_{arch}.ko/sign` 放置完成后Agent会自动拉取对应的ko文件进行安装
-
-
-### Raw Data Usage Tutorial
-[Raw Data Usage Tutorial](raw_data_usage_tutorial-zh_CN.md)
-
-### 1-30 Agent 测试环境配置参考
-
-Minimum 8C16G 200G server
-
-|         | Component                                                    |
-| ------- | ------------------------------------------------------------ |
-| Server1 | Redis<br />Mongodb<br />Nginx<br />Kafka<br />HUB<br />Service Discovery<br />Manager<br />Agent Center |
-
-
-
-### 300-500 Agent 测试环境配置参考
-
-Minimum 8C16G 200G server
-
-| Server List | Component                      |
-| ----------- | ------------------------------ |
-| Server1     | Redis<br />Mongodb<br />Nginx  |
-| Server2     | Kafka                          |
-| Server3     | HUB                            |
-| Server4     | Service Discovery<br />Manager |
-| Server5     | Agent Center                   |
-
-
-
-### 5000 Agent 生产环配置境参考
-
-| Server List | Component                  | Recommended Configuration |
-|-------------|----------------------------| ------------------------- |
-| Server1/2/3 | Redis<br />Mongodb               | 8C16G 500G                |
-| Server4/5/6 | Kafka                      | 8C32G 2T 10-Gigabit NIC   |
-| Server7/8   | Manager<br />Service Discovery | 8C16G                     |
-| Server9/10  | Agent Center               | 16C32G  10-Gigabit NIC    |
-| Server13    | Nginx                      | 8C16G                     |
-
-A single HUB does not support 5000 agents.
+## Raw Data Usage Tutorial
+- [Elkeid 数据说明](../server/docs/ElkeidData.xlsx)
+- [Raw Data Usage Tutorial](raw_data_usage_tutorial/raw_data_usage_tutorial-zh_CN.md)
 
