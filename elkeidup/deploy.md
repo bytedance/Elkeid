@@ -47,20 +47,7 @@ cd /root/.elkeidup/
 cat ~/.elkeidup/elkeid_passwd
 ```
 
-### 4、拷贝预编译ko(若需要)
-
-如果在执行elkeidup deploy中未同意声明，需要自行编译ko或下载[release](../driver/README-zh_CN.md#我们提供部分预编译好的-ko-文件)中的ko_{version}.tar.xz并解压获取其中的ko，然后将需要的ko和对应的sign文件拷贝到以下目录并修改文件权限，确保新安装agent有ko可以加载。
-
-```bash
-# ko 目录
-/elkeid/nginx/ElkeidAgent/agent/component/driver/ko
-
-# 修改权限
-chown -R nginx:nginx /elkeid/nginx
-```
-
-
-### 5、访问前端console并安装Agent
+### 4、访问前端console并安装Agent
 顺利安装完成后，`/root/.elkeidup/elkeid_passwd`文件记录了各组件的密码和相关的url。
 > 初始密码在构建镜像的时候已经固定了的，为了安全性请不要用于生产环境
 
@@ -135,19 +122,7 @@ cd /root/.elkeidup
 ./elkeidup agent policy create
 ```
 
-### 6、拷贝预编译ko(若需要)
-
-如果在执行elkeidup deploy中未同意声明，需要自行编译ko或下载[release](../driver/README-zh_CN.md#我们提供部分预编译好的-ko-文件)中的ko_{version}.tar.xz并解压获取其中的ko，然后将需要的ko和对应的sign文件拷贝到以下目录并修改文件权限，确保新安装agent有ko可以加载。
-
-```bash
-# ko 目录
-/elkeid/nginx/ElkeidAgent/agent/component/driver/ko
-
-# 修改权限
-chown -R nginx:nginx /elkeid/nginx
-```
-
-### 7、访问前端console并安装Agent
+### 6、访问前端console并安装Agent
 顺利安装完成后，执行`cat /root/.elkeidup/elkeid_passwd`将看到各组件的随机生成的密码和相关的url。
 
 | 字段                         | 说明               |
@@ -161,3 +136,14 @@ chown -R nginx:nginx /elkeid/nginx
 | elkeid_service_discovery | 服务发现地址           |
 
 访问elkeid_console，按照[Console使用手册-安装配置](../server/docs/console_tutorial/Elkeid_Console_manual.md#安装配置) 界面的命令进行Agent安装部署。
+
+
+## Agent Install Remark
+
+- Driver 模块依赖预编译ko，具体支持列表参考：[ko_list](https://github.com/bytedance/Elkeid/blob/main/driver/ko_list.md)
+- 检测 Driver 是否存在的方式：`lsmod | grep hids_driver`
+- 如果测试机器kernel版本不在支持列表中，请自行编译ko文件和生成sign文件(sha256)，并将其导入Nginx中。
+- **如果在执行elkeidup deploy中未同意声明**，也需要自行编译ko或下载Release中对应的预编译ko[支持列表](https://github.com/bytedance/Elkeid/blob/main/driver/ko_list.md)和sign文件，并将其导入Nginx中。
+
+### ko导入Nginx方法
+ko/sign文件的格式应该遵循：`hids_driver_1.7.0.4_{uname -r}_{arch}.ko/sign`格式， 文件需要放置在nginx对应服务器的：`/elkeid/nginx/ElkeidAgent/agent/component/driver/ko`下，并修改权限`chown -R nginx:nginx /elkeid/nginx`。放置完成后，重启Agent即可。
