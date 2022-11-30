@@ -32,5 +32,8 @@ Elkeid 后台大体包含5个模块：
 ## 版本升级
  参照[从源码构建 Elkeid CWPP](../elkeidup/build_package.md)的后端部分，来部署或升级即可。
 
+## Console User Guide
+- [ELkeid Console User Guide](docs/console_tutorial/Elkeid_Console_manual.md)
+
 ## License
 Elkeid Server are distributed under the Apache-2.0 license.
