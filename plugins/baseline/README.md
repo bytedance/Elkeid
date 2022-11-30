@@ -132,8 +132,8 @@ none: Check passed if none of the rules is matched.
 Result：
 ```
 SuccessCode 		= 1
-FailCode 			= 2
-ErrorCode 			= -1
+FailCode 		= 2
+ErrorCode 		= -1
 ErrorConfigWrite	= -2
-ErrorFile			= -3
+ErrorFile		= -3
 ```
