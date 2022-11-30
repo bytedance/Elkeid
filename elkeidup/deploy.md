@@ -19,12 +19,12 @@ docker load -i elkeidup_image_v1.9.1.tar.gz
 
 ```
 docker run -d --name elkeid_community \
---restart=unless-stopped \
--v /sys/fs/cgroup:/sys/fs/cgroup:ro \
--p 8071:8071 -p 8072:8072 -p 8080:8080 \
--p 8081:8081 -p 8082:8082 -p 8089:8080  -p 8090:8090\
---privileged \
-elkeid/all-in-one:v1.9.1
+  --restart=unless-stopped \
+  -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
+  -p 8071:8071 -p 8072:8072 -p 8080:8080 \
+  -p 8081:8081 -p 8082:8082 -p 8089:8080  -p 8090:8090\
+  --privileged \
+  elkeid/all-in-one:v1.9.1
 ```
 
 ### 3、设置对外IP
@@ -44,7 +44,7 @@ cd /root/.elkeidup/
 ./elkeidup agent build
 ./elkeidup agent policy create
 
-cat elkeid_password
+cat ~/.elkeidup/elkeid_passwd
 ```
 
 ### 4、拷贝预编译ko(若需要)
