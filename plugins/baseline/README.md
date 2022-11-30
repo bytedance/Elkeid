@@ -13,14 +13,16 @@ The baseline plugin detects assets through existing or custom baseline policies 
 
 ## Building
 ```bash
+rm -rf output
+mkdir output
 # x86_64
 go build -o baseline main.go
 tar -zcvf baseline-linux-x86_64.tar.gz baseline config
-mv baseline-linux-x86_64.tar.gz output
+mv baseline-linux-x86_64.tar.gz output/
 # arch64
 GOARCH=arm64 go build -o baseline main.go
 tar -zcvf baseline-linux-x86_64.tar.gz baseline config
-mv baseline-linux-x86_64.tar.gz output
+mv baseline-linux-x86_64.tar.gz output/
 ```
 
 After the compilation is successful, you should see two plg files in the `output` directory of the root directory, which correspond to different system architectures.
