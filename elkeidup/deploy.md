@@ -3,8 +3,15 @@
 ## 单机docker快速部署 (单机测试环境推荐)
 
 ### 1、导入镜像
-
 ```bash
+# 从release下载的是分卷的镜像，需要先合并镜像
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_image_v1.9.1.tar.gz.00
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_image_v1.9.1.tar.gz.01
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_image_v1.9.1.tar.gz.02
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_image_v1.9.1.tar.gz.03
+cat elkeidup_image_v1.9.1.tar.gz.* > elkeidup_image_v1.9.1.tar.gz
+
+#导入镜像
 docker load -i elkeidup_image_v1.9.1.tar.gz
 ```
 
@@ -52,6 +59,23 @@ cat elkeid_password
 chown -R nginx:nginx /elkeid/nginx
 ```
 
+
+### 5、访问前端console并安装Agent
+顺利安装完成后，`/root/.elkeidup/elkeid_passwd`文件记录了各组件的密码和相关的url。
+> 初始密码在构建镜像的时候已经固定了的，为了安全性请不要用于生产环境
+
+| 字段                         | 说明               |
+| -------------------------- |------------------|
+| elkeid_console            | console账号密码      |
+| elkeid_hub_frontend        | hub前端账号密码        |
+| grafana        | grafana账号密码      |
+| grafana      | grafana 地址       |
+| elkeid_hub_frontend      | elkeid hub前端地址   |
+| elkeid_console      | elkeid console地址 |
+| elkeid_service_discovery | 服务发现地址           |
+
+访问elkeid_console，按照[Console使用手册-安装配置](../server/docs/console_tutorial/Elkeid_Console_manual.md#安装配置) 界面的命令进行Agent安装部署。
+
 ## 使用elkeidup进行完整部署
 
 ### 1、配置目标机器root用户ssh免密登录
@@ -64,18 +88,27 @@ date && ssh root@{ip} date
 # 输出时间差小于1s
 ```
 
-### 2、下载release产物并配置目录
+### 2、解压release产物并配置目录
+- 下载release产物（分卷压缩包），并合并压缩包
+```
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_package_v1.9.1.tar.gz.00
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_package_v1.9.1.tar.gz.01
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_package_v1.9.1.tar.gz.02
+cat elkeidup_package_v1.9.1.tar.gz.* > elkeidup_package_v1.9.1.tar.gz
+```
+也可以参考[从源码构建 Elkeid](./build_package.md)，自行编译和构建package包。
 
-```bash
+- 解压release产物并配置目录
+```
 mkdir -p /root/.elkeidup && cd /root/.elkeidup
-wget https://*.*.*/elkeidup_package_v1.9.1.tar.gz -O elkeidup_package_v1.9.1.tar.gz
+mv {DownloadDir}/elkeidup_package_v1.9.1.tar.gz elkeidup_package_v1.9.1.tar.gz
 tar -xf elkeidup_package_v1.9.1.tar.gz
 chmod a+x /root/.elkeidup/elkeidup
 ```
 
 ### 3、生成并修改config.yaml
 
-ip为本机非127.0.0.1 ip，若不为单机部署，请参考部署资源手册修改config.yaml
+ip为本机非127.0.0.1 ip，若不为单机部署，请参考[资源手册](./configuration.md#配置文件说明)修改config.yaml
 
 ```bash
 cd /root/.elkeidup
@@ -113,3 +146,18 @@ cd /root/.elkeidup
 # 修改权限
 chown -R nginx:nginx /elkeid/nginx
 ```
+
+### 7、访问前端console并安装Agent
+顺利安装完成后，执行`cat /root/.elkeidup/elkeid_passwd`将看到各组件的随机生成的密码和相关的url。
+
+| 字段                         | 说明               |
+| -------------------------- |------------------|
+| elkeid_console            | console账号密码      |
+| elkeid_hub_frontend        | hub前端账号密码        |
+| grafana        | grafana账号密码      |
+| grafana      | grafana 地址       |
+| elkeid_hub_frontend      | elkeid hub前端地址   |
+| elkeid_console      | elkeid console地址 |
+| elkeid_service_discovery | 服务发现地址           |
+
+访问elkeid_console，按照[Console使用手册-安装配置](../server/docs/console_tutorial/Elkeid_Console_manual.md#安装配置) 界面的命令进行Agent安装部署。

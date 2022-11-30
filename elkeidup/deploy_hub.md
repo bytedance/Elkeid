@@ -11,7 +11,7 @@ date && ssh root@{ip} date
 ### 2、下载release产物并配置目录
 ```
 mkdir -p /root/.elkeidup && cd /root/.elkeidup
-wget xxx -O elkeidup.tar.gz && tar -xf elkeidup.tar.gz
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_hub_v1.9.1.tar.gz -O elkeidup.tar.gz && tar -xf elkeidup.tar.gz
 chmod a+x /root/.elkeidup/.elkeidup
 ```
 ### 3、生成并修改config.yaml
@@ -34,3 +34,16 @@ cd /root/.elkeidup
 ## undeploy
 ./elkeidup undeploy --hub_only
 ```
+
+### 5、访问HUB前端
+顺利安装完成后，执行`cat /root/.elkeidup/elkeid_passwd`将看到各组件的随机生成的密码和相关的url。
+
+| 字段                         | 说明               |
+| -------------------------- |------------------|
+| elkeid_hub_frontend        | hub前端账号密码        |
+| grafana        | grafana账号密码      |
+| grafana      | grafana 地址       |
+| elkeid_hub_frontend      | elkeid hub前端地址   |
+| elkeid_service_discovery | 服务发现地址           |
+
+访问 elkeid_hub_frontend，参照 [Elkeid HUB 社区版快速上手教程](https://github.com/bytedance/Elkeid-HUB/blob/v1.9.1/docs/quick_start/quick_start.md) 使用。
