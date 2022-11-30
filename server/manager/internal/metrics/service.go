@@ -2,8 +2,10 @@ package metrics
 
 import (
 	"context"
+	"github.com/bytedance/Elkeid/server/manager/infra"
 	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	"github.com/bytedance/Elkeid/server/manager/internal/monitor"
+	"go.mongodb.org/mongo-driver/bson"
 	"sync"
 	"time"
 )
@@ -40,6 +42,15 @@ type serviceStatisticsData struct {
 var ServiceStatistics = serviceStatisticsData{}
 var ServiceStatisticsLastUpdate = time.Time{}
 var ServiceStatisticsUpdateMutex = &sync.Mutex{}
+
+func getAgentCountFromHeartbeatCol() int {
+	collection := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.AgentHeartBeatCollection)
+	ret, err := collection.CountDocuments(context.Background(), bson.M{})
+	if err != nil {
+		return 0
+	}
+	return int(ret)
+}
 
 func UpdateServiceStatistics() {
 	ServiceStatisticsUpdateMutex.Lock()
@@ -97,6 +108,19 @@ func UpdateServiceStatistics() {
 			ServiceStatistics.HubStatus = UsageToStatus(ServiceStatistics.HubUsage)
 		} else {
 			ServiceStatistics.HubStatus = MonitorServiceUsageUnavailable
+		}
+
+		// 若心跳表不存在agent记录, 所有服务不会显示未不可用
+		if getAgentCountFromHeartbeatCol() == 0 {
+			if ServiceStatistics.AcStatus == MonitorServiceUsageUnavailable {
+				ServiceStatistics.AcStatus = MonitorServiceUsageLow
+			}
+			if ServiceStatistics.KafkaStatus == MonitorServiceUsageUnavailable {
+				ServiceStatistics.KafkaStatus = MonitorServiceUsageLow
+			}
+			if ServiceStatistics.HubStatus == MonitorServiceUsageUnavailable {
+				ServiceStatistics.HubStatus = MonitorServiceUsageLow
+			}
 		}
 	}
 }
