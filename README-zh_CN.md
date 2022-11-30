@@ -161,6 +161,8 @@ Elkeid 具备以下主要能力：
 
 
 
+## Console User Guide
+* **[ELkeid Console User Guide](server/docs/console_tutorial/Elkeid_Console_manual.md)**
 
 ## Quick Start
 * **[通过Elkeidup部署](elkeidup/README-zh_CN.md)**
