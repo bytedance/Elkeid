@@ -67,7 +67,7 @@ Scanner CI workflow seen [Github Action](https://docs.github.com/cn/actions).
                     "detail":""
                 }
             ]
-        },
+        }
     }
     ```
 * x86_64
@@ -96,7 +96,7 @@ Scanner CI workflow seen [Github Action](https://docs.github.com/cn/actions).
                     "detail":""
                 }
             ]
-        },
+        }
     }
     ```
 
@@ -166,35 +166,10 @@ More details in [Clamav Docs](https://docs.clamav.net/manual/Signatures.html)
 
       
 ##  4. <a name='plugintask'></a>plugin task
-scanner plugin task (Seen [Elkeid Doc](xxxxxxxxx)):
+scanner plugin task (Seen [Elkeid Console Doc](../../server/docs/console_tutorial/Elkeid_Console_manual.md#病毒扫描)):
 * Dir scan
 * Fulldisk scan
 * Quick scan
-
-
-API create task POST http://{{IP}}:{PORT}/api/v1/agent/createTask/task
-
-data_type : 6057
-data : json strings
-- mode : scan mode,`full` for fulldisk scan,`quick` for quickscan (process and key dir), quickscan by defualt
-- cpu_idle : the percentage of total idle CPU resources occupied by the scanning process, the default is only 10% of one single core.
-- timeout : The `timeout` for scanner to execute the full/quick scan task, the task will be terminated after the `timeout`(48 hours by defualt) . 
-
-```json
-{
-    "tag": "test_all", // scan task for all the agent tagged as "test_all"
-    "id_list": [
-        "33623333-3365-4905-b417-331e183333ff"
-    ],
-    "data": {
-        "task": {
-            "data_type":6057,
-            "name": "scanner",
-            "data": "{\"mode\":\"full\",\"cpu_idle\":\"20\",\"timeout\":\"3600\"}"
-        }
-    }
-}
-```
 
 ##  5. <a name='ScannerReportDataType'></a> Scanner Report DataType
 

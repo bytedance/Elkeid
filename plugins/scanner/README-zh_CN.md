@@ -67,7 +67,7 @@ Scanner 使用 [clamav 引擎](https://docs.clamav.net/Introduction.html)对系�
                     "detail":""
                 }
             ]
-        },
+        }
     }
     ```
 
@@ -97,7 +97,7 @@ Scanner 使用 [clamav 引擎](https://docs.clamav.net/Introduction.html)对系�
                     "detail":""
                 }
             ]
-        },
+        }
     }
     ```
 
@@ -177,7 +177,7 @@ scanner 插件任务支持
 * 全盘扫描
 * 快速扫描
 
-详情参考 Elkeid 前端使用文档 [xxxxx](xxxxxxxx)
+详情参考[Elkeid 前端使用文档](../../server/docs/console_tutorial/Elkeid_Console_manual.md#病毒扫描)
 
 
 ##  5. <a name='-1'></a>上报数据类型
