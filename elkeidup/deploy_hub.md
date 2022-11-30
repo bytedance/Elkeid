@@ -48,3 +48,6 @@ cd /root/.elkeidup
 | elkeid_service_discovery | 服务发现地址           |
 
 访问 elkeid_hub_frontend，参照 [Elkeid HUB 社区版快速上手教程](https://github.com/bytedance/Elkeid-HUB/blob/v1.9.1/docs/quick_start/quick_start.md) 使用。
+
+## 6、HTTPS配置
+请参考[Elkeid https配置文档](./https_config/https.md)
