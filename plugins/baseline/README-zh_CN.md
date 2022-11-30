@@ -133,8 +133,8 @@ none: 无规则命中,则通过检测
 检查结果：
 ```
 SuccessCode 		= 1  // 成功
-FailCode 			= 2  // 失败
-ErrorCode 			= -1 // 其他错误
+FailCode 		= 2  // 失败
+ErrorCode 		= -1 // 其他错误
 ErrorConfigWrite	= -2 // 配置编写不规范
-ErrorFile			= -3 // 文件读写异常
+ErrorFile		= -3 // 文件读写异常
 ```
