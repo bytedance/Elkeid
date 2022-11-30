@@ -159,6 +159,9 @@ Therefore, it is necessary to have complete anti-intrusion and risk perception c
 <img src="png/console10.png" style="float:left;"/>
 
 
+## Console User Guide
+* **[ELkeid Console User Guide](server/docs/console_tutorial/Elkeid_Console_manual.md)**
+
 
 ## Quick Start
 * **[Deploy by Elkeidup](elkeidup/README.md)**
