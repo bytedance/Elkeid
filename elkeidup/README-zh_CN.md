@@ -34,7 +34,7 @@ Elkeid 自动化部署工具
 
 > 如果您不同意收集请求，仅自动下载缺失的预编译ko一项功能无法使用，不影响其他功能。
 
-### Elkeid 完整部署
+### Elkeid 完整部署(推荐)
 [Elkeid 完整部署](./deploy.md)
 
 ### Elkeid HUB 单独部署

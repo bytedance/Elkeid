@@ -34,7 +34,7 @@ We will try to collect and only collect the following information, all the logic
 
 > If you do not agree to the collection request, the only function of automatically downloading the missing pre-compile ko will not be available and will not affect other functions.
 
-### Elkeid Deployment
+### Elkeid Deployment(Recommended)
 [Elkeid Deployment](./deploy.md)
 
 ### Elkeid HUB Deployment

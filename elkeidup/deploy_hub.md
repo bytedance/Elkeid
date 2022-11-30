@@ -12,10 +12,10 @@ date && ssh root@{ip} date
 ```
 mkdir -p /root/.elkeidup && cd /root/.elkeidup
 wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_hub_v1.9.1.tar.gz -O elkeidup.tar.gz && tar -xf elkeidup.tar.gz
-chmod a+x /root/.elkeidup/.elkeidup
+chmod a+x /root/.elkeidup/elkeidup
 ```
 ### 3、生成并修改config.yaml
-ip为本机非127.0.0.1 ip，若不为单机部署，请参考部署资源手册修改config.yaml
+ip为本机非 `127.0.0.1` ip，若不为单机部署，请参考[部署资源手册](./configuration.md)修改config.yaml
 ```
 cd /root/.elkeidup
 ## 生成hub only 配置
@@ -31,6 +31,7 @@ cd /root/.elkeidup
 
 ## status
 ./elkeidup status --hub_only
+
 ## undeploy
 ./elkeidup undeploy --hub_only
 ```
