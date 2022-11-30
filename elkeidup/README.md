@@ -79,7 +79,7 @@ cat ~/.elkeidup/elkeid_passwd
 * If the kernel version of the test machine is not in the supported list, please compile the ko file and the sign file by yourself and place them in the corresponding server of nginx: `/elkeid/nginx/ElkeidAgent/agent/plugin/driver/ko`, under the ko/sign file The format should follow: `hids_driver_1.7.0.4_{uname -r}_{arch}.ko/sign` After the placement is completed, the Agent will automatically pull the corresponding ko file for installation
 
 ### Raw Data Usage Tutorial
-[Raw Data Usage Tutorial](raw_data_usage_tutorial.md)
+[Raw Data Usage Tutorial](raw_data_usage_tutorial/raw_data_usage_tutorial-zh_CN.md)
 
 ### Example(1-30 Agents Test)
 
