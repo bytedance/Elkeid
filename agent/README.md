@@ -15,7 +15,7 @@ The Agent is implemented in Go. Under Linux, systemd is used as a guardian to co
 ## Runtime Requirements
 Most of the functions provided by Agent and Plugin need to run at the host level with root privileges. In containers with limited privileges, some functions may be abnormal.
 ## Quick Start
-Through the complete deployment of [elkeidup](../elkeidup/README.md), you can directly obtain the installation package for Debian/RHEL series distributions, and deploy according to the commands of the [Elkeid Console - Installation Configuration]() page.
+Through the complete deployment of [elkeidup](../elkeidup/README.md), you can directly obtain the installation package for Debian/RHEL series distributions, and deploy according to the commands of the [Elkeid Console - Installation Configuration](../server/docs/console_tutorial/Elkeid_Console_manual.md#安装配置) page.
 ## Compile from source
 ### Dependency Requirements
 * [Go](https://go.dev/) >= 1.18
@@ -42,9 +42,9 @@ During the compilation process, the script will read the `BUILD_VERSION` environ
 
 After the compilation is successful, in the `output` directory of the root directory, you should see 2 deb and 2 rpm files, which correspond to different systems and architectures.
 ## Version Upgrade
-1. If no client component has been created, please create a new component in the [Elkeid Console-Component Management]() page.
-2. On the [Elkeid Console - Component Management]() page, find the "elkeid-agent" entry, click "Release Version" on the right, fill in the version information and upload the files corresponding to the platform and architecture, and click OK.
-3. On the [Elkeid Console - Component Policy]() page, delete the old "elkeid-agent" version policy (if any), click "New Policy", select the version just released, and click OK. Subsequent newly installed Agents will be self-upgraded to the latest version.
-4. On the [Elkeid Console - Task Management]() page, click "New Task", select all hosts, click Next, select the "Sync Configuration" task type, and click OK. Then, find the task you just created on this page, and click Run to upgrade the old version of the Agent.
+1. If no client component has been created, please create a new component in the [Elkeid Console-Component Management](../server/docs/console_tutorial/Elkeid_Console_manual.md#组件管理) page.
+2. On the [Elkeid Console - Component Management](../server/docs/console_tutorial/Elkeid_Console_manual.md#组件管理) page, find the "elkeid-agent" entry, click "Release Version" on the right, fill in the version information and upload the files corresponding to the platform and architecture, and click OK.
+3. On the [Elkeid Console - Component Policy](../server/docs/console_tutorial/Elkeid_Console_manual.md#组件策略) page, delete the old "elkeid-agent" version policy (if any), click "New Policy", select the version just released, and click OK. Subsequent newly installed Agents will be self-upgraded to the latest version.
+4. On the [Elkeid Console - Task Management](../server/docs/console_tutorial/Elkeid_Console_manual.md#任务管理) page, click "New Task", select all hosts, click Next, select the "Sync Configuration" task type, and click OK. Then, find the task you just created on this page, and click Run to upgrade the old version of the Agent.
 ## License
 Elkeid Agent is distributed under the Apache-2.0 license.
