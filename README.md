@@ -181,6 +181,9 @@ Elkeid Enterprise Edition supports separate intrusion detection rules(like the H
 If interested in Elkeid Enterprise Edition please contact elkeid@bytedance.com
 
 
+## Elkeid Docs
+For more details and latest updates, see [Elkeid docs](https://elkeid.bytedance.com/pre/Chinese/welcome.html).
+
 
 ## License
 * Elkeid Driver: GPLv2
