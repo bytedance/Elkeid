@@ -30,3 +30,11 @@ jobs:
 
     - name: Build Server
       run: cd server/build && ./build.sh
+
+    - name: Upload RASP
+      uses: actions/upload-artifact@v3
+      with:
+        name: rasp
+        path: |
+          rasp/rasp_*.tar.gz
+          rasp/debug.tar.gz

@@ -254,8 +254,10 @@ public:
         }
 
         if constexpr (!Ret) {
-            if (!gAPIConfig->surplus(ClassID, MethodID))
+            if (!gAPIConfig->surplus(ClassID, MethodID)) {
+                origin(INTERNAL_FUNCTION_PARAM_PASSTHRU);
                 return;
+            }
 
             gAPITrace->enqueue(trace);
             origin(INTERNAL_FUNCTION_PARAM_PASSTHRU);
