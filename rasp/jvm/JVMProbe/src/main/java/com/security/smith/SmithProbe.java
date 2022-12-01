@@ -326,12 +326,21 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 continue;
 
             Jar jar = new Jar();
-            jar.setPath(codeSource.getLocation().toString());
+
+            URL url = codeSource.getLocation();
+
+            if (url == null)
+                continue;
+
+            jar.setPath(url.toString());
 
             if (jars.contains(jar))
                 continue;
 
             Package pkg = cl.getPackage();
+
+            if (pkg == null)
+                continue;
 
             jar.setSpecificationTitle(pkg.getSpecificationTitle());
             jar.setSpecificationVersion(pkg.getSpecificationVersion());
