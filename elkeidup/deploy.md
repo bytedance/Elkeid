@@ -47,7 +47,7 @@ cd /root/.elkeidup/
 cat ~/.elkeidup/elkeid_passwd
 ```
 
-> 部署过程中遇到Elkeid社区版信息收集声明，请参考[自动下载缺失预编译ko服务开启提示](./README-zh_CN.md#自动下载缺失预编译ko服务开启提示)和[Agent Install Remark](#3、Agent Install Remark)
+> 部署过程中遇到Elkeid社区版信息收集声明，请参考[自动下载缺失预编译ko服务开启提示](./README-zh_CN.md#自动下载缺失预编译ko服务开启提示)和[Agent Install Remark](#3agent-install-remark)
 
 
 ### 1.4、访问前端console并安装Agent
@@ -117,7 +117,7 @@ cd /root/.elkeidup
 ./elkeidup deploy
 ```
 
-> 部署过程中遇到Elkeid社区版信息收集声明，请参考[自动下载缺失预编译ko服务开启提示](./README-zh_CN.md#自动下载缺失预编译ko服务开启提示)和[Agent Install Remark](#3、Agent Install Remark)
+> 部署过程中遇到Elkeid社区版信息收集声明，请参考[自动下载缺失预编译ko服务开启提示](./README-zh_CN.md#自动下载缺失预编译ko服务开启提示)和[Agent Install Remark](#3agent-install-remark)
 
 ### 2.5、构建Agent
 
