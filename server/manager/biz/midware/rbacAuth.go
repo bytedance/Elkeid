@@ -1,90 +1,27 @@
 package midware
 
 import (
-	"context"
-	"io/ioutil"
+	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
+	"github.com/bytedance/Elkeid/server/manager/internal/login"
+	"github.com/gin-gonic/gin"
+	jsoniter "github.com/json-iterator/go"
 	"net/http"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
-	"sync"
-	"time"
-
-	"github.com/bytedance/Elkeid/server/manager/infra"
-	. "github.com/bytedance/Elkeid/server/manager/infra/def"
-	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
-	"github.com/gin-gonic/gin"
-	jsoniter "github.com/json-iterator/go"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
-//权限等级 0-->admin; 1-->高级用户(agent读写+hub读写)； 2-->agent读写；3-->agent只读；4-->hub读写；5-->hub只读
-
-var (
-	UserTable map[string]*User
-	userLock  sync.RWMutex
-
-	ACWorker *AcController
-)
+var ACWorker *AcController
 
 func init() {
 	var err error
-	table := loadUserFromDB()
-	if table != nil {
-		userLock.Lock()
-		UserTable = table
-		userLock.Unlock()
-	}
-
 	ACWorker, err = NewAcController("conf/rbac.json")
 	if err != nil {
 		ylog.Errorf("NewAcController", "error %s", err.Error())
 	}
-
-	go func() {
-		for {
-			time.Sleep(3 * time.Second)
-
-			table := loadUserFromDB()
-			if table != nil {
-				userLock.Lock()
-				UserTable = table
-				userLock.Unlock()
-			}
-		}
-	}()
 }
 
-func loadUserFromDB() map[string]*User {
-	userCol := infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.UserCollection)
-	cur, err := userCol.Find(context.Background(), bson.M{})
-	if err != nil {
-		ylog.Errorf("loadUserFromDB", err.Error())
-		return nil
-	}
-	defer cur.Close(context.Background())
-
-	userTable := map[string]*User{}
-	for cur.Next(context.Background()) {
-		var user User
-		err := cur.Decode(&user)
-		if err != nil {
-			ylog.Errorf("loadUserFromDB", err.Error())
-			continue
-		}
-		userTable[user.Username] = &user
-	}
-	return userTable
-}
-func LoadUserFromDB() {
-	table := loadUserFromDB()
-	if table != nil {
-		userLock.Lock()
-		UserTable = table
-		userLock.Unlock()
-	}
-	return
-}
 func queryRolesByHeaders(c *gin.Context) (role string) {
 	user, ok := c.Get("user")
 	if !ok {
@@ -159,12 +96,12 @@ func (c *AcRule) MatchRole(role string) bool {
 		return true
 	}
 
-	user, ok := UserTable[role]
-	if !ok {
+	u := login.GetUser(role)
+	if u == nil {
 		return false
 	}
 	//fmt.Printf("role %s user %#v user %#v\n", role, *user, c.roleMap)
-	if _, ok := c.roleMap[user.Level]; ok {
+	if _, ok := c.roleMap[u.Level]; ok {
 		return true
 	}
 	return false
@@ -175,7 +112,7 @@ type AcController struct {
 }
 
 func NewAcController(fileName string) (*AcController, error) {
-	bytes, err := ioutil.ReadFile(fileName)
+	bytes, err := os.ReadFile(fileName)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +128,7 @@ func NewAcController(fileName string) (*AcController, error) {
 		return RuleIDSort(rules[i], rules[j])
 	})
 
-	for k, _ := range rules {
+	for k := range rules {
 		a.ruleList = append(a.ruleList, NewAcRule(&rules[k]))
 	}
 	return a, nil

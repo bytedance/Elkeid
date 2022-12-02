@@ -4,7 +4,7 @@
 English | [简体中文](README-zh_CN.md)
 ## System Architecture
 
-<img src="docs/server.png"/>
+<img src="docs/server_new.png"/>
 
 ## Overview
 Elkeid Server contains 5 modules:：
@@ -23,6 +23,17 @@ In short, AgentCenter collects Agent data, real-time/offline calculation module 
 
 ## Deployment document
 - [Deploy by Elkeidup](../elkeidup/README.md)
+
+## Build
+1. AgentCenter(AC): Executing './build.sh' in `Elkeid/server/agent_center` directory will generate the product' bin.tar.gz 'in the output directory.
+2. ServiceDiscovery(SD)：Executing `Elkeid/server/service_discovery` directory will generate the product' bin.tar.gz 'in the output directory.
+3. Manager：Executing `Elkeid/server/manager` directory will generate the product' bin.tar.gz 'in the output directory.
+
+## Upgrade
+Refer to the backend section of [Build Elkeid CWPP from Source](../elkeidup/build_package.md) to deploy or upgrade.
+
+## Console User Guide
+- [ELkeid Console User Guide](docs/console_tutorial/Elkeid_Console_manual.md)
 
 ## License
 Elkeid Server are distributed under the Apache-2.0 license.

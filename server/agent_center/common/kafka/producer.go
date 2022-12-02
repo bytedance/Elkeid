@@ -4,6 +4,7 @@ import (
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/gogo/protobuf/proto"
+	jsoniter "github.com/json-iterator/go"
 	"sync"
 	"time"
 
@@ -23,6 +24,17 @@ var (
 		},
 	}
 )
+
+var json = jsoniter.Config{
+	EscapeHTML:             false, //不进行html转义
+	SortMapKeys:            false,
+	ValidateJsonRawMessage: true,
+}.Froze()
+
+// JsonSerialize
+func JsonSerialize(v interface{}) ([]byte, error) {
+	return json.Marshal(v)
+}
 
 // PBSerialize
 func PBSerialize(v proto.Message) ([]byte, error) {
@@ -121,6 +133,22 @@ func (p *Producer) SendPBWithKey(key string, msg proto.Message) {
 	b, err := PBSerialize(msg)
 	if err != nil {
 		ylog.Errorf("KAFKA", "SendPBWithKey Error %s", err.Error())
+		return
+	}
+
+	proMsg := mqProducerMessagePool.Get().(*sarama.ProducerMessage)
+	proMsg.Topic = p.Topic
+	proMsg.Value = sarama.ByteEncoder(b)
+	proMsg.Key = sarama.StringEncoder(key)
+	proMsg.Metadata = nil
+	p.Producer.Input() <- proMsg
+}
+
+// Send 发送
+func (p *Producer) SendJsonWithKey(key string, msg interface{}) {
+	b, err := JsonSerialize(msg)
+	if err != nil {
+		ylog.Errorf("SendJsonWithKey", "Error %v", err)
 		return
 	}
 

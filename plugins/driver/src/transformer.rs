@@ -177,7 +177,7 @@ impl Transformer {
             argv_cache: ArgvCache::new(1024 * 8),
             hash_cache: HashCache::new(1024 * 4),
             ns_cache: NsCache::new(1024),
-            user_cache: UserCache::new(1024),
+            user_cache: UserCache::new(),
             pid_tree_cache: LruCache::new(2048),
             connect_filter: TtlCache::new(CONNECT_FILTER_SIZE),
             exe_filter: TtlCache::new(EXE_FILTER_SIZE),

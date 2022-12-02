@@ -34,7 +34,7 @@ type GRPCPool struct {
 	conf *Config
 }
 
-//Connection Info
+// Connection Info
 type Connection struct {
 	Ctx       context.Context    `json:"-"`
 	CancelFuc context.CancelFunc `json:"-"`
@@ -102,7 +102,7 @@ type Command struct {
 	Ready   chan bool
 }
 
-//NewGRPCPool create a new GRPCPool.
+// NewGRPCPool create a new GRPCPool.
 // -- maxConnTokenCount: Maximum number of concurrent connections
 func NewGRPCPool(config *Config) *GRPCPool {
 	g := &GRPCPool{
@@ -133,7 +133,13 @@ func (g *GRPCPool) checkConfig() {
 	for {
 		select {
 		case agentID := <-g.confChan:
-			config, err := client.GetConfigFromRemote(agentID)
+			conn, err := g.GetByID(agentID)
+			if err != nil {
+				ylog.Errorf("GRPCPool", "GetByID Error %s %s", agentID, err.Error())
+				continue
+			}
+
+			config, err := client.GetConfigFromRemote(agentID, conn.GetAgentDetail())
 			if err != nil {
 				ylog.Errorf("GRPCPool", "postConfig Error %s %s", agentID, err.Error())
 				continue
@@ -174,8 +180,9 @@ func (g *GRPCPool) checkTask() {
 	}
 }
 
-//LoadToken
-//  Returns true when the current total number of connection < the length of the pool.
+// LoadToken
+//
+//	Returns true when the current total number of connection < the length of the pool.
 func (g *GRPCPool) LoadToken() bool {
 	select {
 	case _, ok := <-g.tokenChan:
@@ -187,18 +194,18 @@ func (g *GRPCPool) LoadToken() bool {
 	return false
 }
 
-//ReleaseToken
+// ReleaseToken
 // release the connection token to the pool; must be called after the conn is closed.
 func (g *GRPCPool) ReleaseToken() {
 	g.tokenChan <- true
 }
 
-//GetConnectionCount
+// GetConnectionCount
 func (g *GRPCPool) GetCount() int {
 	return g.connPool.ItemCount()
 }
 
-//GetByAgentID
+// GetByAgentID
 func (g *GRPCPool) GetByID(agentID string) (*Connection, error) {
 	tmp, ok := g.connPool.Get(agentID)
 	if !ok {
@@ -207,7 +214,7 @@ func (g *GRPCPool) GetByID(agentID string) (*Connection, error) {
 	return tmp.(*Connection), nil
 }
 
-//return error if AgentID conflict.
+// return error if AgentID conflict.
 func (g *GRPCPool) Add(agentID string, conn *Connection) error {
 	_, ok := g.connPool.Get(agentID)
 	if ok {
@@ -224,12 +231,12 @@ func (g *GRPCPool) Add(agentID string, conn *Connection) error {
 	return nil
 }
 
-//Delete
+// Delete
 func (g *GRPCPool) Delete(agentID string) {
 	g.connPool.Delete(agentID)
 }
 
-//get List
+// get List
 func (g *GRPCPool) GetList() []*Connection {
 	connMap := g.connPool.Items()
 	res := make([]*Connection, 0)
@@ -240,7 +247,7 @@ func (g *GRPCPool) GetList() []*Connection {
 	return res
 }
 
-//Post the latest configuration to agent
+// Post the latest configuration to agent
 func (g *GRPCPool) PostLatestConfig(agentID string) error {
 	select {
 	case g.confChan <- agentID:
@@ -250,7 +257,7 @@ func (g *GRPCPool) PostLatestConfig(agentID string) error {
 	return nil
 }
 
-//PostCommand
+// PostCommand
 // Post command to agent
 func (g *GRPCPool) PostCommand(agentID string, command *pb.Command) (err error) {
 	conn, err := g.GetByID(agentID)
@@ -278,7 +285,7 @@ func (g *GRPCPool) PostCommand(agentID string, command *pb.Command) (err error) 
 	}
 }
 
-//Close send nil conn to close the agent
+// Close send nil conn to close the agent
 func (g *GRPCPool) Close(agentID string) (err error) {
 	conn, err := g.GetByID(agentID)
 	if err != nil {
@@ -293,7 +300,7 @@ func (g *GRPCPool) Close(agentID string) (err error) {
 	return nil
 }
 
-//PushTask2Manager push task to the remote end for reconciliation asynchronously.
+// PushTask2Manager push task to the remote end for reconciliation asynchronously.
 func (g *GRPCPool) PushTask2Manager(task map[string]string) error {
 	select {
 	case g.taskChan <- task:

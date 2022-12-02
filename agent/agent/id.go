@@ -63,14 +63,31 @@ func init() {
 	if err == nil {
 		source = append(source, emac...)
 	}
-	if len(source) > 8 {
-		ID = uuid.NewSHA1(uuid.NameSpaceOID, source).String()
+	if len(source) > 8 &&
+		string(pdid) != "03000200-0400-0500-0006-000700080009" &&
+		string(pdid) != "02000100-0300-0400-0005-000600070008" {
+		pname, err := fromIDFile("/sys/class/dmi/id/product_name")
+		if err == nil && len(pname) != 0 &&
+			!bytes.Equal(pname, []byte("--")) &&
+			!bytes.Equal(pname, []byte("unknown")) &&
+			!bytes.Equal(pname, []byte("To be filled by O.E.M.")) &&
+			!bytes.Equal(pname, []byte("OEM not specify")) &&
+			!bytes.Equal(bytes.ToLower(pname), []byte("t.b.d")) {
+			ID = uuid.NewSHA1(uuid.NameSpaceOID, source).String()
+		}
 		return
 	}
 	mid, err := fromUUIDFile("/etc/machine-id")
 	if err == nil {
 		ID = mid.String()
 		return
+	}
+	if err.Error() == "invalid UUID format" {
+		source, err := fromIDFile("/etc/machine-id")
+		if err == nil {
+			ID = uuid.NewSHA1(uuid.NameSpaceOID, source).String()
+			return
+		}
 	}
 	mid, err = fromUUIDFile("machine-id")
 	if err == nil {

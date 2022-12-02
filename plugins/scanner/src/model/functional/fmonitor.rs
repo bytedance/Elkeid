@@ -13,7 +13,7 @@ use procfs::sys::kernel::Version;
 use std::io::Error;
 use std::thread;
 
-use crate::detector::DetectTask;
+use crate::data_type::{ScanTaskAntiVirus, DETECT_TASK};
 use crate::get_file_sha256;
 use crate::model::functional::anti_ransom::HONEYPOTSSHA256;
 
@@ -84,7 +84,7 @@ impl Drop for FileMonitor {
     fn drop(&mut self) {
         let rcode = unsafe { libc::close(self.fd) };
         if rcode != 0 {
-            error!("self close fd :{}; return:{}.", self.fd, rcode);
+            warn!("self close fd :{}; return:{}.", self.fd, rcode);
         } else {
             info!("self close fd :{}; success", self.fd);
         }
@@ -94,7 +94,7 @@ impl Drop for FileMonitor {
 // for 6004
 impl FileMonitor {
     pub fn new(
-        sender: crossbeam_channel::Sender<DetectTask>,
+        sender: crossbeam_channel::Sender<DETECT_TASK>,
         s_locker: crossbeam_channel::Sender<()>,
     ) -> Result<FileMonitor> {
         let pid = process::id();
@@ -176,7 +176,7 @@ impl FileMonitor {
 
                         let event_fpath = &each_metadata.fd;
                         let fpstr: &str = &format!("/proc/{}/fd/{}", pid, event_fpath);
-                        let fpath_fp = Path::new(pstr);
+                        let fpath_fp = Path::new(fpstr);
                         let fpath_real = match std::fs::read_link(fpath_fp) {
                             Ok(pf) => pf.to_string_lossy().to_string(),
                             Err(e) => {
@@ -187,11 +187,11 @@ impl FileMonitor {
                                 "".to_string()
                             }
                         };
+                        safe_close(each_metadata.fd);
 
                         let fpath_real_sha256 = get_file_sha256(&fpath_real);
                         if let Some(fhash) = HONEYPOTSSHA256.get(&fpath_real) {
                             if fhash == &fpath_real_sha256 {
-                                safe_close(each_metadata.fd);
                                 continue;
                             }
                         }
@@ -199,7 +199,6 @@ impl FileMonitor {
                         let (fsize, btime) = match rfp.metadata() {
                             Ok(p) => {
                                 if p.is_dir() {
-                                    safe_close(each_metadata.fd);
                                     continue;
                                 }
                                 let fsize = p.len() as usize;
@@ -207,8 +206,7 @@ impl FileMonitor {
                                 (fsize, btime)
                             }
                             Err(e) => {
-                                error!("error {}, while get exe realpath metadata", &exe_real);
-                                safe_close(each_metadata.fd);
+                                warn!("error {}, while get exe realpath metadata", &exe_real);
                                 continue;
                             }
                         };
@@ -216,7 +214,6 @@ impl FileMonitor {
                         if fsize <= 0
                             || fsize > crate::model::engine::clamav::config::CLAMAV_MAX_FILESIZE
                         {
-                            safe_close(each_metadata.fd);
                             continue;
                         }
                         let default_mask_set: u64 =
@@ -226,27 +223,24 @@ impl FileMonitor {
                             };
 
                         if match_event_mask(&each_metadata.mask, &default_mask_set) {
-                            let task = DetectTask {
-                                task_type: "6054".to_string(),
+                            let task = ScanTaskAntiVirus {
                                 pid: pid as i32,
-                                path: exe_real.to_string(),
-                                rpath: fpath_real.to_string(),
+                                pid_exe: exe_real.to_string(),
+                                event_file_hash: fpath_real_sha256.to_string(),
+                                event_file_path: fpath_real.to_string(),
                                 size: fsize,
-                                btime: btime.0,
-                                mtime: btime.1,
-                                token: fpath_real_sha256.to_string(),
-                                add_ons: None,
+                                btime: btime,
                             };
+
                             debug!("fanotify event {:?}", task);
 
                             while sender.len() > 8 {
                                 std::thread::sleep(Duration::from_secs(4));
                             }
-                            match sender.try_send(task) {
+                            match sender.try_send(DETECT_TASK::TASK_6054_ANTIVIRUS(task)) {
                                 Ok(_) => {}
                                 Err(e) => {
-                                    error!("internal send task err : {:?}", e);
-                                    safe_close(each_metadata.fd);
+                                    warn!("internal send task err : {:?}", e);
                                     s_locker.send(()).unwrap();
                                     break;
                                 }
@@ -350,6 +344,6 @@ fn safe_close(fd: i32) {
         retc
     };
     if rcode != 0 {
-        error!("close fd :{}; return:{}.", fd, rcode);
+        warn!("close fd :{}; return:{}.", fd, rcode);
     };
 }

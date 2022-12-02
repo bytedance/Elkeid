@@ -72,6 +72,7 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 	defer func() {
 		ylog.Infof("Transfer", "now delete %s ", agentID)
 		GlobalGRPCPool.Delete(agentID)
+		releaseAgentHeartbeatMetrics(agentID)
 	}()
 
 	//Process the first of data
@@ -81,13 +82,6 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 	go recvData(stream, &connection)
 	//Send command to agent
 	go sendData(stream, &connection)
-
-	//Every time the agent connects to the server
-	//it needs to push the latest configuration to agent
-	err = GlobalGRPCPool.PostLatestConfig(agentID)
-	if err != nil {
-		ylog.Errorf("Transfer", "send config error, %s %s", agentID, err.Error())
-	}
 
 	//stop here
 	<-connection.Ctx.Done()
@@ -130,13 +124,13 @@ func sendData(stream pb.Transfer_TransferServer, conn *pool.Connection) {
 			}
 			err := stream.Send(cmd.Command)
 			if err != nil {
-				ylog.Errorf("sendData", "Send Task Error %s %s ", conn.AgentID, cmd)
+				ylog.Errorf("sendData", "Send Task Error %s %v ", conn.AgentID, cmd)
 				cmd.Error = err
 				close(cmd.Ready)
 				return
 			}
 			sendCounter.Inc()
-			ylog.Infof("sendData", "Transfer Send %s %s ", conn.AgentID, cmd)
+			ylog.Infof("sendData", "Transfer Send %s %v ", conn.AgentID, cmd)
 			cmd.Error = nil
 			close(cmd.Ready)
 		}

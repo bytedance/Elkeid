@@ -35,7 +35,6 @@ enable_service() {
 	if command -v systemctl > /dev/null 2>&1; then
 		expect "${root_dir}/${agent_ctl} set --service_type=systemd"
 	else
-        create_cgroups
         expect "mkdir -p ${sysvinit_dir}"
         expect "mkdir -p /etc/cron.d"
         expect "cp ${root_dir}/${sysvinit_script} ${sysvinit_dir}/${product_name}"
@@ -44,26 +43,14 @@ enable_service() {
     expect "${root_dir}/${agent_ctl} enable"
 	succ "service enabled successfully"
 }
-
-create_cgroups(){
-    cat /proc/self/mountinfo|grep -q 'cgroup .* rw,.*\bmemory\b'
-    if [ $? -ne 0 ];then
-        info "memory cgroup is umounted, trying mounting"
-        expect "mkdir -p ${root_dir}/cgroup/memory"
-        expect "mount -t cgroup -o memory cgroup ${root_dir}/cgroup/memory"
-    fi
-    cat /proc/self/mountinfo|grep -q 'cgroup .* rw,.*\bcpu\b'
-    if [ $? -ne 0 ];then
-        info "cpu cgroup is umounted, trying mounting"
-        expect "mkdir -p ${root_dir}/cgroup/cpu"
-        expect "mount -t cgroup -o cpu cgroup ${root_dir}/cgroup/cpu"
-    fi
-}
 start_agent(){
     ${root_dir}/${agent_ctl} start
 }
 reload_service(){
     ${root_dir}/${agent_ctl} service-reload
+}
+cleanup(){
+    ${root_dir}/${agent_ctl} cleanup
 }
 set_env(){
     if [ -n "${SPECIFIED_IDC}" ];then
@@ -72,18 +59,22 @@ set_env(){
     if [ -n "${SPECIFIED_AGENT_ID}" ];then
        ${root_dir}/${agent_ctl} set --id=${SPECIFIED_AGENT_ID}
     fi
+     if [ -n "${SPECIFIED_REGION}" ];then
+       ${root_dir}/${agent_ctl} set --id=${SPECIFIED_REGION}
+    fi
 }
 install(){
     enable_service
     set_env
     reload_service
+    cleanup
     start_agent
     succ "installation finished successfully"
 }
 upgrade(){
     enable_service
     reload_service
-    start_agent
+    cleanup
     succ "upgrade finished successfully"
 }
 

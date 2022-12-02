@@ -12,20 +12,24 @@
       2,
       3,
       4,
-      5
+      5,
+      6,
+      7,
+      8
     ],
     "allow_anyone": false,
-    "desc": "默认所有接口只要鉴权通过都可访问(0-->admin;1-->高级用户(agent读写+hub读写);2-->agent读写;3-->agent只读;4-->hub读写;5-->hub只读)"
+    "desc": "默认所有接口只要鉴权通过都可访问(0-->admin;1-->高级用户(agent读写+hub读写);2-->agent读写;3-->agent只读;4-->hub读写; 5-->hub只读; 6-->告警运营; 7-->基线/漏洞运营; 8-->告警运营+基线/漏洞运营;)"
   },
   {
     "id": 1,
-    "path_pre": [],
+    "path_pre": [
+      "/api/v6/investigate"
+    ],
     "path_regex": [],
     "path_equal": [
       "/api/v1/user/del",
       "/api/v1/user/update",
       "/api/v6/user/DelList",
-      "/api/v6/user/List",
       "/api/v6/user/new"
     ],
     "authorized_roles": [
@@ -58,7 +62,10 @@
       0,
       1,
       2,
-      3
+      3,
+      6,
+      7,
+      8
     ],
     "allow_anyone": false,
     "desc": "agent可读用户"
@@ -80,16 +87,30 @@
       "/api/v6/agent/createAgentTask",
       "/api/v6/agent/createPluTask",
       "/api/v6/module/CreateModule",
-      "/api/v6/moudle/DeleteMoudle",
-      "/api/v6/agent/UpdateMoudle",
-      "/api/v6/alarm/update",
-      "/api/v6/whitelist/del",
-      "/api/v6/whitelist/add"
+      "/api/v6/module/DeleteModule",
+      "/api/v6/module/UpdateModule",
+      "/api/v6/vuln/VulnIpControl",
+      "/api/v6/vuln/VulnControl",
+      "/api/v6/vuln/VulnControlNew",
+      "/api/v6/vuln/OneIpVulnControl",
+      "/api/v6/vuln/AutoUpdate",
+      "/api/v6/vuln/Detect",
+      "/api/v6/baseline/Detect",
+      "/api/v6/baseline/ChecklistWhiten",
+      "/api/v6/rasp/NewConfig",
+      "/api/v6/rasp/EditConfig",
+      "/api/v6/rasp/DelConfig",
+      "/api/v6/rasp/SetRaspHotFix",
+      "/api/v6/kube/AddConfig",
+      "/api/v6/kube/DelConfig",
+      "/api/v6/kube/RenameConfig",
+      "/api/v6/asset-center/fingerprint/RefreshData"
     ],
     "path_pre": [
       "/api/v6/asset-center/Delete",
       "/api/v6/asset-center/Add",
-      "/api/v6/asset-center/Update"
+      "/api/v6/asset-center/Update",
+      "/api/v6/component"
     ],
     "path_regex": [],
     "authorized_roles": [
@@ -120,9 +141,20 @@
     "path_equal": [
       "/api/v1/agent/queryInfo",
       "/api/v1/user/login",
+      "/api/v1/user/sso_url",
+      "/api/v1/user/sso_logout",
+      "/api/v1/user/sso_token",
       "/api/v1/agent/updateSubTask",
+      "/api/v1/agent/subTask/update",
       "/api/v1/tags/query",
-      "/api/v6/systemRouter/InsertAlert"
+      "/api/v6/systemRouter/InsertAlert",
+      "/api/v6/kube/inner/cluster/list",
+      "/api/v6/shared/Upload",
+      "/api/v6/component/GetComponentInstances",
+      "/api/v1/agent/heartbeat/join",
+      "/api/v1/agent/heartbeat/evict",
+      "/api/v6/user/getCaptcha",
+      "/api/v6/investigate/file/DownloadFileByToken"
     ],
     "path_pre": [
       "/api/v1/agent/getConfig/",
@@ -132,13 +164,74 @@
     "authorized_roles": [],
     "allow_anyone": true,
     "desc": "部分接口不需要鉴权"
+  },
+  {
+    "id": 6,
+    "path_equal": [
+      "/api/v6/vuln/VulnIpControl",
+      "/api/v6/vuln/VulnControl",
+      "/api/v6/vuln/OneIpVulnControl",
+      "/api/v6/vuln/VulnControlNew",
+      "/api/v6/vuln/AutoUpdate",
+      "/api/v6/vuln/Detect",
+      "/api/v6/baseline/Detect",
+      "/api/v6/baseline/ChecklistWhiten"
+    ],
+    "path_pre": [],
+    "path_regex": [],
+    "authorized_roles": [
+      0,
+      1,
+      2,
+      7,
+      8
+    ],
+    "allow_anyone": false,
+    "desc": "风险(漏洞+基线)可写权限"
+  },
+  {
+    "id": 7,
+    "path_equal": [
+      "/api/v6/alarm/update",
+      "/api/v6/alarm/updatemany",
+      "/api/v6/event/handle",
+      "/api/v6/event/handlemany",
+      "/api/v6/event/tags",
+      "/api/v6/whitelist/del",
+      "/api/v6/whitelist/add",
+      "/api/v6/rasp/alarm/update",
+      "/api/v6/rasp/event/handle",
+      "/api/v6/rasp/event/handlemany",
+      "/api/v6/rasp/event/tags",
+      "/api/v6/rasp/whitelist/del",
+      "/api/v6/rasp/whitelist/add",
+      "/api/v6/rasp/whitelist/increase",
+      "/api/v6/kube/alarm/update",
+      "/api/v6/kube/event/handle",
+      "/api/v6/kube/event/handlemany",
+      "/api/v6/kube/event/tags",
+      "/api/v6/kube/whitelist/del",
+      "/api/v6/kube/whitelist/add",
+      "/api/v6/kube/whitelist/increase",
+      "/api/v6/virus/alarm/update",
+      "/api/v6/virus/whitelist/del",
+      "/api/v6/virus/whitelist/increase",
+      "/api/v6/virus/task/create",
+      "/api/v6/notice/add",
+      "/api/v6/notice/del",
+      "/api/v6/notice/modify",
+      "/api/v6/notice/switch"
+    ],
+    "path_pre": [],
+    "path_regex": [],
+    "authorized_roles": [
+      0,
+      1,
+      2,
+      6,
+      8
+    ],
+    "allow_anyone": false,
+    "desc": "告警(事件+告警+白名单)可写权限"
   }
 ]
-
-
-
-
-
-
-
-

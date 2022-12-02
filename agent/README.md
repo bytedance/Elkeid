@@ -3,91 +3,48 @@
 
 English | [简体中文](README-zh_CN.md)
 ## About Elkeid Agent
-Elkeid Agent is a User Space program designed to supplement multiple functionalities through build-in or third party plugins. The main program controls plugins' behavior via configurations and forwards data, collected by various Agent plugins, to the configured remote backend. 
+Agent provides basic capability support for components on the host, including data communication, resource monitoring, component version control, file transfer, and host basic information collection.
 
-Elkeid Agent is written in Golang, but plugins are designed to support other languages ​​([rust is currently supported](support/rust), and the next will be Golang).
+Agent itself does not provide security capabilities, and operates as a system service as a plugin base. The policies of various functional plugins are stored in the server-side configuration, and after the Agent receives the corresponding control instructions and configuration, it will open, close, and upgrade itself and the plugins.
 
-A plugin is a program with a specific function that can be independently updated and configured. The plugin's resource usage will be monitored once it gets registered on the agent. The plugin's log will also be passed to the Agent and logged together.
+Bi-stream gRPC is used for communication between Agent and Server, and mutual TLS verification is enabled based on self-signed certificates to ensure transport security. Among them, the flow of information in the direction of Agent -> Server is called data flow, and the flow of information in the direction of Server -> Agent is generally control flow, using different message types of protobuf. The Agent itself supports client-side service discovery, and also supports cross-Region level communication configuration. It realizes that an Agent package can be installed in multiple network isolation environments. Based on a TCP connection at the bottom layer, two data transmissions, Transfer and FileOp, are realized in the upper layer. The service supports the data reporting of the plugin itself and the interaction with the files in the Host.
 
-You may check out two examples of plugin implementation in [driver](driver/) and [journal_watcher](journal_watcher/) directories. The former one parses and enriches the data transmitted by the Elkeid Driver from the kernel. The latter one is used for log monitoring.
+Plugins, as security capability plugins, generally have a "parent-child" process relationship with the Agent. Using two pipes as the cross-process communication method, the [plugins](../plugins/lib) lib provides two plugin libraries for Go and Rust, which are responsible for encoding and sending plugin-side information. It is worth mentioning that after the plugin sends data, it will be encoded as Protobuf binary data. After the Agent receives it, there is no need to decode it twice, and then splices the Header feature data in the outer layer and transmits it directly to the server. Generally, the server does not need to Decoding is directly transmitted to the subsequent data stream, and decoding is performed when used, which reduces the additional performance overhead caused by multiple encoding and decoding in data transmission to a certain extent.
 
-We decoupled basic functionalities through this Agent-Plugins struct. Functional modules such as process monitoring and file auditioning could be implemented for specific needs, while basic modules, like communication and control/resource monitoring could stay the same across various Linux distributions.
+The Agent is implemented in Go. Under Linux, systemd is used as a guardian to control resource usage by cgroup restrictions. It supports aarch64 and x86-64 architectures. It is finally compiled and packaged as deb and rpm packages for distribution. The formats are in line with systemd, Debian, and RHEL specifications. , which can be directly provided to the corresponding software repository for subsequent version maintenance. In subsequent versions, Agent for Windows platform will be released.
+## Runtime Requirements
+Most of the functions provided by Agent and Plugin need to run at the host level with root privileges. In containers with limited privileges, some functions may be abnormal.
+## Quick Start
+Through the complete deployment of [elkeidup](../elkeidup/README.md), you can directly obtain the installation package for Debian/RHEL series distributions, and deploy according to the commands of the [Elkeid Console - Installation Configuration](../server/docs/console_tutorial/Elkeid_Console_manual.md#安装配置) page.
+## Compile from source
+### Dependency Requirements
+* [Go](https://go.dev/) >= 1.18
+* [nFPM](https://nfpm.goreleaser.com/)
+* Successfully deployed [Server](../server/README.md) (includes all components)
+### Confirm related configuration
+* Make sure that the three files `ca.crt`, `client.key`, and `client.crt` in the `transport/connection` directory are the same as the files with the same name in the Agent Center's `conf` directory.
+* Make sure the parameters in the `transport/connection/product.go` file are properly configured:
+    * If it is a manually deployed Server:
+        * `serviceDiscoveryHost["default"]` needs to be assigned to the intranet listening address and port of the [ServiceDiscovery](../server/service_discovery) service or its proxy, for example: `serviceDiscoveryHost["default"] = "192.168.0.1: 8088"`
+        * `privateHost["default"]` needs to be assigned to the intranet listening address and port of the [AgentCenter](../server/agent_center) service or its proxy, for example: `privateHost["default"] = "192.168.0.1: 6751"`
+        * If there is a public network access point of the Server, `publicHost["default"]` needs to be assigned to the external network listening address and port of the [AgentCenter](../server/agent_center) service or its proxy, for example: `publicHost[ "default"]="203.0.113.1:6751"`
+    * If the Server is deployed through [elkeidup](../elkeidup), the corresponding configuration can be found according to the `~/.elkeidup/elkeidup_config.yaml` file of the deployed Server host:
+        * Find the IP of the Nginx service in the configuration file, the specific configuration item is `nginx.sshhost[0].host`
+        * Find the IP of the [ServiceDiscovery](../server/service_discovery) service in the configuration file, the specific configuration item is `sd.sshhost[0].host`
+        * `serviceDiscoveryHost["default"]` needs to be assigned the IP of the [ServiceDiscovery](../server/service_discovery) service and set the port number to 8088, for example: `serviceDiscoveryHost["default"] = "192.168.0.1 :8088"`
+        * `privateHost["default"]` needs to be assigned the IP of the Nginx service, and set the port number to 8090, for example: `privateHost["default"] = "192.168.0.1:8090"`
+### Compile
+Chage to the root directory of agent source code, execute:
+````
+BUILD_VERSION=1.7.0.24 bash build.sh
+````
+During the compilation process, the script will read the `BUILD_VERSION` environment variable to set the version information, which can be modified according to actual needs.
 
-The current version of Elkeid Agent is recommended only for local testing. Without Elkeid Server, it does not support remote control and configurations. 
-
-## Supported Platforms
-In theory, all Linux distribution systems are compatible, but only Debian (including Ubuntu) and RHEL (including CentOS) have been fully tested. For the Agent itself, `amd64` and `arm64` are supported.
-
-We recommend running the Elkeid Agent with **root privileges** in a **physical machine** or a **virtual machine** instead of a container for better compatibility with the current plugins.
-
-## Compilation Environment Requirements
-* Golang 1.16(Required)
-
-## Work with Elkeid Server
-Before compiling, please confirm that the security credentials and certificates that the Agent relies on are consistent with those of the Server. If they are inconsistent, please replace them manually. For details, please see [Replace Agent-AgentCenter communication certificate](../server/docs/quick-start.md#Server compilation and deployment)
-
-The Agent supports one or more of the following methods to connect to the Server:
-* ServiceDiscovery
-* LoadBalance/Passthrough
-If multiple methods are enabled at the same time, the priority when connecting is: sd> load balance/passthrough (internal network)> load balance/passthrough (external network). Moreover, each connection method can be configured with multiple destination addresses. This function is very useful when in a complex network environment. The specific configuration is located in the [`product.go`](transport/connection/product.go) and can be modified as needed. The following is an example:
-```
-  sd["sd-0"] = "sd-0.pri"
-  sd["sd-1"] = "sd-1.pri"
-  priLB["pri-0"] = "lb-0.pri"
-  priLB["pri-1"] = "lb-1.pri"
-  pubLB["pub-0"] = "lb-0.pub"
-  pubLB["pub-1"] = "lb-1.pub"
-```
-When establishing a connection, it will first try to obtain the address of the Server from `sd-0.pri` or `sd-1.pri` and establish a connection; if both fail, try to directly establish a connection with `lb-0.pri` or `lb-1.pri`; If the connection still fails, it will directly establish a connection with `lb-0.pub` or `lb-1.pub`.
-
-## Work with Elkeid Driver
-Elkeid Driver runs as a plugin of Elkeid Agent and is enabled under the control of Manager API. For details, please refer to the corresponding chapter: [API interface documentation](../server/README.md#api-interface-documentation).
-
-## Required environment of compilation
-Golang 1.16 (required)
-
-## Quick start
-Because the entire `Plugin-Agent-Server` system has a certain threshold to get started, we will further explain the relevant content here so that everyone can quickly start this project.
-> Definition/Objective of Quick Start: All security functions on the host are enabled, the Agent and Server are connected successfully, and the data can be seen successfully in Kafka.
-### Preconditions and dependencies
-Server deployment is complete and working normally. For details, please refer to the [Server deployment document](server/docs/install.md).
-
-After the deployment is complete, you should have the following resources:
-
-* ServiceDiscovery address (denoted as sd_host) and port (denoted as sd_port)
-Manager address (denoted as ma_host) and port (denoted as ma_port)
-* AgentCenter address (denoted as ac_host) and port (denoted as ac_port)
-* Security credentials: ca.crt/client.crt/client.key
-### Configure Agent
-Replace the above security credentials with the [CA certificate](transport/connection/ca.crt); [client certificate](transport/connection/client.crt); [client private key](transport/connection/ca.key).
-
-Modify the [product.go](transport/connection/product.go) to the following content:
-```
-package connection
-
-import _ "embed"
-
-//go:embed client.key
-var ClientKey []byte
-
-//go:embed client.crt
-var ClientCert []byte
-
-//go:embed ca.crt
-var CaCert []byte
-
-func init() {
-	sd["sd"] = "sd_host:sd_port"
-	priLB["ac"] = "ac_host:ac_port"  
-	setDialOptions(CaCert, ClientKey, ClientCert, "elkeid.com")
-}
-```
-### Compile Agent
-```
-mkdir output
-go build -o output/elkeid-agent
-```
-### Install and start the Agent
-TODO.....
+After the compilation is successful, in the `output` directory of the root directory, you should see 2 deb and 2 rpm files, which correspond to different systems and architectures.
+## Version Upgrade
+1. If no client component has been created, please create a new component in the [Elkeid Console-Component Management](../server/docs/console_tutorial/Elkeid_Console_manual.md#组件管理) page.
+2. On the [Elkeid Console - Component Management](../server/docs/console_tutorial/Elkeid_Console_manual.md#组件管理) page, find the "elkeid-agent" entry, click "Release Version" on the right, fill in the version information and upload the files corresponding to the platform and architecture, and click OK.
+3. On the [Elkeid Console - Component Policy](../server/docs/console_tutorial/Elkeid_Console_manual.md#组件策略) page, delete the old "elkeid-agent" version policy (if any), click "New Policy", select the version just released, and click OK. Subsequent newly installed Agents will be self-upgraded to the latest version.
+4. On the [Elkeid Console - Task Management](../server/docs/console_tutorial/Elkeid_Console_manual.md#任务管理) page, click "New Task", select all hosts, click Next, select the "Sync Configuration" task type, and click OK. Then, find the task you just created on this page, and click Run to upgrade the old version of the Agent.
 ## License
-Elkeid Agent are distributed under the Apache-2.0 license.
+Elkeid Agent is distributed under the Apache-2.0 license.

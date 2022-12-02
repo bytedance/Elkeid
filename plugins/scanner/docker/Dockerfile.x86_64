@@ -1,0 +1,25 @@
+FROM kulukami/libclamav_icm_x86_64 as scanner_compiler
+
+ADD . /Elkeid
+WORKDIR /Elkeid/plugins/scanner
+
+RUN rm -rf clamav clamav-mussels-cookbook lib include
+RUN mv /LibClamavDocker/clamav /Elkeid/plugins/scanner/.
+RUN mv /LibClamavDocker/clamav-mussels-cookbook /Elkeid/plugins/scanner/.
+RUN mv /LibClamavDocker/lib /Elkeid/plugins/scanner/.
+RUN mv /LibClamavDocker/include /Elkeid/plugins/scanner/.
+
+RUN rustup target add x86_64-unknown-linux-musl
+RUN CC="x86_64-linux-musl-gcc" CXX="x86_64-linux-musl-c++" RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --bin scanner_plugin --target x86_64-unknown-linux-musl
+
+RUN mkdir /Elkeid/plugins/scanner/output
+RUN cp -r tools/* ./output/.
+
+WORKDIR /Elkeid/plugins/scanner/output
+RUN cp /Elkeid/plugins/scanner/target/x86_64-unknown-linux-musl/release/scanner_plugin /Elkeid/plugins/scanner/output/scanner
+RUN mkdir tmp
+RUN wget http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220817.zip
+RUN mv archive_db_default_20220817.zip ./tmp
+RUN tar zcvf scanner-x86_64.tar.gz scanner tmp elkeid_targets
+RUN rm -rf tmp scanner elkeid_targets
+

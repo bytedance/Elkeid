@@ -4,7 +4,7 @@
 [English](README.md) | 简体中文
 ## 后台架构图
 
-<img src="docs/server.png"/>
+<img src="docs/server_new.png"/>
 
 ## 概述
 Elkeid 后台大体包含5个模块：
@@ -21,8 +21,19 @@ Elkeid 后台大体包含5个模块：
 - 分布式，去中心化，集群高可用
 - 部署简单，依赖少，便于维护
 
-## 部署文档
+## 完整部署文档
 - [通过ElkeidUp部署](../elkeidup/README-zh_CN.md)
+
+## 编译
+1. AgentCenter(AC): 在`Elkeid/server/agent_center`目录执行 `./build.sh`，将会在在output目录下生成产物`bin.tar.gz`。
+2. ServiceDiscovery(SD)：在`Elkeid/server/service_discovery`目录执行 `./build.sh`将会在在output目录下生成产物`bin.tar.gz`。
+3. Manager：在`Elkeid/server/manager`目录执行 `./build.sh`，将会在在output目录下生成产物`bin.tar.gz`。
+
+## 版本升级
+ 参照[从源码构建 Elkeid CWPP](../elkeidup/build_package.md)的后端部分，来部署或升级即可。
+
+## Console User Guide
+- [ELkeid Console User Guide](docs/console_tutorial/Elkeid_Console_manual.md)
 
 ## License
 Elkeid Server are distributed under the Apache-2.0 license.
