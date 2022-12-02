@@ -19,28 +19,30 @@ Automated deployment of Elkeid tools
 * Don't remove `~/.elkeidup` dir
 * Don't fix any components used user's password, Include the Console(Elkeid Manager)
 
-### Automatic Download Pre-Compile KO Prompt:
+## Awareness of Auto-download missing kernel driver service
 
-**Service Background**:
-Elkeid Driver works in kernel mode. Since the kernel requires a strong association between the loaded kernel module and the kernel version, we cannot use the resources of the client to compile ko on the client when installing the agent. Therefore, we provide pre-compiled ko in the release package to avoid the need to manually compile ko every time. Currently, there are 3435 pre-compiled ko in total. But there are still two problems that cannot be solved. One is that it cannot be updated in real time. After the upstream distribution version updates the kernel, we cannot and do not have the manpower to sync up the update of the pre-compiled ko to the release. The kernel used by the distribution version. To this end, we provide the function of automatically downloading the missing pre-compiled ko. This function is mainly to notify our relevant classmates that the ko has customers trying it out, and update or cover the distribution version from the upstream as soon as possible.
-If you choose to agree to start this service, we need to collect some basic operation information at the same time, so that we can customize the priority scheduling according to users with different needs, and give a reasonable resource occupation assessment. The email information filled in is only used to distinguish the identity of the source, real email or nickname can be used. The specific information is as follows:
-1. The kernel version of the pre-compiled ko is missing, and the server architecture (only one of arm64 or amd64 is selected, and no other CPU machine information is involved).
-2. The number of linkages of the agent on the agent center is collected every 30min.
-3. The qps of the agent on the agent center, including send and receive, are collected every 30 minutes, and the average value of 30 minutes is taken.
-4. Hub input qps, collect it every 30min, and take the average value of 30min.
-5. redis qps, collected every 30min, take the average value of 30min.
-6. redis memory occupancy, collected every 30min, real-time numeric value.
-7. The qps produced and consumed by kafka are collected every 30 minutes and averaged for 30 minutes.
-8. mongodb qps, collected every 30min, take the average value of 30min.
+In this open-source version, we have integrated a service to provide auto-download capabilities for kernel driver files of those kernel versions that are missing from pre-compiled lists.
 
-If you do not agree to turn on this service, you can still use the pre-compile ko provided in the release package, and other functions will not be affected. The specific operation is to download the ko_1.7.0.9.tar.xz in the release interface, and then replace the `package/to_upload/agent/component/driver/ko.tar.xz`. During deploy, the ko will be decompressed into the `/elkeid/nginx/ElkeidAgent/agent/component/driver/ko` directory. The relevant collection information and the code for downloading ko are in the open source manager code. Whether to turn on the relevant functions depends on the `elkeidup_config.yaml` file in the conf directory when the manager runs. If you have this service turned on during deployment, but need to turn it off later in the process, you can set the `report.enable_report` in the `elkeidup_config.yaml` file to `false` and then restart manager.
+Service background: Elkeid Driver works in the kernel state. Since the kernel module loaded by the kernel is strongly bound to the kernel version, the kernel driver would have to match the correct kernel version. We cannot occupy the resources of the client's computer to compile ko files on the client's host machines when installing the agent. Therefore, we precompiled kernels for major Linux system distributions  in the release package to fit general cases. Currently, there are a total of 3435 precompiled ko, but there are still two problems that cannot be solved. One is that it cannot be updated in real-time. After the Major Linux system distributions release new updates to the kernel, we cannot and do not have enough manpower to catch up with those changes in time. The other problem is that you may use your own Linux kernel distribution. To this end, we provide the function of automatically downloading the missing precompiled kernel drivers. This function is mainly to inform our relevant engineer that some specific kernel versions are being used by users, and the release version should be updated as soon as possible.
+If you choose to agree and enable this service, we need to collect some basic operating information at the same time, so that we can customize priority scheduling according to users with different needs, and give a reasonable evaluation of resource occupation. The email information filled in is only used to distinguish the identity of the source, real email or any nickname can be used. Specific information is as follows:
 
-> Attachment:
-> 
-> The relevant functions are located in the following places in the manager code:
-> - The switch is located in the InitReport () function of internal/monitor/report.go, clear the function content to close the function entry.
-> - The collection information item is located in the heartbeatDefaultQuery structure of internal/monitor/report.go.
-> - The auto-download ko function is located in the SendAgentDriverKoMissedMsg function in biz/handler/v6/ko.go.
+1. The kernel version and server architecture (only arm64 or amd64 can be selected, and no other CPU machine information is involved).
+2. The number of connections of the agent on the agent center is collected every 30 minutes.
+3. The QPS of the agent on the agent center, including send and receive, is collected every 30 minutes, and the average value of 30 minutes is taken.
+4. The hub input QPS is collected every 30 minutes, and the average value of 30 minutes is taken.
+5. Redis QPS, collected every 30 minutes, takes an average value of 30 minutes.
+6. Redis memory usage, collected every 30 minutes, real-time value.
+7. The QPS produced and consumed by Kafka are collected every 30 minutes, and the average value of 30 minutes is taken.
+8. MongoDB QPS, collects every 30 minutes, and takes an average value of 30 minutes.
+
+If you do not agree to enable this service, you can still have access to all pre-compiled ko included in the release package, and all other functions will not be affected.
+The specific operation is to download `ko_1.7.0.9.tar.xz` on the release interface, and then replace `package/to_upload/agent/component/driver/ko.tar.xz`. During deployment, ko will be decompressed to `/elkeid/nginx/ElkeidAgent/agent/component/driver/ko` directory.
+You may simply enable related functions during the elkeidup deployment progress. The relative config could also bee found inside `elkeidup_config.yaml` file in the conf directory where the manager is running based upon. If you enable this service during deployment, but need to disable it in the subsequent process, you can set report.enable_report in the `elkeidup_config.yaml` file to false, and then restart the manager.
+
+The codes for collecting information and downloading KO files from Elkeid services are all in the open-sourced code. The relevant functions are listed as follows.
+- The on/off switch is located in the InitReport() function of `internal/monitor/report.go`.
+- The collection information item is located in the heartbeatDefaultQuery structure of `internal/monitor/report.go`.
+- The function of automatically downloading ko is located in the SendAgentDriverKoMissedMsg function of `biz/handler/v6/ko.go`.
 
 
 ### Elkeid Deployment(Recommended)

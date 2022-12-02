@@ -1,41 +1,315 @@
-# Elkeid CWPP v1.9.1 社区版 资源配置手册
-## 版本
+# Resource Configuration of Elkeid Community Edition
 
-社区版v1.9.1
+## Elkeid Architecture diagram
+> Note: Currently, Elkeid HUB's community version only supports stand-alone deployment
 
-## 架构介绍
-注：目前受社区版限制，Hub部分仅支持单机部署
 
 ![arch](../server/docs/server_new.png)
 
-## 组件详情
+# **Components in detail**
 
-| **组件名称**           | **测试环境下最小部署方式**                         | **生产环境建议部署方式**                                                | **组件使用端口**                   | **说明**             |
-|--------------------|----------------------------------------------------|-------------------------------------------------------------------------|------------------------------------|----------------------|
-| **Redis**          | 单台                                               | 三台，哨兵模式（仅支持3台，更大规模集群需要自行部署后替换）             | 6379 26379                         | 缓存数据库           |
-| **Mongodb**        | 单台                                               | 三台，副本集模式（仅支持3台，更大规模集群需要自行部署后替换）           | 27017 9982                         | 数据库               |
-| **Kafka**          | 单台                                               | 按Agent量进行计算（自动化部署情况下仅支持3台，多台需要自行部署后替换）  | 2181 9092 12888 13888              | 消息通道             |
-| **Nginx**          | 单台                                               | 单台或多台均可，下载功能建议使用内部CDN，若需要外部接入，建议使用自建LB | 8080 8081 8082 8071 8072 8089 8090 | 文件服务器及反向代理 |
-| **Service Discovery**  | 单台                                               | 两至三台                                                                | 8088                               | 服务发现             |
-| **HUB**            | 单台                                               | 社区版仅支持单台（生产环境是否使用社区版，请进行额外评估）              | 8091 8092                          | 规则引擎             |
-| **HUB Leader**     | 单台                                               | 社区版仅支持单台（生产环境是否使用社区版，请进行额外评估）              | 12310 12311                        | 规则引擎集群控制层   |
-| **HIDS Manager**   | 单台                                               | 两至三台                                                                | 6701                               | HIDS控制层           |
-| **Agent Center**   | 单台                                               | 按Agent量进行计算                                                       | 6751 6752 6753                     | HIDS接入层           |
-| **Prometheus**     | 单台                                               | 单台或两台均可                                                          | 9090 9993 9994 9981 9983 9984      | 监控用数据库         |
-| **Prometheus Alermanager** | 与Prometheus共用服务器                             | -                                                                       |                                    |                      |
-| **Grafana**        | 单台                                               | 单台                                                                    | 8083                               | 监控面板             |
-| **Kinaba**         | 单台                                               | 单台                                                                    | 5601                               | ES面板               |
-| **NodeExporter**   | 不需指定单独的服务器，所有机器都需要部署该监控服务 | -                                                                       | 9990                               | 监控探针             |
-| **ProcessExporter** | 不需指定单独的服务器，所有机器都需要部署该监控服务 | -                                                                       | 9991                               | 监控探针             |
+<table>
+  <tr>
+   <td><strong>Component name</strong>
+   </td>
+   <td><strong>Minimum deployment in the testing environment</strong>
+   </td>
+   <td><strong>Production environment</strong>
+   </td>
+   <td><strong>Listen ports</strong>
+   </td>
+   <td><strong>Description</strong>
+   </td>
+  </tr>
+  <tr>
+   <td>Redis
+   </td>
+   <td>single
+   </td>
+   <td>Three, Sentry mode (only supports 3, larger clusters need to be replaced after deployment)
+   </td>
+   <td>
+<ul>
 
-## 配置文件说明
+<li>6379
 
-1.  ssh\_host 为通用配置，表示该组件在哪些机器上进行部署，若为数组类型，说明该组件支持集群部署，否则只支持单机部署，具体限制见配置文件注释。
-2. quota为通用配置，最终会转变为cgroup限制。
-3. 单机测试环境下，所有机器都填同一地址即可。
+<li>26379
+</li>
+</ul>
+   </td>
+   <td>cache database
+   </td>
+  </tr>
+  <tr>
+   <td>MongoDB
+   </td>
+   <td>single
+   </td>
+   <td>Three replicas mode (only 3 are supported, larger clusters need to be replaced after deployment)
+   </td>
+   <td>
+<ul>
+
+<li>27017
+
+<li>9982
+</li>
+</ul>
+   </td>
+   <td>db.table
+   </td>
+  </tr>
+  <tr>
+   <td>Kafka
+   </td>
+   <td>single
+   </td>
+   <td>Calculated by the number of agents (only 3 units are supported in the case of automatic deployment, and multiple units need to be replaced after deployment)
+   </td>
+   <td>
+<ul>
+
+<li>2181
+
+<li>9092
+
+<li>12888
+
+<li>13888
+</li>
+</ul>
+   </td>
+   <td>message channel
+   </td>
+  </tr>
+  <tr>
+   <td>Nginx
+   </td>
+   <td>single
+   </td>
+   <td>Single or multiple units can be used. The download function is recommended to use internal CDN , if you need external access, it is recommended to use self-built LB
+   </td>
+   <td>
+<ul>
+
+<li>8080
+
+<li>8081
+
+<li>8082
+
+<li>8071
+
+<li>8072
+
+<li>8089
+
+<li>8090
+</li>
+</ul>
+   </td>
+   <td>File server and reverse proxy
+   </td>
+  </tr>
+  <tr>
+   <td>Service Discovery
+   </td>
+   <td>single
+   </td>
+   <td>two to three
+   </td>
+   <td>
+<ul>
+
+<li>8088
+</li>
+</ul>
+   </td>
+   <td>Service Discovery
+   </td>
+  </tr>
+  <tr>
+   <td>HUB
+   </td>
+   <td>single
+   </td>
+   <td>The community version only supports a single station (whether the production environment uses the community version, please conduct additional evaluation)
+   </td>
+   <td>
+<ul>
+
+<li>8091
+
+<li>8092
+</li>
+</ul>
+   </td>
+   <td>rules engine
+   </td>
+  </tr>
+  <tr>
+   <td>HUB Leader
+   </td>
+   <td>single
+   </td>
+   <td>The community version only supports a single station (whether the production environment uses the community version, please conduct additional evaluation)
+   </td>
+   <td>
+<ul>
+
+<li>12310
+
+<li>12311
+</li>
+</ul>
+   </td>
+   <td>Rules engine Cluster control layer
+   </td>
+  </tr>
+  <tr>
+   <td>HIDS Manager
+   </td>
+   <td>single
+   </td>
+   <td>two to three
+   </td>
+   <td>
+<ul>
+
+<li>6701
+</li>
+</ul>
+   </td>
+   <td>HIDS Control layer
+   </td>
+  </tr>
+  <tr>
+   <td>Agent Center
+   </td>
+   <td>single
+   </td>
+   <td>Calculate by Agent quantity
+   </td>
+   <td>
+<ul>
+
+<li>6751
+
+<li>6752
+
+<li>6753
+</li>
+</ul>
+   </td>
+   <td>HIDS Access layer
+   </td>
+  </tr>
+  <tr>
+   <td>Prometheus
+   </td>
+   <td>single
+   </td>
+   <td>Single or both
+   </td>
+   <td>
+<ul>
+
+<li>9090
+
+<li>9993
+
+<li>9994
+
+<li>9981
+
+<li>9983
+
+<li>9984
+</li>
+</ul>
+   </td>
+   <td>Database for monitoring
+   </td>
+  </tr>
+  <tr>
+   <td>Prometheus Alermanager
+   </td>
+   <td>with Prometheus Shared server
+   </td>
+   <td>-
+   </td>
+   <td>
+   </td>
+   <td>
+   </td>
+  </tr>
+  <tr>
+   <td>Grafana
+   </td>
+   <td>single
+   </td>
+   <td>single
+   </td>
+   <td>
+<ul>
+
+<li>8083
+</li>
+</ul>
+   </td>
+   <td>monitoring panel
+   </td>
+  </tr>
+  <tr>
+   <td>NodeExporter
+   </td>
+   <td>No need to specify a separate server; all machines need to deploy the monitoring service
+   </td>
+   <td>-
+   </td>
+   <td>
+<ul>
+
+<li>9990
+</li>
+</ul>
+   </td>
+   <td>monitoring probe
+   </td>
+  </tr>
+  <tr>
+   <td>ProcessExporter
+   </td>
+   <td>No need to specify separate a separate server, all machines need to deploy the monitoring service
+   </td>
+   <td>-
+   </td>
+   <td>
+<ul>
+
+<li>9991
+</li>
+</ul>
+   </td>
+   <td>monitoring probe
+   </td>
+  </tr>
+</table>
+
+
+
+# **Configure Elkeidup**
+
+Notes for keywords:
+
+
+
+1. **_ssh_host_** is a generic configuration, indicating which machines the component is deployed on. If it is an array type, it means that the component supports Clustered Deployment. Otherwise, it only supports stand-alone deployment. See the configuration file notes for specific restrictions.
+1. **Quotas** are generic configurations that will eventually turn into cgroup limits.
+1. In a stand-alone testing environment, all machines can fill-in with the same address.
 
 ```
-# redis 单台或3台，3台时为哨兵模式
+# Redis: Single or 3 hosts, 3 hosts infers it will be in Sentinel mode
 redis:
   install: true
   quota: 1C2G
@@ -44,7 +318,7 @@ redis:
     - redis-2
     - redis-3
 
-# MongoDB 单台或3台，3台时为副本集模式
+# MongoDB: Single or 3 hosts, 3 hosts infers it will be in Replica-Set mode
 mongodb:
   install: true
   quota: 2C4G
@@ -53,24 +327,24 @@ mongodb:
     - monogo-2
     - monogo-3
 
-# MongoDB 单台或3台，3台时为进群模式
+# Kafka: Single or 3 hosts, 3 hosts infers it will be in Cluster mode
 kafka:
   install: true
   topic: hids_svr
-  partition_num: 12 # 默认单topic分区数
+  partition_num: 12 # Default partition number for one topic
   quota: 2C4G
   ssh_host:
     - kafka-1
     - kafka-2
     - kafka-3
 
-# leader 社区版目前仅支持单机模式
+# leader: The community edition currently only supports stand-alone mode
 leader:
   install: true
   quota: 1C2G
   ssh_host: leader-1
 
-# nginx 单台多台即可，但其他组件默认只会使用第一台
+# nginx: one or more hosts, but other components will only use the first one by default
 nginx:
   install: true
   quota: 1C2G
@@ -80,7 +354,7 @@ nginx:
   domain: # 指向nginx机器的域名，仅支持单个
   public_addr: # nginx机器的公网IP，仅支持单个
 
-# sd 单台多台即可
+# sd: one or more hosts
 service_discovery:
   install: true
   quota: 1C2G
@@ -88,20 +362,20 @@ service_discovery:
     - sd-1
     - sd-2
 
-# hub 社区版目前仅支持单机模式
+# hub: The community edition currently only supports stand-alone mode
 hub:
   install: true
   quota: 2C4G
   ssh_host: hub-1
 
-# manager 单台多台即可
+# manager: one or more hosts
 manager:
   install: true
   quota: 2C4G
   ssh_host:
     - manager-1
 
-# ac 单台多台即可
+# ac: one or more hosts
 agent_center:
   install: true
   grpc_conn_limit: 1500 # 单个AC的最大连接数限制
@@ -109,13 +383,13 @@ agent_center:
   ssh_host:
     - ac-1
 
-# prometheus 单台多台即可，默认只会请求第一台，第二台处于双写状态，不会被查询
+# prometheus: one or two host, The second one will be used for double-write only.
 prometheus:
   quota: 1C2G
   ssh_host:
     - prometheus-1
 
-# grafana 仅支持一台
+# grafana: one host only
 grafana:
   quota: 1C2G
   ssh_host: grafana-1
