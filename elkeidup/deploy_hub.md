@@ -41,13 +41,13 @@ cd /root/.elkeidup
 ### 5、Visit the HUB front end
 After a successful installation, executing `cat /root/.elkeidup/elkeid_passwd` will see the randomly generated passwords and associated URLs for each component.
 
-| Field | Description |
-| -------------------------- |------------------|
-| elkeid_hub_frontend | hub front-end account password |
-| grafana | grafana account password |
-| grafana | grafana address |
-| elkeid_hub_frontend | elkeid hub front-end address |
-| elkeid_service_discovery | Service Discovery Address |
+| Field                    | Description                    |
+|--------------------------|--------------------------------|
+| elkeid_hub_frontend      | hub front-end account password |
+| grafana                  | grafana account password       |
+| grafana                  | grafana address                |
+| elkeid_hub_frontend      | elkeid hub front-end address   |
+| elkeid_service_discovery | Service Discovery Address      |
 
 To access elkeid_hub_frontend, refer to the [Elkeid HUB Quick Start Tutorial](https://github.com/bytedance/Elkeid-HUB/blob/main/docs/quick_start/quick_start.md).
 

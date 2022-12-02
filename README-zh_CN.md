@@ -68,47 +68,47 @@ Elkeid 具备以下主要能力：
 
 ## Elkeid Function List
 
-| 功能                       | Elkeid Community Edition | Elkeid Enterprise Edition |
-| -------------------------- | ------------------------ | ------------------------- |
-| Linux 数据采集能力         | :white_check_mark:       | :white_check_mark:        |
-| RASP 探针能力              | :white_check_mark:       | :white_check_mark:        |
-| K8s Audit Log 采集能力     | :white_check_mark:       | :white_check_mark:        |
-| Agent 控制面               | :white_check_mark:       | :white_check_mark:        |
-| 主机状态与详情             | :white_check_mark:       | :white_check_mark:        |
-| 勒索诱饵                   | :ng_man:                 | :white_check_mark:        |
-| 资产采集                   | :white_check_mark:       | :white_check_mark:        |
-| 高级资产采集               | :ng_man:                 | :white_check_mark:        |
+| 功能                 | Elkeid Community Edition | Elkeid Enterprise Edition |
+|--------------------|--------------------------|---------------------------|
+| Linux 数据采集能力       | :white_check_mark:       | :white_check_mark:        |
+| RASP 探针能力          | :white_check_mark:       | :white_check_mark:        |
+| K8s Audit Log 采集能力 | :white_check_mark:       | :white_check_mark:        |
+| Agent 控制面          | :white_check_mark:       | :white_check_mark:        |
+| 主机状态与详情            | :white_check_mark:       | :white_check_mark:        |
+| 勒索诱饵               | :ng_man:                 | :white_check_mark:        |
+| 资产采集               | :white_check_mark:       | :white_check_mark:        |
+| 高级资产采集             | :ng_man:                 | :white_check_mark:        |
 | 容器集群资产采集           | :white_check_mark:       | :white_check_mark:        |
-| 暴露面与脆弱性分析         | :ng_man:                 | :white_check_mark:        |
-| 主机/容器 基础入侵检测     | `少量样例`               | :white_check_mark:        |
-| 主机/容器 行为序列入侵检测 | :ng_man:                 | :white_check_mark:        |
-| RASP 基础入侵检测          | `少量样例`               | :white_check_mark:        |
+| 暴露面与脆弱性分析          | :ng_man:                 | :white_check_mark:        |
+| 主机/容器 基础入侵检测       | `少量样例`                   | :white_check_mark:        |
+| 主机/容器 行为序列入侵检测     | :ng_man:                 | :white_check_mark:        |
+| RASP 基础入侵检测        | `少量样例`                   | :white_check_mark:        |
 | RASP 行为序列入侵检测      | :ng_man:                 | :white_check_mark:        |
-| K8S 基础入侵检测           | `少量样例`               | :white_check_mark:        |
+| K8S 基础入侵检测         | `少量样例`                   | :white_check_mark:        |
 | K8S 行为序列入侵检测       | :ng_man:                 | :white_check_mark:        |
-| K8S 威胁分析               | :ng_man:                 | :white_check_mark:        |
+| K8S 威胁分析           | :ng_man:                 | :white_check_mark:        |
 | 告警溯源(行为溯源)         | :ng_man:                 | :white_check_mark:        |
 | 告警溯源(驻留溯源)         | :ng_man:                 | :white_check_mark:        |
-| 告警白名单                 | :white_check_mark:       | :white_check_mark:        |
-| 多告警聚合能力             | :ng_man:                 | :white_check_mark:        |
-| 威胁处置(进程)             | :ng_man:                 | :white_check_mark:        |
-| 威胁处置(网络)             | :ng_man:                 | :white_check_mark:        |
-| 威胁处置(文件)             | :ng_man:                 | :white_check_mark:        |
-| 文件隔离箱                 | :ng_man:                 | :white_check_mark:        |
-| 漏洞检测                   | `少量情报`               | :white_check_mark:        |
-| 漏洞情报热更新             | :ng_man:                 | :white_check_mark:        |
-| 基线检查                   | `少量基线`               | :white_check_mark:        |
-| RASP 热补丁                | :ng_man:                 | :white_check_mark:        |
-| 病毒扫描                   | :white_check_mark:       | :white_check_mark:        |
+| 告警白名单              | :white_check_mark:       | :white_check_mark:        |
+| 多告警聚合能力            | :ng_man:                 | :white_check_mark:        |
+| 威胁处置(进程)           | :ng_man:                 | :white_check_mark:        |
+| 威胁处置(网络)           | :ng_man:                 | :white_check_mark:        |
+| 威胁处置(文件)           | :ng_man:                 | :white_check_mark:        |
+| 文件隔离箱              | :ng_man:                 | :white_check_mark:        |
+| 漏洞检测               | `少量情报`                   | :white_check_mark:        |
+| 漏洞情报热更新            | :ng_man:                 | :white_check_mark:        |
+| 基线检查               | `少量基线`                   | :white_check_mark:        |
+| RASP 热补丁           | :ng_man:                 | :white_check_mark:        |
+| 病毒扫描               | :white_check_mark:       | :white_check_mark:        |
 | 用户行为日志分析           | :ng_man:                 | :white_check_mark:        |
-| 插件管理                   | :white_check_mark:       | :white_check_mark:        |
-| 系统监控                   | :white_check_mark:       | :white_check_mark:        |
-| 系统管理                   | :white_check_mark:       | :white_check_mark:        |
-| Windows 支持               | :ng_man:                 | :white_check_mark:        |
-| 蜜罐                       | :ng_man:                 | :oncoming_automobile:     |
-| 主动防御                   | :ng_man:                 | :oncoming_automobile:     |
-| 云查杀                     | :ng_man:                 | :oncoming_automobile:     |
-| 防篡改                     | :ng_man:                 | :oncoming_automobile:     |
+| 插件管理               | :white_check_mark:       | :white_check_mark:        |
+| 系统监控               | :white_check_mark:       | :white_check_mark:        |
+| 系统管理               | :white_check_mark:       | :white_check_mark:        |
+| Windows 支持         | :ng_man:                 | :white_check_mark:        |
+| 蜜罐                 | :ng_man:                 | :oncoming_automobile:     |
+| 主动防御               | :ng_man:                 | :oncoming_automobile:     |
+| 云查杀                | :ng_man:                 | :oncoming_automobile:     |
+| 防篡改                | :ng_man:                 | :oncoming_automobile:     |
 
 
 
