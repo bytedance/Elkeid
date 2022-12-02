@@ -157,4 +157,4 @@ cd /root/.elkeidup
 ko/sign文件的格式应该遵循：`hids_driver_1.7.0.4_{uname -r}_{arch}.ko/sign`格式， 文件需要放置在nginx对应服务器的：`/elkeid/nginx/ElkeidAgent/agent/component/driver/ko`下，并修改权限`chown -R nginx:nginx /elkeid/nginx`。放置完成后，重启Agent即可。
 
 ## 4、HTTPS配置
-请参考[Elkeid https配置文档](./https_config/https.md)
+请参考[Elkeid https配置文档](./https_config/https-zh_CN.md)

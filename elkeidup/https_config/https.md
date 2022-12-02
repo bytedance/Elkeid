@@ -1,39 +1,39 @@
-# Elkeid https配置文档
+# Elkeid https configuration documentation
 
-## 1 概述
-- 默认情况下，Elkeid Console监听在8082和8072端口，Elkeid HUB监听在8081和8071端口。
-- 如果需要使用HTTPS，可以使用8072和8071端口来访问。
+## 1. Overview
+- By default, the Elkeid Console listens on ports 8082 and 8072, and the Elkeid HUB listens on ports 8081 and 8071.
+- If HTTPS is required, ports 8072 and 8071 can be used for access.
 
 |       | Elkeid Console           | Elkeid HUB Console       |
 |-------|--------------------------|--------------------------|
 | HTTP  | http://{{NignxIP}}:8082  | http://{{NignxIP}}:8081  |
 | HTTPS | https://{{NignxIP}}:8072 | https://{{NignxIP}}:8072 |
 
-## 2、使用企业内部证书
-安装时生成的自签名证书位于nginx所在机器的 `/elkeid/nginx/nginx` 目录，包括以下两个文件：
+## 2. Use an internal enterprise certificate
+The self-signed certificate generated during installation is located in the '/elkeid/nginx/nginx' directory on the machine where nginx is located, and includes the following two files:
 ```
 server.key
 server.crt
 ```
-替换上述两个文件后，执行以下操作即可：
+After replacing the above two files, do the following:
 ```
-chown -R nginx:nginx /elkeid/nginx
+chown -R nginx: nginx /elkeid/nginx
 systemctl restart elkeid_nginx
 ```
 
-## 3、使用部署时生成的自签名证书
-Elkeid 在部署时，仅能使用自签名证书，由于chrome的安全设置，无法直接访问，所有需要手动信任该证书才可使用https访问，具体操作参考如下：
-以下示例假设nginx所在服务器为 `console.elkeid.org`，并配置了`/etc/hosts`或dns解析。
-### 3.1、Macos
-1. 访问 `https://console.elkeid.org:8072/`  导出证书
+## 3. Use the self-signed certificate generated at deployment time
+When Elkeid is deployed, it can only use a self-signed certificate. Due to the security settings of chrome, it cannot be accessed directly. All you need to manually trust the certificate to access it using https. The specific operation is as follows:
+The following example hypotheses that the server where nginx is located is `console.elkeid.org` and has a configuration of `/etc/hosts` or dns parsing.
+### 3.1, Macos
+1. Access https://console.elkeid.org:8072/ Export Certificate
    ![cert1](001.png)
    ![cert2](002.png)
-2. 导入导出的证书并信任
+2. Import the exported certificate and trust it
    ![cert3](003.png)
    ![cert4](004.png)
    ![cert5](005.png)
-3. 点击钥匙串访问，信任证书
+3. Click Keychain Access, Trust Certificate
    ![cert6](006.png)
-4. 再次访问 `https://console.elkeid.org:8072/`
+4. Visit https://console.elkeid.org:8072/ again
    ![cert7](007.png)
    ![cert8](008.png)

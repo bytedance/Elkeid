@@ -13,7 +13,7 @@ Automated deployment of Elkeid tools
 * The back-end server used for deployment needs to ensure intranet interoperability
 * The backend server used for deployment requires root user privileges when deploying
 * The backend server used for deployment can only be used: Centos7 and above; Ubuntu16 and above; Debian9 and above
-* The server which execute elkeidup could execute ssh root@x.x.x.x without password to any backend server
+* The server which execute elkeidup could execute `ssh root@x.x.x.x` without password to any backend server
 * Deployment cannot be manually interrupted
 * Only cat use LAN IP, do not use 127.0.0.1 or hostname or public IP
 * Don't remove `~/.elkeidup` dir
