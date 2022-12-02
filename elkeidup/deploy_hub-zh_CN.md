@@ -50,4 +50,4 @@ cd /root/.elkeidup
 访问 elkeid_hub_frontend，参照 [Elkeid HUB 社区版快速上手教程](https://github.com/bytedance/Elkeid-HUB/blob/main/docs/quick_start/quick_start.md) 使用。
 
 ## 6、HTTPS配置
-请参考[Elkeid https配置文档](./https_config/https.md)
+请参考[Elkeid https配置文档](./https_config/https-zh_CN.md)
