@@ -68,7 +68,7 @@ Therefore, it is necessary to have complete anti-intrusion and risk perception c
 ## Elkeid Function List
 
 | Ability List                                           | Elkeid Community Edition | Elkeid Enterprise Edition |
-| ------------------------------------------------------ | ------------------------ | ------------------------- |
+|--------------------------------------------------------|--------------------------|---------------------------|
 | Linux  runtime data collection                         | :white_check_mark:       | :white_check_mark:        |
 | RASP probe                                             | :white_check_mark:       | :white_check_mark:        |
 | K8s Audit Log collection                               | :white_check_mark:       | :white_check_mark:        |

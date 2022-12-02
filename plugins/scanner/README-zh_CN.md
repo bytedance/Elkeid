@@ -182,67 +182,67 @@ scanner 插件任务支持
 
 ##  5. <a name='-1'></a>上报数据类型
 
-| 数据类型 | 6000-扫描任务结束  |  字段含义 |
-|---|---|---|
-|  1 | status  | 扫描任务结束状态: failed 失败，succeed 成功 |
-|  2 | msg  |  日志 |
+| 数据类型 | 6000-扫描任务结束 | 字段含义                           |
+|------|-------------|--------------------------------|
+| 1    | status      | 扫描任务结束状态: failed 失败，succeed 成功 |
+| 2    | msg         | 日志                             |
 
-| 数据类型 | 6001-检出静态文件  |  字段含义 |
-|---|---|---|
-| 1| types        | 检出文件类型 |
-| 2| class        | 恶意样本分类 |
-| 3| name         | 恶意样本家族  |
-| 4| exe          | 检出文件目录  |
-| 5| static_file  | 检出文件目录  |
-| 6| exe_size     | 检出文件 大小  |
-| 7| exe_hash     | 检出文件 32kb xxhash  |
-| 8| md5_hash     | 检出文件 md5 hash  |
-| 9| create_at    | 检出文件 创建时间 |
-|10| modify_at    | 检出文件 最后修改时间  |
-|11| hit_data     | yara命中数据（如果命中了Yara才会有此字段） |
-|12| token        | 任务 token（全盘扫描任务才会有此字段） |
-
-
-| 数据类型 | 6002-检出进程exe  |  字段含义 |
-|---|---|---|
-| 1| types        | exe文件类型 |
-| 2| class        | 恶意样本分类 |
-| 3| name         | 恶意样本家族  |
-| 4| exe          | exe文件目录  |
-| 5| static_file  | exe文件目录  |
-| 6| exe_size     | exe文件 大小  |
-| 7| exe_hash     | exe文件 32kb xxhash  |
-| 8| md5_hash     | exe文件 md5 hash  |
-| 9| create_at    | exe文件 创建时间 |
-|10| modify_at    | exe文件 最后修改时间  |
-|11| hit_data     | yara命中数据（如果命中了Yara才会有此字段） |
-|12| pid          | 进程 id |
-|13| ppid         | 父进程 id  |
-|14| pgid         | 进程组 id |
-|15| tgid         | 线程组 id |
-|16| argv         | 执行命令行 |
-|17| comm         | 进程名 |
-|18| sessionid    | proc/pid/stat/sessionid |
-|19| uid          | 用户ID |
-|20| pns          | 进程 namespace |
-|21| token        | 任务 token（全盘扫描任务才会有此字段） |
+| 数据类型 | 6001-检出静态文件 | 字段含义                      |
+|------|-------------|---------------------------|
+| 1    | types       | 检出文件类型                    |
+| 2    | class       | 恶意样本分类                    |
+| 3    | name        | 恶意样本家族                    |
+| 4    | exe         | 检出文件目录                    |
+| 5    | static_file | 检出文件目录                    |
+| 6    | exe_size    | 检出文件 大小                   |
+| 7    | exe_hash    | 检出文件 32kb xxhash          |
+| 8    | md5_hash    | 检出文件 md5 hash             |
+| 9    | create_at   | 检出文件 创建时间                 |
+| 10   | modify_at   | 检出文件 最后修改时间               |
+| 11   | hit_data    | yara命中数据（如果命中了Yara才会有此字段） |
+| 12   | token       | 任务 token（全盘扫描任务才会有此字段）    |
 
 
-| 数据类型 | 6003-目录扫描任务  |  字段含义 |
-|---|---|---|
-| 1| types        | 检出文件类型 |
-| 2| class        | 恶意样本分类 |
-| 3| name         | 恶意样本家族  |
-| 4| exe          | 检出文件目录  |
-| 5| static_file  | 检出文件目录  |
-| 6| exe_size     | 检出文件 大小  |
-| 7| exe_hash     | 检出文件 32kb xxhash  |
-| 8| md5_hash     | 检出文件 md5 hash  |
-| 9| create_at    | 检出文件 创建时间 |
-|10| modify_at    | 检出文件 最后修改时间  |
-|11| hit_data     | yara命中数据（如果命中了Yara才会有此字段） |
-|12| token        | 任务 token |
-|13| error        | 错误信息 （任务出错时不为空）|
+| 数据类型 | 6002-检出进程exe | 字段含义                      |
+|------|--------------|---------------------------|
+| 1    | types        | exe文件类型                   |
+| 2    | class        | 恶意样本分类                    |
+| 3    | name         | 恶意样本家族                    |
+| 4    | exe          | exe文件目录                   |
+| 5    | static_file  | exe文件目录                   |
+| 6    | exe_size     | exe文件 大小                  |
+| 7    | exe_hash     | exe文件 32kb xxhash         |
+| 8    | md5_hash     | exe文件 md5 hash            |
+| 9    | create_at    | exe文件 创建时间                |
+| 10   | modify_at    | exe文件 最后修改时间              |
+| 11   | hit_data     | yara命中数据（如果命中了Yara才会有此字段） |
+| 12   | pid          | 进程 id                     |
+| 13   | ppid         | 父进程 id                    |
+| 14   | pgid         | 进程组 id                    |
+| 15   | tgid         | 线程组 id                    |
+| 16   | argv         | 执行命令行                     |
+| 17   | comm         | 进程名                       |
+| 18   | sessionid    | proc/pid/stat/sessionid   |
+| 19   | uid          | 用户ID                      |
+| 20   | pns          | 进程 namespace              |
+| 21   | token        | 任务 token（全盘扫描任务才会有此字段）    |
+
+
+| 数据类型 | 6003-目录扫描任务 | 字段含义                      |
+|------|-------------|---------------------------|
+| 1    | types       | 检出文件类型                    |
+| 2    | class       | 恶意样本分类                    |
+| 3    | name        | 恶意样本家族                    |
+| 4    | exe         | 检出文件目录                    |
+| 5    | static_file | 检出文件目录                    |
+| 6    | exe_size    | 检出文件 大小                   |
+| 7    | exe_hash    | 检出文件 32kb xxhash          |
+| 8    | md5_hash    | 检出文件 md5 hash             |
+| 9    | create_at   | 检出文件 创建时间                 |
+| 10   | modify_at   | 检出文件 最后修改时间               |
+| 11   | hit_data    | yara命中数据（如果命中了Yara才会有此字段） |
+| 12   | token       | 任务 token                  |
+| 13   | error       | 错误信息 （任务出错时不为空）           |
 
 ##  6. <a name='-1'></a>已知问题
 * Creation time / birth_time is not available for some filesystems

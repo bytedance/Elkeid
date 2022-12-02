@@ -54,14 +54,14 @@ cat ~/.elkeidup/elkeid_passwd
 顺利安装完成后，`/root/.elkeidup/elkeid_passwd`文件记录了各组件的密码和相关的url。
 > 初始密码在构建镜像的时候已经固定了的，为了安全性请不要用于生产环境
 
-| 字段                         | 说明               |
-| -------------------------- |------------------|
-| elkeid_console            | console账号密码      |
-| elkeid_hub_frontend        | hub前端账号密码        |
-| grafana        | grafana账号密码      |
-| grafana      | grafana 地址       |
+| 字段                       | 说明               |
+|--------------------------|------------------|
+| elkeid_console           | console账号密码      |
+| elkeid_hub_frontend      | hub前端账号密码        |
+| grafana                  | grafana账号密码      |
+| grafana                  | grafana 地址       |
 | elkeid_hub_frontend      | elkeid hub前端地址   |
-| elkeid_console      | elkeid console地址 |
+| elkeid_console           | elkeid console地址 |
 | elkeid_service_discovery | 服务发现地址           |
 
 访问elkeid_console，按照[Console使用手册-安装配置](../server/docs/console_tutorial/Elkeid_Console_manual.md#安装配置) 界面的命令进行Agent安装部署。
@@ -132,14 +132,14 @@ cd /root/.elkeidup
 ### 2.6、访问前端console并安装Agent
 顺利安装完成后，执行`cat /root/.elkeidup/elkeid_passwd`将看到各组件的随机生成的密码和相关的url。
 
-| 字段                         | 说明               |
-| -------------------------- |------------------|
-| elkeid_console            | console账号密码      |
-| elkeid_hub_frontend        | hub前端账号密码        |
-| grafana        | grafana账号密码      |
-| grafana      | grafana 地址       |
+| 字段                       | 说明               |
+|--------------------------|------------------|
+| elkeid_console           | console账号密码      |
+| elkeid_hub_frontend      | hub前端账号密码        |
+| grafana                  | grafana账号密码      |
+| grafana                  | grafana 地址       |
 | elkeid_hub_frontend      | elkeid hub前端地址   |
-| elkeid_console      | elkeid console地址 |
+| elkeid_console           | elkeid console地址 |
 | elkeid_service_discovery | 服务发现地址           |
 
 访问elkeid_console，按照[Console使用手册-安装配置](../server/docs/console_tutorial/Elkeid_Console_manual.md#安装配置) 界面的命令进行Agent安装部署。

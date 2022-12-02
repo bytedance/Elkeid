@@ -173,50 +173,50 @@ scanner plugin task (Seen [Elkeid Console Doc](../../server/docs/console_tutoria
 
 ##  5. <a name='ScannerReportDataType'></a> Scanner Report DataType
 
-| DataType | 6000-ScanTaskFinished  |  description |
-|---|---|---|
-|  1 | status  | task status : failed,succeed|
-|  2 | msg  |  log |
+| DataType | 6000-ScanTaskFinished | description                  |
+|----------|-----------------------|------------------------------|
+| 1        | status                | task status : failed,succeed |
+| 2        | msg                   | log                          |
 
-| DataType | 6001-StaticMalwareFound  |  description |
-|---|---|---|
-| 1| types        | FileType |
-| 2| class        | MalwareClass |
-| 3| name         | MalwareName  |
-| 4| exe          | target file path  |
-| 5| static_file  | target file path  |
-| 6| exe_size     | target file size  |
-| 7| exe_hash     | target file 32kb xxhash  |
-| 8| md5_hash     | target file md5 hash  |
-| 9| create_at    | target file birth time |
-|10| modify_at    | target file last modify time  |
-|11| hit_data     | yara hit data(if yara hit） |
-|12| token        | task token (only in 6057 task report) |
+| DataType | 6001-StaticMalwareFound | description                           |
+|----------|-------------------------|---------------------------------------|
+| 1        | types                   | FileType                              |
+| 2        | class                   | MalwareClass                          |
+| 3        | name                    | MalwareName                           |
+| 4        | exe                     | target file path                      |
+| 5        | static_file             | target file path                      |
+| 6        | exe_size                | target file size                      |
+| 7        | exe_hash                | target file 32kb xxhash               |
+| 8        | md5_hash                | target file md5 hash                  |
+| 9        | create_at               | target file birth time                |
+| 10       | modify_at               | target file last modify time          |
+| 11       | hit_data                | yara hit data(if yara hit）            |
+| 12       | token                   | task token (only in 6057 task report) |
 
 
-| DataType | 6002-ProcessMalwareFound  |  description |
-|---|---|---|
-| 1| types        | FileType |
-| 2| class        | MalwareClass |
-| 3| name         | MalwareName  |
-| 4| exe          | exe file path  |
-| 5| static_file  | exe file path  |
-| 6| exe_size     | exe file size |
-| 7| exe_hash     | exe 32kb xxhash  |
-| 8| md5_hash     | exe md5 hash  |
-| 9| create_at    | exe birth time |
-|10| modify_at    | exe last modify time  |
-|11| hit_data     | yara hit data(if yara hit） |
-|12| pid          | process id |
-|13| ppid         | parent process id  |
-|14| pgid         | process group id |
-|15| tgid         | thread group id |
-|16| argv         | exe cmdline |
-|17| comm         | process comm name |
-|18| sessionid    | proc/pid/stat/sessionid |
-|19| uid          | use ID |
-|20| pns          | process namespace |
-|21| token        | task token (only in 6057 task report) |
+| DataType | 6002-ProcessMalwareFound | description                           |
+|----------|--------------------------|---------------------------------------|
+| 1        | types                    | FileType                              |
+| 2        | class                    | MalwareClass                          |
+| 3        | name                     | MalwareName                           |
+| 4        | exe                      | exe file path                         |
+| 5        | static_file              | exe file path                         |
+| 6        | exe_size                 | exe file size                         |
+| 7        | exe_hash                 | exe 32kb xxhash                       |
+| 8        | md5_hash                 | exe md5 hash                          |
+| 9        | create_at                | exe birth time                        |
+| 10       | modify_at                | exe last modify time                  |
+| 11       | hit_data                 | yara hit data(if yara hit）            |
+| 12       | pid                      | process id                            |
+| 13       | ppid                     | parent process id                     |
+| 14       | pgid                     | process group id                      |
+| 15       | tgid                     | thread group id                       |
+| 16       | argv                     | exe cmdline                           |
+| 17       | comm                     | process comm name                     |
+| 18       | sessionid                | proc/pid/stat/sessionid               |
+| 19       | uid                      | use ID                                |
+| 20       | pns                      | process namespace                     |
+| 21       | token                    | task token (only in 6057 task report) |
 
 
 | DataType | 6003-PathScanTaskResult  |  description |
