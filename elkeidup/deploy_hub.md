@@ -15,19 +15,20 @@ wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_hub_v
 chmod a+x /root/.elkeidup/elkeidup
 ```
 ### 3、Generate and modify config.yaml
-If it is not a standalone deployment, please refer to the deployment resource manual to modify config.yaml
-ip为本机非 `127.0.0.1` ip，若不为单机部署，请参考[部署资源手册](./configuration-zh_CN.md)修改config.yaml
+If it is not a standalone deployment, please refer to the [deployment resource manual](./configuration.md) to modify config.yaml
+
 ```
 cd /root/.elkeidup
-## 生成hub only 配置
+## Generate hub only configurations
 ./elkeidup init --host {ip} --hub_only
 mv config_example.yaml config.yaml
 ```
-### 4、部署
+
+### 4、Deployment
 ```
 cd /root/.elkeidup
 
-# 命令为交互式
+# Command is interactive
 ./elkeidup deploy --hub_only
 
 ## status
@@ -37,18 +38,18 @@ cd /root/.elkeidup
 ./elkeidup undeploy --hub_only
 ```
 
-### 5、访问HUB前端
-顺利安装完成后，执行`cat /root/.elkeidup/elkeid_passwd`将看到各组件的随机生成的密码和相关的url。
+### 5、Visit the HUB front end
+After a successful installation, executing `cat /root/.elkeidup/elkeid_passwd` will see the randomly generated passwords and associated URLs for each component.
 
-| 字段                         | 说明               |
+| Field | Description |
 | -------------------------- |------------------|
-| elkeid_hub_frontend        | hub前端账号密码        |
-| grafana        | grafana账号密码      |
-| grafana      | grafana 地址       |
-| elkeid_hub_frontend      | elkeid hub前端地址   |
-| elkeid_service_discovery | 服务发现地址           |
+| elkeid_hub_frontend | hub front-end account password |
+| grafana | grafana account password |
+| grafana | grafana address |
+| elkeid_hub_frontend | elkeid hub front-end address |
+| elkeid_service_discovery | Service Discovery Address |
 
-访问 elkeid_hub_frontend，参照 [Elkeid HUB 社区版快速上手教程](https://github.com/bytedance/Elkeid-HUB/blob/main/docs/quick_start/quick_start.md) 使用。
+To access elkeid_hub_frontend, refer to the [Elkeid HUB Quick Start Tutorial](https://github.com/bytedance/Elkeid-HUB/blob/main/docs/quick_start/quick_start.md).
 
-## 6、HTTPS配置
-请参考[Elkeid https配置文档](./https_config/https.md)
+## 6、HTTPS configuration
+Please refer to [Elkeid https configuration documentation](./https_config/https.md)
