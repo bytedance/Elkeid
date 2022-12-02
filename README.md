@@ -182,7 +182,7 @@ If interested in Elkeid Enterprise Edition please contact elkeid@bytedance.com
 
 
 ## Elkeid Docs
-For more details and latest updates, see [Elkeid docs](https://elkeid.bytedance.com/pre/Chinese/welcome.html).
+For more details and latest updates, see [Elkeid docs](https://elkeid.bytedance.com/English/).
 
 
 ## License
