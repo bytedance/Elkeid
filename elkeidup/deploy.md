@@ -85,6 +85,8 @@ cat elkeidup_package_v1.9.1.tar.gz.* > elkeidup_package_v1.9.1.tar.gz
 ```
 也可以参考[从源码构建 Elkeid](./build_package.md)，自行编译和构建package包。
 
+> 如果之前安装过，请删除`/root/.elkeidup`和`/elkeid`文件夹，避免造成干扰
+
 - 解压release产物并配置目录
 ```
 mkdir -p /root/.elkeidup && cd /root/.elkeidup
