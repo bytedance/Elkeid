@@ -4,7 +4,7 @@ The Driver plugin manages [Kernel Module](../../driver/README.md), supplements a
 ## Runtime requirements
 Supports mainstream Linux distributions, including CentOS, RHEL, Debian, Ubuntu, RockyLinux, OpenSUSE, etc. Supports x86-64 and aarch64 architectures.
 
-The kernel version of the host needs to be in the supported list, if not, it needs to be compiled and uploaded separately, see [Description](../../elkeidup/README.md#agent-install-remark) for details.
+The kernel version of the host needs to be in the supported list, if not, it needs to be compiled and uploaded separately, see [Description](../../elkeidup/deploy.md#3agent-install-remark) for details.
 ## Quick start
 Through the complete deployment of [elkeidup](../../elkeidup/README.md), this plugin is enabled by default.
 ## Compile from source

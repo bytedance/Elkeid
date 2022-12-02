@@ -7,7 +7,7 @@
 Elkeid的前端部分，提供整体概览，Agent管理，告警处理，用户管理等功能。
 
 ## 部署文档
-- [Deploy by Elkeidup](../elkeidup/README.md)
+- [Deploy by Elkeidup](../../elkeidup/README.md)
 
 ## License
 Elkeid Server are distributed under the Apache-2.0 license.

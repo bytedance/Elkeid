@@ -7,7 +7,7 @@ English | [简体中文](README-zh_CN.md)
 The front-end part of Elkeid provides overall overview, agent management, alarm handling, user management and other functions.
 
 ## Deployment document
-- [Deploy by Elkeidup](../elkeidup/README.md)
+- [Deploy by Elkeidup](../../elkeidup/README.md)
 
 ## License
 Elkeid Server are distributed under the Apache-2.0 license.
