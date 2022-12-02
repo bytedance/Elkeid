@@ -148,7 +148,8 @@ cd /root/.elkeidup
 ## 3、Agent Install Remark
 
 - Driver模块依赖预编译ko，具体支持列表参考：[ko_list](https://github.com/bytedance/Elkeid/blob/main/driver/ko_list.md)
-- Driver 是否存在的方式：`lsmod | grep hids_driver`
+- 正常情况下，在Agent安装完成后，需要10min左右Driver模块才能正常工作（涉及到KO自动下载和安装）。
+- Driver是否存在的方式：`lsmod | grep hids_driver`
     - 如果测试机器kernel版本不在支持列表中，请[自行编译ko](https://github.com/bytedance/Elkeid/blob/main/driver/README-zh_CN.md)文件和生成sign文件(sha256)，并将其导入Nginx中。
     - **如果在执行elkeidup deploy中未同意声明**，也需要[自行编译ko](https://github.com/bytedance/Elkeid/blob/main/driver/README-zh_CN.md)或下载Release中对应的[预编译ko](https://github.com/bytedance/Elkeid/releases/download/v1.9.1/ko_1.7.0.9.tar.xz)([支持列表](https://github.com/bytedance/Elkeid/blob/main/driver/ko_list.md))和sign文件，并将其导入Nginx中。
 
