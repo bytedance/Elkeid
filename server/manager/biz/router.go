@@ -265,7 +265,6 @@ func RegisterRouter(r *gin.Engine) {
 			agentRouter.GET("/getTask/:id", v6.GetTaskByID)
 			agentRouter.POST("/controlTask", v1.ControlAgentTaskByNum)
 			agentRouter.POST("/createAgentTask", v6.ControlAgent)
-			agentRouter.POST("/createPluTask", v6.ControlPlugin)
 			agentRouter.POST("/getTaskList", v6.GetTaskList)
 			agentRouter.POST("/getSubTaskList", v6.GetSubTaskList)
 			agentRouter.POST("/GetErrorHostNum", v6.GetErrorHostNum)
