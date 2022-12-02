@@ -182,7 +182,7 @@ Elkeid 企业版本支持单独策略售卖，也支持完全完整能力售卖�
 
 
 ## Elkeid Docs
-For more details and latest updates, see [Elkeid docs](https://elkeid.bytedance.com/pre/Chinese/welcome.html).
+For more details and latest updates, see [Elkeid docs](https://elkeid.bytedance.com/Chinese/).
 
 
 ## License
