@@ -19,11 +19,12 @@ Elkeid 自动化部署工具
 * 安装后不要删除 `~/.elkeidup` 目录
 * 不要修改任何组件的密码，包括Elkeid Console(Manager)初始默认用户
 
-### 收集信息提示
+### 自动下载缺失预编译ko服务开启提示：
 
-为了能更好的共建Elkeid开源社区，我们希望可以在您的试用或使用中收集以下必要信息，以便我们了解您的基础运行状况。我们需要参考相关信息制定后续规划，以及给出合理的资源占用评估。
-我们会尝试收集且仅收集以下信息，所有收集信息的逻辑和代码均位于已开源的manager中，预编译manager二进制与开源代码一致，您可以重新编译：
-1. 缺失预编译ko的内核版本，服务器架构(仅为arm64或amd64二选一，不涉及任何其他cpu机器信息)，仅在driver。
+**服务背景**：
+Elkeid Driver是在内核态工作的，由于内核要求加载的内核模块与内核版本强绑定，我们又无法占用客户机的资源在安装agent时在客户机上编译ko。因此，我们在release包中提供了预编译的ko，避免每次都需要手动编译ko，目前共计包含3435个预编译ko。但依旧存在两个问题无法解决，一是无法实时更新，上游发行版更新内核后，我们无法也没有人力同步更新预编译的ko到release中，二是覆盖范围有限，可能会遇见我们未曾使用过的发行版所使用的内核。为此，我们提供了自动下载缺失预编译ko的功能，此功能主要是通知到我们相关同学，该ko有客户在试用，尽快从上游更新或覆盖该发行版。
+若您选择同意开启此服务，我们需要同时收集一些基础运行信息，以便我们根据不同需求的用户定制优先级排期，并给出合理的资源占用评估。填写的email信息仅用于区分来源身份，真实email或昵称均可。具体信息如下：
+1. 缺失预编译ko的内核版本，服务器架构(仅为arm64或amd64二选一，不涉及任何其他cpu机器信息)。
 2. agent center上agent的连接数，每30min收集一次。
 3. agent center上agent的qps，包含send和receive，每30min收集一次，取30min的平均值。
 4. hub input qps，每30min收集一次，取30min的平均值。
@@ -32,7 +33,12 @@ Elkeid 自动化部署工具
 7. kafka 生产和消费的qps，每30min收集一次，取30min的平均值。
 8. mongodb qps，每30min收集一次，取30min的平均值。
 
-> 如果您不同意收集请求，仅自动下载缺失的预编译ko一项功能无法使用，不影响其他功能。
+若您不同意开启此服务，您依旧可以使用release包中提供的预编译ko，其他功能不受影响。具体操作为在release界面下载ko_1.7.0.9.tar.xz，然后替换`package/to_upload/agent/component/driver/ko.tar.xz`，deploy期间会将ko解压到`/elkeid/nginx/ElkeidAgent/agent/component/driver/ko`目录中。相关收集信息和下载ko的代码均在已开源的manager代码中，是否开启相关功能取决于manager运行时conf目录下的elkeidup_config.yaml文件。若您在部署期间开启了此服务，但是需要在之后的流程中关闭，您可以将`elkeidup_config.yaml`文件中的`report.enable_report`设置为false，之后重启manager即可。
+
+> 附：相关功能位于manager代码中的以下位置:
+>   - 开关位于internal/monitor/report.go的InitReport()函数中，清空此函数内容，即可关闭功能入口。
+>   - 收集信息项位于internal/monitor/report.go的heartbeatDefaultQuery结构中。
+>   - 自动下载ko功能位于biz/handler/v6/ko.go的SendAgentDriverKoMissedMsg函数中。
 
 ### Elkeid 完整部署(推荐)
 [Elkeid 完整部署](./deploy.md)
