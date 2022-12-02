@@ -1,21 +1,20 @@
-# HUB deployed separately
-If you need to deploy the HUB separately, you can use the -- hub_only parameter in elkeidup. The specific steps are as follows:
-### 1、Configure the target machine root user ssh ssh password-free login
-If the deployment machine is local, you still need to configure the local password-free login, and the login time needs to be less than 1s.
-The following command can be used to verify that the output of the two date commands needs to be the same.
+# Elkeid HUB 单独部署
+如果需要单独部署HUB，可以使用elkeidup中的`--hub_only`参数，具体步骤如下：
+### 1、配置目标机器root用户ssh免密登录
+如果部署机器为本机，依旧需要配置本机免密登录，登录耗时需要小于1s。
+可用以下命令进行验证，两次date命令的输出结果需要相同。
 ```
 date && ssh root@{ip} date
-# The output time difference should be less than 1s
+# 输出时间差小于1s
 ```
 
-### 2、Download the release product and configure the catalog
+### 2、下载release产物并配置目录
 ```
 mkdir -p /root/.elkeidup && cd /root/.elkeidup
 wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_hub_v1.9.1.tar.gz -O elkeidup.tar.gz && tar -xf elkeidup.tar.gz
 chmod a+x /root/.elkeidup/elkeidup
 ```
-### 3、Generate and modify config.yaml
-If it is not a standalone deployment, please refer to the deployment resource manual to modify config.yaml
+### 3、生成并修改config.yaml
 ip为本机非 `127.0.0.1` ip，若不为单机部署，请参考[部署资源手册](./configuration-zh_CN.md)修改config.yaml
 ```
 cd /root/.elkeidup

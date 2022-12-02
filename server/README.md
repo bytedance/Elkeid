@@ -30,7 +30,7 @@ In short, AgentCenter collects Agent data, real-time/offline calculation module 
 3. Manager：Executing `Elkeid/server/manager` directory will generate the product' bin.tar.gz 'in the output directory.
 
 ## Upgrade
-Refer to the backend section of [Build Elkeid CWPP from Source](../elkeidup/build_package.md) to deploy or upgrade.
+Refer to the backend section of [Build Elkeid CWPP from Source](../elkeidup/build_package-zh_CN.md) to deploy or upgrade.
 
 ## Console User Guide
 - [ELkeid Console User Guide](docs/console_tutorial/Elkeid_Console_manual.md)
