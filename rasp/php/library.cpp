@@ -247,7 +247,12 @@ PHP_RINIT_FUNCTION (php_probe) {
         if (!val)
             return "";
 
-        return toString(val);
+        return toString(
+                val
+#if PHP_MAJOR_VERSION <= 5
+                TSRMLS_CC
+#endif
+        );
     };
 
     strncpy(PHP_PROBE_G(request).scheme, fetch(Z_ARRVAL_P(server), "REQUEST_SCHEME").c_str(), SMITH_FIELD_LENGTH - 1);
