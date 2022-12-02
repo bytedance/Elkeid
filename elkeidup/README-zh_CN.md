@@ -5,7 +5,7 @@
 Elkeid 自动化部署工具
 
 ## Component List
-[资源配置手册](./configuration.md)
+[资源配置手册](./configuration-zh_CN.md)
 
 ## Instructions
 
@@ -41,10 +41,10 @@ Elkeid Driver是在内核态工作的，由于内核要求加载的内核模块�
 >   - 自动下载ko功能位于biz/handler/v6/ko.go的SendAgentDriverKoMissedMsg函数中。
 
 ### Elkeid 完整部署(推荐)
-[Elkeid 完整部署](./deploy.md)
+[Elkeid 完整部署](./deploy-zh_CN.md)
 
 ### Elkeid HUB 单独部署
-[Elkeid HUB 单独部署](./deploy_hub.md)
+[Elkeid HUB 单独部署](./deploy_hub-zh_CN.md)
 
 ## Raw Data Usage Tutorial
 - [Elkeid 数据说明](../server/docs/ElkeidData.xlsx)
