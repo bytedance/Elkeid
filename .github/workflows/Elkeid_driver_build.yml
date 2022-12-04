@@ -4,7 +4,7 @@ on:
     branches:
     - archive_driver_1.7.0.8
   schedule:
-  - cron : 0 3  * 6
+  - cron : 0 3 * * 6
 jobs:
   build_aliyun_linux2_x86_64:
     runs-on: ubuntu-latest
