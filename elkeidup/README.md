@@ -19,6 +19,8 @@ Automated deployment of Elkeid tools
 * Don't remove `~/.elkeidup` dir
 * Don't fix any components used user's password, Include the Console(Elkeid Manager)
 
+> > Note: Due to the large difference between v1.9.1 and v1.7, direct smooth upgrade from v1.7 to v1.9.1 is not supported. Versions after v1.9.1 will support smooth upgrades.
+
 ## Awareness of Auto-download missing kernel driver service
 
 In this open-source version, we have integrated a service to provide auto-download capabilities for kernel driver files of those kernel versions that are missing from pre-compiled lists.
