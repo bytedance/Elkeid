@@ -139,19 +139,24 @@ go-probe: ## build golang probe
 
 
 go-probe-ebpf: ## build golang ebpf probe
+	mkdir -p golang-ebpf/output golang-ebpf/build
 ifeq ($(STATIC), TRUE)
 	curl -fsSL https://zlib.net/zlib-1.2.13.tar.gz | tar -xz -C /tmp && cd /tmp/zlib-1.2.13 && CFLAGS="-fPIC" ./configure --static --prefix=/tmp/output && make -j$$(nproc) && make install && rm -rf /tmp/zlib-1.2.13
 	curl -fsSL https://github.com/arachsys/libelf/archive/refs/tags/v0.188.tar.gz | tar -xz -C /tmp && cd /tmp/libelf-0.188 && sed -e 's|^CFLAGS = |CFLAGS = -fPIC -I/tmp/output/include -L/tmp/output/lib |g' -i Makefile && make PREFIX=/tmp/output install-static -j$$(nproc) && rm -rf /tmp/libelf-0.188
 	echo -e 'prefix=/tmp/output\nexec_prefix=$${prefix}\nlibdir=$${exec_prefix}/lib\nincludedir=$${prefix}/include\n\nName: libelf\nDescription: elfutils libelf library to read and write ELF files\nVersion: 0.188\nURL: http://elfutils.org/\n\nLibs: -L$${libdir} -lelf\nCflags: -I$${includedir}\n\nRequires.private: zlib' > /tmp/output/lib/pkgconfig/libelf.pc
+	cd golang-ebpf && make -C ebpf clean && PKG_CONFIG_PATH=/tmp/output/lib/pkgconfig make -C ebpf V=1 HOSTCC=$(CC) EXTRA_LDFLAGS="-static-pie" EXTRA_CFLAGS="-fPIC -L/tmp/output/lib -I/tmp/output/include -D__always_inline=__inline__" BPF_CFLAGS="-D__x86_64__" -j$$(nproc)
+	cd golang-ebpf && PKG_CONFIG_PATH="/tmp/output/lib/pkgconfig:$$(pwd)/ebpf/.output/libbpf/lib64/pkgconfig" cmake -B build -DDISABLE_SSL=ON -DSTATIC_BUILD=ON -DZLIB_ROOT=/tmp/output -DCMAKE_CXX_FLAGS="" && cmake --build build -j$$(nproc) && cp bin/go_probe_ebpf output/go_probe_ebpf
 	cd golang-ebpf && make -C ebpf clean && PKG_CONFIG_PATH=/tmp/output/lib/pkgconfig make -C ebpf V=1 HOSTCC=$(CC) EXTRA_LDFLAGS="-static-pie" EXTRA_CFLAGS="-fPIC -L/tmp/output/lib -I/tmp/output/include -D__always_inline=__inline__" BPF_CFLAGS="-D__x86_64__ -DENABLE_HTTP -DDISABLE_HTTP_HEADER" -j$$(nproc)
-	cd golang-ebpf && mkdir -p build output && PKG_CONFIG_PATH="/tmp/output/lib/pkgconfig:$$(pwd)/ebpf/.output/libbpf/lib64/pkgconfig" cmake -B build -DDISABLE_SSL=ON -DSTATIC_BUILD=ON -DZLIB_ROOT=/tmp/output -DCMAKE_CXX_FLAGS="-DENABLE_HTTP -DDISABLE_HTTP_HEADER" && cmake --build build -j$$(nproc) && cp bin/go_probe_ebpf output/go_probe_ebpf
+	cd golang-ebpf && PKG_CONFIG_PATH="/tmp/output/lib/pkgconfig:$$(pwd)/ebpf/.output/libbpf/lib64/pkgconfig" cmake -B build -DDISABLE_SSL=ON -DSTATIC_BUILD=ON -DZLIB_ROOT=/tmp/output -DCMAKE_CXX_FLAGS="-DENABLE_HTTP -DDISABLE_HTTP_HEADER" && cmake --build build -j$$(nproc) && cp bin/go_probe_ebpf output/go_probe_ebpf_4.16
 	cd golang-ebpf && make -C ebpf clean && PKG_CONFIG_PATH=/tmp/output/lib/pkgconfig make -C ebpf V=1 HOSTCC=$(CC) EXTRA_LDFLAGS="-static-pie" EXTRA_CFLAGS="-fPIC -L/tmp/output/lib -I/tmp/output/include -D__always_inline=__inline__" BPF_CFLAGS="-D__x86_64__ -DENABLE_HTTP" -j$$(nproc)
 	cd golang-ebpf && PKG_CONFIG_PATH="/tmp/output/lib/pkgconfig:$$(pwd)/ebpf/.output/libbpf/lib64/pkgconfig" cmake -B build -DDISABLE_SSL=ON -DSTATIC_BUILD=ON -DZLIB_ROOT=/tmp/output -DCMAKE_CXX_FLAGS="-DENABLE_HTTP" && cmake --build build -j$$(nproc) && cp bin/go_probe_ebpf output/go_probe_ebpf_5.2
 	cd golang-ebpf && make -C ebpf clean && PKG_CONFIG_PATH=/tmp/output/lib/pkgconfig make -C ebpf V=1 HOSTCC=$(CC) EXTRA_LDFLAGS="-static-pie" EXTRA_CFLAGS="-fPIC -L/tmp/output/lib -I/tmp/output/include -D__always_inline=__inline__" BPF_CFLAGS="-D__x86_64__ -DENABLE_HTTP -DUSE_RING_BUFFER" -j$$(nproc)
 	cd golang-ebpf && PKG_CONFIG_PATH="/tmp/output/lib/pkgconfig:$$(pwd)/ebpf/.output/libbpf/lib64/pkgconfig" cmake -B build -DDISABLE_SSL=ON -DSTATIC_BUILD=ON -DZLIB_ROOT=/tmp/output -DCMAKE_CXX_FLAGS="-DENABLE_HTTP -DUSE_RING_BUFFER" && cmake --build build -j$$(nproc) && cp bin/go_probe_ebpf output/go_probe_ebpf_5.8
 else
+	cd golang-ebpf && make -C ebpf clean && make -C ebpf V=1 HOSTCC=$(CC) BPF_CFLAGS="-D__x86_64__" -j$$(nproc)
+	cd golang-ebpf && PKG_CONFIG_PATH=$$(pwd)/ebpf/.output/libbpf/lib64/pkgconfig cmake -B build -DDISABLE_SSL=ON -DCMAKE_CXX_FLAGS="" && cmake --build build -j$$(nproc) && cp bin/go_probe_ebpf output/go_probe_ebpf
 	cd golang-ebpf && make -C ebpf clean && make -C ebpf V=1 HOSTCC=$(CC) BPF_CFLAGS="-D__x86_64__ -DENABLE_HTTP -DDISABLE_HTTP_HEADER" -j$$(nproc)
-	cd golang-ebpf && mkdir -p build output && PKG_CONFIG_PATH=$$(pwd)/ebpf/.output/libbpf/lib64/pkgconfig cmake -B build -DDISABLE_SSL=ON -DCMAKE_CXX_FLAGS="-DENABLE_HTTP -DDISABLE_HTTP_HEADER" && cmake --build build -j$$(nproc) && cp bin/go_probe_ebpf output/go_probe_ebpf
+	cd golang-ebpf && PKG_CONFIG_PATH=$$(pwd)/ebpf/.output/libbpf/lib64/pkgconfig cmake -B build -DDISABLE_SSL=ON -DCMAKE_CXX_FLAGS="-DENABLE_HTTP -DDISABLE_HTTP_HEADER" && cmake --build build -j$$(nproc) && cp bin/go_probe_ebpf output/go_probe_ebpf_4.16
 	cd golang-ebpf && make -C ebpf clean && make -C ebpf V=1 HOSTCC=$(CC) BPF_CFLAGS="-D__x86_64__ -DENABLE_HTTP" -j$$(nproc)
 	cd golang-ebpf && PKG_CONFIG_PATH=$$(pwd)/ebpf/.output/libbpf/lib64/pkgconfig cmake -B build -DDISABLE_SSL=ON -DCMAKE_CXX_FLAGS="-DENABLE_HTTP" && cmake --build build -j$$(nproc) && cp bin/go_probe_ebpf output/go_probe_ebpf_5.2
 	cd golang-ebpf && make -C ebpf clean && make -C ebpf V=1 HOSTCC=$(CC) BPF_CFLAGS="-D__x86_64__ -DENABLE_HTTP -DUSE_RING_BUFFER" -j$$(nproc)
