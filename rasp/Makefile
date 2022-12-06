@@ -219,6 +219,7 @@ build: update_version agent_plugin nsenter mounts process_injector java python g
 	$(call split_debug, output/lib/golang/go_loader)
 	$(call split_debug, output/lib/golang/go_probe)
 	$(call split_debug, output/lib/golang/go_probe_ebpf)
+	$(call split_debug, output/lib/golang/go_probe_ebpf_4.16)
 	$(call split_debug, output/lib/golang/go_probe_ebpf_5.2)
 	$(call split_debug, output/lib/golang/go_probe_ebpf_5.8)
 	$(call split_debug, output/lib/python/python_loader)
