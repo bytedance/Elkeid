@@ -25,9 +25,9 @@ jobs:
 
     - name: Build Server
       run: |
-        cd server/agent_center && ./build.sh
-        cd server/service_discovery && ./build.sh
-        cd server/manager && ./build.sh
+        cd server/agent_center && ./build.sh && cd -
+        cd server/service_discovery && ./build.sh && cd -
+        cd server/manager && ./build.sh && cd -
 
     - name: Build RASP
       run: |
