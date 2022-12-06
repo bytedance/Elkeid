@@ -22,3 +22,9 @@
 [submodule "rasp/python/python-probe/rasp/probe/tiny-regex-c"]
 	path = rasp/python/python-probe/rasp/probe/tiny-regex-c
 	url = https://github.com/Hackerl/tiny-regex-c
+[submodule "rasp/golang-ebpf/ebpf/libbpf"]
+	path = rasp/golang-ebpf/ebpf/libbpf
+	url = https://github.com/libbpf/libbpf
+[submodule "rasp/golang-ebpf/ebpf/bpftool"]
+	path = rasp/golang-ebpf/ebpf/bpftool
+	url = https://github.com/libbpf/bpftool
