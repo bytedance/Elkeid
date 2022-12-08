@@ -179,6 +179,13 @@ public:
 
     template<size_t ...Index>
     static void entry(std::index_sequence<Index...>, INTERNAL_FUNCTION_PARAMETERS) {
+        if constexpr (!CanBlock) {
+            if (!gAPIConfig->surplus(ClassID, MethodID)) {
+                origin(INTERNAL_FUNCTION_PARAM_PASSTHRU);
+                return;
+            }
+        }
+
         zval *args[sizeof...(Index)] = {};
         int argc = std::min(Required + Optional, (int)ZEND_NUM_ARGS());
 
@@ -253,33 +260,25 @@ public:
             }
         }
 
-        if constexpr (!Ret) {
-            if (!gAPIConfig->surplus(ClassID, MethodID)) {
-                origin(INTERNAL_FUNCTION_PARAM_PASSTHRU);
-                return;
-            }
-
-            gAPITrace->enqueue(trace);
-            origin(INTERNAL_FUNCTION_PARAM_PASSTHRU);
-
-            return;
-        }
-
         origin(INTERNAL_FUNCTION_PARAM_PASSTHRU);
 
-        strncpy(
-                trace.ret,
-                toString(
-                        return_value
-#if PHP_MAJOR_VERSION <= 5
-                        TSRMLS_CC
-#endif
-                ).c_str(),
-                SMITH_ARG_LENGTH - 1
-        );
+        if constexpr (CanBlock) {
+            if (!gAPIConfig->surplus(ClassID, MethodID))
+                return;
+        }
 
-        if (!gAPIConfig->surplus(ClassID, MethodID))
-            return;
+        if constexpr (Ret) {
+            strncpy(
+                    trace.ret,
+                    toString(
+                            return_value
+#if PHP_MAJOR_VERSION <= 5
+                            TSRMLS_CC
+#endif
+                    ).c_str(),
+                    SMITH_ARG_LENGTH - 1
+            );
+        }
 
         gAPITrace->enqueue(trace);
     }
@@ -305,6 +304,9 @@ public:
             TSRMLS_DC
 #endif
     ) {
+        if (!gAPIConfig->surplus(ClassID, MethodID))
+            return ZEND_USER_OPCODE_DISPATCH;
+
 #if PHP_VERSION_ID >= 80000
         zval *op1 = zend_get_zval_ptr(execute_data->opline, execute_data->opline->op1_type, &execute_data->opline->op1, execute_data);
         zval *op2 = zend_get_zval_ptr(execute_data->opline, execute_data->opline->op2_type, &execute_data->opline->op2, execute_data);
@@ -424,9 +426,6 @@ public:
         }
 
         trace.request = PHP_PROBE_G(request);
-
-        if (!gAPIConfig->surplus(ClassID, MethodID))
-            return ZEND_USER_OPCODE_DISPATCH;
 
         gAPITrace->enqueue(trace);
 
