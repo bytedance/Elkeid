@@ -9,6 +9,7 @@ import (
 	"github.com/bytedance/Elkeid/server/agent_center/httptrans/midware"
 	"github.com/levigross/grequests"
 	"math/rand"
+	"net"
 	"time"
 )
 
@@ -110,7 +111,28 @@ func (s *ServerRegistry) SetWeight(w int) {
 }
 
 func (s *ServerRegistry) randomAddr() string {
-	return s.AddrList[rand.Intn(len(s.AddrList))]
+	tmpList := make([]string, len(s.AddrList))
+
+	//return random reachable one
+	copy(tmpList, s.AddrList)
+	for len(tmpList) != 0 {
+		i := rand.Int() % len(tmpList)
+		url := tmpList[i]
+		conn, err := net.DialTimeout("tcp", url, 3*time.Second)
+		if err != nil {
+			tmpList = append(tmpList[:i], tmpList[i+1:]...)
+			continue
+		}
+		_ = conn.Close()
+		return url
+	}
+
+	// if not reachable one then return first one
+	if len(s.AddrList) >= 1 {
+		return s.AddrList[0]
+	}
+
+	return ""
 }
 
 func (s *ServerRegistry) print() string {

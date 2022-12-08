@@ -41,6 +41,25 @@ func init() {
 }
 
 func GetRandomManageAddr() string {
-	return ManageAddrs[rand.Intn(len(ManageAddrs))]
+	tmpList := make([]string, len(ManageAddrs))
 
+	//return random reachable one
+	copy(tmpList, ManageAddrs)
+	for len(tmpList) != 0 {
+		i := rand.Int() % len(tmpList)
+		url := tmpList[i]
+		conn, err := net.DialTimeout("tcp", url, 3*time.Second)
+		if err != nil {
+			tmpList = append(tmpList[:i], tmpList[i+1:]...)
+			continue
+		}
+		_ = conn.Close()
+		return url
+	}
+
+	// if not reachable one then return first one
+	if len(ManageAddrs) >= 1 {
+		return ManageAddrs[0]
+	}
+	return ""
 }
