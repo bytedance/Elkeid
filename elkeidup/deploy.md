@@ -150,3 +150,19 @@ The format of the ko/sign file should follow: `hids_driver_1.7.0.4_{uname -r}_{a
 
 ## 4、HTTPS配置
 [Elkeid https Configuration documentation](./https_config/https.md)
+
+
+## 5、Upgrade specified components
+If a component has been updated, or if a component has been recompiled, you can reinstall the specified component using the elkeidup reinstall command.
+For example, the Hub Community Edition has been updated in release: v 1.9.1.1, and you can reinstall it with the following command.
+
+```bash
+# {v1.9.1.1} is the unzipped package directory for v1.9.1.1
+# reinstall hub
+cp {v1.9.1.1}/package/hub/hub.tar.gz /root/.elkeidup/package/hub/hub.tar.gz
+cp {v1.9.1.1}/package/hub_leader/hub_leader.tar.gz /root/.elkeidup/package/hub_leader/hub_leader.tar.gz
+
+/root/.elkeidup/elkeidup reinstall --component Hub
+/root/.elkeidup/elkeidup reinstall --component HubLeader
+
+```

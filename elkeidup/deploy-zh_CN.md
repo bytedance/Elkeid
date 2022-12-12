@@ -158,3 +158,18 @@ ko/sign文件的格式应该遵循：`hids_driver_1.7.0.4_{uname -r}_{arch}.ko/s
 
 ## 4、HTTPS配置
 请参考[Elkeid https配置文档](./https_config/https-zh_CN.md)
+
+## 5、重装指定组件
+如果部分组件有更新，或者重新编译了部分组件，可以使用elkeidup reinstall命令重新安装指定组件。
+例如 release:v1.9.1.1 中更新了Hub社区版，可以使用以下命令进行重新安装。
+
+```bash
+# {v1.9.1.1} 为 v1.9.1.1 解压后的package目录
+# reinstall hub
+cp {v1.9.1.1}/package/hub/hub.tar.gz /root/.elkeidup/package/hub/hub.tar.gz
+cp {v1.9.1.1}/package/hub_leader/hub_leader.tar.gz /root/.elkeidup/package/hub_leader/hub_leader.tar.gz
+
+/root/.elkeidup/elkeidup reinstall --component Hub
+/root/.elkeidup/elkeidup reinstall --component HubLeader
+
+```
