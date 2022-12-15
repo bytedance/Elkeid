@@ -2,8 +2,8 @@ import yaml
 import os
 from collections import OrderedDict
 
-all_dockers_x86_64  = os.listdir("/home/zhangjiacheng.111/hids_os/Elkeid/driver/dockerfiles.x86_64")
-all_dockers_aarch64 = os.listdir("/home/zhangjiacheng.111/hids_os/Elkeid/driver/dockerfiles.aarch64")
+all_dockers_x86_64 = os.listdir("driver/dockerfiles.x86_64")
+all_dockers_aarch64 = os.listdir("driver/dockerfiles.aarch64")
 
 black_list = []
 white_list = []
@@ -12,8 +12,9 @@ all_vms = []
 
 jobs = []
 
+
 def gen_job(vminfo):
-    vmname,aarch = vminfo[:]
+    vmname, aarch = vminfo[:]
     runs_on = "ubuntu-latest"
     dockerpath = "driver/dockerfiles."+aarch
     if aarch.endswith("aarch64"):
@@ -52,15 +53,15 @@ def gen_job(vminfo):
                     "name": "Build "+vmname,
                     "uses": "docker/build-push-action@v3",
                     "with": {
-                        "context":".",
+                        "context": ".",
                         "file": dockerpath + "/Dockerfile."+vmname,
                         "push": False if aarch.endswith("aarch64") else True,
                         "tags": "elkeidteam/elkeid_driver_"+vmname+"_"+aarch+":latest",
                         "load": True if aarch.endswith("aarch64") else False,
                     }
-                }) ,
+                }),
 
-                
+
                 OrderedDict({
                     "name": "Docker Hub Description Skipped "+vmname,
                     "run": "echo Docker Hub Description Skipped",
@@ -73,7 +74,7 @@ def gen_job(vminfo):
                         "repository": "elkeidteam/elkeid_driver_"+vmname+"_"+aarch,
                         "short-description": "${{github.event.repository.description}}",
                     }
-                }) ,
+                }),
 
                 OrderedDict({
                     "name": "Extract "+vmname,
@@ -98,11 +99,12 @@ def gen_job(vminfo):
     )
     return some_data
 
+
 for each_dockers in all_dockers_x86_64:
-    all_vms.append((each_dockers.replace("Dockerfile.", ""),"x86_64"))
-                   
+    all_vms.append((each_dockers.replace("Dockerfile.", ""), "x86_64"))
+
 for each_dockers in all_dockers_aarch64:
-    all_vms.append((each_dockers.replace("Dockerfile.", ""),"aarch64"))
+    all_vms.append((each_dockers.replace("Dockerfile.", ""), "aarch64"))
 
 yaml_cfg_build = OrderedDict(
     {
@@ -271,4 +273,3 @@ with open(".github/workflows/Elkeid_driver_release.yml", "w") as f:
     config_data = yaml.dump(yaml_cfg_release, default_flow_style=False)
     config_data = config_data.replace("'", "")
     f.write(config_data)
-
