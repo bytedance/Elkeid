@@ -67,3 +67,14 @@ void from_json(const nlohmann::json &j, FilterConfig &config) {
     j.at("uuid").get_to(config.uuid);
     j.at("filters").get_to(config.filters);
 }
+
+void from_json(const nlohmann::json &j, Limit &limit) {
+    j.at("class_id").get_to(limit.classID);
+    j.at("method_id").get_to(limit.methodID);
+    j.at("quota").get_to(limit.quota);
+}
+
+void from_json(const nlohmann::json &j, LimitConfig &config) {
+    j.at("uuid").get_to(config.uuid);
+    j.at("limits").get_to(config.limits);
+}

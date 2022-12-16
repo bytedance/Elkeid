@@ -66,6 +66,17 @@ struct FilterConfig {
     std::list<Filter> filters;
 };
 
+struct Limit {
+    int classID;
+    int methodID;
+    int quota;
+};
+
+struct LimitConfig {
+    std::string uuid;
+    std::list<Limit> limits;
+};
+
 void to_json(nlohmann::json &j, const SmithMessage &message);
 void from_json(const nlohmann::json &j, SmithMessage &message);
 
@@ -76,5 +87,7 @@ void to_json(nlohmann::json &j, const Trace &trace);
 void from_json(const nlohmann::json &j, MatchRule &matchRule);
 void from_json(const nlohmann::json &j, Filter &filter);
 void from_json(const nlohmann::json &j, FilterConfig &config);
+void from_json(const nlohmann::json &j, Limit &limit);
+void from_json(const nlohmann::json &j, LimitConfig &config);
 
 #endif //GO_PROBE_EBPF_SMITH_MESSAGE_H
