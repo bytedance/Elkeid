@@ -48,12 +48,12 @@ type Connection struct {
 	CreateAt   int64  `json:"create_at"`
 
 	agentDetailLock  sync.RWMutex
-	agentDetail      map[string]interface{} `json:"agent_detail"`
+	agentDetail      map[string]interface{}
 	pluginDetailLock sync.RWMutex
-	pluginDetail     map[string]map[string]interface{} `json:"plugin_detail"`
+	pluginDetail     map[string]map[string]interface{}
 
-	connUpdateStatLock sync.Mutex `json:"-"`
-	connStatNeedSync   bool       `json:"-"` //是否需要把状态更新至manager端
+	connUpdateStatLock sync.Mutex
+	connStatNeedSync   bool //是否需要把状态更新至manager端
 }
 
 // Init 初始化同步状态
@@ -72,11 +72,31 @@ func (c *Connection) GetAgentDetail() map[string]interface{} {
 }
 
 func (c *Connection) SetAgentDetail(detail map[string]interface{}) {
+	updated := false
 	c.agentDetailLock.Lock()
+	defer func() {
+		detail["agent_connection"] = c.SourceAddr
+		c.agentDetail = detail
+		c.agentDetailLock.Unlock()
+
+		if updated {
+			c.updateConnStat()
+		}
+	}()
+
 	if c.agentDetail == nil {
 		//新增agent
-		c.updateConnStat()
+		updated = true
 	} else {
+		//check Agent状态是否有变化
+		st, okST := c.agentDetail["state"].(string)
+		std, okSTD := c.agentDetail["state_detail"].(string)
+		s1, ok1 := detail["state"].(string)
+		s2, ok2 := detail["state_detail"].(string)
+		if ok1 != okST || st != s1 || ok2 != okSTD || s2 != std {
+			updated = true
+		}
+
 		//异步检测是否有插件离线
 		time.AfterFunc(time.Second*10, func() {
 			c.pluginDetailLock.Lock()
@@ -91,9 +111,6 @@ func (c *Connection) SetAgentDetail(detail map[string]interface{}) {
 			}
 		})
 	}
-	detail["agent_connection"] = c.SourceAddr
-	c.agentDetail = detail
-	c.agentDetailLock.Unlock()
 }
 
 func (c *Connection) GetPluginDetail(name string) map[string]interface{} {
@@ -391,7 +408,7 @@ func (g *GRPCPool) refreshExtraInfo(interval time.Duration) {
 	for {
 		connMap := g.connPool.Items()
 		agentIDList := make([]string, 0)
-		for k, _ := range connMap {
+		for k := range connMap {
 			agentIDList = append(agentIDList, k)
 		}
 
