@@ -18,7 +18,7 @@ typedef struct {
 #ifndef DISABLE_HTTP_HEADER
     char headers[HEADER_COUNT][2][SHORT_ARG_LENGTH];
 #endif
-} go_probe_request;
+} probe_request;
 
 typedef struct {
     pid_t pid;
@@ -28,8 +28,8 @@ typedef struct {
     char args[ARG_COUNT][ARG_LENGTH];
     uintptr_t stack_trace[TRACE_COUNT];
 #ifdef ENABLE_HTTP
-    go_probe_request request;
+    probe_request request;
 #endif
-} go_probe_event;
+} probe_event;
 
 #endif //GO_PROBE_EBPF_EVENT_H

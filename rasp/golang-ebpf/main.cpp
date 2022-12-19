@@ -1,10 +1,12 @@
 #include "api/api.h"
 #include "client/smith_client.h"
 #include "ebpf/src/event.h"
+#include "ebpf/src/config.h"
 #include "ebpf/probe.skel.h"
 #include <Zydis/Zydis.h>
 #include <zero/log.h>
 #include <zero/os/process.h>
+#include <zero/cache/lru.h>
 #include <aio/ev/timer.h>
 #include <aio/ev/buffer.h>
 #include <go/symbol/reader.h>
@@ -13,9 +15,8 @@
 
 constexpr auto MAX_OFFSET = 100;
 constexpr auto INSTRUCTION_BUFFER_SIZE = 128;
-
-constexpr auto REGISTER_BASED = 0x1;
-constexpr auto FRAME_POINTER = 0x2;
+constexpr auto FRAME_CACHE_SIZE = 128;
+constexpr auto DEFAULT_QUOTAS = 12000;
 
 constexpr auto TRACK_HTTP_VERSION = go::symbol::Version{1, 12};
 constexpr auto REGISTER_BASED_VERSION = go::symbol::Version{1, 17};
@@ -25,7 +26,11 @@ struct Instance {
     std::string version;
     go::symbol::SymbolTable symbolTable;
     std::list<std::unique_ptr<bpf_link, decltype(bpf_link__destroy) *>> links;
+    zero::cache::LRUCache<uintptr_t, std::string> cache;
+    probe_config config;
     std::map<std::tuple<int, int>, Filter> filters;
+    std::map<std::tuple<int, int>, int> limits;
+    int quotas[CLASS_MAX][METHOD_MAX];
 };
 
 int onLog(libbpf_print_level level, const char *format, va_list args) {
@@ -82,13 +87,29 @@ bool filter(const Trace &trace, const std::map<std::tuple<int, int>, Filter> &fi
     return true;
 }
 
-void onEvent(go_probe_event *event, void *ctx) {
-    auto &[instances, channel] = *(std::pair<std::map<pid_t, Instance> &, std::shared_ptr<aio::sync::IChannel<SmithMessage>>> *) ctx;
+void onEvent(probe_event *event, void *ctx) {
+    auto &[skeleton, instances, channel] = *(std::tuple<probe_bpf *, std::map<pid_t, Instance> &, std::shared_ptr<aio::sync::IChannel<SmithMessage>>> *) ctx;
 
     auto it = instances.find(event->pid);
 
     if (it == instances.end())
         return;
+
+    auto &quota = it->second.quotas[event->class_id][event->method_id];
+
+    if (quota <= 0)
+        return;
+
+    if (!--quota) {
+        LOG_INFO("disable probe: %d %d %d", it->first, event->class_id, event->method_id);
+
+        it->second.config.stop[event->class_id][event->method_id] = true;
+
+        if (bpf_map__update_elem(skeleton->maps.config_map, &it->first, sizeof(pid_t), &it->second.config, sizeof(probe_config), BPF_ANY) < 0) {
+            LOG_ERROR("update process %d config failed", it->first);
+            return;
+        }
+    }
 
     Trace trace = {
             event->class_id,
@@ -101,6 +122,13 @@ void onEvent(go_probe_event *event, void *ctx) {
     for (const auto &pc : event->stack_trace) {
         if (!pc)
             break;
+
+        std::optional<std::string> cache = it->second.cache.get(pc);
+
+        if (cache) {
+            trace.stackTrace.emplace_back(*cache);
+            continue;
+        }
 
         auto symbolIterator = it->second.symbolTable.find(pc);
 
@@ -120,6 +148,7 @@ void onEvent(go_probe_event *event, void *ctx) {
                 pc - symbol.entry()
         );
 
+        it->second.cache.set(pc, frame);
         trace.stackTrace.emplace_back(frame);
     }
 
@@ -142,7 +171,7 @@ void onEvent(go_probe_event *event, void *ctx) {
 #endif
 #endif
 
-    channel->sendNoWait({event->pid, it->second.version, TRACE, trace});
+    channel->sendNoWait({it->first, it->second.version, TRACE, trace});
 }
 
 std::optional<int> getAPIOffset(const elf::Reader &reader, uint64_t address) {
@@ -212,18 +241,22 @@ std::shared_ptr<aio::sync::IChannel<pid_t>> inputChannel(const aio::Context &con
 std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
     std::error_code ec;
 
-    std::filesystem::path path = std::filesystem::path("/proc") / std::to_string(pid) / "exe";
-    std::filesystem::path realPath = std::filesystem::read_symlink(path, ec);
+    std::filesystem::path realPath = std::filesystem::read_symlink(
+            std::filesystem::path("/proc") / std::to_string(pid) / "exe",
+            ec
+    );
 
     if (ec) {
         LOG_ERROR("read symbol link failed, %s", ec.message().c_str());
         return std::nullopt;
     }
 
+    std::filesystem::path path = std::filesystem::path("/proc") / std::to_string(pid) / "root" / realPath.relative_path();
+
     go::symbol::Reader reader;
 
     if (!reader.load(path)) {
-        LOG_ERROR("load golang binary failed");
+        LOG_ERROR("load golang binary failed: %s", path.string().c_str());
         return std::nullopt;
     }
 
@@ -245,7 +278,7 @@ std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
 
     std::optional<zero::os::process::ProcessMapping> processMapping = zero::os::process::getImageBase(
             pid,
-            std::filesystem::read_symlink(path).string()
+            realPath.string()
     );
 
     if (!processMapping) {
@@ -262,10 +295,13 @@ std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
         return std::nullopt;
     }
 
-    __u64 config = (abi ? REGISTER_BASED : 0) | (fp ? FRAME_POINTER : 0);
+    probe_config config = {
+            abi,
+            fp
+    };
 
-    if (bpf_map__update_elem(skeleton->maps.config_map, &pid, sizeof(pid_t), &config, sizeof(__u64), BPF_ANY) < 0) {
-        LOG_ERROR("update config failed");
+    if (bpf_map__update_elem(skeleton->maps.config_map, &pid, sizeof(pid_t), &config, sizeof(probe_config), BPF_ANY) < 0) {
+        LOG_ERROR("update process %d config failed", pid);
         return std::nullopt;
     }
 
@@ -334,7 +370,9 @@ std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
     return Instance{
             version ? zero::strings::format("%d.%d", version->major, version->minor) : "",
             std::move(*symbolTable),
-            std::move(links)
+            std::move(links),
+            zero::cache::LRUCache<uintptr_t, std::string>(FRAME_CACHE_SIZE),
+            config
     };
 }
 
@@ -350,6 +388,8 @@ int main() {
         LOG_ERROR("failed to open BPF skeleton");
         return -1;
     }
+
+    signal(SIGPIPE, SIG_IGN);
 
     event_base *base = event_base_new();
 
@@ -376,7 +416,9 @@ int main() {
                 return;
             }
 
+            std::fill_n(instance->quotas[0], sizeof(instance->quotas) / sizeof(**instance->quotas), DEFAULT_QUOTAS);
             instances.insert({pid, std::move(*instance)});
+
             P_CONTINUE(loop);
         }, [=](const zero::async::promise::Reason &reason) {
             LOG_ERROR("receive failed: %s", reason.message.c_str());
@@ -395,6 +437,22 @@ int main() {
                 continue;
             }
 
+            for (int i = 0; i < CLASS_MAX; i++) {
+                for (int j = 0; j < METHOD_MAX; j++) {
+                    auto limitIterator = it->second.limits.find({i, j});
+
+                    if (limitIterator == it->second.limits.end()) {
+                        it->second.quotas[i][j] = DEFAULT_QUOTAS;
+                        continue;
+                    }
+
+                    it->second.quotas[i][j] = limitIterator->second;
+                }
+            }
+
+            std::fill_n(it->second.config.stop[0], sizeof(it->second.config.stop) / sizeof(**it->second.config.stop), false);
+            bpf_map__update_elem(skeleton->maps.config_map, &it->first, sizeof(pid_t), &it->second.config, sizeof(probe_config), BPF_ANY);
+
             it++;
         }
 
@@ -405,11 +463,6 @@ int main() {
 
     zero::async::promise::loop<void>([channels, &instances](const auto &loop) {
         channels[0]->receive()->then([loop, &instances](const SmithMessage &message) {
-            if (message.operate != FILTER) {
-                LOG_WARNING("unsupported protocol");
-                return;
-            }
-
             auto it = instances.find(message.pid);
 
             if (it == instances.end()) {
@@ -417,21 +470,51 @@ int main() {
                 return;
             }
 
-            try {
-                auto config = message.data.get<FilterConfig>();
+            switch (message.operate) {
+                case FILTER: {
+                    try {
+                        auto config = message.data.get<FilterConfig>();
 
-                it->second.filters.clear();
+                        it->second.filters.clear();
 
-                std::transform(
-                        config.filters.begin(),
-                        config.filters.end(),
-                        std::inserter(it->second.filters, it->second.filters.end()),
-                        [](const auto &filter) {
-                            return std::pair{std::tuple{filter.classID, filter.methodID}, filter};
-                        }
-                );
-            } catch (const nlohmann::json::exception &e) {
-                LOG_ERROR("exception: %s", e.what());
+                        std::transform(
+                                config.filters.begin(),
+                                config.filters.end(),
+                                std::inserter(it->second.filters, it->second.filters.end()),
+                                [](const auto &filter) {
+                                    return std::pair{std::tuple{filter.classID, filter.methodID}, filter};
+                                }
+                        );
+                    } catch (const nlohmann::json::exception &e) {
+                        LOG_ERROR("exception: %s", e.what());
+                    }
+
+                    break;
+                }
+
+                case LIMIT: {
+                    try {
+                        auto config = message.data.get<LimitConfig>();
+
+                        it->second.limits.clear();
+
+                        std::transform(
+                                config.limits.begin(),
+                                config.limits.end(),
+                                std::inserter(it->second.limits, it->second.limits.end()),
+                                [](const auto &limit) {
+                                    return std::pair{std::tuple{limit.classID, limit.methodID}, limit.quota};
+                                }
+                        );
+                    } catch (const nlohmann::json::exception &e) {
+                        LOG_ERROR("exception: %s", e.what());
+                    }
+
+                    break;
+                }
+
+                default:
+                    break;
             }
 
             P_CONTINUE(loop);
@@ -441,7 +524,8 @@ int main() {
         });
     });
 
-    std::pair<std::map<pid_t, Instance> &, std::shared_ptr<aio::sync::IChannel<SmithMessage>>> ctx = {
+    std::tuple<probe_bpf *, std::map<pid_t, Instance> &, std::shared_ptr<aio::sync::IChannel<SmithMessage>>> ctx = {
+            skeleton,
             instances,
             channels[1]
     };
@@ -450,7 +534,7 @@ int main() {
     ring_buffer *rb = ring_buffer__new(
             bpf_map__fd(skeleton->maps.events),
             [](void *ctx, void *data, size_t size) {
-                onEvent((go_probe_event *) data, ctx);
+                onEvent((probe_event *) data, ctx);
                 return 0;
             },
             &ctx,
@@ -464,16 +548,20 @@ int main() {
         return -1;
     }
 
-    std::make_shared<aio::ev::Event>(context, ring_buffer__epoll_fd(rb))->onPersist(EV_READ, [=](short what) {
-        ring_buffer__poll(rb, 0);
-        return true;
-    });
+    std::make_shared<aio::ev::Event>(context, bpf_map__fd(skeleton->maps.events))->onPersist(
+            EV_READ,
+            [=](short what) {
+                ring_buffer__consume(rb);
+                return true;
+            },
+            std::chrono::seconds{1}
+    );
 #else
     perf_buffer *pb = perf_buffer__new(
             bpf_map__fd(skeleton->maps.events),
             64,
             [](void *ctx, int cpu, void *data, __u32 size) {
-                onEvent((go_probe_event *) data, ctx);
+                onEvent((probe_event *) data, ctx);
             },
             nullptr,
             &ctx,
@@ -488,10 +576,14 @@ int main() {
     }
 
     for (size_t i = 0; i < perf_buffer__buffer_cnt(pb); i++) {
-        std::make_shared<aio::ev::Event>(context, perf_buffer__buffer_fd(pb, i))->onPersist(EV_READ, [=](short what) {
-            perf_buffer__consume_buffer(pb, i);
-            return true;
-        });
+        std::make_shared<aio::ev::Event>(context, perf_buffer__buffer_fd(pb, i))->onPersist(
+                EV_READ,
+                [=](short what) {
+                    perf_buffer__consume_buffer(pb, i);
+                    return true;
+                },
+                std::chrono::seconds{1}
+        );
     }
 #endif
 
