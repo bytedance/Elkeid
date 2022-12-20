@@ -11,7 +11,7 @@ cgroup_cpu_limit = 10
 
 ### log
 log_level = "info"
-log_path = "."
+log_path = "./"
 remote_log_level = "error"
 max_backups = 10
 
