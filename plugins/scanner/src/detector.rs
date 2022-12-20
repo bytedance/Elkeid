@@ -1,22 +1,25 @@
 use crate::{
-    configs::{
+    config::{
         self, FULLSCAN_CPU_IDLE_100PCT, FULLSCAN_CPU_IDLE_INTERVAL, FULLSCAN_CPU_MAX_TIME_SECS,
         FULLSCAN_CPU_QUOTA_DEFAULT_MAX, FULLSCAN_CPU_QUOTA_DEFAULT_MIN, FULLSCAN_MAX_SCAN_CPU_100,
         FULLSCAN_MAX_SCAN_ENGINES, FULLSCAN_MAX_SCAN_MEM_MB, FULLSCAN_SCAN_MODE_FULL,
-        FULLSCAN_SCAN_MODE_QUICK,
+        FULLSCAN_SCAN_MODE_QUICK, SERVICE_DEFAULT_CG_CPU, SERVICE_DEFAULT_CG_MEM,
+        WAIT_INTERVAL_SCAN,
     },
     data_type::{
         self, AntiRansomEvent, DetectFileEvent, DetectOneTaskEvent, DetectProcEvent, FanotifyEvent,
         FullScanTask, RegReport, ScanFinished, ScanTaskUserTask, DETECT_TASK,
     },
     get_file_btime, get_file_md5, get_file_md5_fast, get_file_xhash,
-    model::engine::{
-        clamav::{self, get_hit_data, updater, Clamav},
-        ScanEngine,
-    },
-    model::functional::{
-        anti_ransom::HoneyPot,
-        fulldiskscan::{FullScan, FullScanResult},
+    model::{
+        engine::{
+            clamav::{self, get_hit_data, updater, Clamav},
+            ScanEngine,
+        },
+        functional::{
+            anti_ransom::HoneyPot,
+            fulldiskscan::{FullScan, FullScanResult},
+        },
     },
     ToAgentRecord,
 };
@@ -26,10 +29,10 @@ use coarsetime::Clock;
 use crossbeam_channel::{after, bounded, select};
 use log::*;
 use std::{collections::HashMap, path::Path, thread, time};
+use walkdir::WalkDir;
 
 use serde::{self, Deserialize, Serialize};
 use serde_json;
-use walkdir::WalkDir;
 
 pub struct Scanner {
     pub inner: Clamav,
@@ -97,12 +100,12 @@ impl Scanner {
                     name = res[2].to_string();
                 }
 
-                if ftype.starts_with("Php")
+                if (ftype.starts_with("Php")
                     && class.starts_with("Webshell")
-                    && !fpath.ends_with(".php")
-                    || ftype.starts_with("Jsp")
+                    && !fpath.ends_with(".php"))
+                    || (ftype.starts_with("Jsp")
                         && class.starts_with("Webshell")
-                        && !fpath.ends_with(".jsp")
+                        && !fpath.ends_with(".jsp"))
                 {
                     ftype = "not_detected".to_string();
                     class = "".to_string();
@@ -184,12 +187,12 @@ impl Scanner {
                     name = res[2].to_string();
                 }
 
-                if ftype.starts_with("Php")
+                if (ftype.starts_with("Php")
                     && class.starts_with("Webshell")
-                    && !fpath.ends_with(".php")
-                    || ftype.starts_with("Jsp")
+                    && !fpath.ends_with(".php"))
+                    || (ftype.starts_with("Jsp")
                         && class.starts_with("Webshell")
-                        && !fpath.ends_with(".jsp")
+                        && !fpath.ends_with(".jsp"))
                 {
                     ftype = "not_detected".to_string();
                     class = "".to_string();
@@ -259,7 +262,7 @@ impl Detector {
             _arf_t = match HoneyPot::new(s_arf_worker, s_arf_lock) {
                 Ok(mut hp) => {
                     info!("fanotify turn on.");
-                    hp.run_report();
+                    hp.run_cronjob();
                     Some(hp)
                 }
                 Err(e) => {
@@ -323,6 +326,7 @@ impl Detector {
 
                                 let target_p = Path::new(&target_path);
                                 if !target_p.exists() {
+                                    warn!("6053 target not exists:{}", &target_path);
                                     let end_flag = ScanFinished {
                                         data: "failed".to_string(),
                                         error: format!("6053 target not exists:{}", &target_path),
@@ -471,7 +475,11 @@ impl Detector {
                                     warn!("internal send task err : {:?}", e);
                                     continue;
                                 }
-                                crate::setup_cgroup(ppid, 1024 * 1024 * 180, 10000);
+                                crate::setup_cgroup(
+                                    ppid,
+                                    1024 * 1024 * (*SERVICE_DEFAULT_CG_MEM),
+                                    10 * (*SERVICE_DEFAULT_CG_CPU),
+                                );
                             }
                             6057 => {
                                 info!("[Full Disk Scan] Started !");
@@ -571,6 +579,26 @@ impl Detector {
         };
     }
 
+    pub fn refresh_scanner(&mut self) {
+        if let None = self.scanner {
+            if let Err(e) = self.db_manager.load() {
+                error!("archive db load err: {:?}", e);
+                self.s_locker.send(()).unwrap();
+                return;
+            }
+            match Scanner::new(&self.db_path) {
+                Ok(s) => {
+                    self.scanner = Some(s);
+                }
+                Err(e) => {
+                    warn!("db init err, should exit : {:?}", e);
+                    self.s_locker.send(()).unwrap();
+                    return;
+                }
+            };
+        }
+    }
+
     pub fn work(&mut self, timeout: time::Duration) {
         info!("start work");
         let work_s_locker = self.s_locker.clone();
@@ -632,32 +660,11 @@ impl Detector {
                 },
                 recv(self.task_receiver)->data=>{
                     // recv scan task
-                    match self.scanner{
-                        None => {
-                            if let Err(e) = self.db_manager.load(){
-                                error!("archive db load err: {:?}",e);
-                                work_s_locker.send(()).unwrap();
-                                return
-                            }
-                            match Scanner::new(&self.db_path){
-                                Ok(s) =>{
-                                    self.scanner = Some(
-                                        s
-                                    );
-                                },
-                                Err(e) =>{
-                                    warn!("db init err, should exit : {:?}",e);
-                                    work_s_locker.send(()).unwrap();
-                                    return
-                                }
-                            };
-                        },
-                        Some(_) =>{},
-                    }
                     debug!("recv work {:?}",data);
                     let task:DETECT_TASK = data.unwrap();
                     match task{
                         DETECT_TASK::TASK_6051_STATIC_FILE(task_data) =>{
+                            self.refresh_scanner();
                             debug!("recv work 6051");
                             if let Some(t) =  &mut self.scanner{
                                 debug!("scan {:?}",&task_data.scan_path);
@@ -701,6 +708,7 @@ impl Detector {
 
                         DETECT_TASK::TASK_6052_PROC_EXE(task_data) =>{
                             debug!("recv work 6052");
+                            self.refresh_scanner();
                             if let Some(t) =  &mut self.scanner{
                                 debug!("scan pid {} {:?}",&task_data.pid, &task_data.scan_path);
                                 if let Ok((ftype,fclass,fname,xhash,md5sum,matched_data)) = t.scan(&format!("/proc/{}/exe",task_data.pid)){
@@ -740,6 +748,7 @@ impl Detector {
 
                         DETECT_TASK::TASK_6053_USER_TASK(task_data) =>{
                             debug!("recv work 6053");
+                            self.refresh_scanner();
                             if let Some(finished) = &task_data.finished{
                                 if let Err(e) = self.client.send_record(
                                     &finished.to_record_token(&task_data.token),
@@ -827,10 +836,10 @@ impl Detector {
                         }, // one-time-task
                         DETECT_TASK::TASK_6054_ANTIVIRUS(task_data) =>{
                             debug!("recv work 6054");
+                            self.refresh_scanner();
                             if let Some(t) =  &mut self.scanner{
                                 debug!("scan {:?}",&task_data.pid_exe);
                                 if let Ok((ftype,fclass,fname,xhash,md5sum,matched_data)) = t.scan(&task_data.pid_exe){
-
                                     let mut event = AntiRansomEvent::new(
                                         task_data.pid,
                                         &ftype,
@@ -900,6 +909,7 @@ impl Detector {
                         }
 
                         DETECT_TASK::TASK_6057_FULLSCAN(fullscantask) =>{
+                            self.refresh_scanner();
                             if let Some(t) = &mut self.scanner{
                                 // fullscan job handler
                                 let (mut fullscan_job, mut worker_jobs) = FullScan(
@@ -944,7 +954,11 @@ impl Detector {
                                 {
                                     warn!("send err, should exit : {:?}", e);
                                 };
-                                crate::setup_cgroup(self.ppid, 1024 * 1024 * 180, 10000);
+                                crate::setup_cgroup(
+                                    self.ppid,
+                                    1024 * 1024 * (*SERVICE_DEFAULT_CG_MEM),
+                                    10 * (*SERVICE_DEFAULT_CG_CPU),
+                                );
 
                             }
                         }
@@ -954,11 +968,11 @@ impl Detector {
                         },
                     }
                     if !self.supper_mode{
-                        std::thread::sleep(configs::WAIT_INTERVAL_SCAN);
+                        std::thread::sleep(WAIT_INTERVAL_SCAN);
                     }
                 }
                 recv(after(timeout)) -> _ => {
-                    debug!("work timed out, clean buf");
+                    debug!("worker timed out, clean buf");
                     self.scanner = None;
                     continue
                 }

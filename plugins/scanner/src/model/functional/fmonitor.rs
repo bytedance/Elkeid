@@ -17,7 +17,7 @@ use procfs::sys::kernel::Version;
 use std::io::Error;
 use std::thread;
 
-use crate::configs::{FAMode, FanotifyTargetConfig};
+use crate::config::{FAMode, FanotifyTargetConfigs, CLAMAV_MAX_FILESIZE};
 use crate::data_type::{ScanTaskFanotify, DETECT_TASK};
 
 use crate::get_file_sha256;
@@ -53,12 +53,14 @@ pub const LOW_DIR_MATCH_MASK: u64 = FAN_CLOSE_WRITE | FAN_ONDIR | FAN_EVENT_ON_C
 
 // settings for kernel >= 5.1
 pub const H51_DIRS_MATCH_MASK: u64 = FAN_ONDIR | FAN_EVENT_ON_CHILD | FAN_CLOSE_WRITE;
+//FAN_ONDIR | FAN_EVENT_ON_CHILD | FAN_CLOSE_WRITE | FAN_DELETE | FAN_DELETE_SELF;
 
 const METADATA_MAX_LEN: usize = 1024;
 
 lazy_static! {
     // DEFAULT_CONFIG.0 fanotify_init code
     // DEFAULT_CONFIG.1 fanotify_mark DIR
+    pub static ref KERNEL_VERSION : Version = Version::current().unwrap();
     pub static ref FANOTIFY_DEFAULT_CONFIG: (bool, u32, u64) = {
         match Version::current() {
             Ok(t) => {
@@ -136,7 +138,7 @@ impl FileMonitor {
     ) -> Result<FileMonitor> {
         let pid = process::id();
 
-        let current_kernel_version = Version::current().unwrap();
+        let current_kernel_version = *KERNEL_VERSION;
         let anti_ransome = Arc::new(RwLock::new(HashMap::new()));
         if !FANOTIFY_DEFAULT_CONFIG.0 {
             return Ok(FileMonitor {
@@ -208,6 +210,7 @@ impl FileMonitor {
                             }
                             _ => {}
                         };
+
                         if event_fpath.ends_with(".swp")
                             || event_fpath.ends_with("(deleted)")
                             || event_fpath.ends_with(".swa")
@@ -217,6 +220,7 @@ impl FileMonitor {
                             || event_fpath.ends_with(".tmp")
                             || event_fpath.ends_with(".tmpx")
                             || event_fpath.ends_with(".bash_history")
+                            || event_fpath.ends_with("/etc/ld.so.cache~")
                             || event_fpath.ends_with(".viminfo")
                             || event_fpath.ends_with(".dpkg-new")
                         {
@@ -242,7 +246,6 @@ impl FileMonitor {
                         let exe_fp = Path::new(pstr);
                         let exe_real = match std::fs::read_link(exe_fp) {
                             Ok(pf) => pf.to_string_lossy().to_string(),
-
                             Err(e) => {
                                 debug!(
                                     "fanotify get target pid:{} exe_real_path failed, process may exit.",
@@ -254,8 +257,9 @@ impl FileMonitor {
 
                         let pstr_full: &str = &format!("/proc/{}/root{}", event_pid, exe_real);
                         let rfp = Path::new(pstr_full);
-
-                        let fpath_real_sha256 = get_file_sha256(&event_fpath);
+                        let event_path_full: &str =
+                            &format!("/proc/{}/root{}", event_pid, &event_fpath);
+                        let fpath_real_sha256 = get_file_sha256(event_path_full);
 
                         // fanotify only
                         if let Ok(map) = anti_ransome_inner.read() {
@@ -346,7 +350,7 @@ impl FileMonitor {
                             }
                         };
 
-                        if fsize > crate::model::engine::clamav::config::CLAMAV_MAX_FILESIZE {
+                        if fsize > *CLAMAV_MAX_FILESIZE {
                             continue;
                         }
                         let default_mask_set: u64 = FANOTIFY_DEFAULT_CONFIG.2;
@@ -389,16 +393,59 @@ impl FileMonitor {
             })
         }
     }
+
+    pub fn raw_flush(raw_fd: i32) {
+        if unsafe { libc::fanotify_mark(raw_fd, FAN_MARK_FLUSH, 0, 0, std::ptr::null()) } != 0 {
+            warn!("mm.flush() :{}", Error::last_os_error());
+        } else {
+            info!("{}.flush success !", raw_fd);
+        }
+    }
     pub fn flush(&mut self) {
         if unsafe { libc::fanotify_mark(self.fd, FAN_MARK_FLUSH, 0, 0, std::ptr::null()) } != 0 {
             warn!("mm.flush() :{}", Error::last_os_error());
         } else {
             info!("{}.flush success !", self.fd);
         }
+
         if let Ok(mut map) = self.anti_ransome.write() {
             map.clear();
             drop(map);
         }
+    }
+    pub fn raw_add(raw_fd: i32, path: &str, is_anti_ransome: bool) -> Result<()> {
+        if !FANOTIFY_DEFAULT_CONFIG.0 {
+            return Ok(());
+        }
+        let target_path = Path::new(path);
+        if target_path.exists() == false {
+            return Ok(());
+        }
+
+        let cpath = CString::new(path).unwrap();
+        if unsafe {
+            libc::fanotify_mark(
+                raw_fd,
+                FAN_MARK_ADD,
+                FANOTIFY_DEFAULT_CONFIG.2,
+                0,
+                cpath.as_ptr(),
+            )
+        } != 0
+        {
+            let e = anyhow!(
+                "add: {}, error :{:?} : kernel = {:?}",
+                path,
+                Error::last_os_error(),
+                &*KERNEL_VERSION
+            );
+            warn!(
+                "kernel = {:?},fanotify add mask err {:?}",
+                &*KERNEL_VERSION, e
+            );
+            return Err(e);
+        }
+        Ok(())
     }
     pub fn add(&mut self, path: &str, is_anti_ransome: bool) -> Result<()> {
         if !FANOTIFY_DEFAULT_CONFIG.0 {
@@ -448,15 +495,15 @@ impl FileMonitor {
             Ok(())
         }
     }
-    pub fn add_cfg(&mut self, cfg: &FanotifyTargetConfig) -> Result<()> {
+    pub fn raw_add_cfg(raw_fd: i32, cfg: &FanotifyTargetConfigs) -> Result<()> {
         if !FANOTIFY_DEFAULT_CONFIG.0 {
             return Ok(());
         }
-        let target_path = Path::new(cfg.path);
+        let target_path = Path::new(&cfg.path);
         if !target_path.exists() || !target_path.is_dir() {
             return Ok(());
         }
-        self.add(cfg.path, false)?;
+        Self::raw_add(raw_fd, &cfg.path, false)?;
         match cfg.watch_mode {
             FAMode::RECUR(ndepth) => {
                 let mut w_dir = WalkDir::new(&target_path)
@@ -476,7 +523,49 @@ impl FileMonitor {
                         continue;
                     }
                     let cur_path = fp.to_string_lossy();
-                    if let Some(child) = cfg.sp_child {
+                    if let Some(child) = &cfg.sp_child {
+                        if cur_path.ends_with(child) {
+                            Self::raw_add(raw_fd, &cur_path, false)?;
+                        }
+                    } else {
+                        Self::raw_add(raw_fd, &cur_path, false)?;
+                    }
+                }
+            }
+            FAMode::SIGLE => {}
+        }
+        return Ok(());
+    }
+
+    pub fn add_cfg(&mut self, cfg: &FanotifyTargetConfigs) -> Result<()> {
+        if !FANOTIFY_DEFAULT_CONFIG.0 {
+            return Ok(());
+        }
+        let target_path = Path::new(&cfg.path);
+        if !target_path.exists() || !target_path.is_dir() {
+            return Ok(());
+        }
+        self.add(&cfg.path, false)?;
+        match cfg.watch_mode {
+            FAMode::RECUR(ndepth) => {
+                let mut w_dir = WalkDir::new(&target_path)
+                    .max_depth(ndepth)
+                    .follow_links(cfg.follow_link)
+                    .into_iter();
+                loop {
+                    let entry = match w_dir.next() {
+                        None => break,
+                        Some(Err(_err)) => {
+                            break;
+                        }
+                        Some(Ok(entry)) => entry,
+                    };
+                    let fp = entry.path();
+                    if !fp.is_dir() {
+                        continue;
+                    }
+                    let cur_path = fp.to_string_lossy();
+                    if let Some(child) = &cfg.sp_child {
                         if cur_path.ends_with(child) {
                             self.add(&cur_path, false)?;
                         }

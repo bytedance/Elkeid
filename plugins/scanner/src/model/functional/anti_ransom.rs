@@ -45,11 +45,12 @@ pub static HONEYPOTS: &[&str] = &[
 pub struct HoneyPot {
     pub target_md5maps: HashMap<String, String>,
     pub user_homes: HashMap<String, (u32, u32, String)>,
-    moniter: FileMonitor,
-    _cronjob: Option<thread::JoinHandle<()>>,
     pub sender: crossbeam_channel::Sender<DETECT_TASK>,
     pub s_locker: crossbeam_channel::Sender<()>,
     pub anti_ransome_status: Arc<Mutex<String>>,
+    pub moniter: FileMonitor,
+    _cronjob_report_antiransom_statue: Option<thread::JoinHandle<()>>,
+    _cronjob_refresh_monitor: Option<thread::JoinHandle<()>>,
 }
 
 impl HoneyPot {
@@ -72,7 +73,7 @@ impl HoneyPot {
         let mut target_md5maps = HashMap::new();
         let mut user_homes = HashMap::<String, (u32, u32, String)>::new();
 
-        let etc_passwd = std::fs::File::open("/etc/passwd")?;
+        let etc_passwd = fs::File::open("/etc/passwd")?;
         let reader = BufReader::new(etc_passwd);
 
         for line in reader.lines() {
@@ -85,7 +86,7 @@ impl HoneyPot {
                 {
                     user_homes.insert(lvec[0].to_string(), (uid, gid, lvec[5].to_string()));
                     let dst = format!("{}/elkeid_targets", lvec[5]);
-                    std::fs::remove_dir_all(dst);
+                    fs::remove_dir_all(dst);
                 }
             }
         }
@@ -93,35 +94,78 @@ impl HoneyPot {
         // file_monitor scan
         let mut fmonitor_t = FileMonitor::new(sender, s_locker, 30, 4096)?;
 
-        for each in crate::configs::FANOTIFY_CONFIGS {
-            if let Err(e) = fmonitor_t.add_cfg(each) {
+        let fmonitor_cfg = crate::config::gen_fmonitor_cfg()?;
+        for each in &fmonitor_cfg {
+            if let Err(e) = fmonitor_t.add_cfg(&each) {
                 warn!("reset_fanotify add_cfg Err {:?}", e);
+            }
+        }
+
+        // file_monitor support docker
+        let docker_path_list = parse_docker_mountinfo()?;
+        for each_docker in &docker_path_list {
+            for each_cfg in &fmonitor_cfg {
+                let tmp_docker_cfg = each_cfg.with_prefix(each_docker);
+                if let Err(e) = fmonitor_t.add_cfg(&tmp_docker_cfg) {
+                    error!(
+                        "reset_fanotify add_cfg Err {:?},with {:?}",
+                        e, tmp_docker_cfg
+                    );
+                }
             }
         }
 
         return Ok(Self {
             target_md5maps: target_md5maps,
             user_homes: user_homes,
-            moniter: fmonitor_t,
             anti_ransome_status: anti_ransome_status,
-            _cronjob: None,
             sender: is,
             s_locker: is_l,
+            moniter: fmonitor_t,
+            _cronjob_report_antiransom_statue: None,
+            _cronjob_refresh_monitor: None,
         });
+    }
+    pub fn reset_monitor(&mut self) -> Result<()> {
+        let mut w = self.anti_ransome_status.lock().unwrap();
+        let current_stat = w.to_string();
+        drop(w);
+        if &current_stat == "on" {
+            self.reset_antiransome()?;
+        } else {
+            self.reset_fanotify()?;
+        }
+        return Ok(());
     }
     pub fn reset_fanotify(&mut self) -> Result<()> {
         self.moniter.flush();
 
         for (k, (uid, gid, home_path)) in &self.user_homes {
             let dst = format!("{}/elkeid_targets", home_path);
-            std::fs::remove_dir_all(dst);
+            fs::remove_dir_all(dst);
         }
 
-        for each in crate::configs::FANOTIFY_CONFIGS {
-            if let Err(e) = self.moniter.add_cfg(each) {
-                error!("reset_fanotify add_cfg Err {:?},with {:?}", e, each);
+        let fmonitor_cfg = crate::config::gen_fmonitor_cfg()?;
+
+        for each_cfg in &fmonitor_cfg {
+            if let Err(e) = self.moniter.add_cfg(&each_cfg) {
+                error!("reset_fanotify add_cfg Err {:?},with {:?}", e, each_cfg);
             }
         }
+        // file_monitor support docker
+        let docker_path_list = parse_docker_mountinfo()?;
+        for each_docker in &docker_path_list {
+            for each_cfg in &fmonitor_cfg {
+                let tmp_docker_cfg = each_cfg.with_prefix(each_docker);
+                if let Err(e) = self.moniter.add_cfg(&tmp_docker_cfg) {
+                    error!(
+                        "reset_fanotify add_cfg Err {:?},with {:?}",
+                        e, tmp_docker_cfg
+                    );
+                }
+            }
+        }
+
         let mut w = self.anti_ransome_status.lock().unwrap();
         *w = "off".to_string();
         drop(w);
@@ -145,10 +189,12 @@ impl HoneyPot {
         return Ok(());
     }
 
-    pub fn run_report(&mut self) {
+    pub fn run_cronjob(&mut self) {
         let sender = self.sender.clone();
         let s_locker = self.s_locker.clone();
         let anti_ransome_status = self.anti_ransome_status.clone();
+
+        // anti_ransom status report cronjob
         let recv_worker = thread::spawn(move || loop {
             thread::sleep(std::time::Duration::from_secs(60));
             let status = {
@@ -158,16 +204,92 @@ impl HoneyPot {
                 s
             };
             let event = AnitRansomFunc { status: status };
-            match sender.send(DETECT_TASK::TASK_6054_TASK_6054_ANTIVIRUS_STATUS(event)) {
-                Ok(_) => {}
-                Err(e) => {
-                    warn!("internal task send err {:?}", e);
-                    s_locker.send(()).unwrap();
-                }
+            if let Err(e) = sender.send(DETECT_TASK::TASK_6054_TASK_6054_ANTIVIRUS_STATUS(event)) {
+                warn!("internal task send err {:?}", e);
+                s_locker.send(()).unwrap();
             };
             thread::sleep(std::time::Duration::from_secs(540));
         });
-        self._cronjob = Some(recv_worker);
+        self._cronjob_report_antiransom_statue = Some(recv_worker);
+
+        let sender = self.sender.clone();
+        let s_locker = self.s_locker.clone();
+        let anti_ransome_status = self.anti_ransome_status.clone();
+
+        let raw_monitorfd = self.moniter.fd;
+        // anti_ransom reset cronjob
+        let recv_worker = thread::spawn(move || loop {
+            thread::sleep(std::time::Duration::from_secs(3600 * 4));
+
+            FileMonitor::raw_flush(raw_monitorfd);
+            // file_monitor scan
+            let fmonitor_cfg = crate::config::gen_fmonitor_cfg().unwrap();
+            for each in &fmonitor_cfg {
+                if let Err(e) = FileMonitor::raw_add_cfg(raw_monitorfd, &each) {
+                    warn!("reset_fanotify add_cfg Err {:?}", e);
+                }
+            }
+            // file_monitor support docker
+            let docker_path_list = parse_docker_mountinfo().unwrap_or_default();
+            for each_docker in &docker_path_list {
+                for each_cfg in &fmonitor_cfg {
+                    let tmp_docker_cfg = each_cfg.with_prefix(each_docker);
+                    if let Err(e) = FileMonitor::raw_add_cfg(raw_monitorfd, &tmp_docker_cfg) {
+                        error!(
+                            "reset_fanotify add_cfg Err {:?},with {:?}",
+                            e, tmp_docker_cfg
+                        );
+                    }
+                }
+            }
+
+            let status = {
+                let arfs = anti_ransome_status.lock().unwrap();
+                let s = arfs.as_str().to_string();
+                drop(arfs);
+                s
+            };
+            if status.contains("on") {
+                let etc_passwd = match fs::File::open("/etc/passwd") {
+                    Ok(f) => f,
+                    Err(e) => {
+                        error!("failed check /etc/passwd");
+                        continue;
+                    }
+                };
+                let reader = BufReader::new(etc_passwd);
+                for line in reader.lines() {
+                    if let Ok(each_line) = line {
+                        let lvec: Vec<&str> = each_line.split(":").into_iter().collect();
+                        let uid: u32 = lvec[2].parse().unwrap_or_default();
+                        let gid: u32 = lvec[3].parse().unwrap_or_default();
+                        if lvec[6].ends_with("sh")
+                            && (lvec[5].starts_with("/root") || lvec[5].starts_with("/home"))
+                        {
+                            // clean & reset anti-ransom targets
+                            let dst = format!("{}/elkeid_targets", lvec[5]);
+                            fs::remove_dir_all(&dst);
+                            if let Err(e) =
+                                copy_elkeid_targets(&dst, uid.to_owned(), gid.to_owned())
+                            {
+                                warn!("failed reset {}:{}:{}:targets", &uid, &gid, &dst);
+                                continue;
+                            }
+                            for each_target in HONEYPOTS {
+                                if let Err(e) = FileMonitor::raw_add(
+                                    raw_monitorfd,
+                                    &format!("{}/{}", &dst, each_target),
+                                    true,
+                                ) {
+                                    error!("fmonitor add fpath err {:?}:{:?}", &dst, e);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        self._cronjob_refresh_monitor = Some(recv_worker);
     }
 }
 
@@ -176,7 +298,7 @@ impl Drop for HoneyPot {
         self.moniter.flush();
         for (k, (uid, gid, home_path)) in &self.user_homes {
             let dst = format!("{}/elkeid_targets", home_path);
-            std::fs::remove_dir_all(dst);
+            fs::remove_dir_all(dst);
         }
     }
 }
@@ -203,7 +325,7 @@ fn copy_elkeid_targets(dst: &str, ruid: u32, rgid: u32) -> io::Result<()> {
 }
 
 pub fn check_av_file(file_path: &str) -> bool {
-    let mut f = match std::fs::File::open(file_path) {
+    let mut f = match fs::File::open(file_path) {
         Ok(f) => f,
         Err(_) => return false,
     };
@@ -220,4 +342,31 @@ pub fn check_av_file(file_path: &str) -> bool {
     };
 
     return false;
+}
+
+fn parse_docker_mountinfo() -> Result<Vec<String>> {
+    let mut results = Vec::new();
+    let proc_net_unix_file = fs::File::open("/proc/self/mountinfo")?;
+    let reader = BufReader::new(proc_net_unix_file);
+
+    for line in reader.lines() {
+        if let Ok(line) = line {
+            let mut s: Vec<&str> = line.split_whitespace().collect();
+            // s[0] mount_id
+            // s[4] mount_point
+            // s[8] filesystem
+
+            // overlay2
+            if s[4].ends_with("/merged") && s[4].contains("docker") {
+                results.push(s[4].to_string());
+                continue;
+            }
+            // kubepods
+            if s[4].ends_with("/rootfs") && s[4].contains("containerd") {
+                results.push(s[4].to_string());
+                continue;
+            }
+        }
+    }
+    return Ok(results);
 }

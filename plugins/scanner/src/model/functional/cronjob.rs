@@ -13,8 +13,7 @@ use walkdir::WalkDir;
 
 use crate::data_type::{ScanTaskProcExe, ScanTaskStaticFile, DETECT_TASK};
 use crate::{
-    configs, filter::Filter, get_file_btime, is_filetype_filter_skipped,
-    model::engine::clamav::config::CLAMAV_MAX_FILESIZE,
+    config::CLAMAV_MAX_FILESIZE, filter::Filter, get_file_btime, is_filetype_filter_skipped,
 };
 
 lazy_static! {
@@ -45,84 +44,92 @@ impl Cronjob {
         let filter_dir = Filter::new(100);
         let sender_proc = sender.clone();
         let s_locker_proc = s_locker.clone();
-        let job_dir = thread::spawn(move || loop {
-            let start_timestamp = Clock::now_since_epoch().as_secs();
-            info!("[CronjobDir] Scan started at : {}", start_timestamp);
-            for conf in configs::SCAN_DIR_CONFIG {
-                let mut w_dir = WalkDir::new(conf.fpath)
-                    .max_depth(conf.max_depth)
-                    .same_file_system(true)
-                    .follow_links(false)
-                    .into_iter();
-                loop {
-                    let entry = match w_dir.next() {
-                        None => break,
-                        Some(Err(_err)) => {
-                            //warn!("walkdir err while cronjob:{:?}", _err);
-                            continue;
-                        }
-                        Some(Ok(entry)) => entry,
-                    };
-                    let filter_flag = filter_dir.catch(&entry.path());
-                    if filter_flag == 1 {
-                        continue;
-                    } else if filter_flag == 2 {
-                        w_dir.skip_current_dir();
-                        debug!("skip cur dir{:?}", &entry.path());
-                        continue;
-                    }
-
-                    let fp = entry.path();
-                    let (fsize, btime) = match fp.metadata() {
-                        Ok(p) => {
-                            if p.is_dir() {
+        let job_dir = thread::spawn(move || {
+            let mut init_flag = false;
+            loop {
+                let start_timestamp = Clock::now_since_epoch().as_secs();
+                info!("[CronjobDir] Scan started at : {}", start_timestamp);
+                for conf in &*crate::config::SCAN_DIR_CONFIG {
+                    let mut w_dir = WalkDir::new(&conf.fpath)
+                        .max_depth(conf.max_depth)
+                        .same_file_system(true)
+                        .follow_links(false)
+                        .into_iter();
+                    loop {
+                        let entry = match w_dir.next() {
+                            None => break,
+                            Some(Err(_err)) => {
+                                //warn!("walkdir err while cronjob:{:?}", _err);
                                 continue;
                             }
-                            let fsize = p.len() as usize;
-                            let btime = get_file_btime(&p);
-                            (fsize, btime)
-                        }
-                        Err(_) => {
-                            continue;
-                        }
-                    };
-                    if fsize <= 1 || fsize > CLAMAV_MAX_FILESIZE {
-                        continue;
-                    }
-                    let fpath_str = fp.to_string_lossy().to_string();
-                    if let Ok(t) = is_filetype_filter_skipped(&fpath_str) {
-                        if t {
-                            continue;
-                        }
-                    } else {
-                        continue;
-                    }
-                    // send to scan
-                    let task = ScanTaskStaticFile {
-                        scan_path: fp.to_string_lossy().to_string(),
-                        size: fsize,
-                        btime: btime,
-                    };
+                            Some(Ok(entry)) => entry,
+                        };
 
-                    while sender_proc.len() > 2 {
-                        std::thread::sleep(Duration::from_secs(4));
-                    }
-                    match sender_proc.send(DETECT_TASK::TASK_6051_STATIC_FILE(task)) {
-                        Ok(_) => {}
-                        Err(e) => {
-                            warn!("internal task send err {:?}", e);
-                            s_locker_proc.send(()).unwrap();
+                        match filter_dir.catch(&entry.path()) {
+                            1 => {
+                                continue;
+                            }
+                            2 => {
+                                w_dir.skip_current_dir();
+                                debug!("skip cur dir{:?}", &entry.path());
+                                continue;
+                            }
+                            _ => {}
+                        };
+
+                        let fp = entry.path();
+                        let (fsize, btime) = match fp.metadata() {
+                            Ok(p) => {
+                                if p.is_dir() || p.is_symlink() {
+                                    continue;
+                                }
+                                let fsize = p.len() as usize;
+                                let btime = get_file_btime(&p);
+                                (fsize, btime)
+                            }
+                            Err(_) => {
+                                continue;
+                            }
+                        };
+                        // add last_motify < 3 day
+                        if init_flag && start_timestamp - btime.1 < 3600 * 24 * 3 {
+                            continue;
                         }
-                    };
-                    std::thread::sleep(Duration::from_secs(16));
+                        if fsize <= 4 || fsize > *CLAMAV_MAX_FILESIZE {
+                            continue;
+                        }
+                        let fpath_str = fp.to_string_lossy().to_string();
+                        if let Ok(false) = is_filetype_filter_skipped(&fpath_str) {
+                            // send to scan
+                            let task = ScanTaskStaticFile {
+                                scan_path: fp.to_string_lossy().to_string(),
+                                size: fsize,
+                                btime: btime,
+                            };
+                            while sender_proc.len() > 2 {
+                                std::thread::sleep(Duration::from_secs(8));
+                            }
+                            match sender_proc.send(DETECT_TASK::TASK_6051_STATIC_FILE(task)) {
+                                Ok(_) => {}
+                                Err(e) => {
+                                    warn!("internal task send err {:?}", e);
+                                    s_locker_proc.send(()).unwrap();
+                                }
+                            };
+                        }
+                        std::thread::sleep(Duration::from_secs(20));
+                    }
                 }
                 let end_timestamp = Clock::now_since_epoch().as_secs();
                 let timecost = end_timestamp - start_timestamp;
-                let left_sleep = 3600 * 24 - (timecost % (3600 * 24));
+                let left_sleep = 3600 * 24 * 3 - (timecost % (3600 * 24 * 3));
                 info!(
                     "[CronjobDir]Scan end at {}, start at {}, cost {}, will sleep {}.",
                     end_timestamp, start_timestamp, timecost, left_sleep
                 );
+                if !init_flag {
+                    init_flag = true
+                }
                 // sleep cron_interval
                 thread::sleep(Duration::from_secs(left_sleep));
             }
@@ -152,18 +159,14 @@ impl Cronjob {
                     Err(_) => "-3".to_string(),
                 };
 
-                // proc filter
-                let filter_flag = filter_proc.catch(Path::new(&exe_real));
-                if filter_flag != 0 {
+                if filter_proc.catch(Path::new(&exe_real)) != 0 {
                     continue;
                 }
 
-                let rfp = Path::new(&exe_real);
-                (fsize, btime) = match rfp.metadata() {
+                let pfstr = format!("/proc/{}/root{}", pid, &exe_real);
+
+                (fsize, btime) = match Path::new(&pfstr).metadata() {
                     Ok(p) => {
-                        if p.is_dir() {
-                            continue;
-                        }
                         let fsize = p.len() as usize;
                         let btime = get_file_btime(&p);
                         (fsize, btime)
@@ -171,7 +174,7 @@ impl Cronjob {
                     Err(_) => (0, (0, 0)),
                 };
 
-                if fsize > CLAMAV_MAX_FILESIZE {
+                if fsize <= 8 || fsize > *CLAMAV_MAX_FILESIZE {
                     continue;
                 }
 
@@ -185,8 +188,9 @@ impl Cronjob {
                 };
 
                 while sender.len() > 8 {
-                    std::thread::sleep(Duration::from_secs(4));
+                    std::thread::sleep(Duration::from_secs(8));
                 }
+
                 match sender.send(DETECT_TASK::TASK_6052_PROC_EXE(task)) {
                     Ok(_) => {}
                     Err(e) => {
@@ -199,12 +203,12 @@ impl Cronjob {
             // sleep cron_interval
             let end_timestamp = Clock::now_since_epoch().as_secs();
             let timecost = end_timestamp - start_timestamp;
-            let left_sleep = 3600 * 24 - (timecost % (3600 * 24));
+            let left_sleep = 3600 - (timecost % 3600);
             info!(
                 "[CronjobProc]Scan end at {}, start at {}, cost {}, will sleep {}.",
                 end_timestamp, start_timestamp, timecost, left_sleep
             );
-            thread::sleep(Duration::from_secs(3600 - (timecost % (3600))));
+            thread::sleep(Duration::from_secs(left_sleep));
         });
         return Self { job_dir, job_proc };
     }

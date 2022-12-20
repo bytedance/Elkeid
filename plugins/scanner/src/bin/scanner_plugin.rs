@@ -3,9 +3,15 @@ use log::*;
 
 use plugins::{logger::*, Client};
 
-use std::{env, fs::File, path::PathBuf, thread, time::Duration};
+use std::{env, fs::File, path::PathBuf, str::FromStr, thread, time::Duration};
 
 use scanner::{
+    config::{
+        ARCHIVE_DB_HASH, ARCHIVE_DB_PWD, ARCHIVE_DB_VERSION, DB_DEFAULT, DB_URLS,
+        SERVICE_DEFAULT_CG_CPU, SERVICE_DEFAULT_CG_MEM, SERVICE_DEFAULT_LOG_LEVEL,
+        SERVICE_DEFAULT_LOG_MAX_BAK, SERVICE_DEFAULT_LOG_PATH, SERVICE_DEFAULT_LOG_RLEVEL,
+        SERVICE_PID_LOCK_PATH,
+    },
     detector::Detector,
     model::engine::clamav::{self, updater},
     model::functional::cronjob::Cronjob,
@@ -22,8 +28,7 @@ pub struct ProcessLock {
 // scanner locker
 impl ProcessLock {
     pub fn new() -> Self {
-        let file_path = "/var/run/elkeid_scanners_plugin.pid";
-        let file = File::create(file_path).unwrap();
+        let file = File::create(&*SERVICE_PID_LOCK_PATH).unwrap();
         Self { file }
     }
     pub fn process_lock(&self) -> bool {
@@ -46,17 +51,21 @@ fn main() {
     info!("pid : {:?}", pid);
 
     #[cfg(feature = "cg_ctrl")]
-    scanner::setup_cgroup(pid, 1024 * 1024 * 256, 10000);
+    scanner::setup_cgroup(
+        pid,
+        1024 * 1024 * (*SERVICE_DEFAULT_CG_MEM),
+        10 * (*SERVICE_DEFAULT_CG_CPU),
+    );
 
     let client = Client::new(true);
 
     // set logger
     let logger = Logger::new(Config {
         max_size: 1024 * 1024 * 5,
-        path: PathBuf::from("./scanner.log"),
-        file_level: LevelFilter::Info,
-        remote_level: LevelFilter::Error,
-        max_backups: 10,
+        path: PathBuf::from(format!("{}scanner.log", &*SERVICE_DEFAULT_LOG_PATH)),
+        file_level: LevelFilter::from_str(&*SERVICE_DEFAULT_LOG_LEVEL).unwrap(),
+        remote_level: LevelFilter::from_str(&*SERVICE_DEFAULT_LOG_RLEVEL).unwrap(),
+        max_backups: *SERVICE_DEFAULT_LOG_MAX_BAK as _,
         compress: true,
         client: Some(client.clone()),
     });
@@ -76,10 +85,10 @@ fn main() {
                 Err(e) => {
                     error!("{:?} rule Deserialize err : {:?}", &val, e);
                     if let Ok(db) = updater::DBManager::new(
-                        updater::ARCHIVE_DB_VERSION,
-                        updater::ARCHIVE_DB_HASH,
-                        updater::ARCHIVE_DB_PWD,
-                        updater::DB_URLS,
+                        &*ARCHIVE_DB_VERSION,
+                        &*ARCHIVE_DB_HASH,
+                        &*ARCHIVE_DB_PWD,
+                        &*DB_URLS,
                     ) {
                         db
                     } else {
@@ -92,10 +101,10 @@ fn main() {
         }
         Err(_) => {
             if let Ok(db) = updater::DBManager::new(
-                updater::ARCHIVE_DB_VERSION,
-                updater::ARCHIVE_DB_HASH,
-                updater::ARCHIVE_DB_PWD,
-                updater::DB_URLS,
+                &*ARCHIVE_DB_VERSION,
+                &*ARCHIVE_DB_HASH,
+                &*ARCHIVE_DB_PWD,
+                &*DB_URLS,
             ) {
                 db
             } else {
@@ -132,7 +141,7 @@ fn main() {
         s_recv_worker,
         r,
         s_recv_lock,
-        clamav::config::DB_DEFAULT,
+        &*DB_DEFAULT,
         db_manager,
     );
 

@@ -2,6 +2,7 @@ use log::*;
 
 use plugins::logger::*;
 
+use scanner::config::{ARCHIVE_DB_HASH, ARCHIVE_DB_PWD, ARCHIVE_DB_VERSION, DB_URLS};
 use std::{env, path::PathBuf, process::exit};
 
 use scanner::model::engine::clamav::updater;
@@ -53,10 +54,10 @@ fn main() {
                 Err(e) => {
                     error!("{:?} rule Deserialize err : {:?}", &val, e);
                     if let Ok(db) = updater::DBManager::new(
-                        updater::ARCHIVE_DB_VERSION,
-                        updater::ARCHIVE_DB_HASH,
-                        updater::ARCHIVE_DB_PWD,
-                        updater::DB_URLS,
+                        &*ARCHIVE_DB_VERSION,
+                        &*ARCHIVE_DB_HASH,
+                        &*ARCHIVE_DB_PWD,
+                        &*DB_URLS,
                     ) {
                         db
                     } else {
@@ -69,10 +70,10 @@ fn main() {
         }
         Err(_) => {
             if let Ok(db) = updater::DBManager::new(
-                updater::ARCHIVE_DB_VERSION,
-                updater::ARCHIVE_DB_HASH,
-                updater::ARCHIVE_DB_PWD,
-                updater::DB_URLS,
+                &*ARCHIVE_DB_VERSION,
+                &*ARCHIVE_DB_HASH,
+                &*ARCHIVE_DB_PWD,
+                &*DB_URLS,
             ) {
                 db
             } else {

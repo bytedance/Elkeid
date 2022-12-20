@@ -5,13 +5,13 @@ use serde_json;
 use std::{collections::HashMap, hash::Hash};
 
 use crate::{
-    configs::{
+    config::{
         FULLSCAN_CPU_IDLE_100PCT, FULLSCAN_CPU_IDLE_INTERVAL, FULLSCAN_CPU_MAX_TIME_SECS,
         FULLSCAN_CPU_QUOTA_DEFAULT_MAX, FULLSCAN_CPU_QUOTA_DEFAULT_MIN, FULLSCAN_MAX_SCAN_CPU_100,
         FULLSCAN_MAX_SCAN_ENGINES, FULLSCAN_MAX_SCAN_MEM_MB, FULLSCAN_MAX_SCAN_TIMEOUT_FULL,
         FULLSCAN_MAX_SCAN_TIMEOUT_QUICK, FULLSCAN_SCAN_MODE_FULL, FULLSCAN_SCAN_MODE_QUICK,
     },
-    get_file_md5, get_file_xhash, ToAgentRecord,
+    get_file_md5, get_file_xhash, pid_to_docker_id, ToAgentRecord,
 };
 
 // fullscan finished datatype
@@ -161,9 +161,9 @@ impl ToAgentRecord for AnitRansomFunc {
 // DetectFanotifyEvent = Proc pid/exe detect event
 #[derive(Serialize, Debug, Default)]
 pub struct FanotifyEvent {
-    pub pid: String,      //
-    pub exe_hash: String, //  exe sha256
-    pub md5_hash: String,
+    pub pid: String, //
+    //pub exe_hash: String, //  exe sha256
+    //pub md5_hash: String,
     pub exe_size: String,
     pub exe: String, //
 
@@ -181,6 +181,7 @@ pub struct FanotifyEvent {
     pub file_path: String, // notify file
     pub file_hash: String, // notify file sha256
     pub file_mask: String, // notify file fanotify_metadata.mask
+    pub docker_id: String,
 }
 
 impl ToAgentRecord for FanotifyEvent {
@@ -192,8 +193,6 @@ impl ToAgentRecord for FanotifyEvent {
         let mut hmp = HashMap::with_capacity(32);
         hmp.insert("exe".to_string(), self.exe.to_string());
         hmp.insert("exe_size".to_string(), self.exe_size.to_string());
-        hmp.insert("exe_hash".to_string(), self.exe_hash.to_string());
-        hmp.insert("md5_hash".to_string(), self.md5_hash.to_string());
         hmp.insert("create_at".to_string(), self.create_at.to_string());
         hmp.insert("modify_at".to_string(), self.modify_at.to_string());
         hmp.insert("pid".to_string(), self.pid.to_string());
@@ -205,6 +204,8 @@ impl ToAgentRecord for FanotifyEvent {
         hmp.insert("sessionid".to_string(), self.sessionid.to_string());
         hmp.insert("uid".to_string(), self.uid.to_string());
         hmp.insert("pns".to_string(), self.pns.to_string());
+
+        hmp.insert("docker_id".to_string(), self.docker_id.to_string());
 
         hmp.insert("file_path".to_string(), self.file_path.to_string());
         hmp.insert("file_hash".to_string(), self.file_hash.to_string());
@@ -223,8 +224,6 @@ impl ToAgentRecord for FanotifyEvent {
         let mut hmp = HashMap::with_capacity(32);
         hmp.insert("exe".to_string(), self.exe.to_string());
         hmp.insert("exe_size".to_string(), self.exe_size.to_string());
-        hmp.insert("exe_hash".to_string(), self.exe_hash.to_string());
-        hmp.insert("md5_hash".to_string(), self.md5_hash.to_string());
         hmp.insert("create_at".to_string(), self.create_at.to_string());
         hmp.insert("modify_at".to_string(), self.modify_at.to_string());
         hmp.insert("pid".to_string(), self.pid.to_string());
@@ -237,6 +236,8 @@ impl ToAgentRecord for FanotifyEvent {
         hmp.insert("uid".to_string(), self.uid.to_string());
         hmp.insert("pns".to_string(), self.pns.to_string());
         hmp.insert("token".to_string(), token.to_string());
+
+        hmp.insert("docker_id".to_string(), self.docker_id.to_string());
 
         hmp.insert("file_path".to_string(), self.file_path.to_string());
         hmp.insert("file_hash".to_string(), self.file_hash.to_string());
@@ -265,8 +266,6 @@ impl FanotifyEvent {
         pf.pid = pid.to_string();
 
         pf.exe = exe.to_string();
-        pf.exe_hash = get_file_xhash(exe);
-        pf.md5_hash = get_file_md5(exe);
         pf.exe_size = size.to_string();
         pf.create_at = create_at.to_string();
         pf.modify_at = modify_at.to_string();
@@ -283,6 +282,10 @@ impl FanotifyEvent {
         pf.pgid = "-3".to_string();
         pf.sessionid = "-3".to_string();
         pf.argv = "-3".to_string();
+
+        if let Some(docker_id) = pid_to_docker_id(pid) {
+            pf.docker_id = docker_id;
+        }
 
         let p = match procfs::process::Process::new(pid) {
             Ok(pinner) => pinner,
@@ -851,7 +854,7 @@ pub enum DETECT_TASK {
     TASK_6054_ANTIVIRUS(ScanTaskFanotify),
     TASK_6054_FANOTIFY(ScanTaskFanotify),
     TASK_6054_TASK_6054_ANTIVIRUS_STATUS(AnitRansomFunc),
-    TASK_6054_RESET_HONEYPOT,
+    //TASK_6054_RESET_HONEYPOT,
     TASK_6055_SUPPER_MODE_ON,
     TASK_6056_SUPPER_MODE_OFF,
     TASK_6057_FULLSCAN(FullScanTask),
@@ -932,15 +935,15 @@ pub struct FullScanTask {
 impl FullScanTask {
     pub fn new_default() -> Self {
         Self {
-            cpu_idle_interval: FULLSCAN_CPU_IDLE_INTERVAL,
-            cpu_idle_100pct: FULLSCAN_CPU_IDLE_100PCT,
-            cpu_quota_default_min: FULLSCAN_CPU_QUOTA_DEFAULT_MIN,
-            cpu_quota_default_max: FULLSCAN_CPU_QUOTA_DEFAULT_MAX,
-            cpu_max_time_secs: FULLSCAN_CPU_MAX_TIME_SECS,
-            max_scan_engine: FULLSCAN_MAX_SCAN_ENGINES,
-            max_scan_cpu100: FULLSCAN_MAX_SCAN_CPU_100,
-            max_scan_mem_mb: FULLSCAN_MAX_SCAN_MEM_MB,
-            max_scan_timeout: FULLSCAN_MAX_SCAN_TIMEOUT_FULL,
+            cpu_idle_interval: *FULLSCAN_CPU_IDLE_INTERVAL,
+            cpu_idle_100pct: *FULLSCAN_CPU_IDLE_100PCT,
+            cpu_quota_default_min: *FULLSCAN_CPU_QUOTA_DEFAULT_MIN,
+            cpu_quota_default_max: *FULLSCAN_CPU_QUOTA_DEFAULT_MAX,
+            cpu_max_time_secs: *FULLSCAN_CPU_MAX_TIME_SECS,
+            max_scan_engine: *FULLSCAN_MAX_SCAN_ENGINES,
+            max_scan_cpu100: *FULLSCAN_MAX_SCAN_CPU_100,
+            max_scan_mem_mb: *FULLSCAN_MAX_SCAN_MEM_MB,
+            max_scan_timeout: *FULLSCAN_MAX_SCAN_TIMEOUT_FULL,
             scan_mode_full: false,
             token: "".to_string(),
         }

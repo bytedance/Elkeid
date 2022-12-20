@@ -4,8 +4,8 @@
 #![allow(non_snake_case)]
 
 pub mod clamav;
-pub mod config;
 pub mod updater;
+use crate::config::{CLAMAV_MAX_FILESIZE, CLAMAV_MAX_SCANSIZE, CLAMAV_MAX_SCANTIME, DB_DEFAULT};
 use anyhow::{anyhow, Result};
 
 use self::clamav::timeval;
@@ -132,9 +132,9 @@ impl ScanEngine for Clamav {
     fn new(db_path: &str) -> Result<Self> {
         let mut engine = Clamav::new()?;
         engine.set_max_size(
-            config::CLAMAV_MAX_FILESIZE as i64,
-            config::CLAMAV_MAX_SCANSIZE,
-            config::CLAMAV_MAX_SCANTIME,
+            *CLAMAV_MAX_FILESIZE as i64,
+            *CLAMAV_MAX_SCANSIZE,
+            *CLAMAV_MAX_SCANTIME,
         )?;
         engine.load_db(db_path)?;
         engine.compile_engine()?;
