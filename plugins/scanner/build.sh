@@ -50,13 +50,13 @@ cp  target/$TARGET_ARCH-unknown-linux-musl/release/scanner_cli  ./output/scanner
 strip ./output/scanner_cli
 
 cp -r tools/* ./output/.
-
+cp  settings.toml ./output/.
 
 cd ./output 
 mkdir tmp 
-wget http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20220930.zip
-mv archive_db_default_20220930.zip ./tmp
-tar zcvf scanner-$TARGET_ARCH.tar.gz scanner tmp elkeid_targets
+wget http://lf9-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20221206.zip
+mv archive_db_default_20221206.zip ./tmp
+tar zcvf scanner-$TARGET_ARCH.tar.gz scanner tmp elkeid_targets settings.toml
 
 cd - 
 
