@@ -445,6 +445,7 @@ impl FileMonitor {
             );
             return Err(e);
         }
+        info!("fmonitor raw_add {:?}", path);
         Ok(())
     }
     pub fn add(&mut self, path: &str, is_anti_ransome: bool) -> Result<()> {
