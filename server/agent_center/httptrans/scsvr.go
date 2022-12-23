@@ -41,6 +41,9 @@ func runAPIServer(port int, enableSSL, enableAuth bool, certFile, keyFile string
 		apiGroup.GET("/conn/count", http_handler.ConnCount)  //Get the total number of conn
 		apiGroup.POST("/conn/reset", http_handler.ConnReset) //Disconnect the agent
 
+		apiGroup.GET("/conn/limit", http_handler.GetConnLimit)
+		apiGroup.POST("/conn/limit", http_handler.UpdateConnLimit)
+
 		apiGroup.POST("/command/", http_handler.PostCommand) //Post commands to the agent
 
 		apiGroup.GET("/kube/cluster/list", http_handler.ClusterList)

@@ -9,6 +9,7 @@ import (
 	"github.com/patrickmn/go-cache"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -32,6 +33,9 @@ type GRPCPool struct {
 	extraInfoCache map[string]client.AgentExtraInfo
 
 	conf *Config
+
+	dynamicLimit        int32
+	dynamicLimitEndTime int64
 }
 
 // Connection Info
@@ -267,6 +271,15 @@ func (g *GRPCPool) checkTask() {
 //
 //	Returns true when the current total number of connection < the length of the pool.
 func (g *GRPCPool) LoadToken() bool {
+	//临时限制
+	limit := int(atomic.LoadInt32(&g.dynamicLimit))
+	limitTime := atomic.LoadInt64(&g.dynamicLimitEndTime)
+	nowCount := g.GetCount()
+	if limit >= 0 && time.Now().Unix() < limitTime && nowCount >= limit {
+		ylog.Errorf("LoadToken", "hit dynamicLimit %d, lastTime %d, now count %d.", limit, limitTime, nowCount)
+		return false
+	}
+
 	select {
 	case _, ok := <-g.tokenChan:
 		if ok {
@@ -435,4 +448,21 @@ func (g *GRPCPool) loadExtraInfoWorker() {
 			}
 		}
 	}
+}
+
+func (g *GRPCPool) SetDynamicLimit(val int32, lastSecond int64) {
+	atomic.StoreInt32(&g.dynamicLimit, val)
+	atomic.StoreInt64(&g.dynamicLimitEndTime, lastSecond+time.Now().Unix())
+
+	time.AfterFunc(time.Duration(lastSecond)*time.Second, func() {
+		atomic.StoreInt32(&g.dynamicLimit, -1)
+	})
+}
+
+func (g *GRPCPool) GetDynamicLimit() (val int32, lastSecond int64) {
+	val = atomic.LoadInt32(&g.dynamicLimit)
+	if val < 0 {
+		return -1, 0
+	}
+	return val, atomic.LoadInt64(&g.dynamicLimitEndTime) - time.Now().Unix()
 }
