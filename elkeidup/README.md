@@ -51,7 +51,7 @@ The codes for collecting information and downloading KO files from Elkeid servic
 ### Elkeid HUB Deployment
 [Elkeid HUB Deployment Only](./deploy_hub.md)
 
-### Upgrading and Expansion
+### Elkeid Upgrading and Expansion
 - [Elkeid Upgrade Guide](./update.md)
 - [Elkeid Expansion Guide](./expansion.md)
 

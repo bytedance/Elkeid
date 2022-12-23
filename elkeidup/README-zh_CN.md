@@ -46,7 +46,7 @@ Elkeid Driver是在内核态工作的，由于内核要求加载的内核模块�
 ### Elkeid HUB 单独部署
 [Elkeid HUB 单独部署](./deploy_hub-zh_CN.md)
 
-### 升级扩容
+### Elkeid 升级和扩容
 - [Elkeid 升级指南](./update-zh_CN.md)
 - [Elkeid 扩容指南](./expansion-zh_CN.md)
 
