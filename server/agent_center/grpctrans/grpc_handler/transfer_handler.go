@@ -76,7 +76,7 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 		GlobalGRPCPool.Delete(agentID)
 		releaseAgentHeartbeatMetrics(agentID)
 
-		client.PostHBEvict(&client.HeartBeatEvictModel{
+		client.HBWriter.Evict(client.HeartBeatEvictModel{
 			AgentID:   agentID,
 			AgentAddr: addr,
 		})

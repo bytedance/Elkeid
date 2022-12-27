@@ -79,7 +79,6 @@ func (c *Connection) SetAgentDetail(detail map[string]interface{}) {
 	updated := false
 	c.agentDetailLock.Lock()
 	defer func() {
-		detail["agent_connection"] = c.SourceAddr
 		c.agentDetail = detail
 		c.agentDetailLock.Unlock()
 
@@ -172,7 +171,7 @@ func (c *Connection) connStatWorker() {
 				c.connStatNeedSync = false
 				c.connUpdateStatLock.Unlock()
 				//agent_connection
-				client.PostHBJoin(&client.ConnStat{
+				client.HBWriter.Join(client.ConnStat{
 					AgentInfo:   c.GetAgentDetail(),
 					PluginsInfo: c.GetPluginsList(),
 				})

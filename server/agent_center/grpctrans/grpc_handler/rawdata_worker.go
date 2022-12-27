@@ -165,7 +165,13 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 	detail["product"] = req.Product
 
 	//last heartbeat time get from server
+	detail["online"] = true
 	detail["last_heartbeat_time"] = time.Now().Unix()
+
+	detail["source_ip"] = common.LocalIP
+	detail["source_ipv4"] = common.LocalIP
+	detail["source_ipv6"] = ""
+	detail["source_port"] = common.HttpPort
 
 	if len(conn.GetAgentDetail()) == 0 {
 		conn.SetAgentDetail(detail)
