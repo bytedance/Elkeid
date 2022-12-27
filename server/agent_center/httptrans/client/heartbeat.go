@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	HBJoinUrl  = "%s/api/v1/agent/heartbeat/join/bulk"
-	HBEvictUrl = "%s/api/v1/agent/heartbeat/evict/bulk"
+	HBJoinUrl  = "http://%s/api/v1/agent/heartbeat/join/bulk"
+	HBEvictUrl = "http://%s/api/v1/agent/heartbeat/evict/bulk"
 )
 
 type ConnStat struct {
@@ -120,7 +120,7 @@ func PostHBJoin(hb []ConnStat) {
 	url := fmt.Sprintf(HBJoinUrl, common.GetRandomManageAddr())
 	resp, err := grequests.Post(url, &grequests.RequestOptions{
 		JSON:           hb,
-		RequestTimeout: 30 * time.Second,
+		RequestTimeout: 60 * time.Second,
 	})
 	if err != nil {
 		ylog.Errorf("PostHBJoin", "failed: %s", err.Error())
@@ -146,7 +146,7 @@ func PostHBJoin(hb []ConnStat) {
 func PostHBEvict(hb []HeartBeatEvictModel) {
 	resp, err := grequests.Post(fmt.Sprintf(HBEvictUrl, common.GetRandomManageAddr()), &grequests.RequestOptions{
 		JSON:           hb,
-		RequestTimeout: 30 * time.Second,
+		RequestTimeout: 60 * time.Second,
 	})
 	if err != nil {
 		ylog.Errorf("PostHBEvict", "failed: %v", err.Error())

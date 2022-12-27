@@ -17,6 +17,7 @@ require (
 	github.com/pierrec/lz4 v2.3.0+incompatible // indirect
 	github.com/prometheus/client_golang v1.12.1
 	github.com/rcrowley/go-metrics v0.0.0-20190826022208-cac0b30c2563 // indirect
+	github.com/rs/xid v1.4.0
 	github.com/spf13/viper v1.7.0
 	go.uber.org/zap v1.19.0
 	google.golang.org/grpc v1.40.0

@@ -3,11 +3,13 @@ package grpc_handler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/pool"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/bytedance/Elkeid/server/agent_center/httptrans/client"
+	"github.com/rs/xid"
 	"google.golang.org/grpc/peer"
 	"time"
 )
@@ -22,6 +24,7 @@ var (
 func InitGlobalGRPCPool() {
 	option := pool.NewConfig()
 	option.PoolLength = common.ConnLimit
+	option.ChanLen = common.ConnLimit * 2
 	GlobalGRPCPool = pool.NewGRPCPool(option)
 }
 
@@ -50,7 +53,7 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 		ylog.Errorf("Transfer", "Transfer error %s", err.Error())
 		return err
 	}
-	addr := p.Addr.String()
+	addr := fmt.Sprintf("%s-%s", p.Addr.String(), xid.New().String())
 	ylog.Infof("Transfer", ">>>>connection addr: %s", addr)
 
 	//add connection info to the GlobalGRPCPool
