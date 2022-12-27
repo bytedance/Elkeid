@@ -259,7 +259,7 @@ impl FileMonitor {
                         let rfp = Path::new(pstr_full);
                         let event_path_full: &str =
                             &format!("/proc/{}/root{}", event_pid, &event_fpath);
-                        let fpath_real_sha256 = get_file_sha256(event_path_full);
+                        //let fpath_real_sha256 = get_file_sha256(event_path_full);
 
                         // fanotify only
                         if let Ok(map) = anti_ransome_inner.read() {
@@ -289,7 +289,7 @@ impl FileMonitor {
                                     let task = ScanTaskFanotify {
                                         pid: each_metadata.pid as i32,
                                         pid_exe: exe_real.to_string(),
-                                        event_file_hash: fpath_real_sha256.to_string(),
+                                        //event_file_hash: fpath_real_sha256.to_string(),
                                         event_file_path: event_fpath.to_string(),
                                         event_file_mask: each_metadata.mask.to_string(),
                                         size: fsize,
@@ -320,6 +320,7 @@ impl FileMonitor {
 
                         // anti_ransome
                         if let Some(fhash) = HONEYPOTSSHA256.get(&event_fpath) {
+                            let fpath_real_sha256 = get_file_sha256(event_path_full);
                             if fhash == &fpath_real_sha256 {
                                 continue;
                             } else if crate::model::functional::anti_ransom::check_av_file(
@@ -359,7 +360,7 @@ impl FileMonitor {
                             let task = ScanTaskFanotify {
                                 pid: each_metadata.pid as i32,
                                 pid_exe: exe_real.to_string(),
-                                event_file_hash: fpath_real_sha256.to_string(),
+                                //event_file_hash: fpath_real_sha256.to_string(),
                                 event_file_path: event_fpath.to_string(),
                                 event_file_mask: each_metadata.mask.to_string(),
                                 size: fsize,

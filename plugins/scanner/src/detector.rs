@@ -852,7 +852,7 @@ impl Detector {
                                         task_data.btime.0,
                                         task_data.btime.1,
                                         &task_data.event_file_path,
-                                        &task_data.event_file_hash,
+                                        //&task_data.event_file_hash,
                                         &task_data.event_file_mask,
                                         matched_data,
                                     );
@@ -882,7 +882,7 @@ impl Detector {
                                 task_data.btime.0,
                                 task_data.btime.1,
                                 &task_data.event_file_path,
-                                &task_data.event_file_hash,
+                                //&task_data.event_file_hash,
                                 &task_data.event_file_mask,
                             );
                             if let Err(e) = self.client.send_record(&event.to_record()) {

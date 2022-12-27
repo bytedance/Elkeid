@@ -107,7 +107,7 @@ impl HoneyPot {
             for each_cfg in &fmonitor_cfg {
                 let tmp_docker_cfg = each_cfg.with_prefix(each_docker);
                 if let Err(e) = fmonitor_t.add_cfg(&tmp_docker_cfg) {
-                    error!(
+                    warn!(
                         "reset_fanotify add_cfg Err {:?},with {:?}",
                         e, tmp_docker_cfg
                     );
@@ -149,7 +149,7 @@ impl HoneyPot {
 
         for each_cfg in &fmonitor_cfg {
             if let Err(e) = self.moniter.add_cfg(&each_cfg) {
-                error!("reset_fanotify add_cfg Err {:?},with {:?}", e, each_cfg);
+                warn!("reset_fanotify add_cfg Err {:?},with {:?}", e, each_cfg);
             }
         }
         // file_monitor support docker
@@ -158,7 +158,7 @@ impl HoneyPot {
             for each_cfg in &fmonitor_cfg {
                 let tmp_docker_cfg = each_cfg.with_prefix(each_docker);
                 if let Err(e) = self.moniter.add_cfg(&tmp_docker_cfg) {
-                    error!(
+                    warn!(
                         "reset_fanotify add_cfg Err {:?},with {:?}",
                         e, tmp_docker_cfg
                     );
@@ -179,7 +179,7 @@ impl HoneyPot {
             copy_elkeid_targets(&dst, uid.to_owned(), gid.to_owned())?;
             for each_target in HONEYPOTS {
                 if let Err(e) = self.moniter.add(&format!("{}/{}", &dst, each_target), true) {
-                    error!("fmonitor add fpath err {:?}:{:?}", &dst, e);
+                    warn!("fmonitor add fpath err {:?}:{:?}", &dst, e);
                 }
             }
         }
@@ -235,7 +235,7 @@ impl HoneyPot {
                 for each_cfg in &fmonitor_cfg {
                     let tmp_docker_cfg = each_cfg.with_prefix(each_docker);
                     if let Err(e) = FileMonitor::raw_add_cfg(raw_monitorfd, &tmp_docker_cfg) {
-                        error!(
+                        warn!(
                             "reset_fanotify add_cfg Err {:?},with {:?}",
                             e, tmp_docker_cfg
                         );
@@ -281,7 +281,7 @@ impl HoneyPot {
                                     &format!("{}/{}", &dst, each_target),
                                     true,
                                 ) {
-                                    error!("fmonitor add fpath err {:?}:{:?}", &dst, e);
+                                    warn!("fmonitor add fpath err {:?}:{:?}", &dst, e);
                                 }
                             }
                         }
