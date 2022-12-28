@@ -192,14 +192,16 @@ type Command struct {
 // -- maxConnTokenCount: Maximum number of concurrent connections
 func NewGRPCPool(config *Config) *GRPCPool {
 	g := &GRPCPool{
-		connPool:       cache.New(-1, -1), //Never expire
-		tokenChan:      make(chan bool, config.PoolLength),
-		confChan:       make(chan string, config.ChanLen),
-		taskChan:       make(chan map[string]string, config.ChanLen),
-		taskList:       make([]map[string]string, 0, config.ChanLen),
-		extraInfoChan:  make(chan string, config.ChanLen),
-		extraInfoCache: make(map[string]client.AgentExtraInfo),
-		conf:           config,
+		connPool:            cache.New(-1, -1), //Never expire
+		tokenChan:           make(chan bool, config.PoolLength),
+		confChan:            make(chan string, config.ChanLen),
+		taskChan:            make(chan map[string]string, config.ChanLen),
+		taskList:            make([]map[string]string, 0, config.ChanLen),
+		extraInfoChan:       make(chan string, config.ChanLen),
+		extraInfoCache:      make(map[string]client.AgentExtraInfo),
+		conf:                config,
+		dynamicLimit:        -1,
+		dynamicLimitEndTime: 0,
 	}
 
 	for i := 0; i < config.PoolLength; i++ {

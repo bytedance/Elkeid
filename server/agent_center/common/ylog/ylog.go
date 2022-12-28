@@ -62,8 +62,8 @@ func NewYLog(opts ...interface{}) *YLog {
 		MaxSize:    maxSize,
 		MaxAge:     maxAge,
 		MaxBackups: maxBackups,
-		LocalTime:  false,
-		Compress:   false,
+		LocalTime:  true,
+		Compress:   true,
 	}
 
 	core := zapcore.NewCore(zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
