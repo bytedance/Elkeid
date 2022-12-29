@@ -191,6 +191,7 @@ For more details and latest updates, see [Elkeid docs](https://elkeid.bytedance.
 * Elkeid Agent: Apache-2.0
 * Elkeid Server: Apache-2.0
 * Elkeid Console: [Elkeid License](server/web_console/LICENSE)
+* Elkeid HUB: [Elkeid License](https://github.com/bytedance/Elkeid-HUB/blob/main/LICENSE)
 
 ## 404StarLink 2.0 - Galaxy
 <img src="https://github.com/knownsec/404StarLink-Project/raw/master/logo.png" width="30%" style="float:left;"/>
