@@ -92,7 +92,7 @@ impl HoneyPot {
         }
 
         // file_monitor scan
-        let mut fmonitor_t = FileMonitor::new(sender, s_locker, 30, 4096)?;
+        let mut fmonitor_t = FileMonitor::new(sender, s_locker, 16, 4096)?;
 
         let fmonitor_cfg = crate::config::gen_fmonitor_cfg()?;
         for each in &fmonitor_cfg {

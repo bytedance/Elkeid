@@ -3,7 +3,7 @@ use libc::{__s32, __u16, __u32, __u64, __u8};
 
 use log::*;
 
-use cached::{Cached, TimedCache};
+use cached::{Cached, TimedSizedCache};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::{ffi::CString, process};
@@ -150,8 +150,8 @@ impl FileMonitor {
                 anti_ransome_dir: HashMap::new(),
             });
         }
-        let mut local_cache: TimedCache<(i32, u64, String), u32> =
-            TimedCache::with_lifespan_and_capacity(cache_ttl_secs, cache_size);
+        let mut local_cache: TimedSizedCache<(i32, u64, String), u32> =
+            TimedSizedCache::with_size_and_lifespan(cache_size, cache_ttl_secs);
 
         let anti_ransome_inner = Arc::clone(&anti_ransome);
 
