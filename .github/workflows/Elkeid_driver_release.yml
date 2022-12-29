@@ -82,6 +82,45 @@ jobs:
       with:
         name: elkeid_driver_aliyun_linux3_x86_64
         path: ${{steps.extract-aliyun_linux3.outputs.destination}}
+  build_almalinux8_x86_64:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: false
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx almalinux8
+      uses: docker/setup-buildx-action@v2
+    - name: Build almalinux8
+      uses: docker/build-push-action@v3
+      with:
+        context: .
+        file: driver/dockerfiles.x86_64/Dockerfile.almalinux8
+        load: false
+        push: true
+        tags: elkeidteam/elkeid_driver_almalinux8_x86_64:latest
+    - name: Docker Hub Description almalinux8
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_almalinux8_x86_64
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Extract almalinux8
+      id: extract-almalinux8
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeidteam/elkeid_driver_almalinux8_x86_64:latest
+        path: /ko_output/.
+    - name: Upload almalinux8
+      uses: actions/upload-artifact@v3
+      with:
+        name: elkeid_driver_almalinux8_x86_64
+        path: ${{steps.extract-almalinux8.outputs.destination}}
   build_amazonlinux_x86_64:
     runs-on: ubuntu-latest
     steps:
@@ -1132,6 +1171,84 @@ jobs:
       with:
         name: elkeid_driver_ubuntu1604_aws_x86_64
         path: ${{steps.extract-ubuntu1604_aws.outputs.destination}}
+  build_ubuntu1604_gcp_x86_64:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: false
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx ubuntu1604_gcp
+      uses: docker/setup-buildx-action@v2
+    - name: Build ubuntu1604_gcp
+      uses: docker/build-push-action@v3
+      with:
+        context: .
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_gcp
+        load: false
+        push: true
+        tags: elkeidteam/elkeid_driver_ubuntu1604_gcp_x86_64:latest
+    - name: Docker Hub Description ubuntu1604_gcp
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu1604_gcp_x86_64
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Extract ubuntu1604_gcp
+      id: extract-ubuntu1604_gcp
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeidteam/elkeid_driver_ubuntu1604_gcp_x86_64:latest
+        path: /ko_output/.
+    - name: Upload ubuntu1604_gcp
+      uses: actions/upload-artifact@v3
+      with:
+        name: elkeid_driver_ubuntu1604_gcp_x86_64
+        path: ${{steps.extract-ubuntu1604_gcp.outputs.destination}}
+  build_ubuntu1604_gke_x86_64:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: false
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx ubuntu1604_gke
+      uses: docker/setup-buildx-action@v2
+    - name: Build ubuntu1604_gke
+      uses: docker/build-push-action@v3
+      with:
+        context: .
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_gke
+        load: false
+        push: true
+        tags: elkeidteam/elkeid_driver_ubuntu1604_gke_x86_64:latest
+    - name: Docker Hub Description ubuntu1604_gke
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu1604_gke_x86_64
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Extract ubuntu1604_gke
+      id: extract-ubuntu1604_gke
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeidteam/elkeid_driver_ubuntu1604_gke_x86_64:latest
+        path: /ko_output/.
+    - name: Upload ubuntu1604_gke
+      uses: actions/upload-artifact@v3
+      with:
+        name: elkeid_driver_ubuntu1604_gke_x86_64
+        path: ${{steps.extract-ubuntu1604_gke.outputs.destination}}
   build_ubuntu1604_k410_x86_64:
     runs-on: ubuntu-latest
     steps:
@@ -1405,6 +1522,84 @@ jobs:
       with:
         name: elkeid_driver_ubuntu1804_azure_x86_64
         path: ${{steps.extract-ubuntu1804_azure.outputs.destination}}
+  build_ubuntu1804_gcp_x86_64:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: false
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx ubuntu1804_gcp
+      uses: docker/setup-buildx-action@v2
+    - name: Build ubuntu1804_gcp
+      uses: docker/build-push-action@v3
+      with:
+        context: .
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804_gcp
+        load: false
+        push: true
+        tags: elkeidteam/elkeid_driver_ubuntu1804_gcp_x86_64:latest
+    - name: Docker Hub Description ubuntu1804_gcp
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu1804_gcp_x86_64
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Extract ubuntu1804_gcp
+      id: extract-ubuntu1804_gcp
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeidteam/elkeid_driver_ubuntu1804_gcp_x86_64:latest
+        path: /ko_output/.
+    - name: Upload ubuntu1804_gcp
+      uses: actions/upload-artifact@v3
+      with:
+        name: elkeid_driver_ubuntu1804_gcp_x86_64
+        path: ${{steps.extract-ubuntu1804_gcp.outputs.destination}}
+  build_ubuntu1804_gke_x86_64:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: false
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx ubuntu1804_gke
+      uses: docker/setup-buildx-action@v2
+    - name: Build ubuntu1804_gke
+      uses: docker/build-push-action@v3
+      with:
+        context: .
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804_gke
+        load: false
+        push: true
+        tags: elkeidteam/elkeid_driver_ubuntu1804_gke_x86_64:latest
+    - name: Docker Hub Description ubuntu1804_gke
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu1804_gke_x86_64
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Extract ubuntu1804_gke
+      id: extract-ubuntu1804_gke
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeidteam/elkeid_driver_ubuntu1804_gke_x86_64:latest
+        path: /ko_output/.
+    - name: Upload ubuntu1804_gke
+      uses: actions/upload-artifact@v3
+      with:
+        name: elkeid_driver_ubuntu1804_gke_x86_64
+        path: ${{steps.extract-ubuntu1804_gke.outputs.destination}}
   build_ubuntu2004_x86_64:
     runs-on: ubuntu-latest
     steps:
@@ -1522,6 +1717,84 @@ jobs:
       with:
         name: elkeid_driver_ubuntu2004_azure_x86_64
         path: ${{steps.extract-ubuntu2004_azure.outputs.destination}}
+  build_ubuntu2004_gcp_x86_64:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: false
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx ubuntu2004_gcp
+      uses: docker/setup-buildx-action@v2
+    - name: Build ubuntu2004_gcp
+      uses: docker/build-push-action@v3
+      with:
+        context: .
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004_gcp
+        load: false
+        push: true
+        tags: elkeidteam/elkeid_driver_ubuntu2004_gcp_x86_64:latest
+    - name: Docker Hub Description ubuntu2004_gcp
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu2004_gcp_x86_64
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Extract ubuntu2004_gcp
+      id: extract-ubuntu2004_gcp
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeidteam/elkeid_driver_ubuntu2004_gcp_x86_64:latest
+        path: /ko_output/.
+    - name: Upload ubuntu2004_gcp
+      uses: actions/upload-artifact@v3
+      with:
+        name: elkeid_driver_ubuntu2004_gcp_x86_64
+        path: ${{steps.extract-ubuntu2004_gcp.outputs.destination}}
+  build_ubuntu2004_gke_x86_64:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: false
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx ubuntu2004_gke
+      uses: docker/setup-buildx-action@v2
+    - name: Build ubuntu2004_gke
+      uses: docker/build-push-action@v3
+      with:
+        context: .
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004_gke
+        load: false
+        push: true
+        tags: elkeidteam/elkeid_driver_ubuntu2004_gke_x86_64:latest
+    - name: Docker Hub Description ubuntu2004_gke
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu2004_gke_x86_64
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Extract ubuntu2004_gke
+      id: extract-ubuntu2004_gke
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeidteam/elkeid_driver_ubuntu2004_gke_x86_64:latest
+        path: /ko_output/.
+    - name: Upload ubuntu2004_gke
+      uses: actions/upload-artifact@v3
+      with:
+        name: elkeid_driver_ubuntu2004_gke_x86_64
+        path: ${{steps.extract-ubuntu2004_gke.outputs.destination}}
   build_ubuntu2204_x86_64:
     runs-on: ubuntu-latest
     steps:
@@ -1611,43 +1884,50 @@ jobs:
         asset_path: ./elkeid_driver_ko.tar.xz
         upload_url: ${{steps.create_release.outputs.upload_url}}
     needs:
-    - build_ubuntu2004_azure_x86_64
-    - build_amazonlinux_x86_64
-    - build_rhel6_elrepo_x86_64
-    - build_ubuntu1404_k4_x86_64
-    - build_tlinux24_x86_64
-    - build_ubuntu1404_k3_x86_64
-    - build_ubuntu1204_x86_64
-    - build_ubuntu1804_x86_64
-    - build_rhel7_elrepo_ml_x86_64
-    - build_ubuntu2004_x86_64
-    - build_rhel7_elrepo_lt_x86_64
-    - build_ubuntu1604_k48_x86_64
-    - build_rhel8_plus_x86_64
-    - build_rhel7_centosplus_x86_64
-    - build_ubuntu1604_aws_x86_64
-    - build_aliyun_linux3_x86_64
-    - build_anolis8_x86_64
-    - build_ubuntu1604_k413_x86_64
-    - build_tlinux31_x86_64
-    - build_amazonlinux510_x86_64
-    - build_aliyun_linux2_x86_64
-    - build_debian11_x86_64
-    - build_debian8_x86_64
-    - build_ubuntu1804_azure_x86_64
-    - build_debian10_x86_64
+    - build_ubuntu1804_gke_x86_64
     - build_debian9_x86_64
+    - build_ubuntu2004_x86_64
+    - build_ubuntu1604_gcp_x86_64
+    - build_almalinux8_x86_64
+    - build_ubuntu1804_azure_x86_64
+    - build_rhel7_centosplus_x86_64
+    - build_tlinux24_x86_64
+    - build_ubuntu2004_aws_x86_64
+    - build_ubuntu1404_k3_x86_64
     - build_ubuntu1604_auzre_x86_64
-    - build_rocky8_x86_64
-    - build_rhel8_elrepo_ml_x86_64
-    - build_amazonlinux54_x86_64
+    - build_tlinux31_x86_64
+    - build_rhel7_x86_64
+    - build_ubuntu1604_gke_x86_64
+    - build_rhel6_elrepo_x86_64
     - build_ubuntu1804_aws_x86_64
     - build_ubuntu2204_x86_64
-    - build_ubuntu1604_k44_x86_64
-    - build_ubuntu2004_aws_x86_64
-    - build_rhel8_elrepo_lt_x86_64
-    - build_rhel7_x86_64
-    - build_ubuntu1604_k410_x86_64
     - build_rhel8_x86_64
+    - build_ubuntu1204_x86_64
+    - build_ubuntu1404_k4_x86_64
+    - build_debian8_x86_64
     - build_rhel6_x86_64
+    - build_rocky8_x86_64
+    - build_amazonlinux54_x86_64
+    - build_ubuntu1604_k44_x86_64
+    - build_debian11_x86_64
+    - build_aliyun_linux3_x86_64
+    - build_amazonlinux510_x86_64
+    - build_ubuntu2004_gke_x86_64
+    - build_debian10_x86_64
+    - build_amazonlinux_x86_64
+    - build_rhel7_elrepo_ml_x86_64
+    - build_rhel7_elrepo_lt_x86_64
+    - build_ubuntu1604_aws_x86_64
+    - build_anolis8_x86_64
+    - build_rhel8_elrepo_lt_x86_64
+    - build_aliyun_linux2_x86_64
+    - build_ubuntu1604_k413_x86_64
+    - build_rhel8_elrepo_ml_x86_64
+    - build_ubuntu2004_azure_x86_64
+    - build_ubuntu1804_x86_64
+    - build_rhel8_plus_x86_64
+    - build_ubuntu1604_k48_x86_64
+    - build_ubuntu1804_gcp_x86_64
+    - build_ubuntu2004_gcp_x86_64
+    - build_ubuntu1604_k410_x86_64
     - build_rhel7_aarch64
