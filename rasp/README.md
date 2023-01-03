@@ -21,7 +21,7 @@
   3. MUSL toolcahin 1.2.2 (download via CDN: [link](https://sf1-cdn-tos.douyinstatic.com/obj/eden-cn/laahweh7uhwbps/x86_64-linux-musl-1.2.2.tar.gz))
   4. RUST toolchain 1.40+
   5. JDK 11+(for Java probe)
-  6. Python2 + python3 + pip + wheel + header files (for python probe)
+  6. Python2 + Python3 + pip + wheel + header files (for python probe)
   7. PHP header files
   8. make and install
 
