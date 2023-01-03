@@ -1896,7 +1896,7 @@ jobs:
     - name: Prepare artifact 2-3 log
       run: mv -f ~/all_elkeid_drivers/*/*.log elkeid_driver/log || true
     - name: Pack artifact
-      run: tar -cJf elkeid_driver_ko.tar.xz elkeid_driver/ko
+      run: tar -C elkeid_driver -cJf elkeid_driver_ko.tar.xz ko
     - name: Pack log
       run: zip -r elkeid_driver_log.zip elkeid_driver/log
     - name: Upload log

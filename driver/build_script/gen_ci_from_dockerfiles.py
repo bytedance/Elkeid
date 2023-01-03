@@ -183,7 +183,7 @@ create_release_job = OrderedDict(
 
             OrderedDict({
                 "name": "Pack artifact",
-                "run": "tar -cJf elkeid_driver_ko.tar.xz elkeid_driver/ko"
+                "run": "tar -C elkeid_driver -cJf elkeid_driver_ko.tar.xz ko"
             }),
 
             OrderedDict({
