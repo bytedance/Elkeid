@@ -2,7 +2,9 @@ name: Elkeid
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - 'rasp/*'
   pull_request:
     branches: [ main ]
 
