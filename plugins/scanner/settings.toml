@@ -290,3 +290,21 @@ filter = [
     follow_link = false
     sp_child = ""
 
+
+[file_monitor_filter]
+file_monitor_exe_whitelist = [
+    "/usr/bin/juno",
+    "/usr/bin/bpfd",
+    "/usr/bin/systemd-detect-virt",
+    "/usr/sbin/qemu-ga",
+    "/usr/libexec/pk-command-not-found",
+    "/bin/touch",
+    "/sbin/ipset",
+    "/sbin/audisp-mu",
+    "/lib/systemd/systemd",
+    "/lib/systemd/systemd-journald",
+]
+
+file_monitor_argv_whitelist = [
+    "yum repolist",
+]

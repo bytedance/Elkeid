@@ -3,6 +3,7 @@ use config::{Config, File};
 use lazy_static;
 use log::debug;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 lazy_static::lazy_static!(
     pub static ref SETTINGS: Config = load_config("settings").unwrap();
@@ -41,12 +42,13 @@ lazy_static::lazy_static!(
     pub static ref ARCHIVE_DB_PWD: String = settings_string("database","archive_db_pwd").unwrap().to_string();
     pub static ref ARCHIVE_DB_HASH: String = settings_string("database","archive_db_hash").unwrap().to_string();
     pub static ref ARCHIVE_DB_VERSION: String = settings_string("database","archive_db_version").unwrap().to_string();
+    pub static ref FMONITOR_EXE_WHITELIST: HashMap<String,bool> = gen_fmonitor_exe_filter().unwrap();
+    pub static ref FMONITOR_ARGV_WHITELIST: HashMap<String,bool> = gen_fmonitor_argv_filter().unwrap();
 
 );
 
 pub const FULLSCAN_SCAN_MODE_FULL: &str = "full";
 pub const FULLSCAN_SCAN_MODE_QUICK: &str = "quick";
-pub const WAIT_INTERVAL_SCAN: std::time::Duration = std::time::Duration::from_secs(1);
 
 #[inline]
 pub fn settings_int(table: &'static str, key: &'static str) -> Result<i64> {
@@ -220,4 +222,22 @@ pub fn gen_scan_dir() -> Result<Vec<ScanConfigs>> {
         scan_dir_configs.push(scan_cfg);
     }
     return Ok(scan_dir_configs);
+}
+
+pub fn gen_fmonitor_exe_filter() -> Result<HashMap<String, bool>> {
+    let mut filter = HashMap::new();
+    let filter_list = settings_vec_string("file_monitor_filter", "file_monitor_exe_whitelist")?;
+    for each in filter_list {
+        filter.insert(each, true);
+    }
+    return Ok(filter);
+}
+
+pub fn gen_fmonitor_argv_filter() -> Result<HashMap<String, bool>> {
+    let mut filter = HashMap::new();
+    let filter_list = settings_vec_string("file_monitor_filter", "file_monitor_argv_whitelist")?;
+    for each in filter_list {
+        filter.insert(each, true);
+    }
+    return Ok(filter);
 }

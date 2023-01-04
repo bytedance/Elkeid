@@ -17,7 +17,10 @@ use procfs::sys::kernel::Version;
 use std::io::Error;
 use std::thread;
 
-use crate::config::{FAMode, FanotifyTargetConfigs, CLAMAV_MAX_FILESIZE};
+use crate::config::{
+    FAMode, FanotifyTargetConfigs, CLAMAV_MAX_FILESIZE, FMONITOR_ARGV_WHITELIST,
+    FMONITOR_EXE_WHITELIST,
+};
 use crate::data_type::{ScanTaskFanotify, DETECT_TASK};
 
 use crate::get_file_sha256;
@@ -150,8 +153,6 @@ impl FileMonitor {
                 anti_ransome_dir: HashMap::new(),
             });
         }
-        let mut local_cache: TimedSizedCache<(i32, u64, String), u32> =
-            TimedSizedCache::with_size_and_lifespan(cache_size, cache_ttl_secs);
 
         let anti_ransome_inner = Arc::clone(&anti_ransome);
 
@@ -164,6 +165,8 @@ impl FileMonitor {
             let mut metadata =
                 Vec::<libc::fanotify_event_metadata>::with_capacity(METADATA_MAX_LEN);
             let child = thread::spawn(move || {
+                let mut event_counter: u32 = 0;
+                let mut event_timestamp: u64 = coarsetime::Clock::now_since_epoch().as_secs();
                 loop {
                     let len = unsafe {
                         libc::read(
@@ -202,13 +205,15 @@ impl FileMonitor {
                             safe_close(each_metadata.fd);
                             continue; // skip monitor self pid
                         }
-                        let event_fpath = get_real_path_from_fd_link(pid, each_metadata.fd);
-                        safe_close(each_metadata.fd);
-                        match event_fpath.as_str() {
-                            "-1" | "-3" => {
+                        let event_fpath = match get_real_path_from_fd_link(pid, each_metadata.fd) {
+                            Some(event_path) => {
+                                safe_close(each_metadata.fd);
+                                event_path
+                            }
+                            None => {
+                                safe_close(each_metadata.fd);
                                 continue;
                             }
-                            _ => {}
                         };
 
                         if event_fpath.ends_with(".swp")
@@ -228,22 +233,12 @@ impl FileMonitor {
                             continue;
                         }
 
-                        if let Some(_) = local_cache.cache_set(
-                            (
-                                each_metadata.pid,
-                                each_metadata.mask,
-                                event_fpath.to_string(),
-                            ),
-                            1,
-                        ) {
-                            continue;
-                        }
-
-                        debug!("fanotify event {:?}\n{}", &each_metadata.mask, event_fpath);
-
                         let event_pid = &each_metadata.pid;
                         let pstr: &str = &format!("/proc/{}/exe", event_pid);
                         let exe_fp = Path::new(pstr);
+                        if !exe_fp.exists() {
+                            continue;
+                        }
                         let exe_real = match std::fs::read_link(exe_fp) {
                             Ok(pf) => pf.to_string_lossy().to_string(),
                             Err(e) => {
@@ -254,6 +249,50 @@ impl FileMonitor {
                                 continue;
                             }
                         };
+
+                        let argv_real: String =
+                            match std::fs::read(format!("/proc/{}/cmdline", event_pid)) {
+                                Ok(mut v) => {
+                                    if v.len() > 256 {
+                                        v.truncate(256);
+                                    }
+                                    for v in v.iter_mut() {
+                                        if *v == b'\0' {
+                                            *v = b' ';
+                                        }
+                                    }
+                                    let offset = v
+                                        .iter()
+                                        .rposition(|x| !x.is_ascii_whitespace())
+                                        .unwrap_or_default();
+                                    v.truncate(offset + 1);
+                                    match std::str::from_utf8(&v) {
+                                        Ok(argv) => argv.to_string(),
+                                        Err(_) => continue,
+                                    }
+                                }
+                                Err(_) => continue,
+                            };
+
+                        if let Some(_) = FMONITOR_EXE_WHITELIST.get(&exe_real) {
+                            continue;
+                        }
+
+                        if let Some(_) = FMONITOR_ARGV_WHITELIST.get(&argv_real) {
+                            continue;
+                        }
+
+                        // rate limit
+                        if event_counter >= 10 {
+                            if coarsetime::Clock::now_since_epoch().as_secs() - event_timestamp < 5
+                            {
+                                continue;
+                            }
+                            event_timestamp = coarsetime::Clock::now_since_epoch().as_secs();
+                            event_counter = 0;
+                        }
+
+                        event_counter += 1;
 
                         let pstr_full: &str = &format!("/proc/{}/root{}", event_pid, exe_real);
                         let rfp = Path::new(pstr_full);
@@ -583,15 +622,15 @@ impl FileMonitor {
 }
 
 // get_real_path_from_fd_link get path from read_link
-pub fn get_real_path_from_fd_link(pid: u32, fd: i32) -> String {
+pub fn get_real_path_from_fd_link(pid: u32, fd: i32) -> Option<String> {
     if let Ok(path) = read_link(format!("/proc/{}/fd/{}", pid, fd)) {
         if let Ok(p) = path.into_os_string().into_string() {
-            return p;
+            return Some(p);
         } else {
-            return "-1".to_owned();
+            return None;
         }
     } else {
-        return "-3".to_owned();
+        return None;
     }
 }
 

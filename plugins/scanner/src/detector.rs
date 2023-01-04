@@ -4,7 +4,6 @@ use crate::{
         FULLSCAN_CPU_QUOTA_DEFAULT_MAX, FULLSCAN_CPU_QUOTA_DEFAULT_MIN, FULLSCAN_MAX_SCAN_CPU_100,
         FULLSCAN_MAX_SCAN_ENGINES, FULLSCAN_MAX_SCAN_MEM_MB, FULLSCAN_SCAN_MODE_FULL,
         FULLSCAN_SCAN_MODE_QUICK, SERVICE_DEFAULT_CG_CPU, SERVICE_DEFAULT_CG_MEM,
-        WAIT_INTERVAL_SCAN,
     },
     data_type::{
         self, AntiRansomEvent, DetectFileEvent, DetectOneTaskEvent, DetectProcEvent, FanotifyEvent,
@@ -236,7 +235,6 @@ pub struct Detector {
     rule_updater: crossbeam_channel::Receiver<String>,
     db_manager: updater::DBManager,
     ppid: u32,
-    supper_mode: bool,
 }
 
 impl Detector {
@@ -460,27 +458,6 @@ impl Detector {
                                     info!("Anti-ransom is off ,will not be reset.");
                                 }
                             }
-                            6055 => {
-                                // turn on supper mode
-                                let task = DETECT_TASK::TASK_6055_SUPPER_MODE_ON;
-                                if let Err(e) = task_sender.try_send(task) {
-                                    warn!("internal send task err : {:?}", e);
-                                    continue;
-                                }
-                            }
-                            6056 => {
-                                // turn off supper mode
-                                let task = DETECT_TASK::TASK_6056_SUPPER_MODE_OFF;
-                                if let Err(e) = task_sender.try_send(task) {
-                                    warn!("internal send task err : {:?}", e);
-                                    continue;
-                                }
-                                crate::setup_cgroup(
-                                    ppid,
-                                    1024 * 1024 * (*SERVICE_DEFAULT_CG_MEM),
-                                    10 * (*SERVICE_DEFAULT_CG_CPU),
-                                );
-                            }
                             6057 => {
                                 info!("[Full Disk Scan] Started !");
 
@@ -575,7 +552,6 @@ impl Detector {
             _recv_worker: recv_worker,
             rule_updater: r,
             db_manager: db_manager,
-            supper_mode: false,
         };
     }
 
@@ -898,16 +874,6 @@ impl Detector {
                                 return
                             };
                         },// arf status
-                        DETECT_TASK::TASK_6055_SUPPER_MODE_ON =>{
-                            // turn on supper mode
-                            self.supper_mode = true;
-                        }
-
-                        DETECT_TASK::TASK_6056_SUPPER_MODE_OFF =>{
-                             // turn off supper mode
-                            self.supper_mode = false;
-                        }
-
                         DETECT_TASK::TASK_6057_FULLSCAN(fullscantask) =>{
                             self.refresh_scanner();
                             if let Some(t) = &mut self.scanner{
@@ -957,7 +923,7 @@ impl Detector {
                                 crate::setup_cgroup(
                                     self.ppid,
                                     1024 * 1024 * (*SERVICE_DEFAULT_CG_MEM),
-                                    10 * (*SERVICE_DEFAULT_CG_CPU),
+                                    1000 * (*SERVICE_DEFAULT_CG_CPU),
                                 );
 
                             }
@@ -966,9 +932,6 @@ impl Detector {
                             debug!("nothing");
                             continue
                         },
-                    }
-                    if !self.supper_mode{
-                        std::thread::sleep(WAIT_INTERVAL_SCAN);
                     }
                 }
                 recv(after(timeout)) -> _ => {

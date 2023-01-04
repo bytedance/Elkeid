@@ -253,7 +253,7 @@ impl HoneyPot {
                 let etc_passwd = match fs::File::open("/etc/passwd") {
                     Ok(f) => f,
                     Err(e) => {
-                        error!("failed check /etc/passwd");
+                        warn!("failed check /etc/passwd");
                         continue;
                     }
                 };

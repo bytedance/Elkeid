@@ -51,11 +51,13 @@ fn main() {
     info!("pid : {:?}", pid);
 
     #[cfg(feature = "cg_ctrl")]
-    scanner::setup_cgroup(
+    if let Err(e) = scanner::setup_cgroup(
         pid,
         1024 * 1024 * (*SERVICE_DEFAULT_CG_MEM),
-        10 * (*SERVICE_DEFAULT_CG_CPU),
-    );
+        1000 * (*SERVICE_DEFAULT_CG_CPU),
+    ) {
+        return;
+    }
 
     let client = Client::new(true);
 
