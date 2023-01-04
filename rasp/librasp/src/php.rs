@@ -140,7 +140,7 @@ pub fn inspect_php_ini_scan_dir(process: &ProcessInfo) -> AnyhowResult<String> {
     if let Some(caps) = regex.captures(&output) {
         if caps.len() == 2 {
             let scanned_dir = caps.get(1).unwrap().as_str();
-            if Path::new(scanned_dir).exists() {
+            if Path::new(&format!("/proc/{}/root/{}", process.pid, scanned_dir)).exists() {
                 return Ok(String::from(scanned_dir));
             }
         }

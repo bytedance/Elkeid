@@ -726,6 +726,7 @@ mod tests {
             namespace_tracer: MntNamespaceTracer::new(),
             thread_comm: None,
             process_comm: None,
+            runtime_dir: false,
         };
         println!("{:?}", fake_configs);
         let _ = fake_manager.patch_message_handle(&mut fake_configs, 35432).unwrap();
