@@ -22,6 +22,7 @@ pub struct RASPManager {
     pub namespace_tracer: MntNamespaceTracer,
     pub thread_comm: Option<ThreadMode>,
     pub process_comm: Option<ProcessMode>,
+    pub runtime_dir: bool,
 }
 
 impl RASPManager {
@@ -132,6 +133,11 @@ impl RASPManager {
                 let mut delete_index = Vec::new();
                 for (index, patch) in patches.iter_mut().enumerate() {
                     if patch.path.is_none() {
+                        delete_index.push(index);
+                        continue;
+                    }
+                    if !self.runtime_dir {
+                        warn!("due to missing runtime dir, patch ignored: {}", patch.class_name);
                         delete_index.push(index);
                         continue;
                     }
@@ -388,16 +394,23 @@ impl RASPManager {
         using_mount: bool,
     ) -> AnyhowResult<Self> {
         Self::clean_prev_lib()?;
-        Self::create_elkeid_rasp_dir(
+        let runtime_dir = match Self::create_elkeid_rasp_dir(
             &String::from("/var/run/elkeid-agent"),
             &String::from("/rasp/com/security/patch"),
-        )?;
+        ) {
+            Ok(_) => true,
+            Err(e) => {
+                warn!("create runtime dir failed, due to: {}", e);
+                false
+            }
+        };
         match comm_mode {
             "thread" => {
                 Ok(RASPManager {
                     thread_comm: Some(ThreadMode::new(log_level, ctrl, message_sender.clone(), bind_path, linking_to, using_mount)?),
                     namespace_tracer: MntNamespaceTracer::new(),
                     process_comm: None,
+                    runtime_dir,
                 })
             }
 
@@ -406,6 +419,7 @@ impl RASPManager {
                     process_comm: Some(ProcessMode::new(log_level, ctrl)),
                     namespace_tracer: MntNamespaceTracer::new(),
                     thread_comm: None,
+                    runtime_dir,
                 })
             }
             _ => {
@@ -712,6 +726,7 @@ mod tests {
             namespace_tracer: MntNamespaceTracer::new(),
             thread_comm: None,
             process_comm: None,
+            runtime_dir: false,
         };
         println!("{:?}", fake_configs);
         let _ = fake_manager.patch_message_handle(&mut fake_configs, 35432).unwrap();
