@@ -52,6 +52,7 @@ pub fn inspect_phpfpm_zts(process: &ProcessInfo) -> AnyhowResult<bool> {
     let output = execute_phpfpm_info(
         process.pid, String::from(process.exe_path.as_ref().unwrap()),
         &phprc_env,
+        true,
     )?;
     let regex = Regex::new(r"Configure Command.+zts")?;
     Ok(regex.is_match(output.as_str()))
@@ -64,6 +65,7 @@ fn execute_phpfpm_version(pid: i32, phpfmp: String) -> AnyhowResult<String> {
                 "-m", "-p",
                 "-t", pid.to_string().as_str(),
                 phpfmp.as_str(),
+                "-n",
                 "-v"
             ])
     )?;
@@ -74,15 +76,27 @@ fn execute_phpfpm_version(pid: i32, phpfmp: String) -> AnyhowResult<String> {
     Ok(output)
 }
 
-fn execute_phpfpm_info(pid: i32, phpfmp: String, origin_env: &HashMap<String,String>) -> AnyhowResult<String> {
+fn execute_phpfpm_info(pid: i32, phpfmp: String, origin_env: &HashMap<String, String>, no_ini: bool) -> AnyhowResult<String> {
+    let pid_str = pid.to_string();
+    let args = if no_ini {
+        [
+            "-m", "-p",
+            "-t", pid_str.as_str(),
+            phpfmp.as_str(),
+            "-n",
+            "-i"
+        ].to_vec()
+    } else {
+        [
+            "-m", "-p",
+            "-t", pid_str.as_str(),
+            phpfmp.as_str(),
+            "-i"
+        ].to_vec()
+    };
     let (exit_status, output, stderr) = run_async_process(
         Command::new(crate::settings::RASP_NS_ENTER_BIN())
-            .args([
-                "-m", "-p",
-                "-t", pid.to_string().as_str(),
-                phpfmp.as_str(),
-                "-i"
-            ]).env_clear()
+            .args(&args).env_clear()
             .envs(origin_env)
     )?;
     if !exit_status.success() {
@@ -135,6 +149,7 @@ pub fn inspect_php_ini_scan_dir(process: &ProcessInfo) -> AnyhowResult<String> {
     let output = execute_phpfpm_info(
         process.pid, String::from(process.exe_path.as_ref().unwrap()),
         &phprc_env,
+        false,
     )?;
     let regex = Regex::new(r"Scan this dir for additional \.ini files => (.+)\n")?;
     if let Some(caps) = regex.captures(&output) {
@@ -338,7 +353,7 @@ mod php_test {
                         println!("php confd failed: {}", e);
                     }
                 }
-                break
+                break;
             } else {
                 println!("{} not php", process.pid);
             }
