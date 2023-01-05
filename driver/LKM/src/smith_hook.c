@@ -4071,6 +4071,164 @@ TRACEPOINT_PROBE(smith_trace_proc_exit, struct task_struct *task)
 #include <asm/syscall.h> /* syscall_get_nr() */
 #include <asm/unistd.h> /* __NR_syscall defintions */
 
+
+#if IS_ENABLED(CONFIG_X86) || IS_ENABLED(CONFIG_IA32_EMULATION)
+
+void smith_trace_sysexit_x86(struct pt_regs *regs, long id, long ret)
+{
+    switch (id) {
+
+        /*
+         * exec related: context of execved task
+         */
+        case 11 /* __NR_ia32_execve */ :
+        case 358 /* __NR_ia32_execveat */:
+            /*
+             * sched_process_exec emulation for earlier kernels (3.4).
+             * execve returns -1 on error
+             */
+            if (ret >= 0)
+                smith_trace_proc_execve(current);
+
+            if (EXECVE_HOOK)
+                smith_trace_sysret_exec(ret);
+            break;
+
+        /*
+         * ptrace: PTRACE_POKETEXT and PTRACE_POKEDATA
+         */
+        case 26 /* __NR_ia32_ptrace */:
+            if (PTRACE_HOOK)
+                smith_trace_sysret_ptrace(regs->bx, regs->cx,
+                                          (void *)regs->dx, ret);
+            break;
+
+        /*
+         * create new session id
+         */
+        case 66 /*__NR_ia32_setsid */:
+            if (SETSID_HOOK)
+                smith_trace_sysret_setsid(ret);
+            break;
+
+        /*
+         * task kill / tkill / tgkill
+         */
+        case 37 /* __NR_ia32_kill */:
+            if (KILL_HOOK)
+                smith_trace_sysret_kill(regs->bx, regs->cx, ret);
+            break;
+        case 238 /* __NR_ia32_tkill */:
+            if (KILL_HOOK)
+                smith_trace_sysret_tkill(regs->bx, regs->cx, ret);
+            break;
+        case 270 /* __NR_ia32_tgkill */:
+            if (KILL_HOOK)
+                smith_trace_sysret_tgkill(regs->bx, regs->cx, regs->dx, ret);
+            break;
+
+        /*
+         * chmod operations
+         */
+        case 15 /* __NR_ia32_chmod */:
+            if (CHMOD_HOOK)
+                smith_trace_sysret_chmod((char __user *)regs->bx, regs->cx, ret);
+            break;
+        case 94 /* __NR_ia32_fchmod */:
+            if (CHMOD_HOOK)
+                smith_trace_sysret_fchmod(regs->bx, regs->cx, ret);
+            break;
+       case 306 /* __NR_ia32_fchmodat */:
+            if (CHMOD_HOOK)
+                smith_trace_sysret_fchmodat(regs->bx, (char *)regs->cx, regs->dx, ret);
+            break;
+
+        /*
+         * nanosleep
+         */
+        case 162 /* __NR_ia32_nanosleep */:
+            if (NANOSLEEP_HOOK)
+                smith_trace_sysent_nanosleep(regs->bx);
+            break;
+
+        /*
+         * prctl: PR_SET_NAME
+         */
+        case 172 /* __NR_ia32_prctl */:
+            if (PRCTL_HOOK)
+                smith_trace_sysent_prctl(regs->bx, (char *)regs->cx);
+            break;
+
+        /*
+         * memfd_create
+         */
+        case 356 /* __NR_ia32_memfd_create */:
+            if (MEMFD_CREATE_HOOK)
+                smith_trace_sysret_memfd_create((char __user *)regs->bx, regs->cx, ret);
+            break;
+
+        /*
+         * socket related
+         */
+
+        case 102 /* __NR_ia32_socketcall */:
+            if (CONNECT_HOOK && SYS_CONNECT == regs->bx) {
+                int32_t sockfd;
+                if (copy_from_user(&sockfd, (void *)regs->cx, sizeof(sockfd)))
+                    break;
+                smith_trace_sysret_connect(sockfd, ret);
+            } else if (DNS_HOOK && ret >= 20 && (SYS_RECV == regs->bx ||
+                                                 SYS_RECVFROM == regs->bx ||
+                                                 SYS_RECVMSG == regs->bx)) {
+                int32_t ua[2];
+                if (copy_from_user(ua, (void *)regs->cx, sizeof(ua)))
+                    break;
+                if (SYS_RECVMSG == regs->bx)
+                    smith_trace_sysret_recvmsg((long)ua[0], (long)ua[1], ret);
+                else
+                    smith_trace_sysret_recvdat((long)ua[0], (long)ua[1], ret);
+            } else if (DNS_HOOK && SYS_RECVMMSG == regs->bx) {
+            } else if (BIND_HOOK && SYS_BIND == regs->bx) {
+                int32_t sockfd;
+                if (copy_from_user(&sockfd, (void *)regs->cx, sizeof(sockfd)))
+                    break;
+                smith_trace_sysret_bind(sockfd, ret);
+            } else if (ACCEPT_HOOK && (SYS_ACCEPT == regs->bx ||
+                                       SYS_ACCEPT4 == regs->bx)) {
+                smith_trace_sysret_accept(ret);
+            }
+            break;
+
+        case 361 /* __NR_ia32_bind */:
+            if (BIND_HOOK)
+                smith_trace_sysret_bind(regs->bx, ret);
+            break;
+
+        case 362 /* __NR_ia32_connect */:
+            if (CONNECT_HOOK)
+                smith_trace_sysret_connect(regs->bx, ret);
+            break;
+
+        case 364 /* __NR_ia32_accept4 */:
+            if (ACCEPT_HOOK)
+                smith_trace_sysret_accept(ret);
+            break;
+
+        case 371 /* __NR_ia32_recvfrom */:
+            if (DNS_HOOK && ret >= 20)
+                smith_trace_sysret_recvdat(regs->bx, regs->cx, ret);
+            break;
+        case 372 /* __NR_ia32_recvmsg */:
+            if (DNS_HOOK && ret >= 20)
+                smith_trace_sysret_recvmsg(regs->bx, regs->cx, ret);
+            break;
+
+        default:
+            break;
+    }
+}
+#endif /* only for x86 systems */
+
 TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
 {
     long id = syscall_get_nr(current, regs);
@@ -4078,6 +4236,16 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
     /* ignore all kernel threads */
     if (current->flags & PF_KTHREAD)
         return;
+
+#if BITS_PER_LONG == 32
+
+#if IS_ENABLED(CONFIG_X86)
+    /* 32bit OS - x86 / i386 */
+    smith_trace_sysexit_x86(regs, id, ret);
+    return;
+#endif
+
+#elif BITS_PER_LONG == 64
 
 #if IS_ENABLED(CONFIG_IA32_EMULATION)
     /*
@@ -4093,162 +4261,7 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
 #else
     if (unlikely(current_thread_info()->status & TS_COMPAT)) {
 #endif
-
-        switch (id) {
-
-            /*
-             * exec related: context of execved task
-             */
-            case 11 /* __NR_ia32_execve */ :
-            case 358 /* __NR_ia32_execveat */:
-                /*
-                 * sched_process_exec emulation for earlier kernels (3.4).
-                 * execve returns -1 on error
-                 */
-                if (ret >= 0)
-                    smith_trace_proc_execve(current);
-
-                if (EXECVE_HOOK)
-                    smith_trace_sysret_exec(ret);
-                break;
-
-            /*
-             * ptrace: PTRACE_POKETEXT and PTRACE_POKEDATA
-             */
-            case 26 /* __NR_ia32_ptrace */:
-                if (PTRACE_HOOK)
-                    smith_trace_sysret_ptrace(regs->bx, regs->cx,
-                                              (void *)regs->dx, ret);
-                break;
-
-            /*
-             * create new session id
-             */
-            case 66 /*__NR_ia32_setsid */:
-                if (SETSID_HOOK)
-                    smith_trace_sysret_setsid(ret);
-                break;
-
-            /*
-             * task kill / tkill / tgkill
-             */
-            case 37 /* __NR_ia32_kill */:
-                if (KILL_HOOK)
-                    smith_trace_sysret_kill(regs->bx, regs->cx, ret);
-                break;
-            case 238 /* __NR_ia32_tkill */:
-                if (KILL_HOOK)
-                    smith_trace_sysret_tkill(regs->bx, regs->cx, ret);
-                break;
-            case 270 /* __NR_ia32_tgkill */:
-                if (KILL_HOOK)
-                    smith_trace_sysret_tgkill(regs->bx, regs->cx, regs->dx, ret);
-                break;
-
-            /*
-             * chmod operations
-             */
-            case 15 /* __NR_ia32_chmod */:
-                if (CHMOD_HOOK)
-                    smith_trace_sysret_chmod((char __user *)regs->bx, regs->cx, ret);
-                break;
-            case 94 /* __NR_ia32_fchmod */:
-                if (CHMOD_HOOK)
-                    smith_trace_sysret_fchmod(regs->bx, regs->cx, ret);
-                break;
-            case 306 /* __NR_ia32_fchmodat */:
-                if (CHMOD_HOOK)
-                    smith_trace_sysret_fchmodat(regs->bx, (char *)regs->cx, regs->dx, ret);
-                break;
-
-            /*
-             * nanosleep
-             */
-            case 162 /* __NR_ia32_nanosleep */:
-                if (NANOSLEEP_HOOK)
-                    smith_trace_sysent_nanosleep(regs->bx);
-                break;
-
-            /*
-             * prctl: PR_SET_NAME
-             */
-            case 172 /* __NR_ia32_prctl */:
-                if (PRCTL_HOOK)
-                    smith_trace_sysent_prctl(regs->bx, (char *)regs->cx);
-                break;
-
-            /*
-             * memfd_create
-             */
-            case 356 /* __NR_ia32_memfd_create */:
-                if (MEMFD_CREATE_HOOK)
-                    smith_trace_sysret_memfd_create((char __user *)regs->bx, regs->cx, ret);
-
-                break;
-
-            /*
-             * socket related
-             */
-
-            case 102 /* __NR_ia32_socketcall */:
-                if (CONNECT_HOOK && SYS_CONNECT == regs->bx) {
-                    int32_t sockfd;
-                    if (copy_from_user(&sockfd, (void *)regs->cx, sizeof(sockfd)))
-                        break;
-                    smith_trace_sysret_connect(sockfd, ret);
-                } else if (DNS_HOOK && ret >= 20 && (SYS_RECV == regs->bx ||
-                                                     SYS_RECVFROM == regs->bx ||
-                                                     SYS_RECVMSG == regs->bx)) {
-                    int32_t ua[2];
-                    if (copy_from_user(ua, (void *)regs->cx, sizeof(ua)))
-                        break;
-                    if (SYS_RECVMSG == regs->bx)
-                        smith_trace_sysret_recvmsg((long)ua[0], (long)ua[1], ret);
-                    else
-                        smith_trace_sysret_recvdat((long)ua[0], (long)ua[1], ret);
-                } else if (DNS_HOOK && SYS_RECVMMSG == regs->bx) {
-                } else if (BIND_HOOK && SYS_BIND == regs->bx) {
-                    int32_t sockfd;
-                    if (copy_from_user(&sockfd, (void *)regs->cx, sizeof(sockfd)))
-                        break;
-                    smith_trace_sysret_bind(sockfd, ret);
-                } else if (ACCEPT_HOOK && (SYS_ACCEPT == regs->bx ||
-                                           SYS_ACCEPT4 == regs->bx)) {
-                    smith_trace_sysret_accept(ret);
-                }
-                break;
-
-            case 361 /* __NR_ia32_bind */:
-                if (BIND_HOOK)
-                    smith_trace_sysret_bind(regs->bx, ret);
-                break;
-
-            case 362 /* __NR_ia32_connect */:
-                if (CONNECT_HOOK)
-                    smith_trace_sysret_connect(regs->bx, ret);
-                break;
-
-            case 364 /* __NR_ia32_accept4 */:
-                if (ACCEPT_HOOK)
-                    smith_trace_sysret_accept(ret);
-                break;
-
-#ifdef           __NR_ia32_recv
-            case __NR_ia32_recv:
-#endif
-            case 371 /* __NR_ia32_recvfrom */:
-                if (DNS_HOOK && ret >= 20)
-                    smith_trace_sysret_recvdat(regs->bx, regs->cx, ret);
-                break;
-            case 372 /* __NR_ia32_recvmsg */:
-                if (DNS_HOOK && ret >= 20)
-                    smith_trace_sysret_recvmsg(regs->bx, regs->cx, ret);
-                break;
-
-            default:
-                break;
-        }
-
+        smith_trace_sysexit_x86(regs, id, ret);
         return;
     }
 #endif
@@ -4439,6 +4452,7 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
         default:
             break;
     }
+#endif /* BITS_PER_LONG == 64 */
 }
 
 struct smith_tracepoint {

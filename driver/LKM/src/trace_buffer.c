@@ -3127,7 +3127,7 @@ __tb_reserve_next(struct tb_per_cpu *cpu_ring,
 	}
 
 	if (likely(tail == w)) {
-		u64 save_before;
+		u64 save_before = 0;
 		bool s_ok;
 
 		/* Nothing interrupted us between A and C */
