@@ -61,8 +61,8 @@ func (c *criClient) ListContainers(ctx context.Context) ([]Container, error) {
 		container := Container{
 			ID:         criContainer.GetId(),
 			Name:       criContainer.GetMetadata().GetName(),
-			ImageID:    strings.TrimLeft(criContainer.GetImageRef(), "sha256:"),
-			ImageName:  strings.TrimLeft(criContainer.GetImage().GetImage(), "sha256:"),
+			ImageID:    strings.TrimPrefix(criContainer.GetImageRef(), "sha256:"),
+			ImageName:  strings.TrimPrefix(criContainer.GetImage().GetImage(), "sha256:"),
 			State:      StateName[int32(criContainer.GetState())],
 			CreateTime: strconv.FormatInt(criContainer.CreatedAt/1000000000, 10),
 			Runtime:    c.Runtime(),
@@ -84,7 +84,7 @@ func (c *criClient) ListContainers(ctx context.Context) ([]Container, error) {
 				}
 				// real image name
 				if resp.Status.GetImage().GetImage() != "" {
-					container.ImageName = strings.TrimLeft(resp.Status.GetImage().GetImage(), "sha256:")
+					container.ImageName = strings.TrimPrefix(resp.Status.GetImage().GetImage(), "sha256:")
 				}
 			}
 		}
@@ -136,8 +136,8 @@ func (c *dockerClient) ListContainers(ctx context.Context) ([]Container, error) 
 	for _, dockerContainer := range resp {
 		container := Container{
 			ID:         dockerContainer.ID,
-			ImageID:    strings.TrimLeft(dockerContainer.ImageID, "sha256:"),
-			ImageName:  strings.TrimLeft(dockerContainer.Image, "sha256:"),
+			ImageID:    strings.TrimPrefix(dockerContainer.ImageID, "sha256:"),
+			ImageName:  strings.TrimPrefix(dockerContainer.Image, "sha256:"),
 			State:      dockerContainer.State,
 			CreateTime: strconv.FormatInt(dockerContainer.Created, 10),
 			Runtime:    c.Runtime(),
