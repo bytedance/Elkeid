@@ -118,6 +118,7 @@ impl ProcessMode {
     }
 }
 
+
 impl RASPComm for ProcessMode {
     fn start_comm(&mut self, pid: i32, mnt_namespace: &String, probe_report_sender: Sender<plugins::Record>, patch_field: HashMap<&'static str, String>) -> AnyhowResult<()> {
         let (probe_mesasge_sender, probe_message_receiver) = bounded(50);
@@ -239,4 +240,27 @@ fn mount(pid: i32, from: &str, to: &str) -> AnyhowResult<()> {
             Err(anyhow!("can not mount: {}", e))
         }
     };
+}
+
+pub struct EbpfMode {
+    pub ctrl: Control,
+    pub log_level: String,
+}
+
+impl EbpfMode {
+    pub fn new() -> Self {
+	todo!()
+    }
+    pub fn detect_kernel_version() -> AnyhowResult<(usize,usize)> {
+	todo!()
+    }
+    pub fn start_server() -> AnyhowResult<()> {
+	todo!()
+    }
+    pub fn attach(pid: i32) -> AnyhowResult<()> {
+	todo!()
+    }
+    pub fn read_loop() -> <()> {
+	todo!()
+    }
 }

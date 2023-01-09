@@ -80,6 +80,9 @@ impl RASPCommand {
     pub fn get_probe_message(&self) -> Option<String> {
         self.probe_message.clone()
     }
+    pub fn get_runtime(&self) -> String {
+	self.runtime.clone()
+    }
 }
 
 pub fn parse_message(task: &plugins::Task) -> Anyhow<RASPMessage> {

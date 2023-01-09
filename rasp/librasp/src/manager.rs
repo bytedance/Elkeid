@@ -22,6 +22,7 @@ pub struct RASPManager {
     pub namespace_tracer: MntNamespaceTracer,
     pub thread_comm: Option<ThreadMode>,
     pub process_comm: Option<ProcessMode>,
+    pub ebpf_comm: Option<EbpfMode>,
     pub runtime_dir: bool,
 }
 
