@@ -13,7 +13,7 @@ do
     rm -f /root/headers/{kernel-plus-devel-$each_lt_version.centos.plus.x86_64.rpm,kernel-plus-devel-$each_lt_version.centos.plus.x86_64.rpm,kernel-plus-devel-$each_lt_version.centos.plus.x86_64.rpm}
     KV=$each_lt_version.centos.plus.x86_64
     KVERSION=$KV make -C ./LKM clean || true 
-
+    gcc --version
     BATCH=true KVERSION=$KV make -C ./LKM -j all | tee /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.log || true 
     sha256sum  ./LKM/${KO_NAME}.ko | awk '{print $1}' > /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.sign  || true  
 
