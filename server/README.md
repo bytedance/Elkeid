@@ -33,7 +33,7 @@ In short, AgentCenter collects Agent data, real-time/offline calculation module 
 Refer to the backend section of [Build Elkeid CWPP from Source](../elkeidup/build_package-zh_CN.md) to deploy or upgrade.
 
 ## Console User Guide
-- [ELkeid Console User Guide](docs/console_tutorial/Elkeid_Console_manual.md)
+- [Elkeid Console User Guide](docs/console_tutorial/Elkeid_Console_manual.md)
 
 ## License
 Elkeid Server are distributed under the Apache-2.0 license.
