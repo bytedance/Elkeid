@@ -3,16 +3,49 @@ mkdir -p /ko_output
 BUILD_VERSION=$(cat LKM/src/init.c | grep MODULE_VERSION | awk -F '"' '{print $2}')
 KO_NAME=$(grep "MODULE_NAME" ./LKM/Makefile | grep -m 1 ":=" | awk '{print $3}')
 
-for each_lt_version in `ls /root/headers/kernel-plus* | grep kernel-plus-devel | sed 's|/root/headers/kernel-plus-devel-\(.*\).centos.plus.x86_64.rpm|\1|g'`
+enableGcc8(){
+    export CC=/opt/rh/devtoolset-8/root/usr/bin/gcc
+    export CPP=/opt/rh/devtoolset-8/root/usr/bin/cpp
+    export CXX=/opt/rh/devtoolset-8/root/usr/bin/c++
+}
+
+enableGcc9(){
+    export CC=/opt/rh/devtoolset-9/root/usr/bin/gcc
+    export CPP=/opt/rh/devtoolset-9/root/usr/bin/cpp
+    export CXX=/opt/rh/devtoolset-9/root/usr/bin/c++
+}
+
+enableGcc10(){
+    export CC=/opt/rh/devtoolset-10/root/usr/bin/gcc
+    export CPP=/opt/rh/devtoolset-10/root/usr/bin/cpp
+    export CXX=/opt/rh/devtoolset-10/root/usr/bin/c++
+}
+
+disableGcc(){
+    unset CC
+    unset CPP
+    unset CXX
+}
+
+for each_tag in `ls /root/headers/kernel-plus* | grep kernel-plus-devel | sed 's|/root/headers/kernel-plus-devel-\(.*\).centos.plus.x86_64.rpm|\1|g'`
 do 
     yum remove -y kernel-devel kernel-plus-devel &> /dev/null
     yum remove -y kernel-tools kernel-plus-tools &> /dev/null
     yum remove -y kernel-tools-libs kernel-plus-tools-libs &> /dev/null
 
-    rpm -i --force /root/headers/{kernel-plus-devel-$each_lt_version.centos.plus.x86_64.rpm,kernel-plus-devel-$each_lt_version.centos.plus.x86_64.rpm,kernel-plus-devel-$each_lt_version.centos.plus.x86_64.rpm}
-    rm -f /root/headers/{kernel-plus-devel-$each_lt_version.centos.plus.x86_64.rpm,kernel-plus-devel-$each_lt_version.centos.plus.x86_64.rpm,kernel-plus-devel-$each_lt_version.centos.plus.x86_64.rpm}
-    KV=$each_lt_version.centos.plus.x86_64
+    if [[ $each_tag == 5.10.* ]] || [[ $each_tag == 5.11.* ]] || [[ $each_tag == 5.12.* ]] || [[ $each_tag == 5.13.* ]] || [[ $each_tag == 5.14.* ]] || [[ $each_tag == 5.15.* ]] || [[ $each_tag == 5.16.* ]] || [[ $each_tag == 5.17.* ]] || [[ $each_tag == 5.18.* ]] || [[ $each_tag == 5.19.* ]] || [[ $each_tag == 5.20.* ]] ; then
+        enableGcc9
+    fi
+
+    if [[ $each_tag == 6.* ]]; then
+        enableGcc10
+    fi
+
+    rpm -i --force /root/headers/{kernel-plus-devel-$each_tag.centos.plus.x86_64.rpm,kernel-plus-devel-$each_tag.centos.plus.x86_64.rpm,kernel-plus-devel-$each_tag.centos.plus.x86_64.rpm}
+    rm -f /root/headers/{kernel-plus-devel-$each_tag.centos.plus.x86_64.rpm,kernel-plus-devel-$each_tag.centos.plus.x86_64.rpm,kernel-plus-devel-$each_tag.centos.plus.x86_64.rpm}
+    KV=$each_tag.centos.plus.x86_64
     KVERSION=$KV make -C ./LKM clean || true 
+    
     if [ -z $CC ];then
         export CC=gcc
     fi
