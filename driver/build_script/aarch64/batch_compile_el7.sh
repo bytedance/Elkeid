@@ -30,6 +30,9 @@ do
     fi
     
     KVERSION=$KV make -C ./LKM clean || true 
+    if [ -z $CC ];then
+        export CC=gcc
+    fi
     echo "$CC --version =>"
     $CC --version
     BATCH=true KVERSION=$KV make -C ./LKM -j all | tee /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_arm64.log || true 

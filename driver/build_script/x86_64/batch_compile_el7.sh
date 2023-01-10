@@ -11,6 +11,9 @@ do
     KV=$each_tag.x86_64
     
     KVERSION=$KV make -C ./LKM clean || true 
+    if [ -z $CC ];then
+        export CC=gcc
+    fi
     echo "$CC --version =>"
     $CC --version
     BATCH=true KVERSION=$KV make -C ./LKM -j all | tee /ko_output/${KO_NAME}_${BUILD_VERSION}_${KV}_amd64.log || true 
