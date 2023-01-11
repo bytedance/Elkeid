@@ -11,7 +11,7 @@ use fs_extra::file::{copy as file_copy, CopyOptions as FileCopyOptions};
 use libraspserver::proto::{PidMissingProbeConfig, ProbeConfigData};
 use log::*;
 
-use crate::{comm::{Control, RASPComm, ThreadMode, ProcessMode}, process::ProcessInfo, runtime::{ProbeState, ProbeStateInspect, RuntimeInspect, ProbeCopy}, settings};
+use crate::{comm::{Control, RASPComm, ThreadMode, ProcessMode, EbpfMode}, process::ProcessInfo, runtime::{ProbeState, ProbeStateInspect, RuntimeInspect, ProbeCopy}, settings};
 use crate::php::{PHPProbeState, php_attach};
 use crate::cpython::{CPythonProbe, CPythonProbeState, python_attach};
 use crate::golang::{GolangProbe, golang_attach, GolangProbeState};
@@ -405,12 +405,20 @@ impl RASPManager {
                 false
             }
         };
+	let ebpf_manager = match EbpfMode::new(ctrl.clone()) {
+	    Ok(em) => Some(em),
+	    Err(e) => {
+		error!("start golang ebpf daemon failed: {}", e);
+		None
+	    }
+	};
         match comm_mode {
             "thread" => {
                 Ok(RASPManager {
                     thread_comm: Some(ThreadMode::new(log_level, ctrl, message_sender.clone(), bind_path, linking_to, using_mount)?),
                     namespace_tracer: MntNamespaceTracer::new(),
                     process_comm: None,
+		    ebpf_comm: ebpf_manager,
                     runtime_dir,
                 })
             }
@@ -420,6 +428,7 @@ impl RASPManager {
                     process_comm: Some(ProcessMode::new(log_level, ctrl)),
                     namespace_tracer: MntNamespaceTracer::new(),
                     thread_comm: None,
+		    ebpf_comm: ebpf_manager,
                     runtime_dir,
                 })
             }

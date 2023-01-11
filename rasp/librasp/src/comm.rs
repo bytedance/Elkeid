@@ -1,15 +1,20 @@
 use std::collections::HashMap;
+use std::process::{ChildStdin, ChildStdout, Stdio};
 // use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::io::{BufRead, BufReader, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
+use std::thread;
+use std::time::Duration;
 
-use crossbeam::channel::{bounded, Receiver, Sender, SendError};
+use crossbeam::channel::{bounded, Receiver, SendError, Sender};
+use libc::{kill, killpg, SIGKILL};
 use log::*;
 
 // use super::process::ProcessInfo;
-use anyhow::{anyhow, Result as AnyhowResult};
 use crate::async_command::run_async_process;
 use crate::settings;
+use anyhow::{anyhow, Result as AnyhowResult};
 
 // https://stackoverflow.com/questions/35883390/how-to-check-if-a-thread-has-finished-in-rust
 // https://stackoverflow.com/a/39615208
@@ -53,13 +58,12 @@ pub trait RASPComm {
         probe_report_sender: Sender<plugins::Record>,
         patch_filed: HashMap<&'static str, String>,
     ) -> AnyhowResult<()>;
-    fn stop_comm(
+    fn stop_comm(&mut self, pid: i32, mnt_namespace: &String) -> AnyhowResult<()>;
+    fn send_message_to_probe(
         &mut self,
         pid: i32,
         mnt_namespace: &String,
-    ) -> AnyhowResult<()>;
-    fn send_message_to_probe(
-        &mut self, pid: i32, mnt_namespace: &String, message: &String,
+        message: &String,
     ) -> AnyhowResult<()>;
 }
 
@@ -73,10 +77,13 @@ pub struct ThreadMode {
 }
 
 impl ThreadMode {
-    pub fn new(log_level: String, ctrl: Control,
-               probe_report_sender: Sender<plugins::Record>,
-               bind_path: String, linking_to: Option<String>,
-               using_mount: bool,
+    pub fn new(
+        log_level: String,
+        ctrl: Control,
+        probe_report_sender: Sender<plugins::Record>,
+        bind_path: String,
+        linking_to: Option<String>,
+        using_mount: bool,
     ) -> AnyhowResult<Self> {
         let (sender, receiver) = bounded(50);
         libraspserver::thread_mode::start(
@@ -118,25 +125,33 @@ impl ProcessMode {
     }
 }
 
-
 impl RASPComm for ProcessMode {
-    fn start_comm(&mut self, pid: i32, mnt_namespace: &String, probe_report_sender: Sender<plugins::Record>, patch_field: HashMap<&'static str, String>) -> AnyhowResult<()> {
+    fn start_comm(
+        &mut self,
+        pid: i32,
+        mnt_namespace: &String,
+        probe_report_sender: Sender<plugins::Record>,
+        patch_field: HashMap<&'static str, String>,
+    ) -> AnyhowResult<()> {
         let (probe_mesasge_sender, probe_message_receiver) = bounded(50);
-        let mut server_process =
-            libraspserver::process_mode::RASPServerProcess::new(
-                pid,
-                probe_report_sender,
-                probe_message_receiver.clone(),
-                self.log_level.clone(),
-                patch_field,
-                libraspserver::utils::Control {
-                    working_atomic: self.ctrl.working_atomic.clone(),
-                    control: self.ctrl.control.clone(),
-                },
-            )?;
+        let mut server_process = libraspserver::process_mode::RASPServerProcess::new(
+            pid,
+            probe_report_sender,
+            probe_message_receiver.clone(),
+            self.log_level.clone(),
+            patch_field,
+            libraspserver::utils::Control {
+                working_atomic: self.ctrl.working_atomic.clone(),
+                control: self.ctrl.control.clone(),
+            },
+        )?;
         server_process.spawn(settings::RASP_SERVER_BIN().as_str())?;
-        self.mnt_namesapce_server_map.insert(mnt_namespace.clone(), server_process);
-        self.mnt_namespace_comm_pair.insert(mnt_namespace.clone(), (probe_mesasge_sender, probe_message_receiver));
+        self.mnt_namesapce_server_map
+            .insert(mnt_namespace.clone(), server_process);
+        self.mnt_namespace_comm_pair.insert(
+            mnt_namespace.clone(),
+            (probe_mesasge_sender, probe_message_receiver),
+        );
         Ok(())
     }
 
@@ -146,10 +161,18 @@ impl RASPComm for ProcessMode {
             runner.kill();
             Ok(())
         } else {
-            Err(anyhow!("didn't start server for mnt namespace: {}", mnt_namespace.clone()))
+            Err(anyhow!(
+                "didn't start server for mnt namespace: {}",
+                mnt_namespace.clone()
+            ))
         };
     }
-    fn send_message_to_probe(&mut self, _pid: i32, mnt_namespace: &String, message: &String) -> AnyhowResult<()> {
+    fn send_message_to_probe(
+        &mut self,
+        _pid: i32,
+        mnt_namespace: &String,
+        message: &String,
+    ) -> AnyhowResult<()> {
         if let Some(p) = self.mnt_namespace_comm_pair.get(mnt_namespace) {
             if let Err(e) = p.0.send(message.clone()) {
                 return Err(anyhow!("send to probe failed: {}", e.to_string()));
@@ -162,7 +185,8 @@ impl RASPComm for ProcessMode {
 impl RASPComm for ThreadMode {
     fn start_comm(
         &mut self,
-        pid: i32, _mnt_namespace: &String,
+        pid: i32,
+        _mnt_namespace: &String,
         _probe_report_sender: Sender<plugins::Record>,
         _patch_filed: HashMap<&'static str, String>,
     ) -> AnyhowResult<()> {
@@ -202,7 +226,12 @@ impl RASPComm for ThreadMode {
     fn stop_comm(&mut self, _pid: i32, _mnt_namespace: &String) -> AnyhowResult<()> {
         Ok(())
     }
-    fn send_message_to_probe(&mut self, pid: i32, _mnt_namespace: &String, message: &String) -> AnyhowResult<()> {
+    fn send_message_to_probe(
+        &mut self,
+        pid: i32,
+        _mnt_namespace: &String,
+        message: &String,
+    ) -> AnyhowResult<()> {
         debug!("recv thread mode message: {}", message);
         match self.agent_to_probe_sender.send((pid, message.clone())) {
             Ok(_) => {
@@ -221,46 +250,219 @@ impl RASPComm for ThreadMode {
 fn mount(pid: i32, from: &str, to: &str) -> AnyhowResult<()> {
     let pid_str = pid.to_string();
     let nsenter_str = settings::RASP_NS_ENTER_BIN();
-    let args = [
-        pid_str.as_str(),
-        from,
-        to,
-        nsenter_str.as_str()
-    ];
-    return match run_async_process(std::process::Command::new(settings::RASP_MOUNT_SCRIPT_BIN()).args(args)) {
+    let args = [pid_str.as_str(), from, to, nsenter_str.as_str()];
+    return match run_async_process(
+        std::process::Command::new(settings::RASP_MOUNT_SCRIPT_BIN()).args(args),
+    ) {
         Ok((exit_status, stdout, stderr)) => {
             if !exit_status.success() {
-                error!("mount script execute failed: {} {} {}", exit_status, stdout, stderr);
-                return Err(anyhow!("mount script execute failed: {} {} {} ", exit_status, stdout, stderr));
+                error!(
+                    "mount script execute failed: {} {} {}",
+                    exit_status, stdout, stderr
+                );
+                return Err(anyhow!(
+                    "mount script execute failed: {} {} {} ",
+                    exit_status,
+                    stdout,
+                    stderr
+                ));
             }
             debug!("mount success: {} {} {}", exit_status, stdout, stderr);
             Ok(())
         }
-        Err(e) => {
-            Err(anyhow!("can not mount: {}", e))
-        }
+        Err(e) => Err(anyhow!("can not mount: {}", e)),
     };
 }
 
 pub struct EbpfMode {
     pub ctrl: Control,
-    pub log_level: String,
+    pub kernel_version: procfs::sys::kernel::Version,
+    pub stdin: Option<ChildStdin>,
+    pub stdout: Option<ChildStdout>,
 }
 
 impl EbpfMode {
-    pub fn new() -> Self {
-	todo!()
+    pub fn new(ctrl: Control) -> AnyhowResult<Self> {
+	let ebpf_manager = Self {
+            ctrl,
+            kernel_version: Self::detect_kernel_version()?,
+            stdin: None,
+            stdout: None,
+        };
+	let _ = ebpf_manager.switch_bpf_main_process()?;
+	Ok(ebpf_manager)
     }
-    pub fn detect_kernel_version() -> AnyhowResult<(usize,usize)> {
-	todo!()
+    pub fn detect_kernel_version() -> AnyhowResult<procfs::sys::kernel::Version> {
+        let kernel_version = procfs::sys::kernel::Version::current()?;
+        info!(
+            "current kernel version: {}.{}",
+            kernel_version.major, kernel_version.minor
+        );
+        Ok(kernel_version)
     }
-    pub fn start_server() -> AnyhowResult<()> {
-	todo!()
+    pub fn switch_bpf_main_process(&self) -> AnyhowResult<String> {
+        /*
+        [4.14, 4.16) minimal support
+        [4.16, 5.2) http support(without header)
+        [5.2,  5.8) http support(with header)
+        [5.8,  current) http support(with header), ring buffer support
+        */
+        let bpf_process_version =
+            if self.kernel_version >= procfs::sys::kernel::Version::new(5, 8, 0) {
+                "_5.8"
+            } else if self.kernel_version >= procfs::sys::kernel::Version::new(5, 2, 0) {
+                "_5.2"
+            } else if self.kernel_version >= procfs::sys::kernel::Version::new(4, 16, 0) {
+                "_4.16"
+            } else if self.kernel_version >= procfs::sys::kernel::Version::new(4, 14, 0) {
+                "_4.14"
+            } else {
+                return Err(anyhow!(
+                    "version: {}.{} kernel not support",
+                    self.kernel_version.major,
+                    self.kernel_version.minor,
+                ));
+            };
+        return Ok(bpf_process_version.to_string());
     }
-    pub fn attach(pid: i32) -> AnyhowResult<()> {
-	todo!()
+    pub fn start_server(&mut self) -> AnyhowResult<()> {
+        let bin_path = settings::RASP_GOLANG_EBPF(&self.switch_bpf_main_process()?);
+        let mut child = std::process::Command::new(bin_path)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()?;
+        debug!("spawn ebpf process success: {}", child.id());
+        let child_id = child.id();
+        self.stdin = child.stdin.take();
+        self.stdout = child.stdout.take();
+	/*
+        if self.stdin.is_none() {
+            return Err(anyhow!("can not take child stdin, pid: {}", child_id));
+        }
+        if self.stdout.is_none() {
+            return Err(anyhow!("can not take child stdout, pid: {}", child_id));
+        }
+	*/
+        // start a thread for wait child die
+        let mut wait_ctrl = self.ctrl.clone();
+        thread::Builder::new()
+            .name("ebpf_server_wait".to_string())
+            .spawn(move || loop {
+                if !wait_ctrl.check() {
+                    Self::kill_server(child_id as i32);
+                    return;
+                }
+                match child.try_wait() {
+                    Ok(Some(status)) => {
+			info!("Golang EBPF daemon exit with status: {}", status);
+			return
+		    }
+                    Ok(None) => {}
+                    Err(e) => {
+                        error!("error attempting to wait: {}", e);
+                        Self::kill_server(child_id as i32);
+                        return;
+                    }
+                }
+            })?;
+        // sleep here for subprocess ready for listen stdin
+        thread::sleep(Duration::from_secs(2));
+        Ok(())
     }
-    pub fn read_loop() -> <()> {
-	todo!()
+    pub fn attach(&mut self, pid: i32) -> AnyhowResult<()> {
+        self.write_stdin(pid)?;
+	match self.read_stdout(pid) {
+	    Ok(result) => {
+		if !result.is_empty() {
+		    return Err(anyhow!("EBPF golang attach faild"));
+		}
+	    }
+	    Err(e) => {
+		error!("ebpf running abnormally, quiting.");
+		let _ = self.ctrl.stop();
+		return Err(e)
+	    }
+	}
+        Ok(())
+    }
+    pub fn write_stdin(&mut self, pid: i32) -> AnyhowResult<()> {
+        let mut stdin = self.stdin.as_ref().unwrap();
+        stdin.write_all(format!("{}\n", pid).as_bytes())?;
+        stdin.flush()?;
+        Ok(())
+    }
+    pub fn read_stdout(&mut self, pid: i32) -> AnyhowResult<String> {
+        let mut buf_reader = if let Some(stdout) = self.stdout.take() {
+	    BufReader::new(stdout)
+	} else {
+	    return Err(anyhow!(""));
+	};
+        let mut times = 10;
+        let interval = 1; // second
+        loop {
+            times -= 1;
+            if times <= 0 {
+                return Err(anyhow!("read stdout from ebpf server timeout: {}", pid));
+            }
+            if buf_reader.fill_buf()?.len() <= 0 {
+                std::thread::sleep(Duration::from_secs(interval));
+                continue;
+            }
+            let mut read_from_server = String::new();
+            let size = buf_reader.read_line(&mut read_from_server)?;
+            if size == 0 {
+                return Err(anyhow!("read stdout from ebpf server EOF"));
+            }
+            let (pid_from_server, success) = Self::parse_server_response(&read_from_server)?;
+            if pid_from_server != pid {
+                return Err(anyhow!(
+                    "pid miss match: expect: {} response: {}",
+                    pid,
+                    pid_from_server
+                ));
+            }
+            if success {
+                return Ok(String::new());
+            } else {
+                return Ok(format!("target pid: {} attach failed", pid));
+            }
+        }
+    }
+    pub fn kill_server(pid: i32) {
+        unsafe {
+            killpg(pid, SIGKILL);
+            kill(pid as i32, SIGKILL);
+        }
+    }
+    pub fn parse_server_response(response: &String) -> AnyhowResult<(i32, bool)> {
+        let regex = regex::Regex::new(r"(\d{1,20}):(succeed|failed)")?;
+        if let Some(caps) = regex.captures(response) {
+            if caps.len() != 3 {
+                return Err(anyhow!("response format can not parse: {}", response));
+            }
+            // pid
+            let pid: i32 = if let Some(pid) = caps.get(1) {
+                pid.as_str().parse()?
+            } else {
+                return Err(anyhow!("response format can not parse: {}", response));
+            };
+            let result = if let Some(result) = caps.get(2) {
+                match result.as_str() {
+                    "succeed" => true,
+                    "failed" => false,
+                    _ => {
+                        return Err(anyhow!("response format can not parse: {}", response));
+                    }
+                }
+            } else {
+                return Err(anyhow!("response format can not parse: {}", response));
+            };
+            return Ok((pid, result));
+        }
+        return Err(anyhow!(
+            "can not found any proper format in response: {}",
+            response
+        ));
     }
 }

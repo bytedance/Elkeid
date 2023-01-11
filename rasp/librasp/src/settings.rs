@@ -35,6 +35,7 @@ pub fn RASP_PANGOLIN() -> String { format!("{}{}", RASP_LIB_DIR(), "/pangolin") 
 // Golang
 
 pub fn RASP_GOLANG() -> String { format!("{}{}", RASP_LIB_DIR(), "/golang/go_probe") }
+pub fn RASP_GOLANG_EBPF(version: &String) -> String { format!("{}/{}{}", RASP_LIB_DIR(), "/golang/go_probe_ebpf", version) }
 
 // Python
 pub fn RASP_PYTHON_LOADER() -> String { format!("{}{}", RASP_LIB_DIR(), "/python/python_loader") }

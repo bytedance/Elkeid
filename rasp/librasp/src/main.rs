@@ -55,6 +55,16 @@ fn main() -> anyhow::Result<()> {
         format!("{}/smith_agent.sock", current_dir), Some(String::from("/var/run/smith_agent.sock")),
         false,
     )?;
+    if let Some(ebpf_manager) = rasp_manager.ebpf_comm.as_mut() {
+	match ebpf_manager.start_server() {
+	    Ok(_) => {
+		info!("start Golang EBPF daemon success");
+	    }
+	    Err(e) => {
+		info!("start Golang EBPF daemon failed: {}", e);
+	    }
+	};
+    }
     let mut process_info = ProcessInfo::from_pid(process_id)?;
     match rasp_manager.inspect(&mut process_info) {
         Ok(pi) => pi,
