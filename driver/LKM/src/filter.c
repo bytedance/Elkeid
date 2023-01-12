@@ -105,18 +105,6 @@ struct mask_info {
 
 #define TAG_SIZE(tag)  *((uint32_t *)((tag) + SOSIZE))
 
-char *mask_strstr(char *s, int sl, char *t)
-{
-    int start = 0, tl = (int)strlen(t);
-
-    while (start + tl < sl) {
-        if (!memcmp(s + start, t, tl))
-            return s + start;
-    }
-
-    return NULL;
-}
-
 int _mask_assert(struct file_notify_node *node)
 {
     return (memcmp(node->data, STTAG, SOTAG) || 0 == TAG_SIZE(node->data) ||
@@ -144,7 +132,7 @@ char *_mask_lookup(struct file_notify_node *node, struct mask_item *id, struct m
     }
 
     do {
-        char *tag = mask_strstr(s, (int)(node->used - (s - node->data)), STTAG);
+        char *tag = smith_strstr(s, (int)(node->used - (s - node->data)), STTAG);
 
         if (!tag)
             break;

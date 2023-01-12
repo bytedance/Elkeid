@@ -826,3 +826,16 @@ void smith_strnlen_test(void)
     printk("STRG: %px %ld\n", TEST_STRNLEN_STRA, smith_strnlen(&TEST_STRNLEN_STRA[6], 128));
 }
 #endif
+
+char *smith_strstr(char *s, int sl, char *t)
+{
+    int start = 0, tl = (int)strlen(t);
+
+    while (start + tl < sl) {
+        if (!memcmp(s + start, t, tl))
+            return s + start;
+        start++;
+    }
+
+    return NULL;
+}

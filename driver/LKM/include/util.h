@@ -419,4 +419,6 @@ struct hlist_hnod *hlist_lookup_key(struct hlist_root *hr, void *key);
 int hlist_query_key(struct hlist_root *hr, void *key, void *node);
 void hlist_enum(struct hlist_root *hr, void (*cb)(struct hlist_hnod *));
 
+char *smith_strstr(char *s, int sl, char *t);
+
 #endif /* UTIL_H */

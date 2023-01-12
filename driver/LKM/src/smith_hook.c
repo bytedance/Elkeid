@@ -34,7 +34,7 @@ int EXECVE_HOOK = 1;
 int CREATE_FILE_HOOK = 1;
 int FILE_PERMISSION_HOOK = 0;
 int PTRACE_HOOK = 1;
-int DO_INIT_MODULE_HOOK = 1;
+int MODULE_LOAD_HOOK = 1;
 int UPDATE_CRED_HOOK = 1;
 int RENAME_HOOK = 1;
 int LINK_HOOK = 1;
@@ -65,7 +65,6 @@ int EXECVE_GET_SOCK_PID_LIMIT = 4;
 int EXECVE_GET_SOCK_FD_LIMIT = 12;  /* maximum fd numbers to be queried */
 
 char create_file_kprobe_state = 0x0;
-char do_init_module_kprobe_state = 0x0;
 char update_cred_kprobe_state = 0x0;
 char mprotect_kprobe_state = 0x0;
 char mount_kprobe_state = 0x0;
@@ -2562,7 +2561,7 @@ out:
 }
 
 
-void delete_file_handler(int type, char *path)
+static void delete_file_handler(int type, char *path)
 {
     struct smith_tid *tid = NULL;
     char *exe_path = DEFAULT_RET_STR;
@@ -2585,7 +2584,7 @@ out:
         smith_put_tid(tid);
 }
 
-int security_path_rmdir_pre_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int security_path_rmdir_pre_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     char *pname_buf = NULL;
     char *pathstr = DEFAULT_RET_STR;
@@ -2625,7 +2624,7 @@ int security_path_rmdir_pre_handler(struct kretprobe_instance *ri, struct pt_reg
     return 0;
 }
 
-int rm_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int rm_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     int uid = 0;
     uid = __get_current_uid();
@@ -2635,7 +2634,7 @@ int rm_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     return 0;
 }
 
-int security_path_unlink_pre_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int security_path_unlink_pre_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     char *pname_buf = NULL;
     char *pathstr = DEFAULT_RET_STR;
@@ -2674,7 +2673,7 @@ int security_path_unlink_pre_handler(struct kretprobe_instance *ri, struct pt_re
     return 0;
 }
 
-void exit_handler(int type)
+static void exit_handler(int type)
 {
     struct smith_tid *tid = NULL;
     char *exe_path = DEFAULT_RET_STR;
@@ -2698,32 +2697,285 @@ out:
     return;
 }
 
-int exit_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int exit_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     exit_handler(1);
     return 0;
 }
 
-int exit_group_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int exit_group_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     exit_handler(0);
     return 0;
 }
 
-int do_init_module_pre_handler(struct kprobe *p, struct pt_regs *regs)
+#include <linux/elf.h>
+
+struct load_info {
+    void * __user mod; /* user ptr of module data */
+    unsigned long len; /* file size */
+    Elf_Ehdr *hdr;  /* elf header */
+    Elf_Shdr *sechdrs; /* section headers */
+    char *secstrings; /* section names */
+    char *modinfo; /* modinfo section */
+    char *modname; /* module name */
+    struct module *module; /* this module seciton */
+};
+
+static int smith_validate_section_offset(struct load_info *info, Elf_Shdr *shdr)
 {
-    char *pid_tree = NULL;
+    unsigned long secend;
+
+    /* Check for both overflow and offset/size being too large */
+    secend = shdr->sh_offset + shdr->sh_size;
+    if (secend < shdr->sh_offset || secend > info->len)
+        return -ENOEXEC;
+    return 0;
+}
+
+/*
+ * Sanity checks against invalid binaries, wrong arch, weird elf version.
+ *
+ * Also do basic validity checks against section offsets and sizes, the
+ * section name string table, and the indices used for it (sh_name).
+ */
+static int smith_check_elf_header(struct load_info *info)
+{
+    if (info->len < sizeof(*(info->hdr))) {
+        pr_err("Invalid ELF header len %lu\n", info->len);
+        goto no_exec;
+    }
+
+    if (memcmp(info->hdr->e_ident, ELFMAG, SELFMAG) != 0) {
+        pr_err("Invalid ELF header magic: != %s\n", ELFMAG);
+        goto no_exec;
+    }
+    if (info->hdr->e_type != ET_REL) {
+        pr_err("Invalid ELF header type: %u != %u\n",
+                info->hdr->e_type, ET_REL);
+        goto no_exec;
+    }
+    if (!elf_check_arch(info->hdr)) {
+        pr_err("Invalid architecture in ELF header: %u\n",
+                info->hdr->e_machine);
+        goto no_exec;
+    }
+    if (info->hdr->e_shentsize != sizeof(Elf_Shdr)) {
+        pr_err("Invalid ELF section header size\n");
+        goto no_exec;
+    }
+
+    /*
+     * e_shnum is 16 bits, and sizeof(Elf_Shdr) is
+     * known and small. So e_shnum * sizeof(Elf_Shdr)
+     * will not overflow unsigned long on any platform.
+     */
+    if (info->hdr->e_shoff >= info->len
+        || (info->hdr->e_shnum * sizeof(Elf_Shdr) >
+        info->len - info->hdr->e_shoff)) {
+        pr_err("Invalid ELF section header overflow\n");
+        goto no_exec;
+    }
+
+    /*
+     * Verify if the section name table index is valid.
+     */
+    if (info->hdr->e_shstrndx == SHN_UNDEF
+        || info->hdr->e_shstrndx >= info->hdr->e_shnum) {
+        pr_err("Invalid ELF section name index: %d || e_shstrndx (%d) >= e_shnum (%d)\n",
+                info->hdr->e_shstrndx, info->hdr->e_shstrndx,
+                info->hdr->e_shnum);
+        goto no_exec;
+    }
+    return 0;
+
+no_exec:
+    return -ENOEXEC;
+}
+
+/* ignore compiler buzzing of unknown fallthrough */
+#ifndef fallthrough /* fallthrough attribute supported from gcc 7 */
+/* __has_attribute supported on gcc >= 5, clang >= 2.9 and icc >= 17 */
+# if defined __has_attribute
+#  if __has_attribute(__fallthrough__)
+#   define fallthrough  __attribute__((__fallthrough__))
+#  endif
+# endif
+# ifndef fallthrough
+#  define fallthrough  do {} while (0)  /* fallthrough */
+# endif
+#endif
+
+static int smith_check_elf_sections(struct load_info *info)
+{
+    Elf_Shdr *shdr, *strhdr;
+    int i, err;
+
+    strhdr = &info->sechdrs[info->hdr->e_shstrndx];
+
+	/*
+	 * The code assumes that section 0 has a length of zero and
+	 * an addr of zero, so check for it.
+	 */
+    if (info->sechdrs[0].sh_type != SHT_NULL
+        || info->sechdrs[0].sh_size != 0
+        || info->sechdrs[0].sh_addr != 0) {
+        pr_err("ELF Spec violation: section 0 type(%d)!=SH_NULL or non-zero len or addr\n",
+                info->sechdrs[0].sh_type);
+        goto no_exec;
+    }
+
+    for (i = 1; i < info->hdr->e_shnum; i++) {
+        shdr = &info->sechdrs[i];
+        switch (shdr->sh_type) {
+        case SHT_NULL:
+        case SHT_NOBITS:
+            continue;
+        case SHT_SYMTAB:
+            if (shdr->sh_link == SHN_UNDEF
+                || shdr->sh_link >= info->hdr->e_shnum) {
+                pr_err("Invalid ELF sh_link!=SHN_UNDEF(%d) or (sh_link(%d) >= hdr->e_shnum(%d)\n",
+                    shdr->sh_link, shdr->sh_link, info->hdr->e_shnum);
+                goto no_exec;
+            }
+            fallthrough;
+        default:
+            err = smith_validate_section_offset(info, shdr);
+            if (err < 0) {
+                pr_err("Invalid ELF section in module (section %u type %u)\n",
+                    i, shdr->sh_type);
+                return err;
+            }
+
+            if (shdr->sh_flags & SHF_ALLOC) {
+                if (shdr->sh_name >= strhdr->sh_size) {
+                    pr_err("Invalid ELF section name in module (section %u type %u)\n",
+                        i, shdr->sh_type);
+                    return -ENOEXEC;
+                }
+            }
+            break;
+        }
+    }
+
+    return 0;
+
+no_exec:
+    return -ENOEXEC;
+}
+
+/* Find a module section: 0 means not found. */
+static Elf_Shdr *smith_locate_section(const struct load_info *info, const char *name)
+{
+    unsigned int i;
+
+    for (i = 1; i < info->hdr->e_shnum; i++) {
+        Elf_Shdr *shdr = &info->sechdrs[i];
+        /* Alloc bit cleared means "ignore it." */
+        if ((shdr->sh_flags & SHF_ALLOC)
+            && strcmp(info->secstrings + shdr->sh_name, name) == 0)
+            return shdr;
+    }
+    return 0;
+}
+
+static void *smith_load_section(struct load_info *info, Elf_Shdr *shdr)
+{
+    char *dat = NULL;
+
+    if (!shdr->sh_size)
+        return NULL;
+    if (smith_validate_section_offset(info, shdr) < 0) {
+        pr_err("Invalid ELF section hdr(type %u)\n", shdr->sh_type);
+        return NULL;
+    }
+
+    dat = smith_kmalloc(shdr->sh_size, GFP_ATOMIC);
+    if (!dat)
+        return NULL;
+    if (smith_copy_from_user(dat, info->mod + shdr->sh_offset, shdr->sh_size))
+        goto out;
+    dat[shdr->sh_size - 1] = 0;
+    return dat;
+
+out:
+    smith_kfree(dat);
+    return NULL;
+}
+
+static int smith_process_module_load(struct load_info *info)
+{
+    Elf_Shdr *shdr;
+    int i;
+
+    /* validate elf header */
+    if (info->len <= sizeof(*info->hdr))
+        return -EINVAL;
+    if (smith_copy_from_user(info->hdr, info->mod, sizeof(*info->hdr)))
+        return -EACCES;
+    if (smith_check_elf_header(info))
+        return -EINVAL;
+
+    /* allocate memory for elf sections */
+    info->sechdrs = smith_kmalloc(info->hdr->e_shnum * sizeof(Elf_Shdr), GFP_ATOMIC);
+    if (!info->sechdrs)
+        return -ENOMEM;
+    if (smith_copy_from_user(info->sechdrs, info->mod + info->hdr->e_shoff,
+                            info->hdr->e_shnum * sizeof(Elf_Shdr)))
+        return -EACCES;
+
+    /* load string section */
+    info->secstrings = smith_load_section(info, &info->sechdrs[info->hdr->e_shstrndx]);
+    if (!info->secstrings)
+        return -ENOMEM;
+
+    /* check elf sections */
+    if (smith_check_elf_sections(info))
+        return -EINVAL;
+
+    /* load .modinfo section */
+    shdr = smith_locate_section(info, ".modinfo");
+    if (!shdr)
+        return -ENOMEM;
+    info->modinfo = smith_load_section(info, shdr);
+    if (!info->modinfo)
+        return -ENOMEM;
+    info->modname = smith_strstr(info->modinfo, shdr->sh_size, "name=");
+    if (info->modname) {
+        info->modname += 5;
+        goto out;
+    }
+
+    /* trying load this_module section */
+    shdr = smith_locate_section(info, ".gnu.linkonce.this_module");
+    if (shdr)
+        info->module = smith_load_section(info, shdr);
+    if (info->module) {
+        info->modname = info->module->name;
+        goto out;
+    }
+
+    /* pack whole modinfo as module name/id */
+    for (i = 0; i < shdr->sh_size - 1; i++) {
+        if (0 == *((char *)info->modinfo + i))
+            *((char *)info->modinfo + i) = 0x20;
+    }
+    info->modname = info->modinfo;
+
+out:
+    return 0;
+}
+
+static void smith_trace_sysret_init_module(void __user *mod, int len, int ret)
+{
+    Elf_Ehdr hdr;
+    struct load_info info = {.mod = mod, .hdr = &hdr, .len = len,};
+
     struct smith_tid *tid = NULL;
+    char *pid_tree = NULL;
     char *exe_path = DEFAULT_RET_STR;
     char *pname_buf = NULL;
     char *pname = NULL;
-    void *tmp_mod;
-    struct module *mod;
-
-    tmp_mod = (void *) p_regs_get_arg1(regs);
-    if (IS_ERR_OR_NULL(tmp_mod))
-        return 0;
-    mod = (struct module *)tmp_mod;
 
     tid = smith_lookup_tid(current);
     if (tid) {
@@ -2738,14 +2990,64 @@ int do_init_module_pre_handler(struct kprobe *p, struct pt_regs *regs)
     pname = smith_d_path(&current->fs->pwd, pname_buf, PATH_MAX);
 
     smith_check_privilege_escalation(PID_TREE_LIMIT, pid_tree);
-    do_init_module_print(exe_path, mod->name, pid_tree, pname);
+
+    /* process module data */
+    if (smith_process_module_load(&info))
+        goto out;
+
+    do_init_module_print(exe_path, info.modname, pid_tree, pname);
 
 out:
     if (tid)
         smith_put_tid(tid);
-    if (pname_buf)
-        smith_kfree(pname_buf);
-    return 0;
+    smith_kfree(pname_buf);
+    smith_kfree(info.module);
+    smith_kfree(info.modinfo);
+    smith_kfree(info.secstrings);
+    smith_kfree(info.sechdrs);
+    return;
+}
+
+static void smith_trace_sysret_finit_module(int fd, int ret)
+{
+    struct smith_tid *tid = NULL;
+    char *pid_tree = NULL;
+    char *exe_path = DEFAULT_RET_STR;
+    char *pname_buf = NULL;
+    char *pname = NULL;
+    char *buffer = NULL;
+    char *file_path;
+
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (execve_exe_check(exe_path))
+            goto out;
+        pid_tree = tid->st_pid_tree;
+    }
+
+    pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
+    pname = smith_d_path(&current->fs->pwd, pname_buf, PATH_MAX);
+
+    smith_check_privilege_escalation(PID_TREE_LIMIT, pid_tree);
+
+    /* query long path of module from fd */
+    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
+    if (buffer) {
+        file_path = smith_get_file_path(fd, buffer, PATH_MAX);
+    } else {
+        file_path = NULL;
+    }
+
+    do_init_module_print(exe_path, file_path, pid_tree, pname);
+
+out:
+    if (tid)
+        smith_put_tid(tid);
+    smith_kfree(pname_buf);
+    smith_kfree(buffer);
+    return;
 }
 
 struct update_cred_data {
@@ -2852,11 +3154,6 @@ struct kprobe rename_kprobe = {
 struct kprobe link_kprobe = {
         .symbol_name = "security_inode_link",
         .pre_handler = link_pre_handler,
-};
-
-struct kprobe do_init_module_kprobe = {
-        .symbol_name = "do_init_module",
-        .pre_handler = do_init_module_pre_handler,
 };
 
 struct kretprobe update_cred_kretprobe = {
@@ -3058,22 +3355,6 @@ void unregister_mount_kprobe(void)
     unregister_kprobe(&mount_kprobe);
 }
 
-int register_do_init_module_kprobe(void)
-{
-    int ret;
-    ret = register_kprobe(&do_init_module_kprobe);
-
-    if (ret == 0)
-        do_init_module_kprobe_state = 0x1;
-
-    return ret;
-}
-
-void unregister_do_init_module_kprobe(void)
-{
-    unregister_kprobe(&do_init_module_kprobe);
-}
-
 int register_update_cred_kprobe(void)
 {
     int ret;
@@ -3228,9 +3509,6 @@ void uninstall_kprobe(void)
 
     if (create_file_kprobe_state == 0x1)
         unregister_create_file_kprobe();
-
-    if (do_init_module_kprobe_state == 0x1)
-        unregister_do_init_module_kprobe();
 
     if (update_cred_kprobe_state == 0x1)
         unregister_update_cred_kprobe();
@@ -3389,12 +3667,6 @@ void install_kprobe(void)
         ret = register_call_usermodehelper_exec_kprobe();
         if (ret < 0)
             printk(KERN_INFO "[ELKEID] call_usermodehelper_exec register_kprobe failed, returned %d\n", ret);
-    }
-
-    if (DO_INIT_MODULE_HOOK == 1) {
-        ret = register_do_init_module_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] do_init_module register_kprobe failed, returned %d\n", ret);
     }
 
     if (UPDATE_CRED_HOOK == 1) {
@@ -4168,6 +4440,19 @@ void smith_trace_sysexit_x86(struct pt_regs *regs, long id, long ret)
             break;
 
         /*
+         * module insmod
+         */
+        case 128: /* __NR_ia32_init_module */
+            if (MODULE_LOAD_HOOK)
+                smith_trace_sysret_init_module((char __user *)regs->bx, regs->cx, ret);
+        break;
+
+        case 350: /* __NR_ia32_finit_module */
+            if (MODULE_LOAD_HOOK)
+                smith_trace_sysret_finit_module(regs->bx, ret);
+        break;
+
+        /*
          * socket related
          */
 
@@ -4389,6 +4674,24 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
                     (char __user *)p_regs_get_arg1_of_syscall(regs),
                     p_regs_get_arg2_syscall(regs), ret);
             break;
+#endif
+
+        /*
+         * module insmod
+         */
+        case __NR_init_module:
+            if (MODULE_LOAD_HOOK) {
+                char *__mod = (char __user *)p_regs_get_arg1_of_syscall(regs);
+                int __len = p_regs_get_arg2_syscall(regs);
+                smith_trace_sysret_init_module(__mod, __len, ret);
+            }
+        break;
+#ifdef       __NR_finit_module
+        case __NR_finit_module:
+            if (MODULE_LOAD_HOOK)
+                smith_trace_sysret_finit_module(
+                    p_regs_get_arg1_of_syscall(regs), ret);
+        break;
 #endif
 
         /*
@@ -4665,7 +4968,7 @@ static int __init kprobe_hook_init(void)
     " %d, dns_hook: %d, accept_hook:%d, mprotect_hook: %d, chmod_hook: %d, mount_hook: %d, link_hook: %d, memfd_create: %d, rename_hook: %d,"
     "setsid_hook:%d, prctl_hook:%d, open_hook:%d, udev_notifier:%d, nanosleep_hook:%d, kill_hook: %d, rm_hook: %d, "
     " exit_hook: %d, write_hook: %d, EXIT_PROTECT: %d\n",
-            CONNECT_HOOK, DO_INIT_MODULE_HOOK, EXECVE_HOOK, CALL_USERMODEHELPER, BIND_HOOK,
+            CONNECT_HOOK, MODULE_LOAD_HOOK, EXECVE_HOOK, CALL_USERMODEHELPER, BIND_HOOK,
             CREATE_FILE_HOOK, FILE_PERMISSION_HOOK, PTRACE_HOOK, UPDATE_CRED_HOOK, DNS_HOOK,
             ACCEPT_HOOK, MPROTECT_HOOK, CHMOD_HOOK, MOUNT_HOOK, LINK_HOOK, MEMFD_CREATE_HOOK, RENAME_HOOK, SETSID_HOOK,
             PRCTL_HOOK, OPEN_HOOK, UDEV_NOTIFIER, NANOSLEEP_HOOK, KILL_HOOK, RM_HOOK, EXIT_HOOK, WRITE_HOOK,
