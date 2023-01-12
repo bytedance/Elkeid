@@ -106,7 +106,7 @@ fn main() -> anyhow::Result<()> {
         }
     };
     debug!("ready to attach");
-    match rasp_manager.attach(&mut process_info) {
+    match rasp_manager.attach(&mut process_info, librasp::manager::BPFSelect::FIRST) {
         Ok(_) => {
             info!("attach process success");
         }

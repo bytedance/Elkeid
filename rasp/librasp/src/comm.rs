@@ -370,21 +370,21 @@ impl EbpfMode {
         thread::sleep(Duration::from_secs(2));
         Ok(())
     }
-    pub fn attach(&mut self, pid: i32) -> AnyhowResult<()> {
+    pub fn attach(&mut self, pid: i32) -> AnyhowResult<bool> {
         self.write_stdin(pid)?;
 	match self.read_stdout(pid) {
 	    Ok(result) => {
 		if !result.is_empty() {
-		    return Err(anyhow!("EBPF golang attach faild"));
+		    return Ok(false);
 		}
 	    }
 	    Err(e) => {
-		error!("ebpf running abnormally, quiting.");
+		error!("ebpf running abnormally: {}, quiting.", e);
 		let _ = self.ctrl.stop();
-		return Err(e)
+		return Err(e);
 	    }
 	}
-        Ok(())
+        Ok(true)
     }
     pub fn write_stdin(&mut self, pid: i32) -> AnyhowResult<()> {
         let mut stdin = self.stdin.as_ref().unwrap();
