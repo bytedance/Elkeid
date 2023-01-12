@@ -10,6 +10,8 @@
 #include <aio/ev/timer.h>
 #include <aio/ev/buffer.h>
 #include <go/symbol/reader.h>
+#include <iostream>
+#include <sys/prctl.h>
 #include <unistd.h>
 #include <csignal>
 
@@ -27,6 +29,8 @@ struct Instance {
     go::symbol::SymbolTable symbolTable;
     std::list<std::unique_ptr<bpf_link, decltype(bpf_link__destroy) *>> links;
     zero::cache::LRUCache<uintptr_t, std::string> cache;
+    unsigned long long startTime;
+    std::shared_ptr<ProcessInfo> processInfo;
     probe_config config;
     std::map<std::tuple<int, int>, Filter> filters;
     std::map<std::tuple<int, int>, int> limits;
@@ -171,7 +175,7 @@ void onEvent(probe_event *event, void *ctx) {
 #endif
 #endif
 
-    channel->sendNoWait({it->first, it->second.version, TRACE, trace});
+    channel->sendNoWait({it->first, it->second.version, it->second.processInfo, TRACE, trace});
 }
 
 std::optional<int> getAPIOffset(const elf::Reader &reader, uint64_t address) {
@@ -239,19 +243,19 @@ std::shared_ptr<aio::sync::IChannel<pid_t>> inputChannel(const aio::Context &con
 }
 
 std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
-    std::error_code ec;
+    zero::os::process::Process process(pid);
 
-    std::filesystem::path realPath = std::filesystem::read_symlink(
-            std::filesystem::path("/proc") / std::to_string(pid) / "exe",
-            ec
-    );
+    std::optional<zero::os::process::Stat> stat = process.stat();
+    std::optional<zero::os::process::Status> status = process.status();
+    std::optional<std::filesystem::path> exe = process.exe();
+    std::optional<std::vector<std::string>> cmdline = process.cmdline();
 
-    if (ec) {
-        LOG_ERROR("read symbol link failed, %s", ec.message().c_str());
+    if (!stat || !status || !exe || !cmdline) {
+        LOG_ERROR("get process %d info failed", pid);
         return std::nullopt;
     }
 
-    std::filesystem::path path = std::filesystem::path("/proc") / std::to_string(pid) / "root" / realPath.relative_path();
+    std::filesystem::path path = std::filesystem::path("/proc") / std::to_string(pid) / "root" / exe->relative_path();
 
     go::symbol::Reader reader;
 
@@ -276,19 +280,16 @@ std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
 
     LOG_INFO("process %d: abi(%d) fp(%d) http(%d)", pid, abi, fp, http);
 
-    std::optional<zero::os::process::ProcessMapping> processMapping = zero::os::process::getImageBase(
-            pid,
-            realPath.string()
-    );
+    std::optional<zero::os::process::MemoryMapping> memoryMapping = process.getImageBase(exe->string());
 
-    if (!processMapping) {
+    if (!memoryMapping) {
         LOG_INFO("get image base failed");
         return std::nullopt;
     }
 
-    LOG_INFO("image base: %p", processMapping->start);
+    LOG_INFO("image base: %p", memoryMapping->start);
 
-    std::optional<go::symbol::SymbolTable> symbolTable = reader.symbols(go::symbol::FileMapping, processMapping->start);
+    std::optional<go::symbol::SymbolTable> symbolTable = reader.symbols(go::symbol::FileMapping, memoryMapping->start);
 
     if (!symbolTable) {
         LOG_INFO("get symbol table failed");
@@ -351,7 +352,7 @@ std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
                 false,
                 pid,
                 path.string().c_str(),
-                entry + *offset - processMapping->start
+                entry + *offset - memoryMapping->start
         );
 
         if (!link) {
@@ -372,12 +373,28 @@ std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
             std::move(*symbolTable),
             std::move(links),
             zero::cache::LRUCache<uintptr_t, std::string>(FRAME_CACHE_SIZE),
+            stat->startTime,
+            std::make_shared<ProcessInfo>(ProcessInfo{
+                    stat->session,
+                    stat->ppid,
+                    stat->tpgid,
+                    exe->string(),
+                    zero::strings::join(*cmdline, " "),
+                    status->uid[0],
+                    status->uid[1],
+                    status->uid[2],
+                    status->uid[3],
+                    status->gid[0],
+                    status->gid[1],
+                    status->gid[2],
+                    status->gid[3]
+            }),
             config
     };
 }
 
 int main() {
-    INIT_CONSOLE_LOG(zero::INFO);
+    INIT_FILE_LOG(zero::INFO, "go-probe-ebpf");
 
     libbpf_set_strict_mode(LIBBPF_STRICT_ALL);
     libbpf_set_print(onLog);
@@ -390,6 +407,7 @@ int main() {
     }
 
     signal(SIGPIPE, SIG_IGN);
+    prctl(PR_SET_PDEATHSIG, SIGKILL);
 
     event_base *base = event_base_new();
 
@@ -413,8 +431,11 @@ int main() {
 
             if (!instance) {
                 P_CONTINUE(loop);
+                std::cout << pid << ":failed" << std::endl;
                 return;
             }
+
+            std::cout << pid << ":succeeded" << std::endl;
 
             std::fill_n(instance->quotas[0], sizeof(instance->quotas) / sizeof(**instance->quotas), DEFAULT_QUOTAS);
             instances.insert({pid, std::move(*instance)});
@@ -430,7 +451,9 @@ int main() {
         auto it = instances.begin();
 
         while (it != instances.end()) {
-            if (kill(it->first, 0) < 0 && errno == ESRCH) {
+            std::optional<zero::os::process::Stat> stat = zero::os::process::Process(it->first).stat();
+
+            if (!stat || stat->startTime != it->second.startTime) {
                 LOG_INFO("clean process %d", it->first);
                 bpf_map__delete_elem(skeleton->maps.config_map, &it->first, sizeof(pid_t), BPF_ANY);
                 it = instances.erase(it);

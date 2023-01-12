@@ -18,9 +18,26 @@ enum Operate {
     LIMIT
 };
 
+struct ProcessInfo {
+    int sid;
+    pid_t ppid;
+    pid_t tgid;
+    std::string exe;
+    std::string argv;
+    uid_t ruid;
+    uid_t euid;
+    uid_t suid;
+    uid_t fuid;
+    pid_t rgid;
+    pid_t egid;
+    pid_t sgid;
+    pid_t fgid;
+};
+
 struct SmithMessage {
     pid_t pid;
     std::string version;
+    std::shared_ptr<ProcessInfo> processInfo;
     Operate operate;
     nlohmann::json data;
 };
@@ -76,6 +93,8 @@ struct LimitConfig {
     std::string uuid;
     std::list<Limit> limits;
 };
+
+void to_json(nlohmann::json &j, const ProcessInfo &processInfo);
 
 void to_json(nlohmann::json &j, const SmithMessage &message);
 void from_json(const nlohmann::json &j, SmithMessage &message);
