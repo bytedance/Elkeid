@@ -5,6 +5,7 @@
 #include <vector>
 #include <regex>
 #include <nlohmann/json.hpp>
+#include <sys/types.h>
 
 enum Operate {
     EXIT,
