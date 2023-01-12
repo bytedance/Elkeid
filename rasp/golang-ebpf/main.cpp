@@ -5,7 +5,7 @@
 #include "ebpf/probe.skel.h"
 #include <Zydis/Zydis.h>
 #include <zero/log.h>
-#include <zero/os/process.h>
+#include <zero/os/procfs.h>
 #include <zero/cache/lru.h>
 #include <aio/ev/timer.h>
 #include <aio/ev/buffer.h>
@@ -243,12 +243,17 @@ std::shared_ptr<aio::sync::IChannel<pid_t>> inputChannel(const aio::Context &con
 }
 
 std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
-    zero::os::process::Process process(pid);
+    std::optional<zero::os::procfs::Process> process = zero::os::procfs::openProcess(pid);
 
-    std::optional<zero::os::process::Stat> stat = process.stat();
-    std::optional<zero::os::process::Status> status = process.status();
-    std::optional<std::filesystem::path> exe = process.exe();
-    std::optional<std::vector<std::string>> cmdline = process.cmdline();
+    if (!process) {
+        LOG_ERROR("open process %d failed", pid);
+        return std::nullopt;
+    }
+
+    std::optional<zero::os::procfs::Stat> stat = process->stat();
+    std::optional<zero::os::procfs::Status> status = process->status();
+    std::optional<std::filesystem::path> exe = process->exe();
+    std::optional<std::vector<std::string>> cmdline = process->cmdline();
 
     if (!stat || !status || !exe || !cmdline) {
         LOG_ERROR("get process %d info failed", pid);
@@ -280,7 +285,7 @@ std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
 
     LOG_INFO("process %d: abi(%d) fp(%d) http(%d)", pid, abi, fp, http);
 
-    std::optional<zero::os::process::MemoryMapping> memoryMapping = process.getImageBase(exe->string());
+    std::optional<zero::os::procfs::MemoryMapping> memoryMapping = process->getImageBase(exe->string());
 
     if (!memoryMapping) {
         LOG_INFO("get image base failed");
@@ -451,10 +456,19 @@ int main() {
         auto it = instances.begin();
 
         while (it != instances.end()) {
-            std::optional<zero::os::process::Stat> stat = zero::os::process::Process(it->first).stat();
+            std::optional<zero::os::procfs::Process> process = zero::os::procfs::openProcess(it->first);
+
+            if (!process) {
+                LOG_INFO("clean dead process %d", it->first);
+                bpf_map__delete_elem(skeleton->maps.config_map, &it->first, sizeof(pid_t), BPF_ANY);
+                it = instances.erase(it);
+                continue;
+            }
+
+            std::optional<zero::os::procfs::Stat> stat = process->stat();
 
             if (!stat || stat->startTime != it->second.startTime) {
-                LOG_INFO("clean process %d", it->first);
+                LOG_INFO("clean reused process %d", it->first);
                 bpf_map__delete_elem(skeleton->maps.config_map, &it->first, sizeof(pid_t), BPF_ANY);
                 it = instances.erase(it);
                 continue;
