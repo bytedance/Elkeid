@@ -1,15 +1,14 @@
 pub mod comm;
-#[allow(non_snake_case)]
-pub mod settings;
-pub mod process;
-pub mod manager;
-pub mod jvm;
 pub mod cpython;
-pub mod runtime;
 pub mod golang;
+pub mod jvm;
+pub mod manager;
 pub mod nodejs;
 pub mod php;
-
+pub mod process;
+pub mod runtime;
+#[allow(non_snake_case)]
+pub mod settings;
 
 pub mod async_command {
     use std::io::{BufRead, BufReader};
@@ -163,12 +162,12 @@ pub mod async_command {
                         // warn!("stdout: {}", stdout_string);
                         // warn!("stderr: {}", stderr_string);
                         warn!(
-                        "async run failed: {:?}, {}\n {}\n {}",
-                        command,
-                        s.to_string(),
-                        stdout_string,
-                        stderr_string
-                    );
+                            "async run failed: {:?}, {}\n {}\n {}",
+                            command,
+                            s.to_string(),
+                            stdout_string,
+                            stderr_string
+                        );
                         return Ok((s, stdout_string, stderr_string));
                     }
                 }

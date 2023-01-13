@@ -1,19 +1,19 @@
-use std::fmt::{self, Display, Formatter};
-use std::path::PathBuf;
 use std::collections::HashMap;
 use std::ffi::OsString;
+use std::fmt::{self, Display, Formatter};
+use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 use log::*;
 use serde_json;
 
+use crate::cpython;
 use crate::golang::golang_bin_inspect;
 use crate::jvm::vm_version;
 use crate::nodejs::nodejs_version;
-use crate::process::ProcessInfo;
-use serde::{Serialize, Deserialize};
-use crate::cpython;
 use crate::php::{inspect_phpfpm, inspect_phpfpm_version, inspect_phpfpm_zts};
+use crate::process::ProcessInfo;
+use serde::{Deserialize, Serialize};
 
 const DEFAULT_JVM_FILTER_JSON_STR: &str = r#"{"exe": ["java"]}"#;
 const DEFAULT_CPYTHON_FILTER_JSON_STR: &str = r#"{"exe": ["python","python2", "python3","python2.7", "python3.4", "python3.5", "python3.6", "python3.7", "python3.8", "python3.9", "python3.10", "uwsgi"]}"#;
@@ -167,12 +167,12 @@ pub trait RuntimeInspect {
                                 return Ok(Some(Runtime {
                                     name: "PHP",
                                     version: format!("{}.zts", version),
-                                }))
+                                }));
                             } else {
                                 return Ok(Some(Runtime {
                                     name: "PHP",
                                     version: version,
-                                }))
+                                }));
                             }
                         }
                         Err(e) => {
@@ -180,7 +180,7 @@ pub trait RuntimeInspect {
                         }
                     }
                 }
-            },
+            }
             Err(e) => {
                 warn!("detect phpfpm bin failed: {}", e.to_string());
             }

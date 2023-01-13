@@ -465,6 +465,7 @@ impl RASPManager {
         bind_path: String,
         linking_to: Option<String>,
         using_mount: bool,
+        ebpf_mode: BPFSelect,
     ) -> AnyhowResult<Self> {
         Self::clean_prev_lib()?;
         let runtime_dir = match Self::create_elkeid_rasp_dir(
@@ -477,18 +478,23 @@ impl RASPManager {
                 false
             }
         };
-        let ebpf_manager = match EbpfMode::new(ctrl.clone()) {
-            Ok(em) => Some(em),
-            Err(e) => {
-                error!("start golang ebpf daemon failed: {}", e);
-                None
+        let ebpf_manager = |ebpf_mode: BPFSelect, ctrl: Control| -> Option<EbpfMode> {
+            match ebpf_mode {
+                BPFSelect::DISBALE => None,
+                _ => match EbpfMode::new(ctrl) {
+                    Ok(em) => Some(em),
+                    Err(e) => {
+                        error!("start golang ebpf daemon failed: {}", e);
+                        None
+                    }
+                },
             }
         };
         match comm_mode {
             "thread" => Ok(RASPManager {
                 thread_comm: Some(ThreadMode::new(
                     log_level,
-                    ctrl,
+                    ctrl.clone(),
                     message_sender.clone(),
                     bind_path,
                     linking_to,
@@ -496,15 +502,15 @@ impl RASPManager {
                 )?),
                 namespace_tracer: MntNamespaceTracer::new(),
                 process_comm: None,
-                ebpf_comm: ebpf_manager,
+                ebpf_comm: ebpf_manager(ebpf_mode, ctrl),
                 runtime_dir,
             }),
 
             "server" => Ok(RASPManager {
-                process_comm: Some(ProcessMode::new(log_level, ctrl)),
+                process_comm: Some(ProcessMode::new(log_level, ctrl.clone())),
                 namespace_tracer: MntNamespaceTracer::new(),
                 thread_comm: None,
-                ebpf_comm: ebpf_manager,
+                ebpf_comm: ebpf_manager(ebpf_mode, ctrl),
                 runtime_dir,
             }),
             _ => Err(anyhow!("{} is not a vaild comm mode", comm_mode)),

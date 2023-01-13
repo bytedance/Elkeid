@@ -1,17 +1,17 @@
 use anyhow::{anyhow, Result};
 use log::*;
 
-use std::path::PathBuf;
 use std::fs::{self, File};
+use std::path::PathBuf;
 use std::process::Command;
 
-use memmap::MmapOptions;
 use goblin::elf::Elf;
+use memmap::MmapOptions;
 use regex::Regex;
 
+use crate::async_command::run_async_process;
+use crate::runtime::{ProbeCopy, ProbeState, ProbeStateInspect};
 use crate::{process::ProcessInfo, settings};
-use crate::{async_command::run_async_process};
-use crate::runtime::{ProbeState, ProbeStateInspect, ProbeCopy};
 
 pub struct CPythonProbeState {}
 
@@ -96,7 +96,7 @@ impl CPythonRuntime {
                             return Ok(Some(String::from(version.as_str())));
                         }
                     }
-                    None => continue
+                    None => continue,
                 }
             }
         }
@@ -153,7 +153,8 @@ pub fn python_attach(pid: i32) -> Result<bool> {
 }
 
 pub fn write_python_entry(pid: i32) -> Result<()> {
-    let content = format!(r#"import os
+    let content = format!(
+        r#"import os
 import sys
 
 name = 'rasp'
@@ -166,7 +167,9 @@ elif sys.version_info >= (2, 7):
     import imp
     imp.load_module(name, None, os.path.dirname(path), ('', '', imp.PKG_DIRECTORY))
 
-"#, settings::RASP_PYTHON_DIR());
+"#,
+        settings::RASP_PYTHON_DIR()
+    );
     let path = settings::RASP_PYTHON_ENTRY();
     let dest_dir = format!("/proc/{}/root{}", pid, path);
     fs_extra::file::write_all(dest_dir, content.as_str())?;
@@ -185,7 +188,7 @@ pub fn pangolin_inject_file(pid: i32, file_path: &str) -> Result<bool> {
         extra,
         python_loader.as_str(),
         file,
-        file_path
+        file_path,
     ];
     match run_async_process(Command::new(pangolin).args(args)) {
         Ok((es, stdout, stderr)) => {
@@ -198,9 +201,7 @@ pub fn pangolin_inject_file(pid: i32, file_path: &str) -> Result<bool> {
             let es_code = match es.code() {
                 Some(ec) => ec,
                 None => {
-                    return Err(anyhow!(
-                        "get status code failed: {}", pid
-                    ));
+                    return Err(anyhow!("get status code failed: {}", pid));
                 }
             };
             if es_code == 0 {
@@ -213,8 +214,10 @@ pub fn pangolin_inject_file(pid: i32, file_path: &str) -> Result<bool> {
                 error!("{}", msg);
                 Err(anyhow!("{}", msg))
             } else {
-                let msg = format!("python attach exit code {} {} {} {}",
-                                  es_code, pid, &stdout, &stderr);
+                let msg = format!(
+                    "python attach exit code {} {} {} {}",
+                    es_code, pid, &stdout, &stderr
+                );
                 error!("{}", msg);
                 Err(anyhow!("{}", msg))
             }

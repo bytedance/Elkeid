@@ -4,10 +4,10 @@ use log::*;
 use regex::Regex;
 use std::process::Command;
 
-use crate::settings;
 use crate::async_command::run_async_process;
 use crate::process::ProcessInfo;
 use crate::runtime::{ProbeCopy, ProbeState, ProbeStateInspect};
+use crate::settings;
 
 pub struct JVMProbeState {}
 
@@ -29,7 +29,8 @@ impl ProbeCopy for JVMProbe {
             [
                 settings::RASP_JAVA_JATTACH_BIN(),
                 settings::RASP_JAVA_PROBE_BIN(),
-            ].to_vec(),
+            ]
+            .to_vec(),
             [].to_vec(),
         )
     }
@@ -38,14 +39,13 @@ impl ProbeCopy for JVMProbe {
 pub fn java_attach(pid: i32) -> Result<bool> {
     let java_attach = settings::RASP_JAVA_JATTACH_BIN();
     let probe = settings::RASP_JAVA_PROBE_BIN();
-    match run_async_process(Command::new(java_attach)
-        .args(&[
-            pid.to_string().as_str(),
-            "load",
-            "instrument",
-            "false",
-            probe.as_str(),
-        ])) {
+    match run_async_process(Command::new(java_attach).args(&[
+        pid.to_string().as_str(),
+        "load",
+        "instrument",
+        "false",
+        probe.as_str(),
+    ])) {
         Ok((_, out, err)) => {
             if out.len() != 0 {
                 info!("{}", &out);
@@ -101,5 +101,5 @@ pub fn prop(pid: i32) -> Result<bool> {
             Ok(re.is_match(&response))
         }
         Err(e) => Err(anyhow!(e)),
-    }
+    };
 }

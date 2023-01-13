@@ -283,14 +283,14 @@ pub struct EbpfMode {
 
 impl EbpfMode {
     pub fn new(ctrl: Control) -> AnyhowResult<Self> {
-	let ebpf_manager = Self {
+        let ebpf_manager = Self {
             ctrl,
             kernel_version: Self::detect_kernel_version()?,
             stdin: None,
             stdout: None,
         };
-	let _ = ebpf_manager.switch_bpf_main_process()?;
-	Ok(ebpf_manager)
+        let _ = ebpf_manager.switch_bpf_main_process()?;
+        Ok(ebpf_manager)
     }
     pub fn detect_kernel_version() -> AnyhowResult<procfs::sys::kernel::Version> {
         let kernel_version = procfs::sys::kernel::Version::current()?;
@@ -336,14 +336,14 @@ impl EbpfMode {
         let child_id = child.id();
         self.stdin = child.stdin.take();
         self.stdout = child.stdout.take();
-	/*
-        if self.stdin.is_none() {
-            return Err(anyhow!("can not take child stdin, pid: {}", child_id));
-        }
-        if self.stdout.is_none() {
-            return Err(anyhow!("can not take child stdout, pid: {}", child_id));
-        }
-	*/
+        /*
+            if self.stdin.is_none() {
+                return Err(anyhow!("can not take child stdin, pid: {}", child_id));
+            }
+            if self.stdout.is_none() {
+                return Err(anyhow!("can not take child stdout, pid: {}", child_id));
+            }
+        */
         // start a thread for wait child die
         let mut wait_ctrl = self.ctrl.clone();
         thread::Builder::new()
@@ -355,9 +355,9 @@ impl EbpfMode {
                 }
                 match child.try_wait() {
                     Ok(Some(status)) => {
-			info!("Golang EBPF daemon exit with status: {}", status);
-			return
-		    }
+                        info!("Golang EBPF daemon exit with status: {}", status);
+                        return;
+                    }
                     Ok(None) => {}
                     Err(e) => {
                         error!("error attempting to wait: {}", e);
@@ -372,18 +372,18 @@ impl EbpfMode {
     }
     pub fn attach(&mut self, pid: i32) -> AnyhowResult<bool> {
         self.write_stdin(pid)?;
-	match self.read_stdout(pid) {
-	    Ok(result) => {
-		if !result.is_empty() {
-		    return Ok(false);
-		}
-	    }
-	    Err(e) => {
-		error!("ebpf running abnormally: {}, quiting.", e);
-		let _ = self.ctrl.stop();
-		return Err(e);
-	    }
-	}
+        match self.read_stdout(pid) {
+            Ok(result) => {
+                if !result.is_empty() {
+                    return Ok(false);
+                }
+            }
+            Err(e) => {
+                error!("ebpf running abnormally: {}, quiting.", e);
+                let _ = self.ctrl.stop();
+                return Err(e);
+            }
+        }
         Ok(true)
     }
     pub fn write_stdin(&mut self, pid: i32) -> AnyhowResult<()> {
@@ -394,10 +394,10 @@ impl EbpfMode {
     }
     pub fn read_stdout(&mut self, pid: i32) -> AnyhowResult<String> {
         let mut buf_reader = if let Some(stdout) = self.stdout.take() {
-	    BufReader::new(stdout)
-	} else {
-	    return Err(anyhow!(""));
-	};
+            BufReader::new(stdout)
+        } else {
+            return Err(anyhow!(""));
+        };
         let mut times = 10;
         let interval = 1; // second
         loop {

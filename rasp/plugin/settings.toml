@@ -85,3 +85,12 @@ pid_queue_length = 1000
 pid_poll_interval = 60
 clean_up_interval = 60
 report_interval = 120
+
+[eBPF]
+## DISABLE only using inline hook probe
+## FORCE   only using ebpf uprobe
+## FIRST   if ebpf avaliable, using ebpf first, if failed, switch to inline hook
+## SECOND  using inline hook first, if failed, switch to ebpf hook
+## if "DISABLE", ebpf daemon process should not spwan by plugin
+### in current release, default is "DISABLE".
+golang_ebpf_priority = "DISBALE"

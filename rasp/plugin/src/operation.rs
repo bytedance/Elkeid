@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result as AnyhowResult};
 use crossbeam::channel::{Sender};
-use librasp::manager::RASPManager;
+use librasp::manager::{RASPManager, BPFSelect};
 use log::*;
 
 use crate::{utils::Control};
@@ -30,10 +30,21 @@ impl Operator {
             Ok(v) => v,
             Err(_) => false,
         };
+	let ebpf_mode = match settings_string("eBPF", "golange_ebpf_mode")?.as_str() {
+	    "DISBALE" => BPFSelect::DISBALE,
+	    "FORCE" => BPFSelect::FORCE,
+	    "FIRST" => BPFSelect::SECOND,
+	    "SECOND" => BPFSelect::SECOND,
+	    _ => {
+		let msg = "[eBPF] golang_ebpf_mode: {} not in [`DISABLE` `FORCE` `FIRST` `SECOND`]";
+		error!("{}", msg);
+		return Err(anyhow!("{}", msg));
+	    }
+	};
         let rasp_manager = RASPManager::init(
             comm_mode.as_str(), log_level,
             comm_ctrl.clone(), message_sender.clone(),
-            bind_path, linking_to, using_mount
+            bind_path, linking_to, using_mount, ebpf_mode,
         )?;
 
         Ok(Self {

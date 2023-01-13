@@ -1,16 +1,16 @@
+use crate::async_command::run_async_process;
+use crate::process::ProcessInfo;
+use crate::runtime::{ProbeState, ProbeStateInspect};
+use crate::settings::RASP_PHP_PROBE;
+use anyhow::{anyhow, Result as AnyhowResult};
+use libc::{kill, pid_t, SIGUSR2};
+use log::*;
+use procfs::process::Process;
+use regex::Regex;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::path::Path;
 use std::process::Command;
-use crate::process::ProcessInfo;
-use procfs::process::Process;
-use anyhow::{anyhow, Result as AnyhowResult};
-use libc::{kill, pid_t, SIGUSR2};
-use regex::Regex;
-use crate::settings::RASP_PHP_PROBE;
-use log::*;
-use crate::async_command::run_async_process;
-use crate::runtime::{ProbeState, ProbeStateInspect};
 
 pub fn inspect_phpfpm(process: &ProcessInfo) -> AnyhowResult<bool> {
     if String::from(process.exe_name.as_ref().unwrap()).starts_with("php-fpm") {
@@ -50,7 +50,8 @@ pub fn inspect_phpfpm_zts(process: &ProcessInfo) -> AnyhowResult<bool> {
         HashMap::new()
     };
     let output = execute_phpfpm_info(
-        process.pid, String::from(process.exe_path.as_ref().unwrap()),
+        process.pid,
+        String::from(process.exe_path.as_ref().unwrap()),
         &phprc_env,
         true,
     )?;
@@ -59,53 +60,72 @@ pub fn inspect_phpfpm_zts(process: &ProcessInfo) -> AnyhowResult<bool> {
 }
 
 fn execute_phpfpm_version(pid: i32, phpfmp: String) -> AnyhowResult<String> {
-    let (exit_status, output, stderr) = run_async_process(
-        Command::new(crate::settings::RASP_NS_ENTER_BIN())
-            .args([
-                "-m", "-p",
-                "-t", pid.to_string().as_str(),
-                phpfmp.as_str(),
-                "-n",
-                "-v"
-            ])
-    )?;
+    let (exit_status, output, stderr) =
+        run_async_process(Command::new(crate::settings::RASP_NS_ENTER_BIN()).args([
+            "-m",
+            "-p",
+            "-t",
+            pid.to_string().as_str(),
+            phpfmp.as_str(),
+            "-n",
+            "-v",
+        ]))?;
     if !exit_status.success() {
-        warn!("check phpfpm failed: {} {} {} {}", pid, exit_status, output, stderr);
-        return Err(anyhow!("can not fetch phpfpm version: {} {} {}", pid, exit_status, stderr));
+        warn!(
+            "check phpfpm failed: {} {} {} {}",
+            pid, exit_status, output, stderr
+        );
+        return Err(anyhow!(
+            "can not fetch phpfpm version: {} {} {}",
+            pid,
+            exit_status,
+            stderr
+        ));
     }
     Ok(output)
 }
 
-fn execute_phpfpm_info(pid: i32, phpfmp: String, origin_env: &HashMap<String, String>, no_ini: bool) -> AnyhowResult<String> {
+fn execute_phpfpm_info(
+    pid: i32,
+    phpfmp: String,
+    origin_env: &HashMap<String, String>,
+    no_ini: bool,
+) -> AnyhowResult<String> {
     let pid_str = pid.to_string();
     let args = if no_ini {
         [
-            "-m", "-p",
-            "-t", pid_str.as_str(),
+            "-m",
+            "-p",
+            "-t",
+            pid_str.as_str(),
             phpfmp.as_str(),
             "-n",
-            "-i"
-        ].to_vec()
+            "-i",
+        ]
+        .to_vec()
     } else {
-        [
-            "-m", "-p",
-            "-t", pid_str.as_str(),
-            phpfmp.as_str(),
-            "-i"
-        ].to_vec()
+        ["-m", "-p", "-t", pid_str.as_str(), phpfmp.as_str(), "-i"].to_vec()
     };
     let (exit_status, output, stderr) = run_async_process(
         Command::new(crate::settings::RASP_NS_ENTER_BIN())
-            .args(&args).env_clear()
-            .envs(origin_env)
+            .args(&args)
+            .env_clear()
+            .envs(origin_env),
     )?;
     if !exit_status.success() {
-        warn!("check phpfpm failed: {} {} {} {}", pid, exit_status, output, stderr);
-        return Err(anyhow!("can not fetch phpfpm info: {} {} {}", pid, exit_status, stderr));
+        warn!(
+            "check phpfpm failed: {} {} {} {}",
+            pid, exit_status, output, stderr
+        );
+        return Err(anyhow!(
+            "can not fetch phpfpm info: {} {} {}",
+            pid,
+            exit_status,
+            stderr
+        ));
     }
     Ok(output)
 }
-
 
 pub struct PHPProbeState {}
 
@@ -147,7 +167,8 @@ pub fn inspect_php_ini_scan_dir(process: &ProcessInfo) -> AnyhowResult<String> {
     };
     // grep "Scan this dir for additional .ini files"
     let output = execute_phpfpm_info(
-        process.pid, String::from(process.exe_path.as_ref().unwrap()),
+        process.pid,
+        String::from(process.exe_path.as_ref().unwrap()),
         &phprc_env,
         false,
     )?;
@@ -162,7 +183,6 @@ pub fn inspect_php_ini_scan_dir(process: &ProcessInfo) -> AnyhowResult<String> {
     }
     Err(anyhow!("PHP additional scanned dir not found in phpinfo()"))
 }
-
 
 pub fn php_attach(process_info: &ProcessInfo, version: String) -> AnyhowResult<bool> {
     let splited: Vec<&str> = version.split(".").collect();
@@ -215,7 +235,12 @@ pub fn php_attach(process_info: &ProcessInfo, version: String) -> AnyhowResult<b
 //     return Ok(None);
 // }
 
-pub fn copy_so_to_extension_dir(root_dir: String, extension_dir: String, probe_path: String, probe_name: String) -> AnyhowResult<()> {
+pub fn copy_so_to_extension_dir(
+    root_dir: String,
+    extension_dir: String,
+    probe_path: String,
+    probe_name: String,
+) -> AnyhowResult<()> {
     let target_path = format!("{}/{}/{}", root_dir, extension_dir, probe_name);
     if std::path::Path::new(&target_path).exists() {
         return Ok(());
@@ -223,15 +248,16 @@ pub fn copy_so_to_extension_dir(root_dir: String, extension_dir: String, probe_p
     debug!("{} -> {}", probe_path, target_path);
     // create path
     let copy_options = fs_extra::file::CopyOptions::default();
-    fs_extra::file::copy(
-        probe_path,
-        target_path,
-        &copy_options,
-    )?;
+    fs_extra::file::copy(probe_path, target_path, &copy_options)?;
     Ok(())
 }
 
-pub fn write_conf_to_cond_dir(root_dir: String, confd_dir: String, probe_path: String, _probe_name: String) -> AnyhowResult<()> {
+pub fn write_conf_to_cond_dir(
+    root_dir: String,
+    confd_dir: String,
+    probe_path: String,
+    _probe_name: String,
+) -> AnyhowResult<()> {
     let so_target_path = format!("{}/{}", root_dir, probe_path);
     debug!("{} -> {}", probe_path, so_target_path);
     copy_file_from_to_dest(probe_path.clone(), root_dir.clone())?;
@@ -249,17 +275,21 @@ pub fn copy_file_from_to_dest(from: String, dest_root: String) -> AnyhowResult<(
     let dir = Path::new(&from).parent().unwrap();
     create_dir_if_not_exist(dir.to_str().unwrap().to_string(), dest_root.clone())?;
     let options = fs_extra::file::CopyOptions::new();
-    debug!("copy file: {} {}", from.clone(), format!("{}/{}", dest_root, from));
+    debug!(
+        "copy file: {} {}",
+        from.clone(),
+        format!("{}/{}", dest_root, from)
+    );
     return match fs_extra::file::copy(from.clone(), format!("{}/{}", dest_root, from), &options) {
         Ok(_) => Ok(()),
         Err(e) => {
             warn!("can not copy: {}", e);
             Err(anyhow!(
-		    "copy failed: from {} to {}: {}",
-		    from,
-		    format!("{}/{}", dest_root, from),
-		    e
-		))
+                "copy failed: from {} to {}: {}",
+                from,
+                format!("{}/{}", dest_root, from),
+                e
+            ))
         }
     };
 }
@@ -272,7 +302,6 @@ pub fn create_dir_if_not_exist(dir: String, dest_root: String) -> AnyhowResult<(
     fs_extra::dir::create_all(format!("{}{}", dest_root, dir), true)?;
     Ok(())
 }
-
 
 fn reload_phpfpm(pid: i32) -> AnyhowResult<()> {
     let pidt = pid_t::from(pid);
@@ -291,7 +320,9 @@ fn reload_phpfpm(pid: i32) -> AnyhowResult<()> {
 
 #[cfg(test)]
 mod php_test {
-    use crate::php::{check_probe, inspect_phpfpm, inspect_phpfpm_version, inspect_php_ini_scan_dir};
+    use crate::php::{
+        check_probe, inspect_php_ini_scan_dir, inspect_phpfpm, inspect_phpfpm_version,
+    };
     use crate::process::ProcessInfo;
     use crate::runtime::ProbeState;
 

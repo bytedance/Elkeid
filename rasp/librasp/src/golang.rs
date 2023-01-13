@@ -1,15 +1,15 @@
-use std::{fs, path::PathBuf, process::Command};
-use std::fs::File;
 use log::*;
+use std::fs::File;
+use std::{fs, path::PathBuf, process::Command};
 
-use memmap::MmapOptions;
 use anyhow::{anyhow, Result};
 use goblin::elf::Elf;
+use memmap::MmapOptions;
 
-use crate::process::ProcessInfo;
-use crate::runtime::{ProbeState, ProbeStateInspect, ProbeCopy};
-use crate::settings;
 use crate::async_command::run_async_process;
+use crate::process::ProcessInfo;
+use crate::runtime::{ProbeCopy, ProbeState, ProbeStateInspect};
+use crate::settings;
 
 pub struct GolangProbeState {}
 
@@ -34,7 +34,7 @@ impl ProbeCopy for GolangProbe {
                 settings::RASP_GOLANG(),
                 // RASP_PANGOLIN.to_string(),
             ]
-                .to_vec(),
+            .to_vec(),
             [].to_vec(),
         )
     }
@@ -98,9 +98,7 @@ pub fn golang_attach(pid: i32) -> Result<bool> {
             let es_code = match es.code() {
                 Some(ec) => ec,
                 None => {
-                    return Err(anyhow!(
-                        "get status code failed: {}", pid
-                    ));
+                    return Err(anyhow!("get status code failed: {}", pid));
                 }
             };
             if es_code == 0 {
@@ -122,7 +120,7 @@ pub fn golang_attach(pid: i32) -> Result<bool> {
             }
         }
         Err(e) => Err(anyhow!(e.to_string())),
-    }
+    };
 }
 
 pub fn golang_bin_inspect(bin_file: PathBuf) -> Result<bool> {
