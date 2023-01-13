@@ -1872,7 +1872,8 @@ out:
         smith_put_tid(tid);
 }
 
-static void smith_trace_sysent_prctl(long option, char __user *name)
+static void smith_update_comm(struct smith_tid *tid, char *comm_new);
+static void smith_trace_sysret_prctl(long option, char __user *name)
 {
     struct smith_tid *tid = NULL;
     char *exe_path = DEFAULT_RET_STR;
@@ -1911,6 +1912,10 @@ static void smith_trace_sysent_prctl(long option, char __user *name)
             goto out;
     }
 
+    /*
+     * pidtree to be updated in kprobe callback of set_task_comm
+     * so here we won't do smith_update_comm(tid, current->comm)
+     */
     prctl_print(exe_path, PR_SET_NAME, newname);
 
 out:
@@ -4072,7 +4077,7 @@ static char *smith_get_pid_tree(struct task_struct *task)
     snprintf(pid, 24, "%d", task->tgid);
     strcat(tree, pid);
     strcat(tree, ".");
-    strncat(tree, task->comm, TASK_COMM_LEN);
+    strncat(tree, task->comm, TASK_COMM_LEN - 1);
 
     while (--n > 0) {
 
@@ -4088,7 +4093,7 @@ static char *smith_get_pid_tree(struct task_struct *task)
         strcat(tree, "<");
         strcat(tree, pid);
         strcat(tree, ".");
-        strncat(tree, task->comm, TASK_COMM_LEN);
+        strncat(tree, task->comm, TASK_COMM_LEN - 1);
     }
 
 out:
@@ -4098,28 +4103,31 @@ out:
     return tree;
 }
 
-static void smith_update_pid_tree(char *pid_tree, char *comm_new)
+static void smith_update_comm(struct smith_tid *tid, char *comm_new)
 {
+    char *pid_tree = tid->st_pid_tree;
     char *s = NULL;
-    int o = 0, i = 1, n;
+    int o = 0, i = 1, n, l;
 
     if (!pid_tree)
         return;
+    l = strlen(pid_tree);
 
     /* locate 1st '.' in pid-tree */
-    while (!s && pid_tree[i]) {
-        if (pid_tree[i++] == '.')
+    while (i < l) {
+        if (pid_tree[i++] == '.') {
             s = &pid_tree[i];
+            break;
+        }
     }
     if (!s)
         return;
-    while (s[++o] != '<' && s[o]);
+    while (o + i < l && s[o] != '<')
+        o++;
 
-    n = strlen(comm_new);
-    if (o != n) {
-        int l = strlen(pid_tree) - o - (int)(s - pid_tree);
-        memmove(s + n, s + o, l + 1); /* extra tailing 0 */
-    }
+    n = strnlen(comm_new, TASK_COMM_LEN - 1);
+    if (o != n)
+        memmove(s + n, s + o, l - o - i + 1); /* extra tailing 0 */
     memcpy(s, comm_new, n);
 }
 
@@ -4276,7 +4284,7 @@ static void smith_trace_proc_exec(
         goto errorout;
 
     /* update pid tree strings */
-    smith_update_pid_tree(tid->st_pid_tree, task->comm);
+    smith_update_comm(tid, task->comm);
 
     /* build img for execed task */
     exe = smith_find_img(task);
@@ -4428,7 +4436,7 @@ void smith_trace_sysexit_x86(struct pt_regs *regs, long id, long ret)
          */
         case 172 /* __NR_ia32_prctl */:
             if (PRCTL_HOOK)
-                smith_trace_sysent_prctl(regs->bx, (char *)regs->cx);
+                smith_trace_sysret_prctl(regs->bx, (char *)regs->cx);
             break;
 
         /*
@@ -4660,7 +4668,7 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
          */
         case __NR_prctl:
             if (PRCTL_HOOK)
-                smith_trace_sysent_prctl(p_regs_get_arg1_of_syscall(regs),
+                smith_trace_sysret_prctl(p_regs_get_arg1_of_syscall(regs),
                                          (char __user *)p_regs_get_arg2_syscall(regs));
             break;
 
@@ -4836,6 +4844,36 @@ static int smith_unregister_tracepoint(struct smith_tracepoint *tp)
 }
 #endif
 
+/*
+ * 3.16 and later:
+ * void __set_task_comm(struct task_struct *tsk, const char *buf, bool exec);
+ *
+ * pre 3.16:
+ * void set_task_comm(struct task_struct *tsk, char *buf);
+ */
+static int set_task_comm_pre_handler(struct kprobe *kp, struct pt_regs *regs)
+{
+    struct task_struct *task = (void *)p_regs_get_arg1(regs);
+    struct smith_tid *tid = NULL;
+
+    /* ignore __set_task_comm callings in exec */
+    if (kp->symbol_name[0] == '_' && (char)p_regs_get_arg3(regs))
+        return 0;
+
+    tid = smith_lookup_tid(task);
+    if (tid) {
+        smith_update_comm(tid, (char *)p_regs_get_arg2(regs));
+        smith_put_tid(tid);
+    }
+
+    return 0;
+}
+
+struct kprobe  set_task_comm_kprobe = {
+        .symbol_name = "__set_task_comm",
+        .pre_handler = set_task_comm_pre_handler,
+};
+
 static int __init smith_tid_init(void)
 {
     int i, rc, nimgs, ntids;
@@ -4882,6 +4920,15 @@ static int __init smith_tid_init(void)
     /* enum active tasks and build tid for each user task */
     smith_process_tasks(&g_hlist_tid);
 
+    /*
+     * try __set_task_comm first, then set_task_comm. kernels >= 3.16 should work
+     * with __set_task_comm, and the 2nd try should work for kernels < 3.16
+     */
+    if (register_kprobe(&set_task_comm_kprobe)) {
+        set_task_comm_kprobe.symbol_name = &set_task_comm_kprobe.symbol_name[2];
+        register_kprobe(&set_task_comm_kprobe);
+    }
+
 errorout:
     return rc;
 
@@ -4899,9 +4946,12 @@ fini_rb_img:
 static void smith_tid_fini(void)
 {
     int i;
+
     /* register callbacks for the tracepoints of our interest */
     for (i = NUM_TRACE_POINTS; i > 0; i--)
         smith_unregister_tracepoint(&g_smith_tracepoints[i - 1]);
+
+    unregister_kprobe(&set_task_comm_kprobe);
 
     hlist_fini(&g_hlist_tid);
     tt_rb_fini(&g_rb_img);
