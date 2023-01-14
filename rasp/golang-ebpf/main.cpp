@@ -383,6 +383,7 @@ std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
                     stat->session,
                     stat->ppid,
                     stat->tpgid,
+                    status->nspid.value_or(0),
                     exe->string(),
                     zero::strings::join(*cmdline, " "),
                     status->uid[0],

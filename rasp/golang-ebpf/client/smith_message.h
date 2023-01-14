@@ -23,6 +23,7 @@ struct ProcessInfo {
     int sid;
     pid_t ppid;
     pid_t tgid;
+    pid_t nspid;
     std::string exe;
     std::string argv;
     uid_t ruid;

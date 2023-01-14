@@ -5,19 +5,20 @@ constexpr auto PROBE_VERSION = "1.0.0";
 
 void to_json(nlohmann::json &j, const ProcessInfo &processInfo) {
     j = {
-            {"sid",  processInfo.sid},
-            {"ppid", processInfo.ppid},
-            {"tgid", processInfo.tgid},
-            {"exe",  processInfo.exe},
-            {"argv", processInfo.argv},
-            {"ruid", processInfo.ruid},
-            {"euid", processInfo.euid},
-            {"suid", processInfo.suid},
-            {"fuid", processInfo.fuid},
-            {"rgid", processInfo.rgid},
-            {"egid", processInfo.egid},
-            {"sgid", processInfo.sgid},
-            {"fgid", processInfo.fgid}
+            {"sid",   processInfo.sid},
+            {"ppid",  processInfo.ppid},
+            {"tgid",  processInfo.tgid},
+            {"nspid", processInfo.nspid},
+            {"exe",   processInfo.exe},
+            {"argv",  processInfo.argv},
+            {"ruid",  processInfo.ruid},
+            {"euid",  processInfo.euid},
+            {"suid",  processInfo.suid},
+            {"fuid",  processInfo.fuid},
+            {"rgid",  processInfo.rgid},
+            {"egid",  processInfo.egid},
+            {"sgid",  processInfo.sgid},
+            {"fgid",  processInfo.fgid}
     };
 }
 

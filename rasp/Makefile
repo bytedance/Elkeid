@@ -17,6 +17,7 @@ update_version: ## patch version VERSION=x.x.x.x
 	sed -i "s/1.0.0/${VERSION}/g" "node/client.js"
 	sed -i "s/1.0.0/${VERSION}/g" "python/python-probe/rasp/probe/client/smith_message.cpp"
 	sed -i "s/1.0.0/${VERSION}/g" "golang/client/smith_message.cpp"
+	sed -i "s/1.0.0/${VERSION}/g" "golang-ebpf/client/smith_message.cpp"
 	sed -i "s/1.0.0/${VERSION}/g" "php/client/smith_message.cpp"
 
 
