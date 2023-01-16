@@ -1,10 +1,10 @@
 use anyhow::{anyhow, Result as AnyhowResult};
 use log::*;
-use std::{collections::HashMap, ffi::OsString};
-use std::path::Path;
 use std::fs;
 use std::io;
 use std::io::BufRead;
+use std::path::Path;
+use std::{collections::HashMap, ffi::OsString};
 
 use crate::runtime::Runtime;
 use coarsetime::Clock;
@@ -62,13 +62,11 @@ impl std::fmt::Display for TracingState {
     }
 }
 
-
 impl ProcessInfo {
     pub fn new(pid: i32) -> Self {
         let mut default = Self::default();
         default.pid = pid;
         default
-
     }
     pub fn from_pid(pid: i32) -> AnyhowResult<Self> {
         let mut pi = Self::new(pid);
@@ -82,7 +80,6 @@ impl ProcessInfo {
         pi.update_cmdline(&process)?;
         pi.update_id(&process)?;
         Ok(pi)
-
     }
     fn current_time(&self) -> String {
         let mills = Clock::now_since_epoch().as_secs().to_string();
@@ -121,7 +118,7 @@ impl ProcessInfo {
         self.fgid = status.fgid;
         Ok(())
     }
-    pub fn update_start_time(&mut self, process: &Process) ->AnyhowResult<f32> {
+    pub fn update_start_time(&mut self, process: &Process) -> AnyhowResult<f32> {
         if let Some(st) = self.start_time {
             return Ok(st.clone());
         }
@@ -160,10 +157,7 @@ impl ProcessInfo {
         }
         Ok(self.cmdline.clone().unwrap())
     }
-    pub fn update_all_env(
-        &mut self,
-        process: &Process,
-    ) -> AnyhowResult<()> {
+    pub fn update_all_env(&mut self, process: &Process) -> AnyhowResult<()> {
         let envs = process.environ()?;
         let mut map = HashMap::new();
         for (k, v) in envs {
@@ -339,8 +333,8 @@ fn traverse_proc(pid: i32) -> AnyhowResult<Vec<i32>> {
 
 // copy from https://github.com/rust-psutil/rust-psutil/blob/b50a3fbc77fbf042c58b6f9ca9345e2c3c8d449b/src/errors.rs#L88
 fn read_dir<P>(path: P) -> AnyhowResult<Vec<fs::DirEntry>>
-    where
-        P: AsRef<Path>,
+where
+    P: AsRef<Path>,
 {
     fs::read_dir(&path)
         .map_err(|err| anyhow!("Failed to read file '{:?}': {}", path.as_ref(), err))?
@@ -350,10 +344,9 @@ fn read_dir<P>(path: P) -> AnyhowResult<Vec<fs::DirEntry>>
         .collect()
 }
 
-
 fn sched_get_host_pid<P>(path: P) -> AnyhowResult<i32>
-    where
-        P: AsRef<Path>,
+where
+    P: AsRef<Path>,
 {
     let file = fs::File::open(path)?;
     let mut line = String::new();

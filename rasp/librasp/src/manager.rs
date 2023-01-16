@@ -6,22 +6,28 @@ use std::process::Command;
 
 use anyhow::{anyhow, Result, Result as AnyhowResult};
 use crossbeam::channel::Sender;
-use fs_extra::dir::{copy, CopyOptions, create_all};
+use fs_extra::dir::{copy, create_all, CopyOptions};
 use fs_extra::file::{copy as file_copy, CopyOptions as FileCopyOptions};
 use libraspserver::proto::{PidMissingProbeConfig, ProbeConfigData};
 use log::*;
 
-use crate::{comm::{Control, RASPComm, ThreadMode, ProcessMode}, process::ProcessInfo, runtime::{ProbeState, ProbeStateInspect, RuntimeInspect, ProbeCopy}, settings};
-use crate::php::{PHPProbeState, php_attach};
-use crate::cpython::{CPythonProbe, CPythonProbeState, python_attach};
-use crate::golang::{GolangProbe, golang_attach, GolangProbeState};
-use crate::jvm::{JVMProbe, JVMProbeState, java_attach};
-use crate::nodejs::{NodeJSProbe, nodejs_attach};
+use crate::cpython::{python_attach, CPythonProbe, CPythonProbeState};
+use crate::golang::{golang_attach, GolangProbe, GolangProbeState};
+use crate::jvm::{java_attach, JVMProbe, JVMProbeState};
+use crate::nodejs::{nodejs_attach, NodeJSProbe};
+use crate::php::{php_attach, PHPProbeState};
+use crate::{
+    comm::{Control, EbpfMode, ProcessMode, RASPComm, ThreadMode},
+    process::ProcessInfo,
+    runtime::{ProbeCopy, ProbeState, ProbeStateInspect, RuntimeInspect},
+    settings,
+};
 
 pub struct RASPManager {
     pub namespace_tracer: MntNamespaceTracer,
     pub thread_comm: Option<ThreadMode>,
     pub process_comm: Option<ProcessMode>,
+    pub ebpf_comm: Option<EbpfMode>,
     pub runtime_dir: bool,
 }
 
@@ -43,8 +49,10 @@ impl RASPManager {
         };
         if let Some(comm) = self.thread_comm.as_mut() {
             comm.start_comm(
-                process_info.pid, &mnt_namespace,
-                result_sender, HashMap::new(),
+                process_info.pid,
+                &mnt_namespace,
+                result_sender,
+                HashMap::new(),
             )?;
         } else if let Some(comm) = self.process_comm.as_mut() {
             let mut patch_field = HashMap::new();
@@ -75,17 +83,17 @@ impl RASPManager {
             if let Some(opened) = self.namespace_tracer.server_state(&mnt_namespace) {
                 if opened {
                     debug!("reusing stated server, mnt ns: {}", &mnt_namespace);
-                    if let Some(runner) = comm
-                        .mnt_namesapce_server_map
-                        .get_mut(&mnt_namespace) {
+                    if let Some(runner) = comm.mnt_namesapce_server_map.get_mut(&mnt_namespace) {
                         runner.update_patch_field(patch_field);
                     }
                     return Ok(());
                 }
             } else {
                 comm.start_comm(
-                    process_info.pid, &mnt_namespace,
-                    result_sender.clone(), patch_field,
+                    process_info.pid,
+                    &mnt_namespace,
+                    result_sender.clone(),
+                    patch_field,
                 )?;
             }
         } else {
@@ -137,7 +145,10 @@ impl RASPManager {
                         continue;
                     }
                     if !self.runtime_dir {
-                        warn!("due to missing runtime dir, patch ignored: {}", patch.class_name);
+                        warn!(
+                            "due to missing runtime dir, patch ignored: {}",
+                            patch.class_name
+                        );
                         delete_index.push(index);
                         continue;
                     }
@@ -148,13 +159,17 @@ impl RASPManager {
                         delete_index.push(index);
                         continue;
                     } else {
-                        let patch_file_name = patch_path.file_name().unwrap_or(OsStr::new("")).to_string_lossy();
+                        let patch_file_name = patch_path
+                            .file_name()
+                            .unwrap_or(OsStr::new(""))
+                            .to_string_lossy();
                         if patch_file_name == "" {
                             delete_index.push(index);
                             continue;
                         }
                         let dest_path = format!("/proc/{}/root", pid);
-                        match self.copy_file_from_to_dest(path_path_str.clone(), dest_path.clone()) {
+                        match self.copy_file_from_to_dest(path_path_str.clone(), dest_path.clone())
+                        {
                             Ok(_) => {
                                 patch.path = None;
                                 patch.url = Some("file:///var/run/elkeid-agent/rasp/".to_string());
@@ -175,12 +190,18 @@ impl RASPManager {
         Ok(valid_messages.clone())
     }
 
-    pub fn send_message_to_probe(&mut self, pid: i32, mnt_namespace: &String, message: &String) -> AnyhowResult<()> {
+    pub fn send_message_to_probe(
+        &mut self,
+        pid: i32,
+        mnt_namespace: &String,
+        message: &String,
+    ) -> AnyhowResult<()> {
         // try to write probe to dir
         let nspid = ProcessInfo::read_nspid(pid)?.ok_or(anyhow!("can not fetch nspid: {}", pid))?;
         debug!("send messages to probe: {} {} {}", pid, nspid, &message);
         // send through sock
-        let mut messages: Vec<libraspserver::proto::PidMissingProbeConfig> = serde_json::from_str(message)?;
+        let mut messages: Vec<libraspserver::proto::PidMissingProbeConfig> =
+            serde_json::from_str(message)?;
         let mut valid_messages: Vec<libraspserver::proto::PidMissingProbeConfig> = Vec::new();
         if messages.len() <= 0 {
             for message_type in [6, 7, 8, 9] {
@@ -243,13 +264,23 @@ pub const PROCESS_BALACK: &'static [&'static str] = &[
     "/sbin",
 ];
 
+pub enum BPFSelect {
+    FORCE,
+    FIRST,
+    SECOND,
+    DISBALE,
+}
+
 impl RASPManager {
     // Inspect
     pub fn inspect(&mut self, process_info: &ProcessInfo) -> Result<()> {
         let exe_path = if let Some(p) = &process_info.exe_path {
             p.clone()
         } else {
-            return Err(anyhow!("missing exe path during inspect: {}", process_info.pid));
+            return Err(anyhow!(
+                "missing exe path during inspect: {}",
+                process_info.pid
+            ));
         };
         info!("process exe: {}", exe_path);
         for proces_black_name in PROCESS_BALACK.iter() {
@@ -267,7 +298,7 @@ impl RASPManager {
         Ok(true)
     }
     // Attach
-    pub fn attach(&mut self, process_info: &ProcessInfo) -> Result<()> {
+    pub fn attach(&mut self, process_info: &ProcessInfo, bpf: BPFSelect) -> Result<()> {
         if process_info.runtime.is_none() {
             let msg = "attaching to unknow runtime process";
             error!("{}", msg);
@@ -326,16 +357,59 @@ impl RASPManager {
                     Ok(true)
                 }
                 ProbeState::NotAttach => {
-                    if self.can_copy(mnt_namespace) {
-                        for from in GolangProbe::names().0.iter() {
-                            self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
+                    let mut golang_attach = |pid: i32, bpf: bool| -> AnyhowResult<bool> {
+                        if bpf {
+                            if let Some(bpf_manager) = self.ebpf_comm.as_mut() {
+                                bpf_manager.attach(pid)
+                            } else {
+                                Err(anyhow!(
+                                    "FORCE BPF attach failed, golang ebpf daemon not running"
+                                ))
+                            }
+                        } else {
+                            if self.can_copy(mnt_namespace) {
+                                for from in GolangProbe::names().0.iter() {
+                                    self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
+                                }
+                                for from in GolangProbe::names().1.iter() {
+                                    self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
+                                }
+                            }
+                            golang_attach(pid)
                         }
-                        for from in GolangProbe::names().1.iter() {
-                            self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
+                    };
+                    match bpf {
+                        BPFSelect::FORCE => golang_attach(pid, true),
+                        BPFSelect::DISBALE => golang_attach(pid, false),
+                        BPFSelect::FIRST => {
+                            let bpf_result = golang_attach(pid, true);
+                            match bpf_result {
+                                Ok(true) => Ok(true),
+                                Ok(false) => {
+                                    warn!("FIRST BPF attach failed, trying golang attach");
+                                    golang_attach(pid, false)
+                                }
+                                Err(e) => {
+                                    warn!("FIRST BPF attach failed: {}, trying golang attach", e);
+                                    golang_attach(pid, false)
+                                }
+                            }
+                        }
+                        BPFSelect::SECOND => {
+                            let golang_attach_result = golang_attach(pid, false);
+                            match golang_attach_result {
+                                Ok(true) => Ok(true),
+                                Ok(false) => {
+                                    warn!("golang attach failed, trying BPF attach");
+                                    golang_attach(pid, true)
+                                }
+                                Err(e) => {
+                                    warn!("golang attach faild: {}, trying BPF attach", e);
+                                    golang_attach(pid, true)
+                                }
+                            }
                         }
                     }
-
-                    golang_attach(pid)
                 }
             },
             "NodeJS" => {
@@ -348,9 +422,10 @@ impl RASPManager {
                     }
                 }
 
-                let process_exe_file = process_info.exe_path.clone().ok_or(
-                    anyhow!("process exe path not found: {}", pid)
-                )?;
+                let process_exe_file = process_info
+                    .exe_path
+                    .clone()
+                    .ok_or(anyhow!("process exe path not found: {}", pid))?;
                 nodejs_attach(pid, &environ, &process_exe_file)
             }
             "PHP" => match PHPProbeState::inspect_process(&process_info)? {
@@ -358,10 +433,8 @@ impl RASPManager {
                     info!("PHP attached process");
                     Ok(true)
                 }
-                ProbeState::NotAttach => {
-                    php_attach(process_info, runtime_info.version.clone())
-                }
-            }
+                ProbeState::NotAttach => php_attach(process_info, runtime_info.version.clone()),
+            },
             _ => {
                 let msg = format!("can not attach to runtime: `{}`", runtime_info.name);
                 error!("{}", msg);
@@ -392,6 +465,7 @@ impl RASPManager {
         bind_path: String,
         linking_to: Option<String>,
         using_mount: bool,
+        ebpf_mode: BPFSelect,
     ) -> AnyhowResult<Self> {
         Self::clean_prev_lib()?;
         let runtime_dir = match Self::create_elkeid_rasp_dir(
@@ -404,35 +478,56 @@ impl RASPManager {
                 false
             }
         };
+        let ebpf_manager = |ebpf_mode: BPFSelect, ctrl: Control| -> Option<EbpfMode> {
+            match ebpf_mode {
+                BPFSelect::DISBALE => None,
+                _ => match EbpfMode::new(ctrl) {
+                    Ok(em) => Some(em),
+                    Err(e) => {
+                        error!("start golang ebpf daemon failed: {}", e);
+                        None
+                    }
+                },
+            }
+        };
         match comm_mode {
-            "thread" => {
-                Ok(RASPManager {
-                    thread_comm: Some(ThreadMode::new(log_level, ctrl, message_sender.clone(), bind_path, linking_to, using_mount)?),
-                    namespace_tracer: MntNamespaceTracer::new(),
-                    process_comm: None,
-                    runtime_dir,
-                })
-            }
+            "thread" => Ok(RASPManager {
+                thread_comm: Some(ThreadMode::new(
+                    log_level,
+                    ctrl.clone(),
+                    message_sender.clone(),
+                    bind_path,
+                    linking_to,
+                    using_mount,
+                )?),
+                namespace_tracer: MntNamespaceTracer::new(),
+                process_comm: None,
+                ebpf_comm: ebpf_manager(ebpf_mode, ctrl),
+                runtime_dir,
+            }),
 
-            "server" => {
-                Ok(RASPManager {
-                    process_comm: Some(ProcessMode::new(log_level, ctrl)),
-                    namespace_tracer: MntNamespaceTracer::new(),
-                    thread_comm: None,
-                    runtime_dir,
-                })
-            }
-            _ => {
-                Err(anyhow!("{} is not a vaild comm mode", comm_mode))
-            }
+            "server" => Ok(RASPManager {
+                process_comm: Some(ProcessMode::new(log_level, ctrl.clone())),
+                namespace_tracer: MntNamespaceTracer::new(),
+                thread_comm: None,
+                ebpf_comm: ebpf_manager(ebpf_mode, ctrl),
+                runtime_dir,
+            }),
+            _ => Err(anyhow!("{} is not a vaild comm mode", comm_mode)),
         }
     }
 
-    fn create_elkeid_rasp_dir(agent_runtime_path: &String, rasp_runtime_path: &String) -> AnyhowResult<()> {
+    fn create_elkeid_rasp_dir(
+        agent_runtime_path: &String,
+        rasp_runtime_path: &String,
+    ) -> AnyhowResult<()> {
         info!("create rasp runtime path: {}", rasp_runtime_path);
         // dose Agent create `agent_runtime_path`?
         if !Path::new(agent_runtime_path).exists() {
-            return Err(anyhow!("can not found agent runtime path: {}", agent_runtime_path));
+            return Err(anyhow!(
+                "can not found agent runtime path: {}",
+                agent_runtime_path
+            ));
         }
         let rasp_runtime_path_full = format!("{}{}", agent_runtime_path, rasp_runtime_path);
         let path = Path::new(&rasp_runtime_path_full);
@@ -446,7 +541,10 @@ impl RASPManager {
             }
         };
         if !path.exists() {
-            return Err(anyhow!("can not create rasp runtime dir: {}", rasp_runtime_path_full));
+            return Err(anyhow!(
+                "can not create rasp runtime dir: {}",
+                rasp_runtime_path_full
+            ));
         }
         Ok(())
     }
@@ -462,7 +560,6 @@ impl RASPManager {
         }
         Ok(())
     }
-
 
     pub fn copy_to_dest(&self, dest_root: String) -> Result<()> {
         let cwd_path = std::env::current_dir()?;
@@ -505,17 +602,21 @@ impl RASPManager {
         let dir = Path::new(&from).parent().unwrap();
         self.create_dir_if_not_exist(dir.to_str().unwrap().to_string(), dest_root.clone())?;
         let options = FileCopyOptions::new();
-        debug!("copy file: {} {}", from.clone(), format!("{}/{}", dest_root, from));
+        debug!(
+            "copy file: {} {}",
+            from.clone(),
+            format!("{}/{}", dest_root, from)
+        );
         return match file_copy(from.clone(), format!("{}/{}", dest_root, from), &options) {
             Ok(_) => Ok(()),
             Err(e) => {
                 warn!("can not copy: {}", e);
                 Err(anyhow!(
-		    "copy failed: from {} to {}: {}",
-		    from,
-		    format!("{}/{}", dest_root, from),
-		    e
-		))
+                    "copy failed: from {} to {}: {}",
+                    from,
+                    format!("{}/{}", dest_root, from),
+                    e
+                ))
             }
         };
     }
@@ -528,17 +629,21 @@ impl RASPManager {
         self.create_dir_if_not_exist(dir.to_str().unwrap().to_string(), dest_root.clone())?;
         let mut options = CopyOptions::new();
         options.copy_inside = true;
-        debug!("copy dir: {} {}", from.clone(), format!("{}/{}", dest_root, from));
+        debug!(
+            "copy dir: {} {}",
+            from.clone(),
+            format!("{}/{}", dest_root, from)
+        );
         return match copy(from.clone(), format!("{}/{}", dest_root, from), &options) {
             Ok(_) => Ok(()),
             Err(e) => {
                 warn!("can not copy: {}", e);
                 Err(anyhow!(
-		    "copy failed: from {} to {}: {}",
-		    from,
-		    format!("{}/{}", dest_root, from),
-		    e
-		))
+                    "copy failed: from {} to {}: {}",
+                    from,
+                    format!("{}/{}", dest_root, from),
+                    e
+                ))
             }
         };
     }
@@ -632,23 +737,31 @@ impl MntNamespaceTracer {
 }
 
 impl RASPManager {
-    pub fn write_message_to_config_file(&self, pid: i32, nspid: i32, message: String) -> AnyhowResult<()> {
+    pub fn write_message_to_config_file(
+        &self,
+        pid: i32,
+        nspid: i32,
+        message: String,
+    ) -> AnyhowResult<()> {
         let config_dir = "/var/run/elkeid_rasp";
         let config_path = format!("{}/{}.json", config_dir, nspid);
         let config_path_bak = format!("{}.bak", config_path);
         debug!("write message to {} {}", config_path_bak, message);
-        crate::async_command::run_async_process(Command::new(crate::settings::RASP_NS_ENTER_BIN()).args([
-            "-m",
-            "-t",
-            pid.to_string().as_str(),
-            "sh",
-            "-c",
-            "PATH=/bin:/usr/bin:/sbin",
-            format!(
-                "mkdir -p {} && echo '{}' > {} && mv {} {}",
-                config_dir, message, config_path_bak, config_path_bak, config_path
-            ).as_str(),
-        ]))?;
+        crate::async_command::run_async_process(
+            Command::new(crate::settings::RASP_NS_ENTER_BIN()).args([
+                "-m",
+                "-t",
+                pid.to_string().as_str(),
+                "sh",
+                "-c",
+                "PATH=/bin:/usr/bin:/sbin",
+                format!(
+                    "mkdir -p {} && echo '{}' > {} && mv {} {}",
+                    config_dir, message, config_path_bak, config_path_bak, config_path
+                )
+                .as_str(),
+            ]),
+        )?;
         /*
         let ns_thread = thread::Builder::new().spawn(move || -> AnyhowResult<()> {
             debug!("switch namespace");
@@ -669,21 +782,24 @@ impl RASPManager {
     pub fn delete_config_file(&self, pid: i32, nspid: i32) -> AnyhowResult<()> {
         let config_path = format!("/var/run/elkeid_rasp/{}.json", nspid);
         if Path::new(&config_path).exists() {
-            crate::async_command::run_async_process(Command::new(crate::settings::RASP_NS_ENTER_BIN()).args([
-                "-m",
-                "-t",
-                pid.to_string().as_str(),
-                "sh",
-                "-c",
-                format!("rm {}", config_path).as_str()
-            ]))?;
+            crate::async_command::run_async_process(
+                Command::new(crate::settings::RASP_NS_ENTER_BIN()).args([
+                    "-m",
+                    "-t",
+                    pid.to_string().as_str(),
+                    "sh",
+                    "-c",
+                    format!("rm {}", config_path).as_str(),
+                ]),
+            )?;
         }
         Ok(())
     }
 }
 
 fn read_dir<P>(path: P) -> AnyhowResult<Vec<fs::DirEntry>>
-    where P: AsRef<Path>,
+where
+    P: AsRef<Path>,
 {
     fs::read_dir(&path)
         .map_err(|err| anyhow!("Failed to read file '{:?}': {}", path.as_ref(), err))?
@@ -693,11 +809,10 @@ fn read_dir<P>(path: P) -> AnyhowResult<Vec<fs::DirEntry>>
         .collect()
 }
 
-
 #[cfg(test)]
 mod tests {
-    use libraspserver::proto::ProbeConfigPatch;
     use super::*;
+    use libraspserver::proto::ProbeConfigPatch;
 
     #[test]
     fn patch_message() {
@@ -710,18 +825,16 @@ mod tests {
         let mut fake_patches = Vec::new();
         fake_patches.push(fake_patch);
         let mut fake_configs = Vec::new();
-        fake_configs.push(
-            PidMissingProbeConfig {
-                message_type: 9,
-                data: ProbeConfigData {
-                    uuid: "fake".to_string(),
-                    blocks: None,
-                    filters: None,
-                    limits: None,
-                    patches: Some(fake_patches),
-                },
-            }
-        );
+        fake_configs.push(PidMissingProbeConfig {
+            message_type: 9,
+            data: ProbeConfigData {
+                uuid: "fake".to_string(),
+                blocks: None,
+                filters: None,
+                limits: None,
+                patches: Some(fake_patches),
+            },
+        });
         let fake_manager = RASPManager {
             namespace_tracer: MntNamespaceTracer::new(),
             thread_comm: None,
@@ -729,7 +842,9 @@ mod tests {
             runtime_dir: false,
         };
         println!("{:?}", fake_configs);
-        let _ = fake_manager.patch_message_handle(&mut fake_configs, 35432).unwrap();
+        let _ = fake_manager
+            .patch_message_handle(&mut fake_configs, 35432)
+            .unwrap();
         let result = 2 + 2;
         assert_eq!(result, 4);
     }

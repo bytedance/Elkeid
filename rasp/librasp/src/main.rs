@@ -6,7 +6,7 @@ use clap::{App, Arg};
 use crossbeam::channel::unbounded;
 use env_logger;
 use librasp::comm::Control;
-use librasp::manager::RASPManager;
+use librasp::manager::{RASPManager, BPFSelect};
 use librasp::process::ProcessInfo;
 use log::*;
 
@@ -41,7 +41,6 @@ fn parse_arg() -> i32 {
     pid_i32
 }
 
-
 fn main() -> anyhow::Result<()> {
     env_logger::init();
     // grab process info
@@ -50,11 +49,25 @@ fn main() -> anyhow::Result<()> {
     let (result_sender, result_receiver) = unbounded();
     let current_dir = librasp::settings::RASP_BASE_DIR();
     let mut rasp_manager = RASPManager::init(
-        "thread", "debug".to_string(),
-        ctrl.clone(), result_sender.clone(),
-        format!("{}/smith_agent.sock", current_dir), Some(String::from("/var/run/smith_agent.sock")),
+        "thread",
+        "debug".to_string(),
+        ctrl.clone(),
+        result_sender.clone(),
+        format!("{}/smith_agent.sock", current_dir),
+        Some(String::from("/var/run/smith_agent.sock")),
         false,
+        BPFSelect::FIRST,
     )?;
+    if let Some(ebpf_manager) = rasp_manager.ebpf_comm.as_mut() {
+        match ebpf_manager.start_server() {
+            Ok(_) => {
+                info!("start Golang EBPF daemon success");
+            }
+            Err(e) => {
+                info!("start Golang EBPF daemon failed: {}", e);
+            }
+        };
+    }
     let mut process_info = ProcessInfo::from_pid(process_id)?;
     match rasp_manager.inspect(&mut process_info) {
         Ok(pi) => pi,
@@ -82,13 +95,12 @@ fn main() -> anyhow::Result<()> {
         runtime.clone()
     );
     debug!("start comm server");
-    match rasp_manager
-        .start_comm(
-            &process_info.clone(),
-            result_sender,
-            String::from("DEBUG"),
-            ctrl,
-        ) {
+    match rasp_manager.start_comm(
+        &process_info.clone(),
+        result_sender,
+        String::from("DEBUG"),
+        ctrl,
+    ) {
         Ok(_) => {}
         Err(e) => {
             error!("start comm failed: {}", e);
@@ -96,7 +108,7 @@ fn main() -> anyhow::Result<()> {
         }
     };
     debug!("ready to attach");
-    match rasp_manager.attach(&mut process_info) {
+    match rasp_manager.attach(&mut process_info, librasp::manager::BPFSelect::FIRST) {
         Ok(_) => {
             info!("attach process success");
         }
