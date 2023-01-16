@@ -3,6 +3,25 @@
 constexpr auto RUNTIME = "golang";
 constexpr auto PROBE_VERSION = "1.0.0";
 
+void to_json(nlohmann::json &j, const ProcessInfo &processInfo) {
+    j = {
+            {"sid",   processInfo.sid},
+            {"ppid",  processInfo.ppid},
+            {"tgid",  processInfo.tgid},
+            {"nspid", processInfo.nspid},
+            {"exe",   processInfo.exe},
+            {"argv",  processInfo.argv},
+            {"ruid",  processInfo.ruid},
+            {"euid",  processInfo.euid},
+            {"suid",  processInfo.suid},
+            {"fuid",  processInfo.fuid},
+            {"rgid",  processInfo.rgid},
+            {"egid",  processInfo.egid},
+            {"sgid",  processInfo.sgid},
+            {"fgid",  processInfo.fgid}
+    };
+}
+
 void to_json(nlohmann::json &j, const SmithMessage &message) {
     j = {
             {"pid",             message.pid},
@@ -11,7 +30,8 @@ void to_json(nlohmann::json &j, const SmithMessage &message) {
             {"time",            std::time(nullptr)},
             {"message_type",    message.operate},
             {"probe_version",   PROBE_VERSION},
-            {"data",            message.data}
+            {"data",            message.data},
+            {"process_info",    *message.processInfo}
     };
 }
 
