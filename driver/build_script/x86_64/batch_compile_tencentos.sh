@@ -9,7 +9,7 @@ do
     rpm -e kernel-devel
     yum -y install  kernel-devel-$each_tag.x86_64; 
 
-    KV=$each_tag.el7.elrepo.x86_64
+    KV=${each_tag%.*}
     KVERSION=$KV make -C ./LKM clean || true 
 
     if [ -z $CC ];then
