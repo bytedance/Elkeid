@@ -8,7 +8,6 @@ FLAG_SIZE=${#UBUNTU_OR_DEBIAN_FLAG}
 
 for each_tag in `yum --showduplicates list kernel-devel | grep kernel-devel | awk -c '{print $2}'`; 
 do 
-    rpm -e kernel-devel
     yum -y install  kernel-devel-$each_tag.x86_64; 
 
     if [ -z $CC ];then
