@@ -85,6 +85,8 @@ pid_queue_length = 1000
 pid_poll_interval = 60
 clean_up_interval = 60
 report_interval = 120
+report_interval_random_min = 1
+report_interval_random_min = 30
 
 [eBPF]
 ## DISABLE only using inline hook probe

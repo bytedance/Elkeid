@@ -304,6 +304,9 @@ fn internal_main(
         })?;
     let mut reporter_ctrl = ctrl.clone();
     let reporter_sender = internal_message_sender.clone();
+    let reporter_interval = settings_int("internal", "report_interval").unwrap_or(600) as u64;
+    let report_interval_random_min = settings_int("internal", "report_interval_random_min").unwrap_or(30) as u64;
+    let report_interval_random_max = settings_int("internal", "report_interval_random_max").unwrap_or(30) as u64;
     let reporter_thread = Builder::new()
         .name("reporter".to_string())
         .spawn(move || loop {
@@ -311,9 +314,9 @@ fn internal_main(
             if !reporter_ctrl.check() {
                 break;
             }
-            sleep(Duration::from_secs(settings_int("internal", "report_interval").unwrap_or(120) as u64));
+            sleep(Duration::from_secs(reporter_interval));
             let mut rng = rand::thread_rng();
-            let random = rng.gen_range(1..30);
+            let random = rng.gen_range(report_interval_random_min..report_interval_random_max);
             sleep(Duration::from_secs(random));
             let watched_process = report_process_r.read();
             let watched_process_cloned = watched_process.clone();
