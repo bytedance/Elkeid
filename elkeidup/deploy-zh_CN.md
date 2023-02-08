@@ -2,6 +2,8 @@
 
 ## 1、单机docker快速部署 (单机测试环境推荐)
 
+注：宿主机请优先使用centos 7.x 或 debian 9/10，容器内的服务依赖了systemd，而systemd使用了cgroup，容器内外systemd版本相差过大会导致容器内的systemd运行异常，无法启动相应服务。
+
 ### 1.1、导入镜像
 ```bash
 # 从release下载的是分卷的镜像，需要先合并镜像
