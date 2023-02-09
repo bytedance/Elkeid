@@ -304,8 +304,8 @@ fn internal_main(
         })?;
     let mut reporter_ctrl = ctrl.clone();
     let reporter_sender = internal_message_sender.clone();
-    let reporter_interval = settings_int("internal", "report_interval").unwrap_or(600) as u64;
-    let report_interval_random_min = settings_int("internal", "report_interval_random_min").unwrap_or(30) as u64;
+    let reporter_interval = settings_int("internal", "report_interval").unwrap_or(120) as u64;
+    let report_interval_random_min = settings_int("internal", "report_interval_random_min").unwrap_or(1) as u64;
     let report_interval_random_max = settings_int("internal", "report_interval_random_max").unwrap_or(30) as u64;
     let reporter_thread = Builder::new()
         .name("reporter".to_string())
