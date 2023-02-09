@@ -30,8 +30,8 @@ impl Operator {
             Ok(v) => v,
             Err(_) => false,
         };
-	let ebpf_mode = match settings_string("eBPF", "golange_ebpf_mode")?.as_str() {
-	    "DISBALE" => BPFSelect::DISBALE,
+	let ebpf_mode = match settings_string("eBPF", "golang_ebpf_priority")?.as_str() {
+	    "DISABLE" => BPFSelect::DISABLE,
 	    "FORCE" => BPFSelect::FORCE,
 	    "FIRST" => BPFSelect::SECOND,
 	    "SECOND" => BPFSelect::SECOND,
