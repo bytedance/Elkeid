@@ -1,15 +1,8 @@
 use librasp::process::ProcessInfo;
-use serde::Serialize;
-use serde_json::to_string;
-use std::{collections::HashMap, ffi::OsString};
-use log::error;
+use serde_json::json;
+use std::collections::HashMap;
+use log::{error, debug};
 use crate::utils;
-
-/* convert hashmap to json string */
-#[derive(Serialize, Debug)]
-struct H2J {
-    h: HashMap<OsString, OsString>,
-}
 
 pub fn make_report(
     process: &ProcessInfo,
@@ -20,6 +13,7 @@ pub fn make_report(
     report.insert("action", action.to_string());
     report.insert("reason", reason);
     report.insert("pid", process.pid.to_string());
+    report.insert("exe_name", process.exe_name.as_ref().unwrap_or(&String::new()).to_string());
     report.insert(
         "cmdline",
         process
@@ -28,14 +22,17 @@ pub fn make_report(
             .unwrap_or(&String::new())
             .to_string(),
     );
-    if let Some(envs) = process.environ.as_ref() {
-        let h2j = H2J {
-	    h: (envs.clone())
-        };
-        report.insert("envs", to_string(&h2j).unwrap_or(String::new()).to_string());
+    let environ = process.environ.clone().unwrap_or(HashMap::new());
+    let mut environ_string = HashMap::new();
+    for (k, v) in environ.iter() {
+        let ks = k.to_str().unwrap_or("");
+        let vs = v.to_str().unwrap_or("");
+        environ_string.insert(ks, vs);
     }
+    debug!("environ: {:?}", environ_string);
+    report.insert("environ", json!(environ_string).to_string());
     report.insert(
-        "tracing_state",
+        "trace_state",
         match process.tracing_state {
             Some(st) => st.to_string(),
             None => String::new(),
@@ -44,9 +41,16 @@ pub fn make_report(
     report.insert(
         "runtime",
         match &process.runtime {
-            Some(rt) => rt.to_string(),
+            Some(rt) => String::from(rt.name.clone()),
             None => String::new(),
         },
+    );
+    report.insert(
+	"runtime_version",
+	match &process.runtime {
+	    Some(rt) => rt.version.clone(),
+	    None => String::new(),
+	}
     );
     report.insert(
         "attach_start_time",
@@ -86,7 +90,7 @@ pub fn make_report(
         Ok(t) => t.to_string(),
         Err(e) => {
             error!("count uptime failed: {}", e);
-            0.to_string()
+            "0".to_string()
         },
     });
     report
