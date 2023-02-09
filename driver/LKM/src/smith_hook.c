@@ -2302,7 +2302,7 @@ out:
         smith_put_tid(tid);
 }
 
-#if defined(__NR_chmod) || IS_ENABLED(CONFIG_IA32_EMULATION)
+#if defined(__NR_chmod) || IS_ENABLED(CONFIG_IA32_EMULATION) || (defined(CONFIG_ARM64) && defined(CONFIG_COMPAT))
 static void smith_trace_sysret_chmod(char __user *fn, mode_t mode, int ret)
 {
     char *buffer = NULL;
@@ -4354,7 +4354,8 @@ TRACEPOINT_PROBE(smith_trace_proc_exit, struct task_struct *task)
 
 #if IS_ENABLED(CONFIG_X86) || IS_ENABLED(CONFIG_IA32_EMULATION)
 
-void smith_trace_sysexit_x86(struct pt_regs *regs, long id, long ret)
+/* only for x86 systems */
+static void smith_trace_sysexit_x86(struct pt_regs *regs, long id, long ret)
 {
     switch (id) {
 
@@ -4520,7 +4521,187 @@ void smith_trace_sysexit_x86(struct pt_regs *regs, long id, long ret)
             break;
     }
 }
-#endif /* only for x86 systems */
+
+#elif defined(CONFIG_ARM64) && defined(CONFIG_COMPAT)
+
+/* only for ARM64 system */
+static void smith_trace_sysexit_arm32(struct pt_regs *regs, long id, long ret)
+{
+    switch (id) {
+
+        /*
+         * exec related: context of execved task
+         */
+        case 11: /* execve */
+        case 387: /* execveat */
+            /*
+             * sched_process_exec emulation for earlier kernels (3.4).
+             * execve returns -1 on error
+             */
+            if (ret >= 0)
+                smith_trace_proc_execve(current);
+
+            if (EXECVE_HOOK)
+                smith_trace_sysret_exec(ret);
+            break;
+
+        /*
+         * ptrace: PTRACE_POKETEXT and PTRACE_POKEDATA
+         */
+        case 26: /* ptrace */
+            if (PTRACE_HOOK)
+                smith_trace_sysret_ptrace(regs->orig_x0, regs->regs[1],
+                                          (void *)regs->regs[2], ret);
+            break;
+
+        /*
+         * create new session id
+         */
+        case 66: /* setsid */
+            if (SETSID_HOOK)
+                smith_trace_sysret_setsid(ret);
+            break;
+
+        /*
+         * task kill / tkill / tgkill
+         */
+        case 37: /* kill */
+            if (KILL_HOOK)
+                smith_trace_sysret_kill(regs->orig_x0, regs->regs[1], ret);
+            break;
+        case 238: /* tkill */
+            if (KILL_HOOK)
+                smith_trace_sysret_tkill(regs->orig_x0, regs->regs[1], ret);
+            break;
+        case 268: /* tgkill */
+            if (KILL_HOOK)
+                smith_trace_sysret_tgkill(regs->orig_x0, regs->regs[1],
+                                          regs->regs[2], ret);
+            break;
+
+        /*
+         * chmod operations
+         */
+        case 15: /* chmod */
+            if (CHMOD_HOOK)
+                smith_trace_sysret_chmod((char __user *)regs->orig_x0, regs->regs[1], ret);
+            break;
+        case 94: /* fchmod */
+            if (CHMOD_HOOK)
+                smith_trace_sysret_fchmod(regs->orig_x0, regs->regs[1], ret);
+            break;
+       case 333: /* fchmodat */
+            if (CHMOD_HOOK)
+                smith_trace_sysret_fchmodat(regs->orig_x0, (char *)regs->regs[1],
+                                            regs->regs[2], ret);
+            break;
+
+        /*
+         * nanosleep
+         */
+        case 162: /* nanosleep */
+            if (NANOSLEEP_HOOK)
+                smith_trace_sysent_nanosleep(regs->orig_x0);
+            break;
+
+        /*
+         * prctl: PR_SET_NAME
+         */
+        case 172: /* prctl */
+            if (PRCTL_HOOK)
+                smith_trace_sysret_prctl(regs->orig_x0, (char *)regs->regs[1]);
+            break;
+
+        /*
+         * memfd_create
+         */
+        case 385: /* memfd_create */
+            if (MEMFD_CREATE_HOOK)
+                smith_trace_sysret_memfd_create((char __user *)regs->orig_x0,
+                                                 regs->regs[1], ret);
+            break;
+
+        /*
+         * module insmod
+         */
+        case 128: /* nit_module */
+            if (MODULE_LOAD_HOOK)
+                smith_trace_sysret_init_module((char __user *)regs->orig_x0,
+                                               regs->regs[1], ret);
+        break;
+
+        case 379: /* finit_module */
+            if (MODULE_LOAD_HOOK)
+                smith_trace_sysret_finit_module(regs->orig_x0, ret);
+        break;
+
+        /*
+         * socket related
+         */
+#if 0   /* socketcall not implemented for ARM64 */
+        case 102: /* socketcall */
+            if (CONNECT_HOOK && SYS_CONNECT == regs->orig_x0) {
+                int32_t sockfd;
+                if (copy_from_user(&sockfd, (void *)regs->regs[1], sizeof(sockfd)))
+                    break;
+                smith_trace_sysret_connect(sockfd, ret);
+            } else if (DNS_HOOK && ret >= 20 && (SYS_RECV == regs->orig_x0 ||
+                                                 SYS_RECVFROM == regs->orig_x0 ||
+                                                 SYS_RECVMSG == regs->orig_x0)) {
+                int32_t ua[2];
+                if (copy_from_user(ua, (void *)regs->regs[1], sizeof(ua)))
+                    break;
+                if (SYS_RECVMSG == regs->orig_x0)
+                    smith_trace_sysret_recvmsg((long)ua[0], (long)ua[1], ret);
+                else
+                    smith_trace_sysret_recvdat((long)ua[0], (long)ua[1], ret);
+            } else if (DNS_HOOK && SYS_RECVMMSG == regs->orig_x0) {
+            } else if (BIND_HOOK && SYS_BIND == regs->orig_x0) {
+                int32_t sockfd;
+                if (copy_from_user(&sockfd, (void *)regs->regs[1], sizeof(sockfd)))
+                    break;
+                smith_trace_sysret_bind(sockfd, ret);
+            } else if (ACCEPT_HOOK && (SYS_ACCEPT == regs->orig_x0 ||
+                                       SYS_ACCEPT4 == regs->orig_x0)) {
+                smith_trace_sysret_accept(ret);
+            }
+            break;
+#endif
+
+        case 282: /* bind */
+            if (BIND_HOOK)
+                smith_trace_sysret_bind(regs->orig_x0, ret);
+            break;
+
+        case 283: /* connect */
+            if (CONNECT_HOOK)
+                smith_trace_sysret_connect(regs->orig_x0, ret);
+            break;
+
+        case 285: /* accept */
+        case 366: /* accept4 */
+            if (ACCEPT_HOOK)
+                smith_trace_sysret_accept(ret);
+            break;
+
+        case 291: /* recv */
+        case 292: /* recvfrom */
+            if (DNS_HOOK && ret >= 20)
+                smith_trace_sysret_recvdat(regs->orig_x0, regs->regs[1], ret);
+            break;
+        case 297: /* recvmsg */
+            if (DNS_HOOK && ret >= 20)
+                smith_trace_sysret_recvmsg(regs->orig_x0, regs->regs[1], ret);
+            break;
+        case 365: /* recvmmsg */
+            break;
+
+        default:
+            break;
+    }
+}
+
+#endif
 
 TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
 {
@@ -4561,7 +4742,7 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
 
 #if defined(CONFIG_ARM64) && defined(CONFIG_COMPAT)
     if (ESR_ELx_EC_SVC32 == ESR_ELx_EC(read_sysreg(esr_el1))) {
-        /* just ignore syscalls from ARM32 apps for now */
+        smith_trace_sysexit_arm32(regs, id, ret);
         return;
     }
 #endif
