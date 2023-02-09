@@ -4937,7 +4937,7 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
             break;
         case __NR_recvmsg:
             if (DNS_HOOK && ret >= 20)
-                smith_trace_sysret_recvmsg(p_regs_get_arg1_syscall(regs),
+                smith_trace_sysret_recvmsg(p_regs_get_arg1_of_syscall(regs),
                                            p_regs_get_arg2_syscall(regs), ret);
             break;
 
