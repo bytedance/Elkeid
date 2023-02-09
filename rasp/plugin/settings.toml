@@ -95,4 +95,4 @@ report_interval_random_max = 30
 ## SECOND  using inline hook first, if failed, switch to ebpf hook
 ## if "DISABLE", ebpf daemon process should not spwan by plugin
 ### in current release, default is "DISABLE".
-golang_ebpf_priority = "DISBALE"
+golang_ebpf_priority = "DISABLE"

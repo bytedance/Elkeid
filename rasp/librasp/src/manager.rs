@@ -268,7 +268,7 @@ pub enum BPFSelect {
     FORCE,
     FIRST,
     SECOND,
-    DISBALE,
+    DISABLE,
 }
 
 impl RASPManager {
@@ -380,7 +380,7 @@ impl RASPManager {
                     };
                     match bpf {
                         BPFSelect::FORCE => golang_attach(pid, true),
-                        BPFSelect::DISBALE => golang_attach(pid, false),
+                        BPFSelect::DISABLE => golang_attach(pid, false),
                         BPFSelect::FIRST => {
                             let bpf_result = golang_attach(pid, true);
                             match bpf_result {
@@ -480,7 +480,7 @@ impl RASPManager {
         };
         let ebpf_manager = |ebpf_mode: BPFSelect, ctrl: Control| -> Option<EbpfMode> {
             match ebpf_mode {
-                BPFSelect::DISBALE => None,
+                BPFSelect::DISABLE => None,
                 _ => match EbpfMode::new(ctrl) {
                     Ok(em) => Some(em),
                     Err(e) => {
