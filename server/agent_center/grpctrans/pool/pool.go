@@ -92,11 +92,13 @@ func (c *Connection) SetAgentDetail(detail map[string]interface{}) {
 		updated = true
 	} else {
 		//check Agent状态是否有变化
-		st, okST := c.agentDetail["state"].(string)
-		std, okSTD := c.agentDetail["state_detail"].(string)
+		a1, o1 := c.agentDetail["state"].(string)
+		a2, o2 := c.agentDetail["state_detail"].(string)
+		a3, o3 := c.agentDetail["version"].(string)
 		s1, ok1 := detail["state"].(string)
 		s2, ok2 := detail["state_detail"].(string)
-		if ok1 != okST || st != s1 || ok2 != okSTD || s2 != std {
+		s3, ok3 := detail["version"].(string)
+		if ok1 != o1 || a1 != s1 || ok2 != o2 || s2 != a2 || o3 != ok3 || a3 != s3 {
 			updated = true
 		}
 
@@ -133,8 +135,15 @@ func (c *Connection) SetPluginDetail(name string, detail map[string]interface{})
 	}
 
 	//新增插件设置推送到远端
-	if _, ok := c.pluginDetail[name]; !ok {
+	if p, ok := c.pluginDetail[name]; !ok {
 		c.updateConnStat()
+	} else {
+		//插件版本更新
+		p1, ok1 := p["pversion"].(string)
+		p2, ok2 := detail["pversion"].(string)
+		if ok1 != ok2 || p1 != p2 {
+			c.updateConnStat()
+		}
 	}
 
 	c.pluginDetail[name] = detail
