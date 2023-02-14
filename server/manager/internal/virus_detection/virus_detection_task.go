@@ -113,9 +113,6 @@ func UpdateVirusRunningTaskStatus(c context.Context) {
 						taskTimeoutInt = int64(tmpInt * 3600)
 					}
 				}
-			case VirusScanDataTypeFile:
-				// taskTimeoutInt = 24 * 3600
-				taskTimeoutInt = 1800
 			}
 
 			// check timeout task

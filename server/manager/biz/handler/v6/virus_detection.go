@@ -3,7 +3,7 @@ package v6
 import (
 	"context"
 	"encoding/json"
-	"time"
+	"strconv"
 
 	"github.com/bytedance/Elkeid/server/manager/internal/alarm"
 	"github.com/bytedance/Elkeid/server/manager/internal/alarm_whitelist"
@@ -219,23 +219,10 @@ func MultiDelWhiteListForVirus(c *gin.Context) {
 	WhiteListDelMulti(c, alarm_whitelist.WhitelistTypeVirus)
 }
 
-// ********************************* task opt *********************************
-
-func RunTaskProcess(task_id string) {
-	// wait 5s to run
-	time.Sleep(5 * time.Second)
-	_, _, err := atask.RunTask(task_id, 100, 0, 5)
-	if err != nil {
-		ylog.Errorf("run virus scan task error", "task_id %s error %s", task_id, err.Error())
-		return
-	}
-
-	ylog.Infof("run virus scan task success", "task_id %s", task_id)
-}
-
 // ********************************* scan task *********************************
 func CreatFileScanTaskForVirus(c *gin.Context) {
 	var rsp CreateTaskResponse
+	var taskTimeout int64 = 48 * 3600
 	// 生成任务信息
 	createTask := &CreateFileScanTaskRequest{}
 	err := c.BindJSON(createTask)
@@ -248,6 +235,16 @@ func CreatFileScanTaskForVirus(c *gin.Context) {
 	if !ok {
 		common.CreateResponse(c, common.UnknownErrorCode, "user not login")
 		return
+	}
+
+	if createTask.Timeout != "" {
+		tmpInt, cErr := strconv.Atoi(createTask.Timeout)
+		if cErr != nil {
+			common.CreateResponse(c, common.UnknownErrorCode, cErr.Error())
+			return
+		}
+
+		taskTimeout = int64(tmpInt * 3600)
 	}
 
 	// 补全任务信息
@@ -310,16 +307,17 @@ func CreatFileScanTaskForVirus(c *gin.Context) {
 	// 记录操作用户
 	virusScanTask.TaskUser = operateUser.(string)
 
+	// 子任务超时
+	virusScanTask.SubTaskRunningTimeout = taskTimeout
+
 	// 下发任务
-	tID, count, err := atask.CreateTaskTask(virusScanTask)
+	tID, count, err := atask.CreateTaskAndRun(virusScanTask, atask.TypeAgentTask, 5)
 	if err != nil {
 		common.CreateResponse(c, common.UnknownErrorCode, err.Error())
 		return
 	}
 	rsp.TaskId = tID
 	rsp.TaskCount = int(count)
-
-	go RunTaskProcess(tID)
 
 	common.CreateResponse(c, common.SuccessCode, rsp)
 }
@@ -345,7 +343,7 @@ func GetTaskListForVirus(c *gin.Context) {
 		common.CreateResponse(c, common.ParamInvalidErrorCode, nil)
 		return
 	}
-	ylog.Infof("func GetTaskListForVirus request", "%+v", taskRequest)
+	ylog.Debugf("func GetTaskListForVirus request", "%+v", taskRequest)
 	// 拼接mongo查询语句
 	searchFilter := make(map[string]interface{})
 	if taskRequest.TaskName != "" {

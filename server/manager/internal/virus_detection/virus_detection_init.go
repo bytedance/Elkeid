@@ -8,14 +8,14 @@ import (
 )
 
 func virusDetectionCron() {
+	// update old running task
+	UpdateVirusRunningTaskStatus(context.Background())
+
 	for {
 		tmpCtx := context.TODO()
 
 		// update stat
 		UpdateVirusTaskStatistics(tmpCtx)
-
-		// update running task
-		UpdateVirusRunningTaskStatus(tmpCtx)
 
 		ylog.Debugf("one CheckVirusTaskStatus end", "")
 
