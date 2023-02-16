@@ -20,7 +20,7 @@ include(FetchContent)
 FetchContent_Declare(
         aio
         GIT_REPOSITORY https://github.com/Hackerl/aio
-        GIT_TAG 2fb61ce9d1b026d0346857860f646349b31272b1
+        GIT_TAG 3fe20a9f60136d5ca1a80c9022268b827dce81b9
 )
 
 FetchContent_MakeAvailable(aio)
@@ -28,7 +28,7 @@ FetchContent_MakeAvailable(aio)
 FetchContent_Declare(
         go-symbol
         GIT_REPOSITORY https://github.com/Hackerl/go-symbol
-        GIT_TAG 61149aff73850cc89b8224b517ec483b4b663786
+        GIT_TAG 0fce8ea289d07a2b74cdc3c98b66f70812bea900
 )
 
 FetchContent_MakeAvailable(go-symbol)

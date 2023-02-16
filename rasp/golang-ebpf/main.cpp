@@ -20,9 +20,9 @@ constexpr auto INSTRUCTION_BUFFER_SIZE = 128;
 constexpr auto FRAME_CACHE_SIZE = 128;
 constexpr auto DEFAULT_QUOTAS = 12000;
 
-constexpr auto TRACK_HTTP_VERSION = go::symbol::Version{1, 12};
-constexpr auto REGISTER_BASED_VERSION = go::symbol::Version{1, 17};
-constexpr auto FRAME_POINTER_VERSION = go::symbol::Version{1, 7};
+constexpr auto TRACK_HTTP_VERSION = go::Version{1, 12};
+constexpr auto REGISTER_BASED_VERSION = go::Version{1, 17};
+constexpr auto FRAME_POINTER_VERSION = go::Version{1, 7};
 
 struct Instance {
     std::string version;
@@ -92,7 +92,7 @@ bool filter(const Trace &trace, const std::map<std::tuple<int, int>, Filter> &fi
 }
 
 void onEvent(probe_event *event, void *ctx) {
-    auto &[skeleton, instances, channel] = *(std::tuple<probe_bpf *, std::map<pid_t, Instance> &, std::shared_ptr<aio::sync::IChannel<SmithMessage>>> *) ctx;
+    auto &[skeleton, instances, channel] = *(std::tuple<probe_bpf *, std::map<pid_t, Instance> &, std::shared_ptr<aio::IChannel<SmithMessage>>> *) ctx;
 
     auto it = instances.find(event->pid);
 
@@ -216,9 +216,9 @@ std::optional<int> getAPIOffset(const elf::Reader &reader, uint64_t address) {
     return offset;
 }
 
-std::shared_ptr<aio::sync::IChannel<pid_t>> inputChannel(const aio::Context &context) {
-    std::shared_ptr channel = std::make_shared<aio::sync::Channel<pid_t, 10>>(context);
-    std::shared_ptr buffer = std::make_shared<aio::ev::Buffer>(bufferevent_socket_new(context.base, STDIN_FILENO, 0));
+std::shared_ptr<aio::IChannel<pid_t>> inputChannel(const std::shared_ptr<aio::Context> &context) {
+    std::shared_ptr channel = std::make_shared<aio::Channel<pid_t, 10>>(context);
+    std::shared_ptr buffer = std::make_shared<aio::ev::Buffer>(bufferevent_socket_new(context->base(), STDIN_FILENO, 0));
 
     zero::async::promise::loop<void>([=](const auto &loop) {
         buffer->readLine(EVBUFFER_EOL_ANY)->then([=](const std::string &line) {
@@ -273,7 +273,7 @@ std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
     bool fp = false;
     bool http = false;
 
-    std::optional<go::symbol::Version> version = reader.version();
+    std::optional<go::Version> version = reader.version();
 
     if (version) {
         LOG_INFO("golang version: %d.%d", version->major, version->minor);
@@ -400,7 +400,7 @@ std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
 }
 
 int main() {
-    INIT_FILE_LOG(zero::INFO, "go-probe-ebpf");
+    INIT_FILE_LOG(zero::INFO_LEVEL, "go-probe-ebpf");
 
     libbpf_set_strict_mode(LIBBPF_STRICT_ALL);
     libbpf_set_print(onLog);
@@ -422,7 +422,7 @@ int main() {
         return -1;
     }
 
-    aio::Context context = {base};
+    std::shared_ptr<aio::Context> context = aio::newContext();
     std::map<pid_t, Instance> instances;
 
     zero::async::promise::loop<void>([skeleton, &instances, channel = inputChannel(context)](const auto &loop) {
@@ -497,7 +497,7 @@ int main() {
         return true;
     });
 
-    std::array<std::shared_ptr<aio::sync::IChannel<SmithMessage>>, 2> channels = startClient(context);
+    std::array<std::shared_ptr<aio::IChannel<SmithMessage>>, 2> channels = startClient(context);
 
     zero::async::promise::loop<void>([channels, &instances](const auto &loop) {
         channels[0]->receive()->then([loop, &instances](const SmithMessage &message) {
@@ -562,7 +562,7 @@ int main() {
         });
     });
 
-    std::tuple<probe_bpf *, std::map<pid_t, Instance> &, std::shared_ptr<aio::sync::IChannel<SmithMessage>>> ctx = {
+    std::tuple<probe_bpf *, std::map<pid_t, Instance> &, std::shared_ptr<aio::IChannel<SmithMessage>>> ctx = {
             skeleton,
             instances,
             channels[1]
@@ -625,8 +625,7 @@ int main() {
     }
 #endif
 
-    event_base_dispatch(base);
-    event_base_free(base);
+    context->dispatch();
 
 #ifdef USE_RING_BUFFER
     ring_buffer__free(rb);
