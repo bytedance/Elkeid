@@ -356,7 +356,7 @@ std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
                 *program->prog,
                 false,
                 pid,
-                path.string().c_str(),
+                zero::strings::format("/proc/%d/exe", pid).c_str(),
                 entry + *offset - memoryMapping->start
         );
 
