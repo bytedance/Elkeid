@@ -2053,7 +2053,7 @@ int udp_recvmsg_entry_handler(struct kretprobe_instance *ri,
     struct udp_recvmsg_data *data;
 
     data = (struct udp_recvmsg_data *) ri->data;
-    memset(data, sizeof(struct udp_recvmsg_data), 0);
+    memset(data, 0, sizeof(struct udp_recvmsg_data));
 
     flags = (int)p_regs_get_arg6(regs);
     if (flags & MSG_ERRQUEUE)
@@ -2127,7 +2127,7 @@ int udpv6_recvmsg_entry_handler(struct kretprobe_instance *ri,
 	int flags;
 
 	data = (struct udp_recvmsg_data *)ri->data;
-    memset(data, sizeof(struct udp_recvmsg_data), 0);
+    memset(data, 0, sizeof(struct udp_recvmsg_data));
 
 	flags = (int)p_regs_get_arg6(regs);
 	if (flags & MSG_ERRQUEUE)
