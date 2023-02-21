@@ -81,7 +81,7 @@ def gen_job(vminfo):
                 OrderedDict({
                     "name": "Extract "+vmname,
                     "id": "extract-"+vmname,
-                    "uses": "shrink/actions-docker-extract@v1",
+                    "uses": "shrink/actions-docker-extract@v2",
                     "with": {
                         "image": "elkeidteam/elkeid_driver_"+vmname+"_"+aarch+":latest",
                         "path": "/ko_output/."
@@ -111,6 +111,11 @@ for each_dockers in all_dockers_aarch64:
 yaml_cfg_build = OrderedDict(
     {
         "name": "Elkeid_driver",
+        "default": {
+            "run": {
+                "timeout-minutes": 280
+            }
+        },
         "on": {
             "push": {
                 "branches": [
@@ -139,6 +144,7 @@ create_release_job = OrderedDict(
     {
         "runs-on": "ubuntu-latest",
         "permissions": "write-all",
+        "if": "${{ always() && !cancelled() }}",
         "steps": [
             OrderedDict({
                 "name": "Create Release",

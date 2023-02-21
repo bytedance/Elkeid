@@ -1,4 +1,7 @@
 name: Elkeid_driver
+default:
+  run:
+    timeout-minutes: 280
 on:
   push:
     branches:
@@ -36,7 +39,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract aliyun_linux2
       id: extract-aliyun_linux2
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_aliyun_linux2_x86_64:latest
         path: /ko_output/.
@@ -72,7 +75,7 @@ jobs:
       run: echo Docker Hub Description Skipped
     - name: Extract aliyun_linux3
       id: extract-aliyun_linux3
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_aliyun_linux3_aarch64:latest
         path: /ko_output/.
@@ -111,7 +114,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract aliyun_linux3
       id: extract-aliyun_linux3
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_aliyun_linux3_x86_64:latest
         path: /ko_output/.
@@ -150,7 +153,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract almalinux8
       id: extract-almalinux8
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_almalinux8_x86_64:latest
         path: /ko_output/.
@@ -189,7 +192,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract amazonlinux
       id: extract-amazonlinux
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_amazonlinux_x86_64:latest
         path: /ko_output/.
@@ -228,7 +231,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract amazonlinux510
       id: extract-amazonlinux510
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_amazonlinux510_x86_64:latest
         path: /ko_output/.
@@ -267,7 +270,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract amazonlinux54
       id: extract-amazonlinux54
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_amazonlinux54_x86_64:latest
         path: /ko_output/.
@@ -306,7 +309,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract anolis8
       id: extract-anolis8
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_anolis8_x86_64:latest
         path: /ko_output/.
@@ -345,7 +348,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract debian10
       id: extract-debian10
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_debian10_x86_64:latest
         path: /ko_output/.
@@ -384,7 +387,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract debian11
       id: extract-debian11
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_debian11_x86_64:latest
         path: /ko_output/.
@@ -423,7 +426,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract debian8
       id: extract-debian8
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_debian8_x86_64:latest
         path: /ko_output/.
@@ -462,7 +465,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract debian9
       id: extract-debian9
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_debian9_x86_64:latest
         path: /ko_output/.
@@ -501,7 +504,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel6
       id: extract-rhel6
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_rhel6_x86_64:latest
         path: /ko_output/.
@@ -540,7 +543,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel6_elrepo
       id: extract-rhel6_elrepo
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_rhel6_elrepo_x86_64:latest
         path: /ko_output/.
@@ -576,7 +579,7 @@ jobs:
       run: echo Docker Hub Description Skipped
     - name: Extract rhel7
       id: extract-rhel7
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_rhel7_aarch64:latest
         path: /ko_output/.
@@ -615,7 +618,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7
       id: extract-rhel7
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_rhel7_x86_64:latest
         path: /ko_output/.
@@ -654,7 +657,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7_centosplus
       id: extract-rhel7_centosplus
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_rhel7_centosplus_x86_64:latest
         path: /ko_output/.
@@ -693,7 +696,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7_elrepo_lt
       id: extract-rhel7_elrepo_lt
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_rhel7_elrepo_lt_x86_64:latest
         path: /ko_output/.
@@ -732,7 +735,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7_elrepo_lt_archive
       id: extract-rhel7_elrepo_lt_archive
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_rhel7_elrepo_lt_archive_x86_64:latest
         path: /ko_output/.
@@ -771,7 +774,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7_elrepo_ml
       id: extract-rhel7_elrepo_ml
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_rhel7_elrepo_ml_x86_64:latest
         path: /ko_output/.
@@ -810,7 +813,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7_elrepo_ml_archive
       id: extract-rhel7_elrepo_ml_archive
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_rhel7_elrepo_ml_archive_x86_64:latest
         path: /ko_output/.
@@ -849,7 +852,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel8
       id: extract-rhel8
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_rhel8_x86_64:latest
         path: /ko_output/.
@@ -888,7 +891,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel8_elrepo_lt
       id: extract-rhel8_elrepo_lt
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_rhel8_elrepo_lt_x86_64:latest
         path: /ko_output/.
@@ -927,7 +930,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel8_elrepo_ml
       id: extract-rhel8_elrepo_ml
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_rhel8_elrepo_ml_x86_64:latest
         path: /ko_output/.
@@ -966,7 +969,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel8_plus
       id: extract-rhel8_plus
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_rhel8_plus_x86_64:latest
         path: /ko_output/.
@@ -1005,7 +1008,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rocky8
       id: extract-rocky8
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_rocky8_x86_64:latest
         path: /ko_output/.
@@ -1044,7 +1047,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract tlinux24
       id: extract-tlinux24
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_tlinux24_x86_64:latest
         path: /ko_output/.
@@ -1083,7 +1086,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract tlinux31
       id: extract-tlinux31
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_tlinux31_x86_64:latest
         path: /ko_output/.
@@ -1122,7 +1125,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1204
       id: extract-ubuntu1204
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu1204_x86_64:latest
         path: /ko_output/.
@@ -1161,7 +1164,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1404_k3
       id: extract-ubuntu1404_k3
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu1404_k3_x86_64:latest
         path: /ko_output/.
@@ -1200,7 +1203,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1404_k4
       id: extract-ubuntu1404_k4
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu1404_k4_x86_64:latest
         path: /ko_output/.
@@ -1239,7 +1242,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_auzre
       id: extract-ubuntu1604_auzre
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu1604_auzre_x86_64:latest
         path: /ko_output/.
@@ -1278,7 +1281,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_aws
       id: extract-ubuntu1604_aws
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu1604_aws_x86_64:latest
         path: /ko_output/.
@@ -1317,7 +1320,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_gcp
       id: extract-ubuntu1604_gcp
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu1604_gcp_x86_64:latest
         path: /ko_output/.
@@ -1356,7 +1359,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_gke
       id: extract-ubuntu1604_gke
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu1604_gke_x86_64:latest
         path: /ko_output/.
@@ -1395,7 +1398,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_k410
       id: extract-ubuntu1604_k410
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu1604_k410_x86_64:latest
         path: /ko_output/.
@@ -1434,7 +1437,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_k413
       id: extract-ubuntu1604_k413
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu1604_k413_x86_64:latest
         path: /ko_output/.
@@ -1473,7 +1476,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_k44
       id: extract-ubuntu1604_k44
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu1604_k44_x86_64:latest
         path: /ko_output/.
@@ -1512,7 +1515,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_k48
       id: extract-ubuntu1604_k48
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu1604_k48_x86_64:latest
         path: /ko_output/.
@@ -1551,7 +1554,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1804
       id: extract-ubuntu1804
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu1804_x86_64:latest
         path: /ko_output/.
@@ -1590,7 +1593,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1804_aws
       id: extract-ubuntu1804_aws
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu1804_aws_x86_64:latest
         path: /ko_output/.
@@ -1629,7 +1632,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1804_azure
       id: extract-ubuntu1804_azure
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu1804_azure_x86_64:latest
         path: /ko_output/.
@@ -1668,7 +1671,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1804_gcp
       id: extract-ubuntu1804_gcp
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu1804_gcp_x86_64:latest
         path: /ko_output/.
@@ -1707,7 +1710,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1804_gke
       id: extract-ubuntu1804_gke
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu1804_gke_x86_64:latest
         path: /ko_output/.
@@ -1746,7 +1749,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2004
       id: extract-ubuntu2004
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu2004_x86_64:latest
         path: /ko_output/.
@@ -1785,7 +1788,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2004_aws
       id: extract-ubuntu2004_aws
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu2004_aws_x86_64:latest
         path: /ko_output/.
@@ -1824,7 +1827,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2004_azure
       id: extract-ubuntu2004_azure
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu2004_azure_x86_64:latest
         path: /ko_output/.
@@ -1863,7 +1866,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2004_gcp
       id: extract-ubuntu2004_gcp
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu2004_gcp_x86_64:latest
         path: /ko_output/.
@@ -1902,7 +1905,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2004_gke
       id: extract-ubuntu2004_gke
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu2004_gke_x86_64:latest
         path: /ko_output/.
@@ -1941,7 +1944,7 @@ jobs:
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2204
       id: extract-ubuntu2204
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeidteam/elkeid_driver_ubuntu2204_x86_64:latest
         path: /ko_output/.
