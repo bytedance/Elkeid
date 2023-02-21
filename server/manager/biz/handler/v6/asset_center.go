@@ -783,5 +783,32 @@ func DescribeKernelVersion(ctx *gin.Context) {
 	}
 }
 func ExportHosts(ctx *gin.Context) {
+	req := GeneralHostReq{}
+	err := ctx.BindJSON(&req)
+	if err != nil {
+		common.CreateResponse(ctx, common.ParamInvalidErrorCode, err.Error())
+		return
+	}
 
+	defs := common.MongoDBDefs{
+		{"agent_id", "AgentID"},
+		{"hostname", "Hostname"},
+		{"intranet_ipv4", "IntranetIPv4"},
+		{"extranet_ipv4", "ExtranetIPv4"},
+		{"intranet_ipv6", "IntranetIPv6"},
+		{"extranet_ipv6", "ExtranetIPv6"},
+		{"idc", "IDC"},
+		{"platform", "Platform"},
+		{"cpu", "CPU"},
+		{"rss", "RSS"},
+		{"last_heartbeat_time", "LastHeartbeatTime"},
+	}
+
+	common.ExportFromMongoDB(
+		ctx,
+		infra.MongoClient.Database(infra.MongoDatabase).Collection(infra.AgentHeartBeatCollection),
+		req.GenerateFilter(),
+		defs,
+		"hosts",
+	)
 }
