@@ -4820,6 +4820,11 @@ static int __init smith_init(void)
 {
     int ret;
 
+#if defined(MODULE)
+    printk(KERN_INFO "[ELKEID] loading kmod %s (%s).\n",
+           THIS_MODULE->name, THIS_MODULE->version);
+#endif
+
     ret = kernel_symbols_init();
     if (ret)
         return ret;
