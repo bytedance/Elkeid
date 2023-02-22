@@ -25,6 +25,7 @@ def gen_job(vminfo):
     some_data = OrderedDict(
         {
             "runs-on": runs_on,
+            "continue-on-error": "true",
             "steps": [
                 OrderedDict({
                     "uses": "actions/checkout@v3",
@@ -54,6 +55,7 @@ def gen_job(vminfo):
                 OrderedDict({
                     "name": "Build "+vmname,
                     "uses": "docker/build-push-action@v3",
+                    "timeout-minutes": "240",
                     "with": {
                         "context": ".",
                         "file": dockerpath + "/Dockerfile."+vmname,
@@ -80,6 +82,7 @@ def gen_job(vminfo):
 
                 OrderedDict({
                     "name": "Extract "+vmname,
+                    "if": "always()",
                     "id": "extract-"+vmname,
                     "uses": "shrink/actions-docker-extract@v2",
                     "with": {
@@ -90,6 +93,7 @@ def gen_job(vminfo):
                 OrderedDict({
                     "name": "Upload "+vmname,
                     "uses": "actions/upload-artifact@v3",
+                    "if": "always()",
                     "with": {
                         "path": "${{steps.extract-"+vmname+".outputs.destination}}",
                         "name": "elkeid_driver_"+vmname+"_"+aarch
@@ -111,11 +115,6 @@ for each_dockers in all_dockers_aarch64:
 yaml_cfg_build = OrderedDict(
     {
         "name": "Elkeid_driver",
-        "default": {
-            "run": {
-                "timeout-minutes": 280
-            }
-        },
         "on": {
             "push": {
                 "branches": [
@@ -144,7 +143,7 @@ create_release_job = OrderedDict(
     {
         "runs-on": "ubuntu-latest",
         "permissions": "write-all",
-        "if": "${{ always() && !cancelled() }}",
+        "if": "${{ always() }}",
         "steps": [
             OrderedDict({
                 "name": "Create Release",

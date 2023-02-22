@@ -1,7 +1,4 @@
 name: Elkeid_driver
-default:
-  run:
-    timeout-minutes: 280
 on:
   push:
     branches:
@@ -11,6 +8,7 @@ on:
 jobs:
   build_aliyun_linux2_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -24,6 +22,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build aliyun_linux2
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.aliyun_linux2
@@ -38,6 +37,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract aliyun_linux2
+      if: always()
       id: extract-aliyun_linux2
       uses: shrink/actions-docker-extract@v2
       with:
@@ -45,11 +45,13 @@ jobs:
         path: /ko_output/.
     - name: Upload aliyun_linux2
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_aliyun_linux2_x86_64
         path: ${{steps.extract-aliyun_linux2.outputs.destination}}
   build_aliyun_linux3_aarch64:
     runs-on: [self-hosted,linux,ARM64]
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -65,6 +67,7 @@ jobs:
         config: /etc/buildkitd.toml
     - name: Build aliyun_linux3
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.aarch64/Dockerfile.aliyun_linux3
@@ -74,6 +77,7 @@ jobs:
     - name: Docker Hub Description Skipped aliyun_linux3
       run: echo Docker Hub Description Skipped
     - name: Extract aliyun_linux3
+      if: always()
       id: extract-aliyun_linux3
       uses: shrink/actions-docker-extract@v2
       with:
@@ -81,11 +85,13 @@ jobs:
         path: /ko_output/.
     - name: Upload aliyun_linux3
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_aliyun_linux3_aarch64
         path: ${{steps.extract-aliyun_linux3.outputs.destination}}
   build_aliyun_linux3_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -99,6 +105,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build aliyun_linux3
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.aliyun_linux3
@@ -113,6 +120,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract aliyun_linux3
+      if: always()
       id: extract-aliyun_linux3
       uses: shrink/actions-docker-extract@v2
       with:
@@ -120,11 +128,13 @@ jobs:
         path: /ko_output/.
     - name: Upload aliyun_linux3
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_aliyun_linux3_x86_64
         path: ${{steps.extract-aliyun_linux3.outputs.destination}}
   build_almalinux8_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -138,6 +148,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build almalinux8
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.almalinux8
@@ -152,6 +163,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract almalinux8
+      if: always()
       id: extract-almalinux8
       uses: shrink/actions-docker-extract@v2
       with:
@@ -159,11 +171,13 @@ jobs:
         path: /ko_output/.
     - name: Upload almalinux8
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_almalinux8_x86_64
         path: ${{steps.extract-almalinux8.outputs.destination}}
   build_amazonlinux_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -177,6 +191,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build amazonlinux
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux
@@ -191,6 +206,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract amazonlinux
+      if: always()
       id: extract-amazonlinux
       uses: shrink/actions-docker-extract@v2
       with:
@@ -198,11 +214,13 @@ jobs:
         path: /ko_output/.
     - name: Upload amazonlinux
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_amazonlinux_x86_64
         path: ${{steps.extract-amazonlinux.outputs.destination}}
   build_amazonlinux510_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -216,6 +234,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build amazonlinux510
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux510
@@ -230,6 +249,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract amazonlinux510
+      if: always()
       id: extract-amazonlinux510
       uses: shrink/actions-docker-extract@v2
       with:
@@ -237,11 +257,13 @@ jobs:
         path: /ko_output/.
     - name: Upload amazonlinux510
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_amazonlinux510_x86_64
         path: ${{steps.extract-amazonlinux510.outputs.destination}}
   build_amazonlinux54_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -255,6 +277,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build amazonlinux54
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux54
@@ -269,6 +292,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract amazonlinux54
+      if: always()
       id: extract-amazonlinux54
       uses: shrink/actions-docker-extract@v2
       with:
@@ -276,11 +300,13 @@ jobs:
         path: /ko_output/.
     - name: Upload amazonlinux54
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_amazonlinux54_x86_64
         path: ${{steps.extract-amazonlinux54.outputs.destination}}
   build_anolis8_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -294,6 +320,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build anolis8
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.anolis8
@@ -308,6 +335,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract anolis8
+      if: always()
       id: extract-anolis8
       uses: shrink/actions-docker-extract@v2
       with:
@@ -315,11 +343,13 @@ jobs:
         path: /ko_output/.
     - name: Upload anolis8
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_anolis8_x86_64
         path: ${{steps.extract-anolis8.outputs.destination}}
   build_debian10_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -333,6 +363,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build debian10
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.debian10
@@ -347,6 +378,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract debian10
+      if: always()
       id: extract-debian10
       uses: shrink/actions-docker-extract@v2
       with:
@@ -354,11 +386,13 @@ jobs:
         path: /ko_output/.
     - name: Upload debian10
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_debian10_x86_64
         path: ${{steps.extract-debian10.outputs.destination}}
   build_debian11_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -372,6 +406,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build debian11
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.debian11
@@ -386,6 +421,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract debian11
+      if: always()
       id: extract-debian11
       uses: shrink/actions-docker-extract@v2
       with:
@@ -393,11 +429,13 @@ jobs:
         path: /ko_output/.
     - name: Upload debian11
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_debian11_x86_64
         path: ${{steps.extract-debian11.outputs.destination}}
   build_debian8_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -411,6 +449,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build debian8
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.debian8
@@ -425,6 +464,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract debian8
+      if: always()
       id: extract-debian8
       uses: shrink/actions-docker-extract@v2
       with:
@@ -432,11 +472,13 @@ jobs:
         path: /ko_output/.
     - name: Upload debian8
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_debian8_x86_64
         path: ${{steps.extract-debian8.outputs.destination}}
   build_debian9_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -450,6 +492,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build debian9
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.debian9
@@ -464,6 +507,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract debian9
+      if: always()
       id: extract-debian9
       uses: shrink/actions-docker-extract@v2
       with:
@@ -471,11 +515,13 @@ jobs:
         path: /ko_output/.
     - name: Upload debian9
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_debian9_x86_64
         path: ${{steps.extract-debian9.outputs.destination}}
   build_rhel6_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -489,6 +535,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel6
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel6
@@ -503,6 +550,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel6
+      if: always()
       id: extract-rhel6
       uses: shrink/actions-docker-extract@v2
       with:
@@ -510,11 +558,13 @@ jobs:
         path: /ko_output/.
     - name: Upload rhel6
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_rhel6_x86_64
         path: ${{steps.extract-rhel6.outputs.destination}}
   build_rhel6_elrepo_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -528,6 +578,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel6_elrepo
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel6_elrepo
@@ -542,6 +593,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel6_elrepo
+      if: always()
       id: extract-rhel6_elrepo
       uses: shrink/actions-docker-extract@v2
       with:
@@ -549,11 +601,13 @@ jobs:
         path: /ko_output/.
     - name: Upload rhel6_elrepo
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_rhel6_elrepo_x86_64
         path: ${{steps.extract-rhel6_elrepo.outputs.destination}}
   build_rhel7_aarch64:
     runs-on: [self-hosted,linux,ARM64]
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -569,6 +623,7 @@ jobs:
         config: /etc/buildkitd.toml
     - name: Build rhel7
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.aarch64/Dockerfile.rhel7
@@ -578,6 +633,7 @@ jobs:
     - name: Docker Hub Description Skipped rhel7
       run: echo Docker Hub Description Skipped
     - name: Extract rhel7
+      if: always()
       id: extract-rhel7
       uses: shrink/actions-docker-extract@v2
       with:
@@ -585,11 +641,13 @@ jobs:
         path: /ko_output/.
     - name: Upload rhel7
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_rhel7_aarch64
         path: ${{steps.extract-rhel7.outputs.destination}}
   build_rhel7_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -603,6 +661,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel7
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7
@@ -617,6 +676,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7
+      if: always()
       id: extract-rhel7
       uses: shrink/actions-docker-extract@v2
       with:
@@ -624,11 +684,13 @@ jobs:
         path: /ko_output/.
     - name: Upload rhel7
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_rhel7_x86_64
         path: ${{steps.extract-rhel7.outputs.destination}}
   build_rhel7_centosplus_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -642,6 +704,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel7_centosplus
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7_centosplus
@@ -656,6 +719,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7_centosplus
+      if: always()
       id: extract-rhel7_centosplus
       uses: shrink/actions-docker-extract@v2
       with:
@@ -663,11 +727,13 @@ jobs:
         path: /ko_output/.
     - name: Upload rhel7_centosplus
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_rhel7_centosplus_x86_64
         path: ${{steps.extract-rhel7_centosplus.outputs.destination}}
   build_rhel7_elrepo_lt_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -681,6 +747,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel7_elrepo_lt
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7_elrepo_lt
@@ -695,6 +762,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7_elrepo_lt
+      if: always()
       id: extract-rhel7_elrepo_lt
       uses: shrink/actions-docker-extract@v2
       with:
@@ -702,11 +770,13 @@ jobs:
         path: /ko_output/.
     - name: Upload rhel7_elrepo_lt
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_rhel7_elrepo_lt_x86_64
         path: ${{steps.extract-rhel7_elrepo_lt.outputs.destination}}
   build_rhel7_elrepo_lt_archive_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -720,6 +790,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel7_elrepo_lt_archive
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7_elrepo_lt_archive
@@ -734,6 +805,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7_elrepo_lt_archive
+      if: always()
       id: extract-rhel7_elrepo_lt_archive
       uses: shrink/actions-docker-extract@v2
       with:
@@ -741,11 +813,13 @@ jobs:
         path: /ko_output/.
     - name: Upload rhel7_elrepo_lt_archive
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_rhel7_elrepo_lt_archive_x86_64
         path: ${{steps.extract-rhel7_elrepo_lt_archive.outputs.destination}}
   build_rhel7_elrepo_ml_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -759,6 +833,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel7_elrepo_ml
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7_elrepo_ml
@@ -773,6 +848,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7_elrepo_ml
+      if: always()
       id: extract-rhel7_elrepo_ml
       uses: shrink/actions-docker-extract@v2
       with:
@@ -780,11 +856,13 @@ jobs:
         path: /ko_output/.
     - name: Upload rhel7_elrepo_ml
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_rhel7_elrepo_ml_x86_64
         path: ${{steps.extract-rhel7_elrepo_ml.outputs.destination}}
   build_rhel7_elrepo_ml_archive_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -798,6 +876,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel7_elrepo_ml_archive
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7_elrepo_ml_archive
@@ -812,6 +891,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel7_elrepo_ml_archive
+      if: always()
       id: extract-rhel7_elrepo_ml_archive
       uses: shrink/actions-docker-extract@v2
       with:
@@ -819,11 +899,13 @@ jobs:
         path: /ko_output/.
     - name: Upload rhel7_elrepo_ml_archive
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_rhel7_elrepo_ml_archive_x86_64
         path: ${{steps.extract-rhel7_elrepo_ml_archive.outputs.destination}}
   build_rhel8_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -837,6 +919,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel8
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8
@@ -851,6 +934,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel8
+      if: always()
       id: extract-rhel8
       uses: shrink/actions-docker-extract@v2
       with:
@@ -858,11 +942,13 @@ jobs:
         path: /ko_output/.
     - name: Upload rhel8
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_rhel8_x86_64
         path: ${{steps.extract-rhel8.outputs.destination}}
   build_rhel8_elrepo_lt_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -876,6 +962,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel8_elrepo_lt
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8_elrepo_lt
@@ -890,6 +977,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel8_elrepo_lt
+      if: always()
       id: extract-rhel8_elrepo_lt
       uses: shrink/actions-docker-extract@v2
       with:
@@ -897,11 +985,13 @@ jobs:
         path: /ko_output/.
     - name: Upload rhel8_elrepo_lt
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_rhel8_elrepo_lt_x86_64
         path: ${{steps.extract-rhel8_elrepo_lt.outputs.destination}}
   build_rhel8_elrepo_ml_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -915,6 +1005,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel8_elrepo_ml
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8_elrepo_ml
@@ -929,6 +1020,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel8_elrepo_ml
+      if: always()
       id: extract-rhel8_elrepo_ml
       uses: shrink/actions-docker-extract@v2
       with:
@@ -936,11 +1028,13 @@ jobs:
         path: /ko_output/.
     - name: Upload rhel8_elrepo_ml
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_rhel8_elrepo_ml_x86_64
         path: ${{steps.extract-rhel8_elrepo_ml.outputs.destination}}
   build_rhel8_plus_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -954,6 +1048,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel8_plus
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8_plus
@@ -968,6 +1063,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rhel8_plus
+      if: always()
       id: extract-rhel8_plus
       uses: shrink/actions-docker-extract@v2
       with:
@@ -975,11 +1071,13 @@ jobs:
         path: /ko_output/.
     - name: Upload rhel8_plus
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_rhel8_plus_x86_64
         path: ${{steps.extract-rhel8_plus.outputs.destination}}
   build_rocky8_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -993,6 +1091,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rocky8
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rocky8
@@ -1007,6 +1106,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract rocky8
+      if: always()
       id: extract-rocky8
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1014,11 +1114,13 @@ jobs:
         path: /ko_output/.
     - name: Upload rocky8
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_rocky8_x86_64
         path: ${{steps.extract-rocky8.outputs.destination}}
   build_tlinux24_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1032,6 +1134,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build tlinux24
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.tlinux24
@@ -1046,6 +1149,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract tlinux24
+      if: always()
       id: extract-tlinux24
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1053,11 +1157,13 @@ jobs:
         path: /ko_output/.
     - name: Upload tlinux24
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_tlinux24_x86_64
         path: ${{steps.extract-tlinux24.outputs.destination}}
   build_tlinux31_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1071,6 +1177,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build tlinux31
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.tlinux31
@@ -1085,6 +1192,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract tlinux31
+      if: always()
       id: extract-tlinux31
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1092,11 +1200,13 @@ jobs:
         path: /ko_output/.
     - name: Upload tlinux31
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_tlinux31_x86_64
         path: ${{steps.extract-tlinux31.outputs.destination}}
   build_ubuntu1204_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1110,6 +1220,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1204
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1204
@@ -1124,6 +1235,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1204
+      if: always()
       id: extract-ubuntu1204
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1131,11 +1243,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu1204
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu1204_x86_64
         path: ${{steps.extract-ubuntu1204.outputs.destination}}
   build_ubuntu1404_k3_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1149,6 +1263,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1404_k3
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1404_k3
@@ -1163,6 +1278,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1404_k3
+      if: always()
       id: extract-ubuntu1404_k3
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1170,11 +1286,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu1404_k3
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu1404_k3_x86_64
         path: ${{steps.extract-ubuntu1404_k3.outputs.destination}}
   build_ubuntu1404_k4_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1188,6 +1306,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1404_k4
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1404_k4
@@ -1202,6 +1321,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1404_k4
+      if: always()
       id: extract-ubuntu1404_k4
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1209,11 +1329,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu1404_k4
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu1404_k4_x86_64
         path: ${{steps.extract-ubuntu1404_k4.outputs.destination}}
   build_ubuntu1604_auzre_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1227,6 +1349,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_auzre
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_auzre
@@ -1241,6 +1364,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_auzre
+      if: always()
       id: extract-ubuntu1604_auzre
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1248,11 +1372,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu1604_auzre
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu1604_auzre_x86_64
         path: ${{steps.extract-ubuntu1604_auzre.outputs.destination}}
   build_ubuntu1604_aws_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1266,6 +1392,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_aws
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_aws
@@ -1280,6 +1407,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_aws
+      if: always()
       id: extract-ubuntu1604_aws
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1287,11 +1415,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu1604_aws
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu1604_aws_x86_64
         path: ${{steps.extract-ubuntu1604_aws.outputs.destination}}
   build_ubuntu1604_gcp_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1305,6 +1435,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_gcp
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_gcp
@@ -1319,6 +1450,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_gcp
+      if: always()
       id: extract-ubuntu1604_gcp
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1326,11 +1458,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu1604_gcp
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu1604_gcp_x86_64
         path: ${{steps.extract-ubuntu1604_gcp.outputs.destination}}
   build_ubuntu1604_gke_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1344,6 +1478,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_gke
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_gke
@@ -1358,6 +1493,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_gke
+      if: always()
       id: extract-ubuntu1604_gke
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1365,11 +1501,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu1604_gke
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu1604_gke_x86_64
         path: ${{steps.extract-ubuntu1604_gke.outputs.destination}}
   build_ubuntu1604_k410_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1383,6 +1521,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_k410
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k410
@@ -1397,6 +1536,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_k410
+      if: always()
       id: extract-ubuntu1604_k410
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1404,11 +1544,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu1604_k410
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu1604_k410_x86_64
         path: ${{steps.extract-ubuntu1604_k410.outputs.destination}}
   build_ubuntu1604_k413_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1422,6 +1564,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_k413
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k413
@@ -1436,6 +1579,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_k413
+      if: always()
       id: extract-ubuntu1604_k413
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1443,11 +1587,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu1604_k413
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu1604_k413_x86_64
         path: ${{steps.extract-ubuntu1604_k413.outputs.destination}}
   build_ubuntu1604_k44_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1461,6 +1607,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_k44
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k44
@@ -1475,6 +1622,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_k44
+      if: always()
       id: extract-ubuntu1604_k44
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1482,11 +1630,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu1604_k44
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu1604_k44_x86_64
         path: ${{steps.extract-ubuntu1604_k44.outputs.destination}}
   build_ubuntu1604_k48_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1500,6 +1650,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_k48
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k48
@@ -1514,6 +1665,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1604_k48
+      if: always()
       id: extract-ubuntu1604_k48
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1521,11 +1673,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu1604_k48
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu1604_k48_x86_64
         path: ${{steps.extract-ubuntu1604_k48.outputs.destination}}
   build_ubuntu1804_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1539,6 +1693,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1804
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804
@@ -1553,6 +1708,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1804
+      if: always()
       id: extract-ubuntu1804
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1560,11 +1716,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu1804
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu1804_x86_64
         path: ${{steps.extract-ubuntu1804.outputs.destination}}
   build_ubuntu1804_aws_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1578,6 +1736,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1804_aws
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804_aws
@@ -1592,6 +1751,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1804_aws
+      if: always()
       id: extract-ubuntu1804_aws
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1599,11 +1759,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu1804_aws
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu1804_aws_x86_64
         path: ${{steps.extract-ubuntu1804_aws.outputs.destination}}
   build_ubuntu1804_azure_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1617,6 +1779,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1804_azure
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804_azure
@@ -1631,6 +1794,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1804_azure
+      if: always()
       id: extract-ubuntu1804_azure
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1638,11 +1802,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu1804_azure
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu1804_azure_x86_64
         path: ${{steps.extract-ubuntu1804_azure.outputs.destination}}
   build_ubuntu1804_gcp_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1656,6 +1822,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1804_gcp
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804_gcp
@@ -1670,6 +1837,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1804_gcp
+      if: always()
       id: extract-ubuntu1804_gcp
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1677,11 +1845,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu1804_gcp
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu1804_gcp_x86_64
         path: ${{steps.extract-ubuntu1804_gcp.outputs.destination}}
   build_ubuntu1804_gke_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1695,6 +1865,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1804_gke
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804_gke
@@ -1709,6 +1880,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu1804_gke
+      if: always()
       id: extract-ubuntu1804_gke
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1716,11 +1888,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu1804_gke
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu1804_gke_x86_64
         path: ${{steps.extract-ubuntu1804_gke.outputs.destination}}
   build_ubuntu2004_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1734,6 +1908,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu2004
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004
@@ -1748,6 +1923,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2004
+      if: always()
       id: extract-ubuntu2004
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1755,11 +1931,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu2004
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu2004_x86_64
         path: ${{steps.extract-ubuntu2004.outputs.destination}}
   build_ubuntu2004_aws_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1773,6 +1951,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu2004_aws
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004_aws
@@ -1787,6 +1966,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2004_aws
+      if: always()
       id: extract-ubuntu2004_aws
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1794,11 +1974,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu2004_aws
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu2004_aws_x86_64
         path: ${{steps.extract-ubuntu2004_aws.outputs.destination}}
   build_ubuntu2004_azure_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1812,6 +1994,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu2004_azure
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004_azure
@@ -1826,6 +2009,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2004_azure
+      if: always()
       id: extract-ubuntu2004_azure
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1833,11 +2017,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu2004_azure
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu2004_azure_x86_64
         path: ${{steps.extract-ubuntu2004_azure.outputs.destination}}
   build_ubuntu2004_gcp_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1851,6 +2037,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu2004_gcp
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004_gcp
@@ -1865,6 +2052,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2004_gcp
+      if: always()
       id: extract-ubuntu2004_gcp
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1872,11 +2060,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu2004_gcp
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu2004_gcp_x86_64
         path: ${{steps.extract-ubuntu2004_gcp.outputs.destination}}
   build_ubuntu2004_gke_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1890,6 +2080,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu2004_gke
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004_gke
@@ -1904,6 +2095,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2004_gke
+      if: always()
       id: extract-ubuntu2004_gke
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1911,11 +2103,13 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu2004_gke
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu2004_gke_x86_64
         path: ${{steps.extract-ubuntu2004_gke.outputs.destination}}
   build_ubuntu2204_x86_64:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v3
       with:
@@ -1929,6 +2123,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu2204
       uses: docker/build-push-action@v3
+      timeout-minutes: 240
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2204
@@ -1943,6 +2138,7 @@ jobs:
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Extract ubuntu2204
+      if: always()
       id: extract-ubuntu2204
       uses: shrink/actions-docker-extract@v2
       with:
@@ -1950,6 +2146,7 @@ jobs:
         path: /ko_output/.
     - name: Upload ubuntu2204
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: elkeid_driver_ubuntu2204_x86_64
         path: ${{steps.extract-ubuntu2204.outputs.destination}}
