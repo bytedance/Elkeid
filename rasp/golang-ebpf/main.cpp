@@ -146,8 +146,8 @@ void onEvent(probe_event *event, void *ctx) {
                 frame,
                 sizeof(frame),
                 "%s %s:%d +0x%lx",
-                symbol.name(),
-                symbol.sourceFile(pc),
+                symbol.name().c_str(),
+                symbol.sourceFile(pc).c_str(),
                 symbol.sourceLine(pc),
                 pc - symbol.entry()
         );
@@ -262,9 +262,9 @@ std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
 
     std::filesystem::path path = std::filesystem::path("/proc") / std::to_string(pid) / "root" / exe->relative_path();
 
-    go::symbol::Reader reader;
+    std::optional<elf::Reader> reader = elf::openFile(path);
 
-    if (!reader.load(path)) {
+    if (!reader) {
         LOG_ERROR("load golang binary failed: %s", path.string().c_str());
         return std::nullopt;
     }
@@ -273,7 +273,8 @@ std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
     bool fp = false;
     bool http = false;
 
-    std::optional<go::Version> version = reader.version();
+    go::symbol::Reader symbolReader(*reader, path);
+    std::optional<go::Version> version = symbolReader.version();
 
     if (version) {
         LOG_INFO("golang version: %d.%d", version->major, version->minor);
@@ -294,7 +295,7 @@ std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
 
     LOG_INFO("image base: %p", memoryMapping->start);
 
-    std::optional<go::symbol::SymbolTable> symbolTable = reader.symbols(go::symbol::FileMapping, memoryMapping->start);
+    std::optional<go::symbol::SymbolTable> symbolTable = symbolReader.symbols(memoryMapping->start);
 
     if (!symbolTable) {
         LOG_INFO("get symbol table failed");
@@ -315,12 +316,12 @@ std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
 
     auto attachAPI = [&](const auto &api) {
         auto it = std::find_if(symbolTable->begin(), symbolTable->end(), [&](const auto &entry) {
-            const char *name = entry.symbol().name();
+            std::string name = entry.symbol().name();
 
             if (api.ignoreCase)
-                return strcasecmp(api.name, name) == 0;
+                return strcasecmp(name.c_str(), api.name) == 0;
 
-            return strcmp(api.name, name) == 0;
+            return name == api.name;
         });
 
         if (it == symbolTable->end()) {
@@ -343,7 +344,7 @@ std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
 
         uint64_t entry = it.operator*().symbol().entry();
 
-        std::optional<int> offset = getAPIOffset(reader, entry);
+        std::optional<int> offset = getAPIOffset(*reader, entry);
 
         if (!offset) {
             LOG_ERROR("get api offset failed");
