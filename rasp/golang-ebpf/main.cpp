@@ -26,7 +26,7 @@ constexpr auto FRAME_POINTER_VERSION = go::Version{1, 7};
 
 struct Instance {
     std::string version;
-    go::symbol::SymbolTable symbolTable;
+    go::symbol::seek::SymbolTable symbolTable;
     std::list<std::unique_ptr<bpf_link, decltype(bpf_link__destroy) *>> links;
     zero::cache::LRUCache<uintptr_t, std::string> cache;
     unsigned long long startTime;
@@ -140,7 +140,7 @@ void onEvent(probe_event *event, void *ctx) {
             break;
 
         char frame[4096] = {};
-        go::symbol::Symbol symbol = symbolIterator.operator*().symbol();
+        go::symbol::seek::Symbol symbol = symbolIterator.operator*().symbol();
 
         snprintf(
                 frame,
@@ -295,9 +295,13 @@ std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
 
     LOG_INFO("image base: %p", memoryMapping->start);
 
-    std::optional<go::symbol::SymbolTable> symbolTable = symbolReader.symbols(memoryMapping->start);
+    std::optional<go::symbol::seek::SymbolTable> seekSymbolTable = symbolReader.symbols(memoryMapping->start);
+    std::optional<go::symbol::SymbolTable> symbolTable = symbolReader.symbols(
+            go::symbol::FileMapping,
+            memoryMapping->start
+    );
 
-    if (!symbolTable) {
+    if (!symbolTable || !seekSymbolTable) {
         LOG_INFO("get symbol table failed");
         return std::nullopt;
     }
@@ -376,7 +380,7 @@ std::optional<Instance> attach(probe_bpf *skeleton, pid_t pid) {
 
     return Instance{
             version ? zero::strings::format("%d.%d", version->major, version->minor) : "",
-            std::move(*symbolTable),
+            std::move(*seekSymbolTable),
             std::move(links),
             zero::cache::LRUCache<uintptr_t, std::string>(FRAME_CACHE_SIZE),
             stat->startTime,

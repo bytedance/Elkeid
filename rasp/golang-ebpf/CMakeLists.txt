@@ -28,7 +28,7 @@ FetchContent_MakeAvailable(aio)
 FetchContent_Declare(
         go-symbol
         GIT_REPOSITORY https://github.com/Hackerl/go-symbol
-        GIT_TAG 98ca2b04dd97fe0bbe61e8355a6b0e0bac07f99e
+        GIT_TAG fd727a0d44d98c16fb397e9b750440d71d2dd341
 )
 
 FetchContent_MakeAvailable(go-symbol)
