@@ -15,6 +15,8 @@
 #include <unistd.h>
 #include <csignal>
 
+using namespace std::chrono_literals;
+
 constexpr auto MAX_OFFSET = 100;
 constexpr auto INSTRUCTION_BUFFER_SIZE = 128;
 constexpr auto FRAME_CACHE_SIZE = 128;
@@ -420,13 +422,6 @@ int main() {
     signal(SIGPIPE, SIG_IGN);
     prctl(PR_SET_PDEATHSIG, SIGKILL);
 
-    event_base *base = event_base_new();
-
-    if (!base) {
-        probe_bpf::destroy(skeleton);
-        return -1;
-    }
-
     std::shared_ptr<aio::Context> context = aio::newContext();
     std::map<pid_t, Instance> instances;
 
@@ -458,7 +453,7 @@ int main() {
         });
     });
 
-    std::make_shared<aio::ev::Timer>(context)->setInterval(std::chrono::minutes{1}, [&]() {
+    std::make_shared<aio::ev::Timer>(context)->setInterval(1min, [&]() {
         auto it = instances.begin();
 
         while (it != instances.end()) {
@@ -586,7 +581,6 @@ int main() {
 
     if (!rb) {
         LOG_ERROR("failed to create ring buffer: %s", strerror(errno));
-        event_base_free(base);
         probe_bpf::destroy(skeleton);
         return -1;
     }
@@ -597,7 +591,7 @@ int main() {
                 ring_buffer__consume(rb);
                 return true;
             },
-            std::chrono::seconds{1}
+            1s
     );
 #else
     perf_buffer *pb = perf_buffer__new(
@@ -613,7 +607,6 @@ int main() {
 
     if (!pb) {
         LOG_ERROR("failed to create perf buffer: %s", strerror(errno));
-        event_base_free(base);
         probe_bpf::destroy(skeleton);
         return -1;
     }
@@ -625,7 +618,7 @@ int main() {
                     perf_buffer__consume_buffer(pb, i);
                     return true;
                 },
-                std::chrono::seconds{1}
+                1s
         );
     }
 #endif
