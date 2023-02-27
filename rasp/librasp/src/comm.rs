@@ -358,7 +358,9 @@ impl EbpfMode {
                         info!("Golang EBPF daemon exit with status: {}", status);
                         return;
                     }
-                    Ok(None) => {}
+                    Ok(None) => {
+			thread::sleep(Duration::from_secs(10));
+		    }
                     Err(e) => {
                         error!("error attempting to wait: {}", e);
                         Self::kill_server(child_id as i32);
