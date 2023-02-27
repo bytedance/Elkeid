@@ -9,6 +9,7 @@ use anyhow::Result;
 use coarsetime::Clock;
 use lazy_static::lazy_static;
 use log::*;
+use std::collections::HashMap;
 use walkdir::WalkDir;
 
 use crate::data_type::{ScanTaskProcExe, ScanTaskStaticFile, DETECT_TASK};
@@ -135,10 +136,14 @@ impl Cronjob {
             }
         });
 
+        let mut scan_cache: HashMap<(i32, String), bool> = HashMap::new();
+
         let job_proc = thread::spawn(move || loop {
             let start_timestamp = Clock::now_since_epoch().as_secs();
             info!("[CronjobProc] Scan started at : {}", start_timestamp);
             let dir_p = fs::read_dir("/proc").unwrap();
+
+            let mut scan_cache_tmp: HashMap<(i32, String), bool> = HashMap::new();
 
             for each in dir_p {
                 let each_en = match each {
@@ -178,6 +183,11 @@ impl Cronjob {
                     continue;
                 }
 
+                if let Some(_) = scan_cache.get(&(pid, exe_real.to_string())) {
+                    scan_cache_tmp.insert((pid, exe_real.to_string()), true);
+                    continue;
+                }
+
                 // send to scan
                 let task = ScanTaskProcExe {
                     pid: pid,
@@ -198,8 +208,15 @@ impl Cronjob {
                         s_locker.send(()).unwrap();
                     }
                 };
+                scan_cache_tmp.insert((pid, exe_real.to_string()), true);
                 std::thread::sleep(Duration::from_secs(8));
             }
+
+            scan_cache.clear();
+            for ((ipid, iexe), v) in scan_cache_tmp.into_iter() {
+                scan_cache.insert((ipid, iexe.to_string()), v);
+            }
+
             // sleep cron_interval
             let end_timestamp = Clock::now_since_epoch().as_secs();
             let timecost = end_timestamp - start_timestamp;
