@@ -68,18 +68,38 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 					metricsAgentHeartBeat(req.AgentID, name, detail)
 				}
 			}
-		case 2001, 2003, 6000, 5100, 5101, 8010:
+		case 2001, 2003, 6000, 5100, 5101, 8010, 1021, 1022:
 			// Asynchronously pushed to the remote end for reconciliation.
 
 			//5100: 主动触发资产数据扫描
 			//5101: 组件版本验证
 			//8010: 基线扫描
-			//task数据。需要 对账+存储db
+			//1021,1022: 插件启动后首次心跳，插件退出日志
+			//
+			//需要发送给manager的数据
 			item, err := parseRecord(req.GetData()[k])
 			if err != nil {
 				continue
 			}
-			item["data_type"] = fmt.Sprintf("%d", mqMsg.DataType)
+
+			switch mqMsg.DataType {
+			case 1021, 1022:
+				item["data_type"] = fmt.Sprintf("%d", mqMsg.DataType)
+				item["agent_id"] = mqMsg.AgentID
+				item["time"] = fmt.Sprintf("%d", mqMsg.AgentTime)
+				item["time_pkg"] = fmt.Sprintf("%d", SvrTime)
+				item["in_ipv4_list"] = mqMsg.IntranetIPv4
+				item["in_ipv6_list"] = mqMsg.IntranetIPv6
+				item["ex_ipv4_list"] = mqMsg.ExtranetIPv4
+				item["ex_ipv6_list"] = mqMsg.ExtranetIPv6
+				item["version"] = mqMsg.Version
+				item["hostname"] = mqMsg.Hostname
+				item["product"] = mqMsg.Product
+				item["token"] = "token" //适配格式
+			default:
+				item["data_type"] = fmt.Sprintf("%d", mqMsg.DataType)
+			}
+
 			err = GlobalGRPCPool.PushTask2Manager(item)
 			if err != nil {
 				ylog.Errorf("handleRawData", "PushTask2Manager error %s", err.Error())
