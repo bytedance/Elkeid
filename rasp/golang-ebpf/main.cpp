@@ -591,7 +591,7 @@ int main() {
                 ring_buffer__consume(rb);
                 return true;
             },
-            1s
+            10min
     );
 #else
     perf_buffer *pb = perf_buffer__new(
@@ -618,7 +618,7 @@ int main() {
                     perf_buffer__consume_buffer(pb, i);
                     return true;
                 },
-                1s
+                10min
         );
     }
 #endif

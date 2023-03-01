@@ -41,9 +41,11 @@ transfer(
                         uint32_t length = htonl(msg.length());
 
                         buffer->write(&length, sizeof(uint32_t));
-                        buffer->write(msg);
 
-                        return buffer->drain();
+                        if (buffer->write(msg) > 1024 * 1024)
+                            return buffer->drain();
+
+                        return zero::async::promise::resolve<void>();
                     })->then([=]() {
                         P_CONTINUE(loop);
                     }, [=](const zero::async::promise::Reason &reason) {
