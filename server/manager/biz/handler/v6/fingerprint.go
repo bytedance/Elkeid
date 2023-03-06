@@ -1047,7 +1047,7 @@ func ExportData(c *gin.Context) {
 		}...)
 	case "kmod":
 		if len(rb.IdList) == 0 {
-			cond := &DescribeIntegrityReqBody{}
+			cond := &DescribeKmodReq{}
 			err = json.Unmarshal(rb.Conditions, cond)
 			if err != nil {
 				common.CreateResponse(c, common.ParamInvalidErrorCode, err.Error())
@@ -1055,7 +1055,7 @@ func ExportData(c *gin.Context) {
 			}
 			cond.MarshalToBson(m)
 		}
-		collection = infra.FingerprintIntegrityCollection
+		collection = infra.FingerprintKmodCollection
 		defs = append(defs, common.MongoDBDefs{
 			{"name", "Name"},
 			{"size", "Size"},
