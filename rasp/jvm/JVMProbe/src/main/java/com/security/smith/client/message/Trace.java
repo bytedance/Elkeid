@@ -9,6 +9,7 @@ public class Trace {
     private int classID;
     private int methodID;
     private boolean blocked;
+    private String policyID;
 
     @JsonSerialize(converter = RetConverter.class)
     private Object ret;
@@ -41,6 +42,14 @@ public class Trace {
 
     public void setBlocked(boolean blocked) {
         this.blocked = blocked;
+    }
+
+    public String getPolicyID() {
+        return policyID;
+    }
+
+    public void setPolicyID(String policyID) {
+        this.policyID = policyID;
     }
 
     public Object getRet() {
