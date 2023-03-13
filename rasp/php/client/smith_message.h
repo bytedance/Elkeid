@@ -5,14 +5,15 @@
 #include <vector>
 #include <nlohmann/json.hpp>
 
-constexpr auto SMITH_ARG_COUNT = 20;
-constexpr auto SMITH_ARG_LENGTH = 256;
-constexpr auto SMITH_TRACE_COUNT = 20;
-constexpr auto SMITH_TRACE_LENGTH = 1024;
+constexpr auto ARG_COUNT = 8;
+constexpr auto ARG_LENGTH = 256;
+constexpr auto FRAME_COUNT = 20;
+constexpr auto FRAME_LENGTH = 1024;
+constexpr auto POLICY_ID_LENGTH = 256;
 
-constexpr auto SMITH_FILE_COUNT = 5;
-constexpr auto SMITH_HEADER_COUNT = 20;
-constexpr auto SMITH_FIELD_LENGTH = 256;
+constexpr auto FILE_COUNT = 5;
+constexpr auto HEADER_COUNT = 20;
+constexpr auto FIELD_LENGTH = 256;
 
 enum Operate {
     EXIT,
@@ -38,35 +39,36 @@ struct Heartbeat {
 };
 
 struct UploadFile {
-    char name[SMITH_FIELD_LENGTH];
-    char type[SMITH_FIELD_LENGTH];
-    char tmp_name[SMITH_FIELD_LENGTH];
+    char name[FIELD_LENGTH];
+    char type[FIELD_LENGTH];
+    char tmp_name[FIELD_LENGTH];
 };
 
 struct Request {
     short port;
-    char scheme[SMITH_FIELD_LENGTH];
-    char host[SMITH_FIELD_LENGTH];
-    char serverName[SMITH_FIELD_LENGTH];
-    char serverAddress[SMITH_FIELD_LENGTH];
-    char uri[SMITH_FIELD_LENGTH];
-    char query[SMITH_FIELD_LENGTH];
-    char body[SMITH_FIELD_LENGTH];
-    char method[SMITH_FIELD_LENGTH];
-    char remoteAddress[SMITH_FIELD_LENGTH];
-    char documentRoot[SMITH_FIELD_LENGTH];
-    char headers[SMITH_HEADER_COUNT][2][SMITH_FIELD_LENGTH];
-    UploadFile files[SMITH_FILE_COUNT];
+    char scheme[FIELD_LENGTH];
+    char host[FIELD_LENGTH];
+    char serverName[FIELD_LENGTH];
+    char serverAddress[FIELD_LENGTH];
+    char uri[FIELD_LENGTH];
+    char query[FIELD_LENGTH];
+    char body[FIELD_LENGTH];
+    char method[FIELD_LENGTH];
+    char remoteAddress[FIELD_LENGTH];
+    char documentRoot[FIELD_LENGTH];
+    char headers[HEADER_COUNT][2][FIELD_LENGTH];
+    UploadFile files[FILE_COUNT];
 };
 
 struct Trace {
     int classID;
     int methodID;
-    bool blocked;
     int count;
-    char ret[SMITH_ARG_LENGTH];
-    char args[SMITH_ARG_COUNT][SMITH_ARG_LENGTH];
-    char stackTrace[SMITH_TRACE_COUNT][SMITH_TRACE_LENGTH];
+    bool blocked;
+    char policyID[POLICY_ID_LENGTH];
+    char ret[ARG_LENGTH];
+    char args[ARG_COUNT][ARG_LENGTH];
+    char stackTrace[FRAME_COUNT][FRAME_LENGTH];
     Request request;
 };
 
@@ -87,10 +89,22 @@ struct FilterConfig {
     std::list<Filter> filters;
 };
 
+enum LogicalOperator {
+    OR,
+    AND
+};
+
+struct StackFrame {
+    std::vector<std::string> keywords;
+    LogicalOperator logicalOperator;
+};
+
 struct Block {
     int classID;
     int methodID;
-    std::list<MatchRule> rules;
+    std::string policyID;
+    std::vector<MatchRule> rules;
+    std::optional<StackFrame> stackFrame;
 };
 
 struct BlockConfig {
@@ -117,12 +131,13 @@ void to_json(nlohmann::json &j, const UploadFile &uploadFile);
 void to_json(nlohmann::json &j, const Request &request);
 void to_json(nlohmann::json &j, const Trace &trace);
 
-void from_json(const nlohmann::json &j, MatchRule &matchRule);
+void from_json(const nlohmann::json &j, MatchRule &rule);
 void from_json(const nlohmann::json &j, Filter &filter);
-void from_json(const nlohmann::json &j, Block &block);
-void from_json(const nlohmann::json &j, Limit &limit);
 void from_json(const nlohmann::json &j, FilterConfig &config);
+void from_json(const nlohmann::json &j, StackFrame &stackFrame);
+void from_json(const nlohmann::json &j, Block &block);
 void from_json(const nlohmann::json &j, BlockConfig &config);
+void from_json(const nlohmann::json &j, Limit &limit);
 void from_json(const nlohmann::json &j, LimitConfig &config);
 
 #endif //PHP_PROBE_SMITH_MESSAGE_H

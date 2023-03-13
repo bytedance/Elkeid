@@ -1,197 +1,73 @@
 #include "smith_probe.h"
+#include "smith_client.h"
 #include <zero/log.h>
-#include <event2/thread.h>
-#include <php/api.h>
+#include <aio/ev/timer.h>
+#include <sys/eventfd.h>
+#include <tiny-regex-c/re.h>
 
-constexpr auto WAIT_TIMEOUT = std::chrono::seconds{30};
-constexpr auto TIMER_INTERVAL = timeval{60, 0};
+using namespace std::chrono_literals;
 
-SmithProbe::SmithProbe() : mEventBase((evthread_use_pthreads(), event_base_new())) {
-    struct stub {
-        static void onEvent(evutil_socket_t fd, short what, void *arg) {
-            static_cast<SmithProbe *>(arg)->onTimer();
-        }
-    };
+constexpr auto DEFAULT_QUOTAS = 12000;
 
-    mTimer = event_new(mEventBase, -1, EV_PERSIST, stub::onEvent, this);
+Policy *Probe::popNode() {
+    std::optional<size_t> index = nodes.acquire();
+
+    if (!index)
+        return nullptr;
+
+    Policy *node = nodes[*index];
+    nodes.release(*index);
+
+    return node;
 }
 
-SmithProbe::~SmithProbe() {
-    if (mTimer) {
-        event_free(mTimer);
-        mTimer = nullptr;
-    }
+bool Probe::pushNode(Policy *node) {
+    std::optional<size_t> index = nodes.reserve();
 
-    if (mEventBase) {
-        event_base_free(mEventBase);
-        mEventBase = nullptr;
-    }
+    if (!index)
+        return false;
+
+    nodes[*index] = node;
+    nodes.commit(*index);
+
+    return true;
 }
 
-void SmithProbe::start() {
-    mClient.connect();
-    mConsumer.start(&SmithProbe::consume);
-
-    evtimer_add(mTimer, &TIMER_INTERVAL);
-    event_base_dispatch(mEventBase);
+Probe *Probe::getInstance() {
+    static auto instance = newShared<Probe>();
+    return instance;
 }
 
-void SmithProbe::stop() {
-    mExit = true;
+void *allocShared(size_t size) {
+    void *ptr = mmap(
+            nullptr,
+            (size + sizeof(size_t) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1),
+            PROT_READ | PROT_WRITE,
+            MAP_ANONYMOUS | MAP_SHARED,
+            -1,
+            0
+    );
 
-    evtimer_del(mTimer);
-    event_base_loopbreak(mEventBase);
+    if (ptr == MAP_FAILED)
+        return nullptr;
 
-    gAPITrace->mEvent.notify();
+    *(size_t *) ptr = size;
 
-    mConsumer.stop();
-    mClient.disconnect();
+    return (std::byte *) ptr + sizeof(size_t);
 }
 
-void SmithProbe::consume() {
-    while (!mExit) {
-        std::optional<size_t> index = gAPITrace->mBuffer.acquire();
-
-        if (!index) {
-            gAPITrace->mEvent.wait(WAIT_TIMEOUT);
-            continue;
-        }
-
-        const Trace &trace = gAPITrace->mBuffer[*index];
-
-        if (filter(trace))
-            mClient.write({TRACE, trace});
-
-        gAPITrace->mBuffer.release(*index);
-    }
+void freeShared(void *ptr) {
+    munmap(
+            (std::byte *) ptr - sizeof(size_t),
+            *(size_t *) ((std::byte *) ptr - sizeof(size_t))
+    );
 }
 
-void SmithProbe::onTimer() {
-    mClient.write({HEARTBEAT, mHeartbeat});
+bool pass(const Trace &trace, const std::map<std::tuple<int, int>, Filter> &filters) {
+    auto it = filters.find({trace.classID, trace.methodID});
 
-    std::lock_guard<std::mutex> _0_(mLimitMutex);
-
-    for (int i = 0; i < CLASS_MAX; i++) {
-        for (int j = 0; j < METHOD_MAX; j++) {
-            auto it = mLimits.find({i, j});
-
-            if (it == mLimits.end()) {
-                __atomic_store_n(&gAPIConfig->mQuotas[i][j], DEFAULT_QUOTAS, __ATOMIC_SEQ_CST);
-                continue;
-            }
-
-            __atomic_store_n(&gAPIConfig->mQuotas[i][j], it->second, __ATOMIC_SEQ_CST);
-        }
-    }
-}
-
-void SmithProbe::onMessage(const SmithMessage &message) {
-    switch (message.operate) {
-        case HEARTBEAT:
-            LOG_INFO("heartbeat message");
-            break;
-
-        case DETECT:
-            LOG_INFO("detect message");
-            break;
-
-        case FILTER: {
-            LOG_INFO("filter message");
-
-            auto config = message.data.get<FilterConfig>();
-
-            std::lock_guard<std::mutex> _0_(mFilterMutex);
-
-            mFilters.clear();
-            mHeartbeat.filter = config.uuid;
-
-            for (const auto &filter: config.filters)
-                mFilters.insert({{filter.classID, filter.methodID}, filter});
-
-            break;
-        }
-
-        case BLOCK: {
-            LOG_INFO("block message");
-
-            auto config = message.data.get<BlockConfig>();
-
-            mHeartbeat.block = config.uuid;
-
-            for (int i = 0; i < CLASS_MAX; i++) {
-                for (int j = 0; j < METHOD_MAX; j++) {
-                    z_rwlock_write_lock(&gAPIConfig->mBlockPolicies[i][j].lock);
-
-                    auto it = std::find_if(config.blocks.begin(), config.blocks.end(), [=](const auto &block) {
-                        return block.classID == i && block.methodID == j;
-                    });
-
-                    if (it == config.blocks.end()) {
-                        gAPIConfig->mBlockPolicies[i][j].count = 0;
-                        z_rwlock_write_unlock(&gAPIConfig->mBlockPolicies[i][j].lock);
-                        continue;
-                    }
-
-                    if (it->rules.size() > BLOCK_RULE_COUNT) {
-                        LOG_WARNING("block rule size limit");
-
-                        gAPIConfig->mBlockPolicies[i][j].count = 0;
-                        z_rwlock_write_unlock(&gAPIConfig->mBlockPolicies[i][j].lock);
-
-                        continue;
-                    }
-
-                    int count = 0;
-
-                    for (const auto &r : it->rules) {
-                        if (r.regex.length() >= BLOCK_RULE_LENGTH) {
-                            LOG_WARNING("block rule regex length limit");
-                            continue;
-                        }
-
-                        auto rule = gAPIConfig->mBlockPolicies[i][j].rules + count++;
-
-                        rule->first = r.index;
-                        strcpy(rule->second, r.regex.c_str());
-                    }
-
-                    gAPIConfig->mBlockPolicies[i][j].count = count;
-                    z_rwlock_write_unlock(&gAPIConfig->mBlockPolicies[i][j].lock);
-                }
-            }
-
-            break;
-        }
-
-        case LIMIT: {
-            LOG_INFO("limit message");
-
-            auto config = message.data.get<LimitConfig>();
-
-            std::lock_guard<std::mutex> _0_(mLimitMutex);
-
-            mLimits.clear();
-            mHeartbeat.limit = config.uuid;
-
-            for (const auto &limit: config.limits)
-                mLimits.insert({{limit.classID, limit.methodID}, limit.quota});
-
-            break;
-        }
-
-        default:
-            break;
-    }
-}
-
-bool SmithProbe::filter(const Trace &trace) {
-    std::lock_guard<std::mutex> _0_(mFilterMutex);
-
-    auto it = mFilters.find({trace.classID, trace.methodID});
-
-    if (it == mFilters.end()) {
+    if (it == filters.end())
         return true;
-    }
 
     const auto &include = it->second.include;
     const auto &exclude = it->second.exclude;
@@ -212,4 +88,255 @@ bool SmithProbe::filter(const Trace &trace) {
         return false;
 
     return true;
+}
+
+void startProbe() {
+    pthread_setname_np(pthread_self(), "php-probe");
+
+    std::shared_ptr<aio::Context> context = aio::newContext();
+
+    if (!context) {
+        LOG_ERROR("create aio context failed");
+        return;
+    }
+
+    int efd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+
+    if (efd < 0) {
+        LOG_ERROR("create event fd failed");
+        return;
+    }
+
+    gProbe->efd = efd;
+    std::fill_n(gProbe->quotas[0], sizeof(gProbe->quotas) / sizeof(**gProbe->quotas), DEFAULT_QUOTAS);
+
+    std::shared_ptr<Heartbeat> heartbeat = std::make_shared<Heartbeat>();
+    std::shared_ptr<std::map<std::tuple<int, int>, Filter>> filters = std::make_shared<std::map<std::tuple<int, int>, Filter>>();
+    std::shared_ptr<std::map<std::tuple<int, int>, int>> limits = std::make_shared<std::map<std::tuple<int, int>, int>>();
+
+    std::array<std::shared_ptr<aio::IChannel<SmithMessage>>, 2> channels = startClient(context);
+
+    std::make_shared<aio::ev::Timer>(context)->setInterval(1min, [=]() {
+        for (int cid = 0; cid < CLASS_MAX; cid++) {
+            for (int mid = 0; mid < METHOD_MAX; mid++) {
+                auto it = limits->find({cid, mid});
+
+                if (it == limits->end()) {
+                    gProbe->quotas[cid][mid] = DEFAULT_QUOTAS;
+                    continue;
+                }
+
+                gProbe->quotas[cid][mid] = it->second;
+            }
+        }
+
+        channels[1]->sendNoWait({HEARTBEAT, *heartbeat});
+        return true;
+    });
+
+    zero::async::promise::loop<void>([=](const auto &loop) {
+        channels[0]->receive()->then([=](const SmithMessage &message) {
+            switch (message.operate) {
+                case FILTER: {
+                    try {
+                        auto config = message.data.get<FilterConfig>();
+
+                        filters->clear();
+                        heartbeat->filter = config.uuid;
+
+                        std::transform(
+                                config.filters.begin(),
+                                config.filters.end(),
+                                std::inserter(*filters, filters->end()),
+                                [](const auto &filter) {
+                                    return std::pair{std::tuple{filter.classID, filter.methodID}, filter};
+                                }
+                        );
+                    } catch (const nlohmann::json::exception &e) {
+                        LOG_ERROR("exception: %s", e.what());
+                    }
+
+                    break;
+                }
+
+                case BLOCK: {
+                    try {
+                        auto config = message.data.get<BlockConfig>();
+
+                        heartbeat->block = config.uuid;
+
+                        for (int cid = 0; cid < CLASS_MAX; cid++) {
+                            for (int mid = 0; mid < METHOD_MAX; mid++) {
+                                z_rwlock_t *lock = gProbe->locks[cid] + mid;
+                                z_rwlock_write_lock(lock);
+
+                                auto &[size, policies] = gProbe->policies[cid][mid];
+
+                                if (size > 0) {
+                                    for (int i = 0; i < size; i++)
+                                        gProbe->pushNode(policies[i]);
+
+                                    size = 0;
+                                }
+
+                                std::vector<Block> blocks;
+
+                                std::copy_if(
+                                        config.blocks.begin(),
+                                        config.blocks.end(),
+                                        std::back_inserter(blocks),
+                                        [=](const auto &block) {
+                                            return block.classID == cid && block.methodID == mid;
+                                        }
+                                );
+
+                                if (blocks.empty()) {
+                                    z_rwlock_write_unlock(lock);
+                                    continue;
+                                }
+
+                                while (size < blocks.size()) {
+                                    Policy *node = gProbe->popNode();
+
+                                    if (!node) {
+                                        LOG_ERROR("pop node failed");
+
+                                        for (int i = 0; i < size; i++)
+                                            gProbe->pushNode(policies[i]);
+
+                                        size = 0;
+                                        break;
+                                    }
+
+                                    policies[size++] = node;
+                                }
+
+                                for (size_t index = 0; index < size; index++) {
+                                    Policy *policy = policies[index];
+                                    Block &block = blocks[index];
+
+                                    if (block.rules.size() > BLOCK_RULE_MAX_COUNT) {
+                                        LOG_WARNING("the number of rules exceeds limit");
+                                        continue;
+                                    }
+
+                                    if (std::any_of(
+                                            block.rules.begin(),
+                                            block.rules.end(),
+                                            [](const auto &rule) {
+                                                return rule.regex.length() >= BLOCK_RULE_LENGTH;
+                                            })) {
+                                        LOG_WARNING("the length of the rule exceeds limit");
+                                        continue;
+                                    }
+
+                                    if (block.stackFrame) {
+                                        if (block.stackFrame->keywords.size() > BLOCK_RULE_MAX_COUNT) {
+                                            LOG_WARNING("the number of rules exceeds limit");
+                                            continue;
+                                        }
+
+                                        if (std::any_of(
+                                                block.stackFrame->keywords.begin(),
+                                                block.stackFrame->keywords.end(),
+                                                [](const auto &keyword) {
+                                                    return keyword.length() >= BLOCK_RULE_LENGTH;
+                                                })) {
+                                            LOG_WARNING("the length of the keyword exceeds limit");
+                                            continue;
+                                        }
+                                    }
+
+                                    strncpy(policy->policyID, block.policyID.c_str(), sizeof(Policy::policyID) - 1);
+                                    policy->ruleCount = block.rules.size();
+
+                                    for (size_t i = 0; i < policy->ruleCount; i++) {
+                                        policy->rules[i].first = block.rules[i].index;
+                                        strcpy(policy->rules[i].second, block.rules[i].regex.c_str());
+                                    }
+
+                                    if (block.stackFrame) {
+                                        policy->KeywordCount = block.stackFrame->keywords.size();
+                                        policy->stackFrame.first = block.stackFrame->logicalOperator;
+
+                                        for (size_t i = 0; i < policy->KeywordCount; i++) {
+                                            strcpy(policy->stackFrame.second[i], block.stackFrame->keywords[i].c_str());
+                                        }
+                                    }
+                                }
+
+                                z_rwlock_write_unlock(lock);
+                            }
+                        }
+                    } catch (const nlohmann::json::exception &e) {
+                        LOG_ERROR("exception: %s", e.what());
+                    }
+
+                    break;
+                }
+
+                case LIMIT: {
+                    try {
+                        auto config = message.data.get<LimitConfig>();
+
+                        limits->clear();
+                        heartbeat->limit = config.uuid;
+
+                        std::transform(
+                                config.limits.begin(),
+                                config.limits.end(),
+                                std::inserter(*limits, limits->end()),
+                                [](const auto &limit) {
+                                    return std::pair{std::tuple{limit.classID, limit.methodID}, limit.quota};
+                                }
+                        );
+                    } catch (const nlohmann::json::exception &e) {
+                        LOG_ERROR("exception: %s", e.what());
+                    }
+
+                    break;
+                }
+
+                default:
+                    break;
+            }
+
+            P_CONTINUE(loop);
+        })->fail([=](const zero::async::promise::Reason &reason) {
+            LOG_ERROR("receive failed: %s", reason.message.c_str());
+            P_BREAK(loop);
+        });
+    });
+
+    zero::async::promise::loop<void>([=, event = std::make_shared<aio::ev::Event>(context, efd)](const auto &loop) {
+        std::optional<size_t> index = gProbe->buffer.acquire();
+
+        if (!index) {
+            gProbe->waiting = true;
+
+            event->on(EV_READ, 30s)->then([=](short what) {
+                if (what & EV_TIMEOUT) {
+                    P_CONTINUE(loop);
+                    return;
+                }
+
+                eventfd_t value;
+                eventfd_read(efd, &value);
+
+                P_CONTINUE(loop);
+            });
+
+            return;
+        }
+
+        Trace trace = gProbe->buffer[*index];
+        gProbe->buffer.release(*index);
+
+        if (pass(trace, *filters))
+            channels[1]->sendNoWait({TRACE, gProbe->buffer[*index]});
+
+        P_CONTINUE(loop);
+    });
+
+    context->dispatch();
 }
