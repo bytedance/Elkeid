@@ -57,7 +57,7 @@ module_init(kprobes_init);
 module_exit(kprobes_exit);
 
 MODULE_INFO(homepage, "https://github.com/bytedance/Elkeid/tree/main/driver");
-MODULE_VERSION("1.8.0.3");
+MODULE_VERSION("1.8.0.4");
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Elkeid Team <elkeid@bytedance.com>");
