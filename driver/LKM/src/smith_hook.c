@@ -687,7 +687,7 @@ next_socket:
         smith_put_files_struct(files);
 
         if (socket_check) {
-            *socket_pid = task->pid;
+            *socket_pid = task->tgid;
             smith_put_task_struct(task);
             return;
         }
