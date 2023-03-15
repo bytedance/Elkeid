@@ -257,6 +257,7 @@ impl Detector {
             let s_arf_worker = task_sender.clone();
             let s_arf_lock = recv_worker_s_locker.clone();
 
+            /* 
             _arf_t = match HoneyPot::new(s_arf_worker, s_arf_lock) {
                 Ok(mut hp) => {
                     info!("fanotify turn on.");
@@ -268,7 +269,7 @@ impl Detector {
                     None
                 }
             };
-
+            */
             loop {
                 match r_client.receive() {
                     Ok(t) => {
