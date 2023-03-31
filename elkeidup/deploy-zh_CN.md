@@ -7,10 +7,10 @@
 ### 1.1、导入镜像
 ```bash
 # 从release下载的是分卷的镜像，需要先合并镜像
-wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_image_v1.9.1.tar.gz.00
-wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_image_v1.9.1.tar.gz.01
-wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_image_v1.9.1.tar.gz.02
-wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_image_v1.9.1.tar.gz.03
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1.3/elkeidup_image_v1.9.1.tar.gz.00
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1.3/elkeidup_image_v1.9.1.tar.gz.01
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1.3/elkeidup_image_v1.9.1.tar.gz.02
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1.3/elkeidup_image_v1.9.1.tar.gz.03
 cat elkeidup_image_v1.9.1.tar.gz.* > elkeidup_image_v1.9.1.tar.gz
 
 #导入镜像
@@ -83,9 +83,9 @@ date && ssh root@{ip} date
 ### 2.2、解压release产物并配置目录
 - 下载release产物（分卷压缩包），并合并压缩包
 ```
-wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_package_v1.9.1.tar.gz.00
-wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_package_v1.9.1.tar.gz.01
-wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_package_v1.9.1.tar.gz.02
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1.3/elkeidup_package_v1.9.1.tar.gz.00
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1.3/elkeidup_package_v1.9.1.tar.gz.01
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1.3/elkeidup_package_v1.9.1.tar.gz.02
 cat elkeidup_package_v1.9.1.tar.gz.* > elkeidup_package_v1.9.1.tar.gz
 ```
 也可以参考[从源码构建 Elkeid](./build_package-zh_CN.md)，自行编译和构建package包。
@@ -153,10 +153,10 @@ cd /root/.elkeidup
 - 正常情况下，在Agent安装完成后，需要10min左右Driver模块才能正常工作（涉及到KO自动下载和安装）。
 - Driver是否存在的方式：`lsmod | grep hids_driver`
     - 如果测试机器kernel版本不在支持列表中，请[自行编译ko](https://github.com/bytedance/Elkeid/blob/main/driver/README-zh_CN.md)文件和生成sign文件(sha256)，并将其导入Nginx中。
-    - **如果在执行elkeidup deploy中未同意声明**，也需要[自行编译ko](https://github.com/bytedance/Elkeid/blob/main/driver/README-zh_CN.md)或下载Release中对应的[预编译ko](https://github.com/bytedance/Elkeid/releases/download/v1.9.1/ko_1.7.0.9.tar.xz)([支持列表](https://github.com/bytedance/Elkeid/blob/main/driver/ko_list.md))和sign文件，并将其导入Nginx中。
+    - **如果在执行elkeidup deploy中未同意声明**，也需要[自行编译ko](https://github.com/bytedance/Elkeid/blob/main/driver/README-zh_CN.md)或下载Release中对应的[预编译ko](https://github.com/bytedance/Elkeid/releases/download/v1.9.1.3/ko.tar.xz)([支持列表](https://github.com/bytedance/Elkeid/blob/main/driver/ko_list.md))和sign文件，并将其导入Nginx中。
 
 ### 3.1、ko导入Nginx方法
-ko/sign文件的格式应该遵循：`hids_driver_1.7.0.4_{uname -r}_{arch}.ko/sign`格式， 文件需要放置在nginx对应服务器的：`/elkeid/nginx/ElkeidAgent/agent/component/driver/ko`下，并修改权限`chown -R nginx:nginx /elkeid/nginx`。放置完成后，重启Agent即可。
+ko/sign文件的格式应该遵循：`hids_driver_1.7.0.10_{uname -r}_{arch}.ko/sign`格式， 文件需要放置在nginx对应服务器的：`/elkeid/nginx/ElkeidAgent/agent/component/driver/ko`下，并修改权限`chown -R nginx:nginx /elkeid/nginx`。放置完成后，重启Agent即可。
 
 ## 4、HTTPS配置
 请参考[Elkeid https配置文档](./https_config/https-zh_CN.md)
