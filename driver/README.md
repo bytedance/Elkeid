@@ -39,10 +39,6 @@ rmmod hids_driver
 
 ## Pre-build Ko
 
-### Pre-build Ko List
-[Pre-build Ko lists](./ko_list.md)
-
-
 
 ### How To Get
 If all urls failed, please build elkeid kernel module yourself.
