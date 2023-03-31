@@ -67,9 +67,9 @@ func IfFileExist(param []string) (result interface{}, err error) {
 }
 
 // ResultMatchFunc Traverse the file line, match
-//1. The absolute path of the file
-//2. The flag of the line
-//3. Comment character of the file (optional parameter), if the line is commented, it will be considered not to pass
+// 1. The absolute path of the file
+// 2. The flag of the line
+// 3. Comment character of the file (optional parameter), if the line is commented, it will be considered not to pass
 type ResultMatchFunc func(RuleStruct, interface{}) (bool, error)
 
 func FileLineCheck(ruleStruct RuleStruct, resultMatch ResultMatchFunc) (result bool, err error) {
@@ -80,7 +80,7 @@ func FileLineCheck(ruleStruct RuleStruct, resultMatch ResultMatchFunc) (result b
 	case "allow_ssh_passwd":
 		if IfAllowSshPasswd() {
 			break
-		}else {
+		} else {
 			return true, nil
 		}
 	}
@@ -131,36 +131,41 @@ func FileLineCheck(ruleStruct RuleStruct, resultMatch ResultMatchFunc) (result b
 }
 
 // FilePermission Determine file permissions
-//1. The absolute path of the file
-//2. File permissions (chmod out of base 8)
-func FilePermission(param []string) (result bool, err error) {
-	if len(param) < 2 {
-		return false, fmt.Errorf("FilePermission param length need at least 2")
+// 1. The absolute path of the file
+// 2. File permissions (chmod out of base 8)
+func FilePermission(ruleStruct RuleStruct) (result int, err error) {
+	if len(ruleStruct.Param) < 1 {
+		return 0, fmt.Errorf("FilePermission param length need at least 1")
 	}
-	filePath := param[0]
-	fileNeedMode, err := strconv.Atoi(param[1])
-	if err != nil {
-		return
+	filePath := ruleStruct.Param[0]
+	var fileNeedMode int
+	// validate the result
+	switch ruleStruct.Result.(type) {
+	case int:
+		fileNeedMode = ruleStruct.Result.(int)
+	case string:
+		fileNeedMode, err = strconv.Atoi(ruleStruct.Result.(string))
+		if err != nil {
+			return 0, fmt.Errorf("%d:rule is int, but get other type", ErrorConfigWrite)
+		}
+	default:
+		return 0, fmt.Errorf("%d:rule is int, but get other type", ErrorConfigWrite)
 	}
+
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
 		if strings.Contains(err.Error(), "no such file") {
-			return true, nil
+			return fileNeedMode, nil
 		}
 		return
 	}
 
-	fileRealMode, err := strconv.Atoi(strconv.FormatInt(int64(fileInfo.Mode()), 8))
-	if err != nil {
-		return
-	}
-
-	return fileRealMode < fileNeedMode, err
+	return strconv.Atoi(strconv.FormatInt(int64(fileInfo.Mode()), 8))
 }
 
 // FileUserGroup Determine the file user group
-//1. The absolute path of the file
-//2. File user id: groupId
+// 1. The absolute path of the file
+// 2. File user id: groupId
 func FileUserGroup(param []string) (result bool, err error) {
 	if len(param) < 2 {
 		return false, fmt.Errorf("FileUserGroup param length need at least 2")
@@ -188,8 +193,8 @@ func FileUserGroup(param []string) (result bool, err error) {
 }
 
 // FileMd5Check Determine whether the file MD5 is consistent
-//1. The absolute path of the file
-//2. File MD5
+// 1. The absolute path of the file
+// 2. File MD5
 func FileMd5Check(param []string) (result bool, err error) {
 	if len(param) < 2 {
 		return false, fmt.Errorf("file_md5_check param length need at least 2")
@@ -216,7 +221,7 @@ func FileMd5Check(param []string) (result bool, err error) {
 }
 
 // FuncCheck Special baseline rules
-//1. Baseline rule identification
+// 1. Baseline rule identification
 func FuncCheck(param []string) (result interface{}, err error) {
 	if len(param) < 1 {
 		errStr := fmt.Sprintf("%d:command_check params num error", ErrorConfigWrite)

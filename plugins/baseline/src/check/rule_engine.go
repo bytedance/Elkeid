@@ -267,7 +267,7 @@ func CheckRule(ruleStruct RuleStruct) (ifPass bool, err error) {
 		funcRes, err = IfFileExist(ruleStruct.Param)
 	case "file_permission":
 		// Determine whether file permissions are reasonable
-		funcRes, err = FilePermission(ruleStruct.Param)
+		funcRes, err = FilePermission(ruleStruct)
 	case "file_user_group":
 		// Determine if the file user group is reasonable
 		funcRes, err = FileUserGroup(ruleStruct.Param)
