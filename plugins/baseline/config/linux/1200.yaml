@@ -13,9 +13,9 @@ check_list:
     solution: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs: PASS_MAX_DAYS 90. Modify user parameters for all users with a password set to match: # chage --maxdays 90 <user>. Notes: You can also check this setting in /etc/shadow directly. The 5th field should be 365 or less for all users with a password. A value of -1 will disable password expiration. Additionally the password expiration must be greater than the minimum days between password changes or users will be unable to change their password"
     security: "high"
     type_cn: "身份鉴别"
-    title_cn: "设置密码失效时间<=180天"
+    title_cn: "设置密码失效时间<=90天"
     description_cn: "请设置密码失效时间，定期修改密码策略，减少密码被泄漏和猜测风险，使用非密码登陆方式(如密钥对)请忽略此项。"
-    solution_cn: "使用非密码登陆方式如密钥对，请忽略此项。\n采用root权限登录系统;\n输入:\n在 /etc/login.defs;\n将 PASS_MAX_DAYS 参数设置小于等于90"
+    solution_cn: "使用非密码登陆方式如密钥对，请忽略此项。\n采用root权限登录系统;\n输入:\n在 /etc/login.defs;\n将 PASS_MAX_DAYS 参数设置<=90"
     check:
       rules:
         - type: "file_line_check"
@@ -69,7 +69,7 @@ check_list:
     type_cn: "身份鉴别"
     title_cn: "密码复杂性检查"
     description_cn: "检查密码长度和密码是否使用多种字符类型。"
-    solution_cn: "1.编辑/etc/security/pwquality.conf文件，将minlen设置为>=8的值。\n2.编辑/etc/security/pwquality.conf文件，将minclass设置为>=3的值。\n3.编辑/etc/pam.d/password-auth和/etc/pam.d/system-auth 将pam_pwquality.so这一行的try_first_pass后边的retry=设置为小于等于3。"
+    solution_cn: "1.编辑/etc/security/pwquality.conf文件，将minlen设置为>=8的值。\n2.编辑/etc/security/pwquality.conf文件，将minclass设置为>=3的值。\n3.编辑/etc/pam.d/password-auth和/etc/pam.d/system-auth 将pam_pwquality.so这一行的try_first_pass后边的retry=设置为<=3。"
     check:
       condition: "all"
       rules:
@@ -121,7 +121,7 @@ check_list:
     type_cn: "身份鉴别"
     title_cn: "检查是否限制密码重用"
     description_cn: "应限制用户之间重用密码的行为，降低密码泄漏的风险。"
-    solution_cn: "编辑/etc/pam.d/common-password，在password [success=1 default=ignore] pam_unix.so开头的行插入配置remember设置为>=5的值，建议为5，即在行末尾加上参数remember=5。"
+    solution_cn: "在/etc/pam.d/password-auth和/etc/pam.d/system-auth中password sufficient pam_unix.so 这行插入配置remember设置为>=5的值，建议为5，即在行末尾加上参数remember=5。"
     check:
       condition: "all"
       rules:
@@ -309,19 +309,19 @@ check_list:
         - type: "file_permission"
           param:
             - "/etc/passwd"
-          result: '644'
+            - "644"
         - type: "file_permission"
           param:
             - "/etc/shadow"
-          result: '400'
+            - "400"
         - type: "file_permission"
           param:
             - "/etc/group"
-          result: '644'
+            - "644"
         - type: "file_permission"
           param:
             - "/etc/gshadow"
-          result: '400'
+            - "400"
   -
     check_id: 17
     type: "File Permissions"
@@ -339,8 +339,8 @@ check_list:
         - type: "file_permission"
           param:
             - '/etc/hosts.allow'
-          result: '644'
+            - "644"
         - type: "file_permission"
           param:
             - '/etc/hosts.deny'
-          result: '644'
+            - "644"
