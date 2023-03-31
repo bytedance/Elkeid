@@ -40,11 +40,6 @@ rmmod hids_driver
 我们提供了一些预编译好的 Elkeid 内核模块，这些 Ko 文件包括了 Debian / CentOS / Ubuntu 等发行版的不同内核版本。
 
 
-### 预编译好的 Ko 文件
-
-若 Ko 文件不在 [Ko 文件列表](./ko_list.md) 内，或下载失败，请自行编译。
-
-
 ### 获取方式
 
 
@@ -53,6 +48,7 @@ rmmod hids_driver
 ```bash
 wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.10_$(uname -r)_amd64.ko"
 ```
+
 ### 内核模块的测试方法
 
 可以通过 [LTP](https://linux-test-project.github.io/) 或者 [KASAN](https://www.kernel.org/doc/html/latest/dev-tools/kasan.html) 这两个方法对内核模块进行测试.
