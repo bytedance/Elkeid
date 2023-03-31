@@ -13,9 +13,9 @@ check_list:
     solution: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs: PASS_MAX_DAYS 90. Modify user parameters for all users with a password set to match: # chage --maxdays 90 <user>. Notes: You can also check this setting in /etc/shadow directly. The 5th field should be 365 or less for all users with a password. A value of -1 will disable password expiration. Additionally the password expiration must be greater than the minimum days between password changes or users will be unable to change their password"
     security: "high"
     type_cn: "身份鉴别"
-    title_cn: "设置密码失效时间<=180天"
+    title_cn: "设置密码失效时间<=90天"
     description_cn: "请设置密码失效时间，定期修改密码策略，减少密码被泄漏和猜测风险，使用非密码登陆方式(如密钥对)请忽略此项。"
-    solution_cn: "使用非密码登陆方式如密钥对，请忽略此项。\n采用root权限登录系统;\n输入:\n在 /etc/login.defs;\n将 PASS_MAX_DAYS 参数设置小于等于90"
+    solution_cn: "使用非密码登陆方式如密钥对，请忽略此项。\n采用root权限登录系统;\n输入:\n在 /etc/login.defs;\n将 PASS_MAX_DAYS 参数设置<=90"
     check:
       rules:
         - type: "file_line_check"
@@ -64,12 +64,12 @@ check_list:
     type: "Identification"
     title: "Ensure password creation requirements are configured"
     description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following are definitions of the pam_pwquality.so options: - retry=3 (Allow 3 tries before sending back a failure). The following options are set in the /etc/security/pwquality.conf file: - minlen = 14 dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1 (The settings shown above are one possible policy. Alter these values to conform to your own organization's password policies.)"
-    solution: "1) Run the following command to install the libpam-cracklib module: apt-get update && apt-get install libpam-cracklib 2) Edit the /etc/pam.d/common-password file to include the appropriate options for pam_cracklib.so and to conform to site policy: password requisite pam_pwquality.so minclass=3 minlen=8."
+    solution: "1) Run the following command to install the libpam-cracklib module: apt-get update && apt-get install libpam-cracklib 2) Edit the /etc/pam.d/common-password file to include the appropriate options for pam_cracklib.so and to conform to site policy: password requisite pam_cracklib.so minclass=3 minlen=8."
     security: "high"
     type_cn: "身份鉴别"
     title_cn: "密码复杂性检查"
     description_cn: "检查密码长度和密码是否使用多种字符类型。"
-    solution_cn: "1.安装libpam-cracklib: apt-get update && apt-get install libpam-pwquality。\n2.编辑编辑/etc/pam.d/common-password，在password requisite pam_cracklib.so开头的这一行配置:minclass=3(至少包含小写字母、大写字母、数字、特殊字符等4类字符中的3类)以及minlen=8(长度八位以上)。"
+    solution_cn: "1.安装libpam-cracklib: apt-get update && apt-get install libpam-cracklib。\n2.编辑/etc/pam.d/common-password，在password requisite pam_cracklib.so开头的这一行配置:minclass=3(至少包含小写字母、大写字母、数字、特殊字符等4类字符中的3类)以及minlen=8(长度八位以上)。"
     check:
       condition: "all"
       rules:
@@ -320,19 +320,19 @@ check_list:
         - type: "file_permission"
           param:
             - "/etc/passwd"
-          result: '644'
+            - "644"
         - type: "file_permission"
           param:
             - "/etc/shadow"
-          result: '400'
+            - "400"
         - type: "file_permission"
           param:
             - "/etc/group"
-          result: '644'
+            - "644"
         - type: "file_permission"
           param:
             - "/etc/gshadow"
-          result: '400'
+            - "400"
   -
     check_id: 17
     type: "File Permissions"
@@ -350,8 +350,8 @@ check_list:
         - type: "file_permission"
           param:
             - '/etc/hosts.allow'
-          result: '644'
+            - "644"
         - type: "file_permission"
           param:
             - '/etc/hosts.deny'
-          result: '644'
+            - "644"
