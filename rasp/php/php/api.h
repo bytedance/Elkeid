@@ -258,14 +258,14 @@ public:
 
                 return;
             }
+
+            if (!gAPIConfig->surplus(ClassID, MethodID)) {
+                origin(INTERNAL_FUNCTION_PARAM_PASSTHRU);
+                return;
+            }
         }
 
         origin(INTERNAL_FUNCTION_PARAM_PASSTHRU);
-
-        if constexpr (CanBlock) {
-            if (!gAPIConfig->surplus(ClassID, MethodID))
-                return;
-        }
 
         if constexpr (Ret) {
             strncpy(
