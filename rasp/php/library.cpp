@@ -86,17 +86,19 @@ PHP_MINIT_FUNCTION (php_probe) {
     if (!gAPIConfig || !gAPITrace)
         return FAILURE;
 
-    startProbe();
-
     pthread_atfork(
             []() {
-                static pid_t pid = getpid();
-                static bool initialized = false;
+                pid_t pid = getpid();
 
-                if (initialized || pid == getpid())
+                if (pid != getpgid(0))
                     return;
 
-                initialized = true;
+                static pid_t initialized = 0;
+
+                if (initialized && initialized == pid)
+                    return;
+
+                initialized = pid;
                 startProbe();
             },
             nullptr,
