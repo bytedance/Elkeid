@@ -68,9 +68,9 @@ cd /root/.elkeidup
 
 ## 确认配置及状态
 
--   `/root/.elkeidup_v1.7.1/cert` `/root/.elkeidup_v1.9.1/cert` 三个目录内的所有文件内容均保持一致
+-   `/root/.elkeidup_v1.7.1/cert` `/root/.elkeidup_v1.9.1/cert` 两个目录内的所有文件内容均保持一致
 
--   `/root/.elkeidup_v1.7.1/elkeid_server.yaml` `/root/.elkeidup_v1.9.1/elkeidup_config.yaml` 三个文件中，下述相关配置均保持一致。
+-   `/root/.elkeidup_v1.7.1/elkeid_server.yaml` `/root/.elkeidup_v1.9.1/elkeidup_config.yaml` 两个文件中，下述相关配置均保持一致。
 
     -     注：具体字段filed值以`v1.9.1`为准，请勿直接覆盖。
 
