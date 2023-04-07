@@ -63,7 +63,7 @@ Checking type, the built-in detection rules currently adapted by the baseline pl
 | command_check  | Check commands to be executed | 1：Command<br>2：Special parameter(e.g. *ignore_exit* suggests the check is passed with commands errors) | Command result
 | file_line_check  | Traverse file and check by line | 1：File absolute path<br>2：Flag（For quick filtering lines, reducing the pressure of regular matching）<br>3：File comments(default:#) | true/false/Regex match value
 | file_permission  | Check whether file permissions meet the security configuration | 1： File absolute path<br>2： File minimum permissions(octal based，e.g. 644) | true/false
-| if_flie_exist  | Check whether file exists | 1： File absolute path | true/false
+| if_file_exist  | Check whether file exists | 1： File absolute path | true/false
 | file_user_group  | Check file user group | 1： File absolute path<br>2： User group id | true/false
 | file_md5_check  | Check whether file MD5 is consistent | 1： File absolute path<br>2： MD5 | true/false
 | func_check  | Check through special rules | 1：The function | true/false
