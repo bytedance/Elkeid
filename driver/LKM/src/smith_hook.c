@@ -1934,7 +1934,7 @@ static void smith_trace_sysret_memfd_create(char __user *name, long flags, long 
     if (IS_ERR_OR_NULL(name))
         goto out;
     len = smith_strnlen_user((char __user *)name, PATH_MAX);
-    if (!len || len > PATH_MAX)
+    if (len <= 0 || len > PATH_MAX)
         goto out;
 
     tid = smith_lookup_tid(current);
@@ -1945,7 +1945,7 @@ static void smith_trace_sysret_memfd_create(char __user *name, long flags, long 
             goto out;
     }
 
-    fdname = smith_kmalloc((len + 1) * sizeof(char), GFP_ATOMIC);
+    fdname = smith_kmalloc(len + 1, GFP_ATOMIC);
     if (!fdname)
         goto out;
     if(smith_copy_from_user(fdname, name, len))
@@ -1975,16 +1975,14 @@ int open_pre_handler(struct kprobe *p, struct pt_regs *regs)
         return 0;
 
     filename_len = smith_strnlen_user((char __user *)filename_ori, PATH_MAX);
-    if (!filename_len || filename_len > PATH_MAX)
+    if (filename_len <= 0 || filename_len > PATH_MAX)
         return 0;
 
-    filename = smith_kmalloc((filename_len + 1) * sizeof(char), GFP_ATOMIC);
+    filename = smith_kmalloc(filename_len + 1, GFP_ATOMIC);
     if(!filename)
         return 0;
-
     if(smith_copy_from_user(filename, (char __user *)filename_ori, filename_len))
         goto out;
-
     filename[filename_len] = '\0';
 
     tid = smith_lookup_tid(current);
