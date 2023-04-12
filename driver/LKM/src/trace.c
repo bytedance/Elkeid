@@ -111,9 +111,38 @@ struct trace_instance {
     u64 ts;
 };
 
+static int trace_is_trusted_agent(void)
+{
+    /*
+     * Here we only use task->comm as a simple filtering for both security
+     * enhancement and a workaround for LTP proc01 testcase. We would not
+     * bother to use full-path comparison since root privilege is required
+     * to access /proc/elkeid-endpoint.
+     *
+     * permitted progams:
+     * 1, driver: agent plugin, can be one of the followings:
+     *    - /etc/sysop/mongoosev3-agent/plugin/driver/driver
+     *    - /etc/elkeid/plugin/driver/driver
+     *    - /opt/proxima/plugin/driver/driver
+     * 2, rst: the diagnostic program to show kernel events
+     *    - .../LKM/test/rst
+     */
+    char *agents[] = {"driver", "rst", NULL};
+    int i;
+
+    for (i = 0; agents[i]; i++) {
+        if (strcmp(current->comm, agents[i]) == 0)
+            return 1;
+    }
+    return 0;
+}
+
 static int trace_open_pipe(struct inode *inode, struct file *filp)
 {
     struct trace_instance *ti;
+
+    if (!trace_is_trusted_agent())
+        return -EACCES;
 
     ti = kzalloc(sizeof(*ti), GFP_KERNEL);
     if (!ti)
