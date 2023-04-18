@@ -178,41 +178,28 @@ impl ProbeConfigData {
     }
 }
 
-// #[derive(Debug, Serialize, Deserialize, Clone, Default)]
-// pub struct ProbeConfigBlocks {
-//     uuid: String,
-//     blocks: Vec<ProbeConfigBlock>
-// }
-//
-// #[derive(Debug, Serialize, Deserialize, Clone, Default)]
-// pub struct ProbeConfigFilters {
-//     uuid: String,
-//     filters: Vec<ProbeConfigFilter>,
-// }
-//
-// #[derive(Debug, Serialize, Deserialize, Clone, Default)]
-// pub struct ProbeConfigLimits {
-//     uuid: String,
-//     limits: Vec<ProbeConfigLimit>,
-// }
-//
-// #[derive(Debug, Serialize, Deserialize, Clone, Default)]
-// pub struct ProbeConfigPatches{
-//     uuid: String,
-//     pub patches: Vec<ProbeConfigPatch>
-// }
-
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ProbeConfigBlock {
     pub class_id: i32,
     pub method_id: i32,
-    pub rules: Vec<ProbeConfigRules>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rules: Option<Vec<ProbeConfigRules>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stack_frame: Option<ProbeStackRules>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ProbeConfigRules {
     pub index: i32,
     pub regex: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ProbeStackRules {
+    pub keywords: Vec<String>,
+    // 0 - or
+    // 1 - and
+    pub operation: u16,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
