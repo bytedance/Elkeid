@@ -64,6 +64,7 @@ pub struct RASPCommand {
     pub pid: String,
     pub state: String,
     pub runtime: String,
+    pub config_id: Option<String>,
     pub probe_message: Option<String>,
 }
 
@@ -82,6 +83,9 @@ impl RASPCommand {
     }
     pub fn get_runtime(&self) -> String {
 	self.runtime.clone()
+    }
+    pub fn get_config_id(&self) -> String {
+	self.config_id.clone().unwrap_or(String::new())
     }
 }
 

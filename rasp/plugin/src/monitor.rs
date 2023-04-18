@@ -285,6 +285,7 @@ fn internal_main(
                         pid: process.pid.to_string(),
                         state: "WAIT_ATTACH".to_string(),
                         runtime: runtime.to_string(),
+			config_id: process.config_id.clone(),
                         probe_message: None,
                     });
                     break;
@@ -359,6 +360,7 @@ fn internal_main(
                     pid: pid.to_string(),
                     state: "MISSING".to_string(),
                     runtime: "".to_string(),
+		    config_id: None,
                     probe_message: None,
                 });
             }
@@ -390,6 +392,7 @@ fn internal_main(
             let probe_message = operation_message
                 .get_probe_message()
                 .unwrap_or("".to_string());
+	    let config_id = operation_message.get_config_id();
             let mut process = match operation_message.get_pid_i32() {
                 Ok(pid) => {
                     let opp = operation_process_rw.read();
@@ -441,14 +444,7 @@ fn internal_main(
             match state.as_str() {
                 "WAIT_ATTACH" => {
                     process.tracing_state = Some(TracingState::ATTACHED);
-                    // update config hash
-                    let probe_config_hash = if !probe_message.clone().is_empty() {
-                        // calc_hash
-                        format!("{:x}", md5::compute(probe_message.clone()))
-                    } else {
-                        String::new()
-                    };
-                    process.current_config_hash = probe_config_hash;
+		    process.update_config_id(&config_id);
                     (*opp).insert(process.pid, process);
                 }
                 "MISSING" => {

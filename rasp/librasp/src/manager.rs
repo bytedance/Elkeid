@@ -482,15 +482,13 @@ impl RASPManager {
             match ebpf_mode {
                 BPFSelect::DISABLE => None,
                 _ => match EbpfMode::new(ctrl) {
-                    Ok(mut em) => {
-			match em.start_server() {
-			    Ok(_) => Some(em),
-			    Err(e) => {
-				error!("start golang eBPF daemon failed: {}", e);
-				None
-			    }
-			}
-		    },
+                    Ok(mut em) => match em.start_server() {
+                        Ok(_) => Some(em),
+                        Err(e) => {
+                            error!("start golang eBPF daemon failed: {}", e);
+                            None
+                        }
+                    },
                     Err(e) => {
                         error!("start golang eBPF daemon not support this machine: {}", e);
                         None
@@ -848,6 +846,7 @@ mod tests {
             thread_comm: None,
             process_comm: None,
             runtime_dir: false,
+            ebpf_comm: None,
         };
         println!("{:?}", fake_configs);
         let _ = fake_manager

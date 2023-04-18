@@ -44,6 +44,8 @@ pub struct ProcessInfo {
     pub start_time: Option<f32>,
     pub try_attach_count: u16,
     pub attached_count: u16,
+
+    pub config_id: Option<String>,
 }
 
 #[allow(non_camel_case_types)]
@@ -105,6 +107,9 @@ impl ProcessInfo {
     }
     pub fn update_attach_start_time(&mut self) {
         self.attach_start_time = Some(self.current_time());
+    }
+    pub fn update_config_id(&mut self, config_id: &String) {
+	self.config_id = Some(config_id.clone());
     }
     pub fn update_id(&mut self, process: &Process) -> AnyhowResult<()> {
         let status = process.status()?;
