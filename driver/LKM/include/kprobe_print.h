@@ -750,3 +750,43 @@ SD_XFER_DEFINE( NAME(memfd_create),
                      ENTRY_INT(flags, flags)
                 )
 )
+
+SD_XFER_DEFINE( NAME(psad4),
+
+                PROT(ELEMENT(__be32, sip),
+                     ELEMENT(int, sport),
+                     ELEMENT(__be32, dip),
+                     ELEMENT(int, dport),
+                     ELEMENT(int, flags)
+                 ),
+
+                XFER(ENTRY_XID(612),
+                     ENTRY_U16(sa_family, 2),
+                     ENTRY_IP4(sip, sip),
+                     ENTRY_U16(sport, sport),
+                     ENTRY_IP4(dip, dip),
+                     ENTRY_U16(dport, dport),
+                     ENTRY_INT(flags, flags)
+                )
+)
+
+#if IS_ENABLED(CONFIG_IPV6)
+SD_XFER_DEFINE( NAME(psad6),
+
+                PROT(ELEMENT(const struct in6_addr *, sip),
+                     ELEMENT(int, sport),
+                     ELEMENT(const struct in6_addr *, dip),
+                     ELEMENT(int, dport),
+                     ELEMENT(int, flags)
+                 ),
+
+                XFER(ENTRY_XID(612),
+                     ENTRY_U16(sa_family, 10),
+                     ENTRY_IP6(sip, (void *)sip),
+                     ENTRY_U16(sport, sport),
+                     ENTRY_IP6(dip, (void *)dip),
+                     ENTRY_U16(dport, dport),
+                     ENTRY_INT(flags, flags)
+                )
+)
+#endif
