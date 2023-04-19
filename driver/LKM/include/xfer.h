@@ -572,7 +572,7 @@ enum sd_xfer_typeid {
         uint32_t __tr_size;                                     \
         SD_ENTS_STRP_##x                                        \
         SD_ENTS_STRS_##x                                        \
-        int __l_strs = SD_DATA_##x;                             \
+        int __l_strs = 0 SD_DATA_##x;                           \
                                                                 \
         /* initialize trace_record */                           \
         __tr_size = ALIGN(sizeof(*__ev) + __l_strs, 4);         \

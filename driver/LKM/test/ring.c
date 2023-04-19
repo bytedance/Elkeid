@@ -116,7 +116,7 @@ static struct sd_item_ent *sd_query_event(void *data, int *rec)
     if (eid > 0 && eid <= g_sd_formats->nids) {
         struct sd_item_ent *item = g_sd_events[eid - 1];
         /* now we do some verifications */
-        if (eid != item[0].eid || head[0].size <= item[1].meta ||
+        if (eid != item[0].eid || head[0].size < item[1].meta ||
             head[1].meta != item[1].meta || head[1].xid != item[1].xid) {
             tb_hexdump(head, sizeof(*head) * 2);
             tb_hexdump(item, sizeof(*item) * 2);
