@@ -33,10 +33,6 @@ struct print_event_iterator {
 
 static struct tb_ring *trace_ring;
 
-/* Defined in linker script */
-extern struct print_event_class *const __start_print_event_class[];
-extern struct print_event_class *const __stop_print_event_class[];
-
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0)
 static ssize_t(*trace_seq_to_user_sym) (struct trace_seq * s,
 					char __user * ubuf, size_t cnt);
@@ -204,8 +200,13 @@ static void *trace_next_entry_inc(struct print_event_iterator *iter)
 
 static struct print_event_class *find_print_event(int id)
 {
-    if (likely(id < (__stop_print_event_class - __start_print_event_class)))
-        return __start_print_event_class[id];
+    if (id >= 0) {
+        if (id < smith_query_kprobe_events())
+            return smith_query_kprobe_event_class(id);
+        id -= smith_query_kprobe_events();
+        if (id >= 0 && id < smith_query_anti_rootkit_events())
+            return smith_query_anti_rootkit_event_class(id);
+    }
 
     return NULL;
 }
@@ -381,14 +382,15 @@ static const struct proc_ops trace_pipe_fops = {
 
 static inline int num_print_event_class(void)
 {
-    return __stop_print_event_class - __start_print_event_class;
+    return (smith_query_kprobe_events() +
+            smith_query_anti_rootkit_events());
 }
 
 static int __init print_event_init(void)
 {
-    int id = 0;
+    struct print_event_class *class;
     int num_class = num_print_event_class();
-    struct print_event_class *const *class_ptr;
+    int id = 0, i;
 
     if (num_class == 0)
         return 0;
@@ -407,13 +409,17 @@ static int __init print_event_init(void)
                           &trace_pipe_fops, trace_ring))
         goto errorout;
 
-    for (class_ptr = __start_print_event_class;
-         class_ptr < __stop_print_event_class; class_ptr++) {
-        struct print_event_class *class = *class_ptr;
-
+    for (i = 0; i < smith_query_kprobe_events(); i++) {
+        class = smith_query_kprobe_event_class(i);
         class->id = id++;
         class->trace = trace_ring;
     }
+    for (i = 0; i < smith_query_anti_rootkit_events(); i++) {
+        class = smith_query_anti_rootkit_event_class(i);
+        class->id = id++;
+        class->trace = trace_ring;
+    }
+
     pr_info("create %d print event class\n", num_class);
 
     return 0;
@@ -433,4 +439,4 @@ static void print_event_exit(void)
     pr_info("destroy %d print event class\n", num_print_event_class());
 }
 
-KPROBE_INITCALL(print_event_init, print_event_exit);
+KPROBE_INITCALL(trace, print_event_init, print_event_exit);

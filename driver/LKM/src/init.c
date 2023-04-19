@@ -4,85 +4,65 @@
  *
  * Here's the register of kprobes, kretprobes and tracepoints.
  */
-#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include "../include/kprobe.h"
 
-/* Defined in linker script */
-extern struct kprobe *const __start_kprobe_template[];
-extern struct kprobe *const __stop_kprobe_template[];
+/* Definions for global init/fini routines */
+extern const struct kprobe_initcall KPROBE_CALL(trace);
+extern const struct kprobe_initcall KPROBE_CALL(anti_rootkit);
+extern const struct kprobe_initcall KPROBE_CALL(kprobe_hook);
 
-extern struct kretprobe *const __start_kretprobe_template[];
-extern struct kretprobe *const __stop_kretprobe_template[];
-
-extern struct tracepoint_entry *const __start_tracepoint_template[];
-extern struct tracepoint_entry *const __stop_tracepoint_template[];
-
-extern struct kprobe_initcall const *const __start_kprobe_initcall[];
-extern struct kprobe_initcall const *const __stop_kprobe_initcall[];
-
-static int __init do_kprobe_initcalls(void)
+static const struct kprobe_initcall *__mod_entry[] =
 {
-    int ret = 0;
-    struct kprobe_initcall const *const *initcall_p;
+    &KPROBE_CALL(trace),
+    &KPROBE_CALL(anti_rootkit),
+    &KPROBE_CALL(kprobe_hook),
+};
 
-    for (initcall_p = __start_kprobe_initcall;
-         initcall_p < __stop_kprobe_initcall; initcall_p++) {
-        struct kprobe_initcall const *initcall = *initcall_p;
+static int __init kprobes_init(void)
+{
+    int i, rc = 0;
 
-        if (initcall->init) {
-            ret = initcall->init();
-            if (ret < 0)
+    for (i = 0; i < ARRAY_SIZE(__mod_entry); i++) {
+        const struct kprobe_initcall *kic = __mod_entry[i];
+        if (kic && kic->init) {
+            rc = kic->init();
+            if (rc < 0)
                 goto exit;
         }
     }
 
     return 0;
+
 exit:
-    while (--initcall_p >= __start_kprobe_initcall) {
-        struct kprobe_initcall const *initcall = *initcall_p;
-
-        if (initcall->exit)
-            initcall->exit();
+    while (i-- > 0) {
+        const struct kprobe_initcall *kic = __mod_entry[i];
+        if (kic && kic->exit)
+            kic->exit();
     }
 
-    return ret;
-}
-
-static void do_kprobe_exitcalls(void)
-{
-    struct kprobe_initcall const *const *initcall_p =
-            __stop_kprobe_initcall;
-
-    while (--initcall_p >= __start_kprobe_initcall) {
-        struct kprobe_initcall const *initcall = *initcall_p;
-
-        if (initcall->exit)
-            initcall->exit();
-    }
-}
-
-static int __init kprobes_init(void)
-{
-    int ret;
-    ret = do_kprobe_initcalls();
-    if (ret < 0)
-        return ret;
-
-    return ret;
+    return rc;
 }
 
 static void __exit kprobes_exit(void)
 {
-    do_kprobe_exitcalls();
+    int i;
+
+    for (i = ARRAY_SIZE(__mod_entry) - 1; i >= 0; i--) {
+        const struct kprobe_initcall *kic = __mod_entry[i];
+        if (kic && kic->exit)
+            kic->exit();
+    }
+
+    return;
 }
 
 module_init(kprobes_init);
 module_exit(kprobes_exit);
 
-MODULE_INFO(homepage, "driver");
 MODULE_VERSION("1.7.0.11");
-
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Will Chen <chenyue.will@bytedance.com>;Ping Shen <shenping.matt@bytedance.com>");
+
+MODULE_INFO(homepage, "https://github.com/bytedance/Elkeid/tree/main/driver");
+MODULE_AUTHOR("Elkeid Team <elkeid@bytedance.com>");
 MODULE_DESCRIPTION("Elkied Driver is the core component of Elkeid HIDS project");

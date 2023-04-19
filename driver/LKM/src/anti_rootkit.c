@@ -8,15 +8,18 @@
  *  Author: Nick Bulischeck <nbulisc@clemson.edu>
  */
 
+#define ANTI_ROOTKIT_CHECK 1
+#if ANTI_ROOTKIT_CHECK
+
 #include <linux/kthread.h>
+#include "../include/trace.h"
+#include "../include/struct_wrap.h"
 #include "../include/kprobe.h"
 #include "../include/anti_rootkit.h"
 #include "../include/util.h"
 
 #define CREATE_PRINT_EVENT
 #include "../include/anti_rootkit_print.h"
-
-#define ANTI_ROOTKIT_CHECK 1
 
 #define DEFERRED_CHECK_TIMEOUT (15 * 60)
 
@@ -299,6 +302,18 @@ static void anti_rootkit_exit(void)
     }
 }
 
-#if ANTI_ROOTKIT_CHECK
-KPROBE_INITCALL(anti_rootkit_init, anti_rootkit_exit);
+#else
+
+static int __init anti_rootkit_init(void)
+{
+	return 0;
+}
+
+static void anti_rootkit_exit(void)
+{
+    return;
+}
+
 #endif
+
+KPROBE_INITCALL(anti_rootkit, anti_rootkit_init, anti_rootkit_exit);

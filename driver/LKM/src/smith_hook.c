@@ -5,6 +5,7 @@
  * Hook some kernel function
  */
 #include "../include/smith_hook.h"
+#include "../include/trace.h"
 
 #define CREATE_PRINT_EVENT
 #include "../include/kprobe_print.h"
@@ -5008,7 +5009,7 @@ void install_kprobe(void)
     }
 }
 
-static int __init smith_init(void)
+static int __init kprobe_hook_init(void)
 {
     int ret;
 
@@ -5051,7 +5052,7 @@ static int __init smith_init(void)
     return 0;
 }
 
-static void smith_exit(void)
+static void kprobe_hook_exit(void)
 {
     /* should be done before kprobe cleanup */
     smith_nf_fini();
@@ -5063,4 +5064,4 @@ static void smith_exit(void)
     printk(KERN_INFO "[ELKEID] uninstall_kprobe success\n");
 }
 
-KPROBE_INITCALL(smith_init, smith_exit);
+KPROBE_INITCALL(kprobe_hook, kprobe_hook_init, kprobe_hook_exit);
