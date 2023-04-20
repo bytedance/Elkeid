@@ -2329,11 +2329,16 @@ static unsigned int smith_nf_udp_v6_handler(
 #endif
     )
 {
-    struct iphdr *iph = ip_hdr(skb);
+    const struct ipv6hdr *iph = ipv6_hdr(skb);
+
+    if (iph->version != 6)
+        goto out;
 
     /* only counting udp packets */
-    if (iph->protocol == IPPROTO_UDP)
+    if (iph->nexthdr == 17 /* NEXTHDR_UDP */)
         atomic_inc(&g_dns_v6_switch.ops);
+
+out:
     return NF_ACCEPT;
 }
 #endif
@@ -2355,38 +2360,23 @@ static struct nf_hook_ops g_smith_nf_hooks[] = {
 #endif
 };
 
+static int smith_nf_udp_reg(struct net *net)
+{
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 3, 0)
-
-static int smith_nf_udp_reg(struct net *net)
-{
     return nf_register_net_hooks(net, g_smith_nf_hooks, ARRAY_SIZE(g_smith_nf_hooks));
+#else
+    return nf_register_hooks(g_smith_nf_hooks, ARRAY_SIZE(g_smith_nf_hooks));
+#endif
 }
 
 static void smith_nf_udp_unreg(struct net *net)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 3, 0)
     nf_unregister_net_hooks(net, g_smith_nf_hooks, ARRAY_SIZE(g_smith_nf_hooks));
+#else
+    nf_unregister_hooks(g_smith_nf_hooks, ARRAY_SIZE(g_smith_nf_hooks));
+#endif
 }
-
-#else /* kernel version < 4.3.0 */
-
-static atomic_t g_nf_hooks_regged = ATOMIC_INIT(0);
-
-static int smith_nf_udp_reg(struct net *net)
-{
-    int rc = 0;
-
-    /* only do register for the 1st time */
-    if (1 == atomic_inc_return(&g_nf_hooks_regged))
-        rc = nf_register_hooks(g_smith_nf_hooks, ARRAY_SIZE(g_smith_nf_hooks));
-    return rc;
-}
-
-static void smith_nf_udp_unreg(struct net *net)
-{
-    if (0 == atomic_dec_return(&g_nf_hooks_regged))
-        nf_unregister_hooks(g_smith_nf_hooks, ARRAY_SIZE(g_smith_nf_hooks));
-}
-#endif /* kernel verison >= 4.3.0 */
 
 static struct pernet_operations smith_net_ops = {
 	.init = smith_nf_udp_reg,
@@ -2434,17 +2424,228 @@ static int smith_dns_work_handler(void *argu)
     return 0;
 }
 
+/*
+ * netfilter nf_hooks for port-scan attack detection
+ */
+#include <linux/skbuff.h>
+#include <linux/ip.h>
+#include <linux/tcp.h>
+
+static unsigned int smith_nf_psad_v4_handler(
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
+                    void *priv,
+                    struct sk_buff *skb,
+                    const struct nf_hook_state *state
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0)
+                    const struct nf_hook_ops *ops,
+                    struct sk_buff *skb,
+                    const struct nf_hook_state *state
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0)
+                    const struct nf_hook_ops *ops,
+                    struct sk_buff *skb,
+                    const struct net_device *in,
+                    const struct net_device *out,
+                    int (*okfn)(struct sk_buff *)
+#else
+                    unsigned int hooknum,
+                    struct sk_buff *skb,
+                    const struct net_device *in,
+                    const struct net_device *out,
+                    int (*okfn)(struct sk_buff *)
+#endif
+    )
+{
+    const struct iphdr *iph = ip_hdr(skb);
+    const struct tcphdr *tcp;
+    u32 len;
+    int flags = TCP_FLAG_SYN;
+
+    if (iph->protocol != IPPROTO_TCP)
+        goto out;
+    len = ntohs(iph->tot_len);
+    if (len > skb->len || sizeof(*iph) + sizeof(*tcp) > skb->len)
+        goto out;
+    tcp = (struct tcphdr *)(iph + 1) /* tcp_hdr(skb) */;
+    if (!tcp->syn)
+        goto out;
+
+    flags |= (tcp->fin ? TCP_FLAG_FIN : 0) |
+             (tcp->rst ? TCP_FLAG_RST : 0) |
+             (tcp->urg ? TCP_FLAG_URG : 0) |
+             (tcp->ack ? TCP_FLAG_ACK : 0) |
+             (tcp->psh ? TCP_FLAG_PSH : 0);
+    psad4_print(iph->saddr, tcp->source, iph->daddr, tcp->dest, flags);
+
+out:
+    return NF_ACCEPT;
+}
+
+#if IS_ENABLED(CONFIG_IPV6)
+static unsigned int smith_nf_psad_v6_handler(
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
+                    void *priv,
+                    struct sk_buff *skb,
+                    const struct nf_hook_state *state
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0)
+                    const struct nf_hook_ops *ops,
+                    struct sk_buff *skb,
+                    const struct nf_hook_state *state
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0)
+                    const struct nf_hook_ops *ops,
+                    struct sk_buff *skb,
+                    const struct net_device *in,
+                    const struct net_device *out,
+                    int (*okfn)(struct sk_buff *)
+#else
+                    unsigned int hooknum,
+                    struct sk_buff *skb,
+                    const struct net_device *in,
+                    const struct net_device *out,
+                    int (*okfn)(struct sk_buff *)
+#endif
+    )
+{
+    const struct ipv6hdr *iph = ipv6_hdr(skb);
+    const struct tcphdr *tcp;
+    u32 len;
+    int flags = TCP_FLAG_SYN;
+
+    if (iph->version != 6)
+        goto out;
+    if (iph->nexthdr != 6 /* NEXTHDR_TCP */)
+        goto out;
+    len = ntohs(iph->payload_len);
+    if (len + sizeof(*iph) > skb->len || sizeof(*iph) + sizeof(*tcp) > skb->len)
+        goto out;
+    tcp = (struct tcphdr *)(iph + 1) /* tcp_hdr(skb) */;
+    if (!tcp->syn)
+        goto out;
+
+    flags |= (tcp->fin ? TCP_FLAG_FIN : 0) |
+             (tcp->rst ? TCP_FLAG_RST : 0) |
+             (tcp->urg ? TCP_FLAG_URG : 0) |
+             (tcp->ack ? TCP_FLAG_ACK : 0) |
+             (tcp->psh ? TCP_FLAG_PSH : 0);
+    psad6_print(&iph->saddr, tcp->source, &iph->daddr, tcp->dest, flags);
+
+out:
+    return NF_ACCEPT;
+}
+#endif
+
+static struct nf_hook_ops g_smith_nf_psad[] = {
+        {
+                .hook =           smith_nf_psad_v4_handler,
+                .pf =             NFPROTO_IPV4,
+                .hooknum =        NF_INET_PRE_ROUTING,
+                .priority =       NF_IP_PRI_FIRST,
+        },
+#if IS_ENABLED(CONFIG_IPV6)
+        {
+                .hook =           smith_nf_psad_v6_handler,
+                .pf =             NFPROTO_IPV6,
+                .hooknum =        NF_INET_PRE_ROUTING,
+                .priority =       NF_IP_PRI_FIRST,
+        },
+#endif
+};
+
+static DEFINE_MUTEX(g_nf_psad_lock);
+static int g_nf_psad_switch = 0;
+static int g_nf_psad_status = 0;
+
+static int smith_nf_psad_reg(struct net *net)
+{
+    int rc;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 3, 0)
+    rc = nf_register_net_hooks(net, g_smith_nf_psad, ARRAY_SIZE(g_smith_nf_psad));
+#else
+    rc = nf_register_hooks(g_smith_nf_psad, ARRAY_SIZE(g_smith_nf_psad));
+#endif
+    return rc;
+}
+
+static void smith_nf_psad_unreg(struct net *net)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 3, 0)
+    nf_unregister_net_hooks(net, g_smith_nf_psad, ARRAY_SIZE(g_smith_nf_psad));
+#else
+    nf_unregister_hooks(g_smith_nf_psad, ARRAY_SIZE(g_smith_nf_psad));
+#endif
+}
+
+static struct pernet_operations smith_psad_net_ops = {
+    .init = smith_nf_psad_reg,
+    .exit = smith_nf_psad_unreg,
+};
+
+static void smith_switch_psad(void)
+{
+    mutex_lock(&g_nf_psad_lock);
+    if (g_nf_psad_switch != g_nf_psad_status) {
+        if (g_nf_psad_switch) {
+            if (!register_pernet_subsys(&smith_psad_net_ops))
+                g_nf_psad_status = 1;
+            else
+                g_nf_psad_switch = 0;
+        } else {
+            unregister_pernet_subsys(&smith_psad_net_ops);
+            g_nf_psad_status = 0;
+        }
+        printk("psad_switch: %d psad_status: %d\n", g_nf_psad_switch, g_nf_psad_status);
+    }
+    mutex_unlock(&g_nf_psad_lock);
+}
+
+#if defined(module_param_cb)
+static int smith_set_nf_psad_switch(const char *val, const struct kernel_param *kp)
+{
+    int rc = param_set_bool(val, kp);
+    if (!rc)
+        smith_switch_psad();
+    return rc;
+}
+const struct kernel_param_ops smith_nf_psad_ops = {
+    .set = smith_set_nf_psad_switch,
+    .get = param_get_bool,
+};
+module_param_cb(psad_switch, &smith_nf_psad_ops, &g_nf_psad_switch, S_IRUGO|S_IWUSR);
+#elif defined(module_param_call)
+static int smith_set_nf_psad_switch(const char *val, struct kernel_param *kp)
+{
+    int rc = param_set_bool(val, kp);
+    if (!rc)
+        smith_switch_psad();
+    return rc;
+}
+module_param_call(psad_switch, smith_set_nf_psad_switch, param_get_bool, &g_nf_psad_switch, S_IRUGO|S_IWUSR);
+#else
+# warning "moudle_param_cb or module_param_call are not supported by target kernel"
+#endif
+MODULE_PARM_DESC(psad_switch, "Set to 1 to enable detection of port-scanning, 0 otherwise");
+
 static int smith_nf_init(void)
 {
-    g_dns_worker = kthread_create(smith_dns_work_handler, 0, "elkeid - DNS kretprobe");
-    if (IS_ERR(g_dns_worker)) {
-        printk("smith_nf_init: failed to create dns worker with %ld\n", PTR_ERR(g_dns_worker));
-        return PTR_ERR(g_dns_worker);
+    struct task_struct *worker;
+    int rc;
+
+    worker = kthread_create(smith_dns_work_handler, 0, "elkeid - DNS kretprobe");
+    if (IS_ERR(worker)) {
+        printk("smith_nf_init: failed to create dns worker with %ld\n", PTR_ERR(worker));
+        return PTR_ERR(worker);
+    }
+
+    rc = register_pernet_subsys(&smith_net_ops);
+    if (rc) {
+        kthread_stop(worker);
+        return rc;
     }
 
     /* now wake up dns worker thread */
+    g_dns_worker = worker;
     wake_up_process(g_dns_worker);
-    return register_pernet_subsys(&smith_net_ops);
+    return rc;
 }
 
 static void smith_nf_fini(void)
@@ -2454,6 +2655,12 @@ static void smith_nf_fini(void)
         unregister_pernet_subsys(&smith_net_ops);
         kthread_stop(g_dns_worker);
     }
+
+    /* clean nf_hooks of psad if hooked */
+    mutex_lock(&g_nf_psad_lock);
+    if (g_nf_psad_status)
+        unregister_pernet_subsys(&smith_psad_net_ops);
+    mutex_unlock(&g_nf_psad_lock);
 }
 
 int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
