@@ -1,11 +1,14 @@
 package main
 
 import (
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"sync"
 	"syscall"
@@ -21,6 +24,10 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
+)
+
+const (
+	pidFile = "/var/run/elkeid-agent.pid"
 )
 
 func init() {
@@ -62,7 +69,7 @@ func main() {
 	defer logger.Sync()
 	zap.ReplaceGlobals(logger)
 	if os.Getenv("service_type") == "sysvinit" {
-		l, _ := lockfile.New("/var/run/elkeid-agent.pid")
+		l, _ := lockfile.New(pidFile)
 		if err := l.TryLock(); err != nil {
 			zap.S().Error(err)
 			return
@@ -93,17 +100,52 @@ func main() {
 		agent.Cancel()
 	}()
 	go func() {
+		var l net.Listener
+		var mu = &sync.Mutex{}
 		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, syscall.SIGTERM)
-		sig := <-sigs
-		zap.S().Error("receive signal:", sig.String())
-		zap.S().Info("wait for 5 secs to exit")
-		<-time.After(time.Second * 5)
-		agent.Cancel()
+		signal.Notify(sigs, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
+		for {
+			switch <-sigs {
+			case syscall.SIGTERM:
+				zap.S().Error("receive signal: ", syscall.SIGTERM.String())
+				zap.S().Info("wait for 5 secs to exit")
+				<-time.After(time.Second * 5)
+				agent.Cancel()
+			case syscall.SIGUSR1:
+				mu.Lock()
+				if l == nil {
+					zap.S().Info("opening pprof service...")
+					var err error
+					l, err = net.Listen("tcp", "127.0.0.1:")
+					mu.Unlock()
+					if err != nil {
+						zap.S().Error("open pprof port failed: ", err.Error())
+					} else {
+						zap.S().Info("listening pprof on: ", l.Addr())
+						go func() {
+							http.Serve(l, nil)
+							zap.S().Info("pprof service stopped")
+							mu.Lock()
+							if l != nil {
+								l.Close()
+								l = nil
+							}
+							mu.Unlock()
+						}()
+					}
+				} else {
+					zap.S().Info("stopping pprof service...")
+					l.Close()
+					l = nil
+					mu.Unlock()
+				}
+			case syscall.SIGUSR2:
+				zap.S().Info("freeing os memory...")
+				debug.FreeOSMemory()
+			}
+		}
 	}()
-	if os.Getenv("RUNTIME_MODE") == "DEBUG" {
-		go http.ListenAndServe("0.0.0.0:6060", nil)
-	}
 	wg.Wait()
+	os.RemoveAll(filepath.Join(agent.WorkingDirectory, "tmp"))
 	logger.Info("++++++++++++++++++++++++++++++exit++++++++++++++++++++++++++++++")
 }

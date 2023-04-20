@@ -1,66 +1,33 @@
 English | [简体中文](README-zh_CN.md)
-## About Driver Plugin
-The Driver Plugin is used to manage the kernel module (install/uninstall/update).
+## About driver Plugin
+The Driver plugin manages [Kernel Module](../../driver/README.md), supplements and filters data, and finally generates different system events to support related alarm functions.
+## Runtime requirements
+Supports mainstream Linux distributions, including CentOS, RHEL, Debian, Ubuntu, RockyLinux, OpenSUSE, etc. Supports x86-64 and aarch64 architectures.
 
-It can receive and parse the data from the kernel module, enrich the data flow, and then forward it to the Agent.
-
-## Supported Platforms
-Same as [Elkeid Agent](../README.md#supported-platforms)
-
-## Compilation Environment Requirements
-* Rust 1.48.0
-
-Please Install [rust](https://www.rust-lang.org/tools/install) environment:
+The kernel version of the host needs to be in the supported list, if not, it needs to be compiled and uploaded separately, see [Description](../../elkeidup/deploy.md#3agent-install-remark) for details.
+## Quick start
+Through the complete deployment of [elkeidup](../../elkeidup/README.md), this plugin is enabled by default.
+## Compile from source
+### Dependency requirements
+* [Rust](https://www.rust-lang.org) >= 1.48.0
+* [Rust x86_64-unknown-linux-musl aarch64-unknown-linux-musl  compile chain](https://doc.bccnsoft.com/docs/rust-1.36.0-docs-html/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html)
+* [musl-gcc](https://command-not-found.com/musl-gcc)
+### Confirm related configuration
+* It is necessary to ensure that the `DOWNLOAD_HOSTS` variable in `src/config.rs` has been configured as the actual deployed Nginx service address:
+     * If it is a manually deployed Server: you need to ensure that it is configured as the address of the Nginx file service, for example: `pub const DOWNLOAD_HOSTS: &'static [&'static str] = &["http://192.168.0.1:8080" ];`
+     * If the Server is deployed through [elkeidup](../../elkeidup/README.md), the corresponding configuration can be obtained according to the `~/.elkeidup/elkeidup_config.yaml` file of the deployed Server host, and the specific configuration item is `nginx .sshhost[0].host`, then set the port number to 8080, for example: `pub const DOWNLOAD_HOSTS: &'static [&'static str] = &["http://192.168.0.1:8080"];`
+### Compile
+In the root directory, execute:
 ```
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+BUILD_VERSION=1.0.0.15 bash build.sh
 ```
+During the compilation process, the script will read the `BUILD_VERSION` environment variable to set the version information, which can be modified according to actual needs.
 
-## Building
-Just run:
-```
-make build
-```
-or
-```
-cargo build --release
-```
-You will find the driver binary file under `target/release/`.
-
-If you want to get a fully statically linked binary plugin (easier to distribute), do the following:
-```
-make build-musl
-```
-or
-```
-cargo build --release --target x86_64-unknown-linux-musl
-```
-You will find the driver binary file under `target/x86_64-unknown-linux-musl/release/`.
-
-For details, please refer to:
-https://doc.rust-lang.org/edition-guide/rust-2018/platform-and-target-support/musl-support-for-fully-static-binaries.html
-
-## Template Generation
-According to the [data definition in Driver](../../driver), we use code generation to build parser. The structures is defined in the [template.toml](template.toml).
-
-The `metadata` field defines the [LKM](../../driver) version and the maintenance members of this template. The `config` field defines the download address of the ko distribution (if needed), the pipe path of the [LKM](../../driver), the name of the ko file to be managed, and the socket path of the Agent.
-
-Please note: The socket path must be consistent with the [parameters in the Agent](../README.md#parameters-and-options).
-
-The `structures` field describes various data types, please modify as needed. For more details, please refer to:https://github.com/toml-lang/toml
-
-## Distribute ko
-You can put ko files of different kernel versions on a file server for easy distribution. Please rename each ko file according to the following requirements:
-
-The file name consists of three parts: `NAME-VERSION-KERNEL_VERSION.ko`.
-
-`NAME` needs to be consistent with the `config.name` field in `template.toml`, `VERSION` and `config.version` fields should be consistent (that is, the [LKM](../../driver) version), and `KERNEL_VERSION` should be consistent with `uname -r`.
-
-In addition, for each ko file, a text file named `NAME-VERSION-KERNEL_VERSION.sha256` should be uploaded together, which contains the `sha256` hex encoding value of the `NAME-VERSION-KERNEL_VERSION.ko` file. E.g:
-```
-cat hids_driver-1.0.0.0-4.14-amd64.sha256
-3ca9eb8143e99fac18a50613247cadb900ba79bf6f7d9a073b61e4ab303d3635
-```
-Finally, set your file server address in the `config.ko_url` ist (there can be multiple addresses), so that when the plugin starts, the ko file that is compatible with the [LKM](../../driver) and kernel version will be automatically downloaded.
-
+After the compilation is successful, you should see two plg files in the `output` directory of the root directory, which correspond to different system architectures.
+### Version Upgrade
+1. If no client component has been created, please create a new component in the [Elkeid Console-Component Management](../../server/docs/console_tutorial/Elkeid_Console_manual.md#组件管理) page.
+2. On the [Elkeid Console - Component Management](../../server/docs/console_tutorial/Elkeid_Console_manual.md#组件管理) page, find the "collector" entry, click "Release Version" on the right, fill in the version information and upload the files corresponding to the platform and architecture, and click OK.
+3. On the [Elkeid Console - Component Policy](../../server/docs/console_tutorial/Elkeid_Console_manual.md#组件策略) page, delete the old "collector" version policy (if any), click "New Policy", select the version just released, and click OK. Subsequent newly installed Agents will be self-upgraded to the latest version.
+4. On the [Elkeid Console - Task Management](../../server/docs/console_tutorial/Elkeid_Console_manual.md#任务管理) page, click "New Task", select all hosts, click Next, select the "Sync Configuration" task type, and click OK. Then, find the task you just created on this page, and click Run to upgrade the old version of the Agent.
 ## License
-Driver Plugin is distributed under the Apache-2.0 license.
+driver plugin is distributed under the Apache-2.0 license.

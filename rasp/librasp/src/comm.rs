@@ -1,93 +1,20 @@
-use super::process::ProcessInfo;
-use super::settings;
-use libraspserver::proto::Message;
-
+use std::collections::HashMap;
+use std::process::{ChildStdin, ChildStdout, Stdio};
+// use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::io::{BufRead, BufReader, Write};
-use std::process::{Child, Command, Stdio};
-use std::{collections::HashMap, thread::sleep, time::Duration};
-use std::{
-    fmt::{Display, Formatter, Result as FmtResult},
-    process::{ChildStdin, ChildStdout},
-};
-
-use crossbeam::channel::{bounded, Receiver, Sender, TryRecvError};
-use libc::{kill, killpg, SIGKILL};
-use serde_json;
-
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 use std::thread;
+use std::time::Duration;
 
-// use procfs::process::Process;
-
+use crossbeam::channel::{bounded, Receiver, SendError, Sender};
+use libc::{kill, killpg, SIGKILL};
 use log::*;
 
-pub struct RASPServerManager {
-    pub mnt_namespace_server_map: HashMap<String, RASPServerRunner>,
-    pub mnt_namespace_comm_send_config_map: HashMap<String, Sender<String>>,
-}
-
-pub struct RASPServerRunner {
-    child_id: u32,
-    child_ctrl: Control,
-}
-
-#[allow(unused_must_use)]
-#[allow(dead_code)]
-fn no_ns_enter_spawn(log_level: String) -> Result<Child, String> {
-    info!("spawn new rasp server");
-    let rasp_server = settings::RASP_SERVER_BIN.to_string();
-    let log_level = format!("RUST_LOG={}", log_level);
-    let args = &[log_level.as_str(), rasp_server.as_str()];
-    debug!("env {:?}", args.clone());
-    let child = match Command::new("env")
-        .args(args)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-    {
-        Ok(c) => c,
-        Err(e) => {
-            let msg = format!("can tnot spawn command: {}", e.to_string());
-            return Err(msg);
-        }
-    };
-    info!("started process: {}", child.id());
-    Ok(child)
-}
-fn ns_enter_spawn(pid: i32, log_level: String) -> Result<Child, String> {
-    info!("spawn new rasp server");
-    let rasp_server = settings::RASP_SERVER_BIN.to_string();
-    let nsenter = settings::RASP_NS_ENTER_BIN.to_string();
-    let pid_string = pid.clone().to_string();
-    let log_level = format!("RUST_LOG={}", log_level);
-    let args = &[
-        "-m",
-        "-n",
-        "-p",
-        "-t",
-        pid_string.as_str(),
-        "env",
-        log_level.as_str(),
-        rasp_server.as_str(),
-    ];
-    debug!("nsenter {:?}", args.clone());
-    let child = match Command::new(nsenter)
-        .args(args)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-    {
-        Ok(c) => c,
-        Err(e) => {
-            let msg = format!("can tnot spawn command: {}", e.to_string());
-            return Err(msg);
-        }
-    };
-    info!("started process: {}", child.id());
-    Ok(child)
-}
+// use super::process::ProcessInfo;
+use crate::async_command::run_async_process;
+use crate::settings;
+use anyhow::{anyhow, Result as AnyhowResult};
 
 // https://stackoverflow.com/questions/35883390/how-to-check-if-a-thread-has-finished-in-rust
 // https://stackoverflow.com/a/39615208
@@ -123,392 +50,421 @@ impl Control {
     }
 }
 
-impl RASPServerRunner {
+pub trait RASPComm {
+    fn start_comm(
+        &mut self,
+        pid: i32,
+        mnt_namespace: &String,
+        probe_report_sender: Sender<plugins::Record>,
+        patch_filed: HashMap<&'static str, String>,
+    ) -> AnyhowResult<()>;
+    fn stop_comm(&mut self, pid: i32, mnt_namespace: &String) -> AnyhowResult<()>;
+    fn send_message_to_probe(
+        &mut self,
+        pid: i32,
+        mnt_namespace: &String,
+        message: &String,
+    ) -> AnyhowResult<()>;
+}
+
+pub struct ThreadMode {
+    pub ctrl: Control,
+    pub log_level: String,
+    pub bind_path: String,
+    pub linking_to: Option<String>,
+    pub using_mount: bool,
+    pub agent_to_probe_sender: Sender<(i32, String)>,
+}
+
+impl ThreadMode {
     pub fn new(
-        process_info: ProcessInfo,
-        message_sender: Sender<HashMap<&'static str, String>>,
-        message_receiver: Receiver<String>,
         log_level: String,
         ctrl: Control,
-    ) -> Result<Self, String> {
-        debug!("new RASP Server Runner");
-        let mut child = match ns_enter_spawn(process_info.pid, log_level) {
-            Err(e) => {
-                let msg = format!("spawn command failed: {}", e);
-                error!("spawn rasp server failed: {}", msg);
-                return Err(msg);
-            }
-            Ok(child) => child,
+        probe_report_sender: Sender<plugins::Record>,
+        bind_path: String,
+        linking_to: Option<String>,
+        using_mount: bool,
+    ) -> AnyhowResult<Self> {
+        let (sender, receiver) = bounded(50);
+        libraspserver::thread_mode::start(
+            bind_path.clone(),
+            20,
+            libraspserver::utils::Control {
+                working_atomic: ctrl.working_atomic.clone(),
+                control: ctrl.control.clone(),
+            },
+            probe_report_sender,
+            receiver,
+        );
+        Ok(Self {
+            ctrl,
+            log_level,
+            bind_path: bind_path,
+            linking_to: linking_to,
+            using_mount,
+            agent_to_probe_sender: sender,
+        })
+    }
+}
+
+pub struct ProcessMode {
+    pub ctrl: Control,
+    pub log_level: String,
+    pub mnt_namesapce_server_map: HashMap<String, libraspserver::process_mode::RASPServerProcess>,
+    pub mnt_namespace_comm_pair: HashMap<String, (Sender<String>, Receiver<String>)>,
+}
+
+impl ProcessMode {
+    pub fn new(log_level: String, ctrl: Control) -> Self {
+        Self {
+            ctrl,
+            log_level,
+            mnt_namesapce_server_map: HashMap::new(),
+            mnt_namespace_comm_pair: HashMap::new(),
+        }
+    }
+}
+
+impl RASPComm for ProcessMode {
+    fn start_comm(
+        &mut self,
+        pid: i32,
+        mnt_namespace: &String,
+        probe_report_sender: Sender<plugins::Record>,
+        patch_field: HashMap<&'static str, String>,
+    ) -> AnyhowResult<()> {
+        let (probe_mesasge_sender, probe_message_receiver) = bounded(50);
+        let mut server_process = libraspserver::process_mode::RASPServerProcess::new(
+            pid,
+            probe_report_sender,
+            probe_message_receiver.clone(),
+            self.log_level.clone(),
+            patch_field,
+            libraspserver::utils::Control {
+                working_atomic: self.ctrl.working_atomic.clone(),
+                control: self.ctrl.control.clone(),
+            },
+        )?;
+        server_process.spawn(settings::RASP_SERVER_BIN().as_str())?;
+        self.mnt_namesapce_server_map
+            .insert(mnt_namespace.clone(), server_process);
+        self.mnt_namespace_comm_pair.insert(
+            mnt_namespace.clone(),
+            (probe_mesasge_sender, probe_message_receiver),
+        );
+        Ok(())
+    }
+
+    fn stop_comm(&mut self, _pid: i32, mnt_namespace: &String) -> AnyhowResult<()> {
+        info!("stop server: {}", mnt_namespace.clone());
+        return if let Some(mut runner) = self.mnt_namesapce_server_map.remove(mnt_namespace) {
+            runner.kill();
+            Ok(())
+        } else {
+            Err(anyhow!(
+                "didn't start server for mnt namespace: {}",
+                mnt_namespace.clone()
+            ))
         };
+    }
+    fn send_message_to_probe(
+        &mut self,
+        _pid: i32,
+        mnt_namespace: &String,
+        message: &String,
+    ) -> AnyhowResult<()> {
+        if let Some(p) = self.mnt_namespace_comm_pair.get(mnt_namespace) {
+            if let Err(e) = p.0.send(message.clone()) {
+                return Err(anyhow!("send to probe failed: {}", e.to_string()));
+            }
+        }
+        Ok(())
+    }
+}
+
+impl RASPComm for ThreadMode {
+    fn start_comm(
+        &mut self,
+        pid: i32,
+        _mnt_namespace: &String,
+        _probe_report_sender: Sender<plugins::Record>,
+        _patch_filed: HashMap<&'static str, String>,
+    ) -> AnyhowResult<()> {
+        if self.using_mount {
+            if let Some(bind_dir) = std::path::Path::new(&self.bind_path.clone()).parent() {
+                let bind_dir_str = bind_dir.to_str().unwrap();
+                mount(pid, bind_dir_str, bind_dir_str)?
+            }
+        }
+        if let Some(linking_to) = self.linking_to.clone() {
+            match std::process::Command::new(settings::RASP_NS_ENTER_BIN())
+                .args([
+                    "-t",
+                    pid.to_string().as_str(),
+                    "-m",
+                    "-i",
+                    "-n",
+                    "-p",
+                    "/bin/ln",
+                    "-sf",
+                    self.bind_path.as_str(),
+                    linking_to.as_str(),
+                ])
+                .output()
+            {
+                Ok(o) => {
+                    info!("LN {} {:?} {:?}", o.status, o.stdout, o.stderr);
+                }
+                Err(e) => {
+                    error!("LN can not run: {}", e);
+                    return Err(anyhow!("link bind path failed: {}", e));
+                }
+            };
+        }
+        Ok(())
+    }
+    fn stop_comm(&mut self, _pid: i32, _mnt_namespace: &String) -> AnyhowResult<()> {
+        Ok(())
+    }
+    fn send_message_to_probe(
+        &mut self,
+        pid: i32,
+        _mnt_namespace: &String,
+        message: &String,
+    ) -> AnyhowResult<()> {
+        debug!("recv thread mode message: {}", message);
+        match self.agent_to_probe_sender.send((pid, message.clone())) {
+            Ok(_) => {
+                debug!("sending to probe: {} {}", pid, message.clone());
+            }
+            Err(SendError(e)) => {
+                error!("send error: {:?}", e);
+                let _ = self.ctrl.stop();
+                return Err(anyhow!("send message to probe failed: {} {}", e.0, e.1));
+            }
+        }
+        Ok(())
+    }
+}
+
+fn mount(pid: i32, from: &str, to: &str) -> AnyhowResult<()> {
+    let pid_str = pid.to_string();
+    let nsenter_str = settings::RASP_NS_ENTER_BIN();
+    let args = [pid_str.as_str(), from, to, nsenter_str.as_str()];
+    return match run_async_process(
+        std::process::Command::new(settings::RASP_MOUNT_SCRIPT_BIN()).args(args),
+    ) {
+        Ok((exit_status, stdout, stderr)) => {
+            if !exit_status.success() {
+                error!(
+                    "mount script execute failed: {} {} {}",
+                    exit_status, stdout, stderr
+                );
+                return Err(anyhow!(
+                    "mount script execute failed: {} {} {} ",
+                    exit_status,
+                    stdout,
+                    stderr
+                ));
+            }
+            debug!("mount success: {} {} {}", exit_status, stdout, stderr);
+            Ok(())
+        }
+        Err(e) => Err(anyhow!("can not mount: {}", e)),
+    };
+}
+
+pub struct EbpfMode {
+    pub ctrl: Control,
+    pub kernel_version: procfs::sys::kernel::Version,
+    pub stdin: Option<ChildStdin>,
+    pub stdout: Option<ChildStdout>,
+}
+
+impl EbpfMode {
+    pub fn new(ctrl: Control) -> AnyhowResult<Self> {
+        let ebpf_manager = Self {
+            ctrl,
+            kernel_version: Self::detect_kernel_version()?,
+            stdin: None,
+            stdout: None,
+        };
+        let _ = ebpf_manager.switch_bpf_main_process()?;
+        Ok(ebpf_manager)
+    }
+    pub fn detect_kernel_version() -> AnyhowResult<procfs::sys::kernel::Version> {
+        let kernel_version = procfs::sys::kernel::Version::current()?;
+        info!(
+            "current kernel version: {}.{}",
+            kernel_version.major, kernel_version.minor
+        );
+        Ok(kernel_version)
+    }
+    pub fn switch_bpf_main_process(&self) -> AnyhowResult<String> {
+        /*
+        [4.14, 4.16) minimal support
+        [4.16, 5.2) http support(without header)
+        [5.2,  5.8) http support(with header)
+        [5.8,  current) http support(with header), ring buffer support
+        */
+        let bpf_process_version =
+            if self.kernel_version >= procfs::sys::kernel::Version::new(5, 8, 0) {
+                "_5.8"
+            } else if self.kernel_version >= procfs::sys::kernel::Version::new(5, 2, 0) {
+                "_5.2"
+            } else if self.kernel_version >= procfs::sys::kernel::Version::new(4, 16, 0) {
+                "_4.16"
+            } else if self.kernel_version >= procfs::sys::kernel::Version::new(4, 14, 0) {
+                "_4.14"
+            } else {
+                return Err(anyhow!(
+                    "version: {}.{} kernel not support",
+                    self.kernel_version.major,
+                    self.kernel_version.minor,
+                ));
+            };
+        return Ok(bpf_process_version.to_string());
+    }
+    pub fn start_server(&mut self) -> AnyhowResult<()> {
+        let bin_path = settings::RASP_GOLANG_EBPF(&self.switch_bpf_main_process()?);
+        let mut child = std::process::Command::new(bin_path)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()?;
+        debug!("spawn ebpf process success: {}", child.id());
         let child_id = child.id();
-        let stdin = match child.stdin.take() {
-            None => {
-                let msg = format!("can not take child stdin, pid: {}", child_id);
-                error!("{}", msg);
-                return Err(msg);
+        self.stdin = child.stdin.take();
+        self.stdout = child.stdout.take();
+        /*
+            if self.stdin.is_none() {
+                return Err(anyhow!("can not take child stdin, pid: {}", child_id));
             }
-            Some(stdin) => stdin,
-        };
-        let stdout = match child.stdout.take() {
-            None => {
-                let msg = format!("can not take child stdin, pid: {}", child_id);
-                error!("{}", msg);
-                return Err(msg);
+            if self.stdout.is_none() {
+                return Err(anyhow!("can not take child stdout, pid: {}", child_id));
             }
-            Some(stdout) => stdout,
-        };
-        let child_ctrl = Control::new();
-        let mut wait_child_ctrl = child_ctrl.clone();
-        // wait child in new thread
+        */
+        // start a thread for wait child die
+        let mut wait_ctrl = self.ctrl.clone();
         thread::Builder::new()
-            .name(format!("comm_wait_{}", child.id()))
+            .name("ebpf_server_wait".to_string())
             .spawn(move || loop {
+                if !wait_ctrl.check() {
+                    Self::kill_server(child_id as i32);
+                    return;
+                }
                 match child.try_wait() {
                     Ok(Some(status)) => {
-                        warn!("comm wait exited with: {}", status);
-                        let _ = wait_child_ctrl.stop();
-                        break;
+                        info!("Golang EBPF daemon exit with status: {}", status);
+                        return;
                     }
                     Ok(None) => {
-                        sleep(Duration::from_secs(3));
-                    }
+			thread::sleep(Duration::from_secs(10));
+		    }
                     Err(e) => {
-                        warn!("error attempting to wait: {}", e);
-                        let _ = wait_child_ctrl.stop();
-                        break;
+                        error!("error attempting to wait: {}", e);
+                        Self::kill_server(child_id as i32);
+                        return;
                     }
                 }
-                sleep(Duration::from_secs(3));
-            })
-            .unwrap();
-        let _ = process_comm(
-            child_id,
-            message_sender.clone(),
-            message_receiver.clone(),
-            ctrl.clone(),
-            child_ctrl.clone(),
-            stdin,
-            stdout,
-        );
-        let rasp_server_runner = RASPServerRunner {
-            child_id,
-            child_ctrl,
-        };
-        Ok(rasp_server_runner)
-    }
-    pub fn kill(&mut self) {
-        // let id = self.child.id();
-        // let _ = self.child.kill();
-        unsafe {
-            killpg(self.child_id as i32, SIGKILL);
-            kill(self.child_id as i32, SIGKILL);
-        }
-    }
-}
-pub fn process_comm(
-    child_id: u32,
-    sender: Sender<HashMap<&'static str, String>>,
-    receiver: Receiver<String>,
-    ctrl: Control,
-    child_ctrl: Control,
-    mut stdin: ChildStdin,
-    stdout: ChildStdout,
-) -> Result<String, String> {
-    debug!("try comm with child process, child pid: {}", child_id);
-    // let mut stdin = &mut self.stdin;
-    // let stdout = &self.stdout;
-    let receiver = receiver.clone();
-    let sender = sender.clone();
-    let mut recv_ctrl = ctrl.clone();
-    let mut send_ctrl = ctrl.clone();
-    let mut recv_child_ctrl = child_ctrl.clone();
-    let mut send_child_ctrl = child_ctrl.clone();
-    thread::Builder::new()
-        .name(format!("comm_recv_{}", child_id))
-        .spawn(move || loop {
-            if !recv_ctrl.check() {
-                debug!("comm recv thread recive ctrl sig, quiting");
-                break;
-            }
-            if !recv_child_ctrl.check() {
-                debug!("comm recv thread recive child ctrl sig, quiting");
-                break;
-            }
-            match receiver.try_recv() {
-                Ok(line) => {
-                    debug!("recv stdin: {}", line);
-                    match stdin.write_all(line.as_bytes()) {
-                        Ok(_) => {}
-                        Err(e) => {
-                            let msg = format!("can not write stdin: {}", e.to_string());
-                            error!("{}", msg);
-                            break;
-                        }
-                    }
-                }
-                Err(TryRecvError::Empty) => {
-                    sleep(Duration::from_secs(20));
-                    continue;
-                }
-                Err(TryRecvError::Disconnected) => {
-                    warn!("recv receive chan failed: recv channel disconnect");
-                    break;
-                }
-            }
-            sleep(Duration::from_secs(20))
-        })
-        .unwrap();
-    let mut f = BufReader::new(stdout);
-    thread::Builder::new()
-        .name(format!("comm_send_{}", child_id))
-        .spawn(move || {
-            // let mut f = BufReader::new(stdout);
-            loop {
-                if !send_ctrl.check() {
-                    break;
-                }
-                if !send_ctrl.check() {
-                    debug!("comm recv thread recive ctrl sig, quiting");
-                    break;
-                }
-                if !send_child_ctrl.check() {
-                    debug!("comm recv thread recive child ctrl sig, quiting");
-                    break;
-                }
-                let mut buf = String::new();
-                match f.read_line(&mut buf) {
-                    Ok(size) => {
-                        if size == 0 {
-                            warn!("sender steam EOF");
-                            break;
-                        }
-                        let new_map: HashMap<&str, String> =
-                            if let Some(new_map) = parse_server_stdout_buffer(&buf) {
-                                new_map
-                            } else {
-                                continue;
-                            };
-                        match sender.send(new_map) {
-                            Err(e) => {
-                                let msg = format!("send failed: {}", e.to_string());
-                                error!("{}", msg);
-                                break;
-                            }
-                            Ok(_) => {}
-                        };
-                        continue;
-                    }
-                    Err(e) => {
-                        let msg = format!("read line failed: {}", e);
-                        error!("{}", msg);
-                        break;
-                    }
-                }
-            }
-        })
-        .unwrap();
-    Ok(String::from("started"))
-}
-
-fn gen_probe_action(action_no: i32) -> String {
-    format!("{{\"action\": {}}}\n", action_no)
-}
-
-fn gen_probe_config(config: String) -> String {
-    format!("{{\"config\": {}}}\n", config)
-}
-
-pub enum ServerStatus {
-    WORKING,
-    // not exitst
-    NULL,
-    // exited
-    DEAD,
-    // alived, but can not `wait` on child process
-    MISSING,
-}
-
-impl Display for ServerStatus {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        match self {
-            ServerStatus::WORKING => write!(f, "WORKING"),
-            ServerStatus::NULL => write!(f, "NULL"),
-            ServerStatus::DEAD => write!(f, "DEAD"),
-            ServerStatus::MISSING => write!(f, "MISSING"),
-        }
-    }
-}
-
-impl RASPServerManager {
-    pub fn new() -> Result<Self, String> {
-        let new_manager = Self {
-            mnt_namespace_server_map: HashMap::new(),
-            mnt_namespace_comm_send_config_map: HashMap::<String, Sender<String>>::new(),
-        };
-        Ok(new_manager)
-    }
-    pub fn server_status(&mut self, mnt_ns: &String) -> ServerStatus {
-        if let Some(server_runner) = self.mnt_namespace_server_map.get_mut(mnt_ns) {
-            let status = server_runner.child_ctrl.check();
-            if status {
-                return ServerStatus::WORKING;
-            } else {
-                return ServerStatus::MISSING;
-            }
-        } else {
-            return ServerStatus::NULL;
-        }
-    }
-    pub fn stop_probe(&mut self, mnt_ns: &String) -> Result<(), String> {
-        self.send_probe_action(mnt_ns, 0)
-    }
-    pub fn restart_probe(&mut self, mnt_ns: &String) -> Result<(), String> {
-        self.send_probe_action(mnt_ns, 1)
-    }
-    pub fn send_probe_action(&mut self, mnt_ns: &String, action: i32) -> Result<(), String> {
-        let server_status = self.server_status(mnt_ns);
-        match server_status {
-            ServerStatus::WORKING => {}
-            _ => {
-                return Err(format!("server not running, status: {}", server_status));
-            }
-        };
-
-        let action_message = gen_probe_action(action);
-        self.send_to_probe(mnt_ns, action_message)
-    }
-    pub fn send_to_probe(&self, mnt_namespace: &String, message: String) -> Result<(), String> {
-        if let Some(send_channel) = self.mnt_namespace_comm_send_config_map.get(mnt_namespace) {
-            if let Err(e) = send_channel.send(message) {
-                return Err(format!("send probe config failed: {}", e.to_string()));
-            }
-        }
+            })?;
+        // sleep here for subprocess ready for listen stdin
+        thread::sleep(Duration::from_secs(2));
         Ok(())
     }
-    pub fn send_probe_config(&mut self, mnt_ns: &String, config: String) -> Result<(), String> {
-        let server_status = self.server_status(mnt_ns);
-        match server_status {
-            ServerStatus::WORKING => {}
-            _ => {
-                return Err(format!("server not running, status: {}", server_status));
+    pub fn attach(&mut self, pid: i32) -> AnyhowResult<bool> {
+        self.write_stdin(pid)?;
+        match self.read_stdout(pid) {
+            Ok(result) => {
+                if !result.is_empty() {
+                    return Ok(false);
+                }
+            }
+            Err(e) => {
+                error!("ebpf running abnormally: {}, quiting.", e);
+                let _ = self.ctrl.stop();
+                return Err(e);
             }
         }
-        let config_message = gen_probe_config(config.clone());
-        self.send_to_probe(mnt_ns, config_message)
+        Ok(true)
     }
-    pub fn send_jar_coll_sig(&self, _mnt_ns: &String) {}
-    pub fn new_comm() -> (
-        Sender<HashMap<&'static str, String>>,
-        Receiver<HashMap<&'static str, String>>,
-        Sender<String>,
-        Receiver<String>,
-    ) {
-        let (result_sender, result_receiver) = bounded(1000);
-        let (command_sender, command_receiver) = bounded(1000);
-        (
-            result_sender,
-            result_receiver,
-            command_sender,
-            command_receiver,
-        )
-    }
-    pub fn start_new_rasp_server(
-        &mut self,
-        process_info: &ProcessInfo,
-        sender: Sender<HashMap<&'static str, String>>,
-        receiver: Receiver<String>,
-        log_level: String,
-        ctrl: Control,
-    ) -> Result<(), String> {
-        let mnt_namespace = if let Some(ref ns) = process_info.namespace_info {
-            match ns.mnt.clone() {
-                Some(mnt_ns) => mnt_ns,
-                None => {
-                    return Err(format!("process mnt ns empty: {}", process_info.pid));
-                }
-            }
-        } else {
-            return Err(format!("fetch process ns failed: {}", process_info.pid));
-        };
-        let runner =
-            match RASPServerRunner::new(process_info.clone(), sender, receiver, log_level, ctrl) {
-                Err(e) => {
-                    return Err(e);
-                }
-                Ok(runner) => runner,
-            };
-        self.mnt_namespace_server_map
-            .insert(mnt_namespace.clone(), runner);
+    pub fn write_stdin(&mut self, pid: i32) -> AnyhowResult<()> {
+        let mut stdin = self.stdin.as_ref().unwrap();
+        stdin.write_all(format!("{}\n", pid).as_bytes())?;
+        stdin.flush()?;
         Ok(())
     }
-    pub fn stop_rasp_server(&mut self, mnt_ns: &String) -> Result<(), String> {
-        info!("stop server: {}", mnt_ns.clone());
-        if let Some(runner) = self.mnt_namespace_server_map.get_mut(mnt_ns) {
-            runner.kill();
-            return Ok(());
+    pub fn read_stdout(&mut self, pid: i32) -> AnyhowResult<String> {
+        let mut buf_reader = if let Some(stdout) = self.stdout.take() {
+            BufReader::new(stdout)
         } else {
-            return Err(format!("didn't start server for pid: {}", mnt_ns.clone()));
-        }
-    }
-}
-
-pub fn parse_server_stdout_buffer(buf: &String) -> Option<HashMap<&'static str, String>> {
-    // strip fist `:`
-    let splited: Vec<&str> = buf.splitn(2, ":").collect();
-    if splited.len() != 2 {
-        return None;
-    }
-    match splited[0] {
-        "probe_report" | "heart_beat" | "jar" => {
-            let message: Message = match serde_json::from_str(splited[1]) {
-                Ok(m) => m,
-                Err(e) => {
-                    error!("can not deserialize message: {} {}", buf, e.to_string());
-                    return None;
-                }
-            };
-            let message_hash_map = message.to_hashmap();
-            return Some(message_hash_map);
-        }
-        _ => {
-            return None;
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crossbeam::channel::TryRecvError;
-    use env_logger;
-    use std::thread::sleep;
-    use std::time::Duration;
-    #[test]
-    fn raw_server() {
-        env_logger::init();
-        let pid = 123;
-        let (tx1, rx1) = bounded(100);
-        let (_, rx2) = bounded(100);
-        let mut manager = RASPServerManager::new().unwrap();
-        let process_info = ProcessInfo::new(pid).unwrap();
-        let ctrl = Control::new();
-        let _ = manager
-            .start_new_rasp_server(&process_info, tx1, rx2, String::from("DEBUG"), ctrl)
-            .unwrap();
+            return Err(anyhow!(""));
+        };
+        let mut times = 10;
+        let interval = 1; // second
         loop {
-            match rx1.try_recv() {
-                Ok(line) => {
-                    info!("RECV: {:?}", line);
-                }
-                Err(TryRecvError::Empty) => {
-                    sleep(Duration::from_secs(2));
-                    continue;
-                }
-                Err(e) => {
-                    error!("Error: {:?}", e);
-                }
+            times -= 1;
+            if times <= 0 {
+                return Err(anyhow!("read stdout from ebpf server timeout: {}", pid));
             }
-            sleep(Duration::from_secs(2));
+            if buf_reader.fill_buf()?.len() <= 0 {
+                std::thread::sleep(Duration::from_secs(interval));
+                continue;
+            }
+            let mut read_from_server = String::new();
+            let size = buf_reader.read_line(&mut read_from_server)?;
+            if size == 0 {
+                return Err(anyhow!("read stdout from ebpf server EOF"));
+            }
+            let (pid_from_server, success) = Self::parse_server_response(&read_from_server)?;
+            if pid_from_server != pid {
+                return Err(anyhow!(
+                    "pid miss match: expect: {} response: {}",
+                    pid,
+                    pid_from_server
+                ));
+            }
+            if success {
+                return Ok(String::new());
+            } else {
+                return Ok(format!("target pid: {} attach failed", pid));
+            }
         }
+    }
+    pub fn kill_server(pid: i32) {
+        unsafe {
+            killpg(pid, SIGKILL);
+            kill(pid as i32, SIGKILL);
+        }
+    }
+    pub fn parse_server_response(response: &String) -> AnyhowResult<(i32, bool)> {
+        let regex = regex::Regex::new(r"(\d{1,20}):(succeed|failed)")?;
+        if let Some(caps) = regex.captures(response) {
+            if caps.len() != 3 {
+                return Err(anyhow!("response format can not parse: {}", response));
+            }
+            // pid
+            let pid: i32 = if let Some(pid) = caps.get(1) {
+                pid.as_str().parse()?
+            } else {
+                return Err(anyhow!("response format can not parse: {}", response));
+            };
+            let result = if let Some(result) = caps.get(2) {
+                match result.as_str() {
+                    "succeed" => true,
+                    "failed" => false,
+                    _ => {
+                        return Err(anyhow!("response format can not parse: {}", response));
+                    }
+                }
+            } else {
+                return Err(anyhow!("response format can not parse: {}", response));
+            };
+            return Ok((pid, result));
+        }
+        return Err(anyhow!(
+            "can not found any proper format in response: {}",
+            response
+        ));
     }
 }

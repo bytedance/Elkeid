@@ -40,7 +40,7 @@ func RefreshHost() {
 					continue
 				}
 				if ip4 := ip.To4(); ip4 != nil {
-					if (ip4[0] == 10) || (ip4[0] == 192 && ip4[1] == 168) || (ip4[0] == 172 && ip4[1]&0x10 == 0x10) {
+					if (ip4[0] == 10) || (ip4[0] == 192 && ip4[1] == 168) || (ip4[0] == 172 && ip4[1] > 15 && ip4[1] < 32) {
 						privateIPv4 = append(privateIPv4, ip4.String())
 					} else {
 						publicIPv4 = append(publicIPv4, ip4.String())

@@ -1,0 +1,12 @@
+FROM ubuntu:focal AS focal_aws
+
+RUN apt update;
+RUN apt install -y wget curl tree git gcc build-essential kbuild libelf-dev;
+RUN apt-get -y install linux-headers-*-aws || true
+RUN apt clean all
+
+ADD . /elkeid
+WORKDIR /elkeid/driver
+RUN bash ./build_script/aarch64/batch_compile.sh
+
+RUN apt-get -y remove linux-headers-*-aws || true

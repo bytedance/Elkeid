@@ -33,7 +33,7 @@ static unsigned int readVarInt(const unsigned char **pp) {
     return v;
 }
 
-bool CLineTable::load(const char *table) {
+bool LineTable::load(const char *table) {
     mQuantum = (unsigned char)table[6];
     mPtrSize = (unsigned char)table[7];
 
@@ -105,20 +105,20 @@ bool CLineTable::load(const char *table) {
     return true;
 }
 
-bool CLineTable::load() {
-    return load(zero::filesystem::path::getApplicationPath());
+bool LineTable::load() {
+    return load(zero::filesystem::getApplicationPath());
 }
 
-bool CLineTable::load(const std::string &file) {
-    zero::proc::CProcessMapping processMapping;
+bool LineTable::load(const std::string &file) {
+    std::optional<zero::proc::ProcessMapping> processMapping = zero::proc::getImageBase(getpid(), file);
 
-    if (!zero::proc::getImageBase(getpid(), file, processMapping))
+    if (!processMapping)
         return false;
 
-    return load(file, processMapping.start);
+    return load(file, processMapping->start);
 }
 
-bool CLineTable::load(const std::string &file, unsigned long base) {
+bool LineTable::load(const std::string &file, unsigned long base) {
     ELFIO::elfio reader;
 
     if (!reader.load(file))
@@ -149,21 +149,21 @@ bool CLineTable::load(const std::string &file, unsigned long base) {
                 return i->get_type() == PT_LOAD;
             });
 
-    auto minElement = std::min_element(
+    uintptr_t minVA = std::min_element(
             loads.begin(),
             loads.end(),
             [](const auto &i, const auto &j) {
                 return i->get_virtual_address() < j->get_virtual_address();
-            });
+            }).operator*()->get_virtual_address() & ~(PAGE_SIZE - 1);
 
-    return load((char *)base + (*it)->get_address() - ((*minElement)->get_virtual_address() & ~(PAGE_SIZE - 1)));
+    return load((char *)base + (*it)->get_address() - minVA);
 }
 
-CFuncTablePtr CLineTable::getFuncTable() const {
-    return CFuncTablePtr(mFuncTable, mVersion >= VERSION118 ? 4 : mPtrSize);
+FuncTablePtr LineTable::getFuncTable() const {
+    return FuncTablePtr(mFuncTable, mVersion >= VERSION118 ? 4 : mPtrSize);
 }
 
-bool CLineTable::findFunc(uintptr_t address, CFunc &func) {
+bool LineTable::findFunc(uintptr_t address, Func &func) {
     auto begin = getFuncTable();
     auto back = begin + mFuncNum;
     auto end = back + 1;
@@ -185,7 +185,7 @@ bool CLineTable::findFunc(uintptr_t address, CFunc &func) {
     return true;
 }
 
-bool CLineTable::getFunc(unsigned int index, CFunc &func) {
+bool LineTable::getFunc(unsigned int index, Func &func) {
     if (index >= mFuncNum)
         return false;
 
@@ -195,7 +195,7 @@ bool CLineTable::getFunc(unsigned int index, CFunc &func) {
     return true;
 }
 
-int CLineTable::getPCValue(unsigned int offset, uintptr_t entry, uintptr_t targetPC) const {
+int LineTable::getPCValue(unsigned int offset, uintptr_t entry, uintptr_t targetPC) const {
     const unsigned char *p = (unsigned char *)&mPCTable[offset];
 
     int value = -1;
@@ -209,7 +209,7 @@ int CLineTable::getPCValue(unsigned int offset, uintptr_t entry, uintptr_t targe
     return -1;
 }
 
-bool CLineTable::step(const unsigned char **p, uintptr_t *pc, int *value, bool first) const {
+bool LineTable::step(const unsigned char **p, uintptr_t *pc, int *value, bool first) const {
     unsigned int uv = readVarInt(p);
 
     if (uv == 0 && !first)

@@ -2,7 +2,9 @@ name: Elkeid
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - 'rasp/*'
   pull_request:
     branches: [ main ]
 
@@ -15,36 +17,29 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
-
     - name: Set up Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.16
-
-    - name: Build RASP
-      uses: docker/build-push-action@v2
-      with:
-        file: rasp/docker/Dockerfile
-        load: true
-        tags: elkeid/rasp:latest
-
-    - name: Extract RASP
-      id: extract-rasp
-      uses: shrink/actions-docker-extract@v1
-      with:
-        image: elkeid/rasp:latest
-        path: /Elkeid/rasp/output/.
-
-    - name: Upload RASP
-      uses: actions/upload-artifact@v3
-      with:
-        path: ${{ steps.extract-rasp.outputs.destination }}
-        name: rasp
+        go-version: 1.18
 
     - name: Build Agent
       run: cd agent && go build -o elkeid-agent
 
     - name: Build Server
-      run: cd server/build && ./build.sh
+      run: |
+        cd server/agent_center && ./build.sh && cd -
+        cd server/service_discovery && ./build.sh && cd -
+        cd server/manager && ./build.sh && cd -
+
+    - name: Build RASP
+      run: |
+        curl -fsSL https://lf3-static.bytednsdoc.com/obj/eden-cn/laahweh7uhwbps/php-headers.tar.gz | tar -xz -C rasp/php
+        docker run --rm --pull=always -v $(pwd):/Elkeid -e MAKEFLAGS="-j$(nproc)" hackerl/rasp-toolchain make -C /Elkeid/rasp build STATIC=TRUE PY_PREBUILT=TRUE CC=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-gcc CXX=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-g++ LD=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-ld CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=/opt/x86_64-linux-musl-1.2.2/bin/x86_64-linux-musl-ld GNU_CC=/opt/gcc-10.4.0/bin/gcc GNU_CXX=/opt/gcc-10.4.0/bin/g++ PHP_HEADERS=/Elkeid/rasp/php/php-headers PYTHON2_INCLUDE=/usr/local/include/python2.7 PYTHON3_INCLUDE=/usr/local/include/python3.6m
+
+    - name: Upload RASP
+      uses: actions/upload-artifact@v3
+      with:
+        name: rasp
+        path: |
+          rasp/rasp_*.tar.gz
+          rasp/debug.tar.gz

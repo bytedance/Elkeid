@@ -21,6 +21,7 @@ kafka:
   addrs:
     - 127.0.0.1:9092
   topic: hids_svr
+  rawdata_topic: k8s
   sasl:
     enable: true
     username: user
@@ -58,6 +59,8 @@ server:
   ssl:
     keyfile: ./conf/server.key
     certfile: ./conf/server.crt
+    rawdata_keyfile: ./conf/rd_server.key
+    rawdata_certfile: ./conf/rd_server.crt
     cafile: ./conf/ca.crt
 
   grpc:
@@ -76,3 +79,6 @@ server:
   pprof:
     enable: true
     port: 6753
+
+  rawdata:
+    port: 6754

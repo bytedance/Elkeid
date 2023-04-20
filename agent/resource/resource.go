@@ -6,15 +6,24 @@ import (
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
+	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/host"
+	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/shirou/gopsutil/v3/process"
 )
 
 var (
-	bootTime, _  = host.BootTime()
-	ioCache, _   = lru.New(100)
-	procCache, _ = lru.New(100)
+	cpuName, hostSerial, hostID, hostModel, hostVendor string
+	bootTime, _                                        = host.BootTime()
+	ioCache, _                                         = lru.New(100)
+	procCache, _                                       = lru.New(100)
 )
+
+func init() {
+	if s, err := cpu.Info(); err == nil && len(s) > 0 {
+		cpuName = s[0].ModelName
+	}
+}
 
 type ProcInfo struct {
 	CPUPercent float64
@@ -96,4 +105,18 @@ func GetProcResouce(pid int) (cpu float64, rss uint64, readSpeed, writeSpeed flo
 		ioCache.Add(pid, state)
 	}
 	return
+}
+func GetMemTotal() (total uint64) {
+	var m *mem.VirtualMemoryStat
+	m, err := mem.VirtualMemory()
+	if err == nil {
+		total = m.Total
+	}
+	return
+}
+func GetCPUName() string {
+	return cpuName
+}
+func GetHostInfo() (serial, id, model, vendor string) {
+	return hostSerial, hostID, hostModel, hostVendor
 }

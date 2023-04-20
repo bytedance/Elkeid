@@ -94,7 +94,6 @@ root@hostname$ bash ./db_updater.sh
     - There are currently a few [limitations](https://docs.clamav.net/manual/Signatures/YaraRules.html) on using YARA rules within ClamAV
 
 
-
 ##  3. <a name='fontcolorredfont'></a><font color=red>构建</font>
 
 ###  3.1. <a name='-1'></a>编译依赖
@@ -459,6 +458,7 @@ data_type
 |18| file_path    | 变动文件目录 |
 |19| file_hash    | 变动文件目录sha256 |
 |20| file_mask    | 变动文件事件掩码 |
+
 
 ##  6. <a name='-1'></a>已知问题
 * Creation time / birth_time is not available for some filesystems

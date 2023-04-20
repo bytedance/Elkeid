@@ -370,6 +370,18 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
                         __be32 * dip4, struct in6_addr *dip6, int *dport,
                         pid_t * socket_pid, int *sa_family)
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0)
+
+    /* fput() can not be called in atomic context */
+    *sip4 = *dip4 = 0;
+    *sport = *dport = 0;
+    memset(sip6, 0, sizeof(*sip6));
+    memset(dip6, 0, sizeof(*dip6));
+    *socket_pid = 0;
+    *sa_family = 0;
+
+#else
+
     int it = 0, socket_check = 0;
 
     char fd_buff[24];
@@ -495,6 +507,8 @@ next_task:
     if (task)
         smith_put_task_struct(task);
 
+#endif
+
     return;
 }
 
@@ -511,7 +525,6 @@ struct connect_syscall_data {
 
 struct accept_data {
     int type;
-    void __user *accept_dirp;
     union {
         struct sockaddr    sa;
         struct sockaddr_in si4;
@@ -565,6 +578,13 @@ struct update_cred_data {
 #endif
 };
 
+/*
+ * Workaround for kretprobe BUG (fixed in 3.2.6):
+ *
+ * kretprobe instance memory leaking if entry_handler returns failure codes.
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 6)
+
 int bind_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     struct bind_data *data = (struct bind_data *)ri->data;
@@ -590,6 +610,37 @@ int bind_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 
     return 0;
 }
+
+#else
+
+int bind_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+{
+    struct bind_data *data = (struct bind_data *)ri->data;
+    struct sockaddr_storage address;
+    struct sockaddr *uaddr;
+    int ulen = p_get_arg3_syscall(regs);
+
+    /* clear bind_data to avoid unnecessary process in bind_handler */
+    memset(data, 0, sizeof(*data));
+
+    if (ulen <= 0 || ulen > sizeof(struct sockaddr_storage))
+        return 0;
+
+    if (smith_copy_from_user(&address, (void __user *)p_get_arg2_syscall(regs), ulen))
+        return 0;
+
+    uaddr = (struct sockaddr *)&address;
+    if (uaddr->sa_family == AF_INET && ulen >= sizeof(data->sin))
+        memcpy(&data->sin, (void *)&address, sizeof(data->sin));
+#if IS_ENABLED(CONFIG_IPV6)
+    else if (uaddr->sa_family == AF_INET6 && ulen >= sizeof(data->sin6))
+		memcpy(&data->sin6, (void *)&address, sizeof(data->sin6));
+#endif
+
+    return 0;
+}
+
+#endif
 
 int bind_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
@@ -726,7 +777,7 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 				    dip6 = &(sk->sk_v6_daddr);
 				    sip6 = &(sk->sk_v6_rcv_saddr);
 				    sport = ntohs(inet->inet_sport);
-				    dport = ntohs(((struct sockaddr_in6 *)&tmp_dirp)->sin6_port);
+				    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
 				    if(dport == 0)
 				        dport = ntohs(inet->inet_dport);
 				    flag = 1;
@@ -737,7 +788,7 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 				    dip6 = &(inet->pinet6->daddr);
 				    sip6 = &(inet->pinet6->saddr);
 				    sport = ntohs(inet->inet_sport);
-				    dport = ntohs(((struct sockaddr_in6 *)&tmp_dirp)->sin6_port);
+				    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
 				    if(dport)
 				        dport = ntohs(inet->inet_dport);
 				    flag = 1;
@@ -748,7 +799,7 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 				    dip6 = &(inet->pinet6->daddr);
 				    sip6 = &(inet->pinet6->saddr);
 				    sport = ntohs(inet->sport);
-				    dport = ntohs(((struct sockaddr_in6 *)&tmp_dirp)->sin6_port);
+				    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
 				    if(dport)
 				        dport = ntohs(inet->dport);
 				    flag = 1;
@@ -886,6 +937,13 @@ int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     return 0;
 }
 
+/*
+ * Workaround for kretprobe BUG (fixed in 3.2.6):
+ *
+ * kretprobe instance memory leaking if entry_handler returns failure codes.
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 6)
+
 int accept_entry_handler(struct kretprobe_instance *ri,
                          struct pt_regs *regs)
 {
@@ -898,7 +956,6 @@ int accept_entry_handler(struct kretprobe_instance *ri,
     dirp = (void __user *)p_get_arg2_syscall(regs);
     if(IS_ERR_OR_NULL(dirp))
         return -EINVAL;
-    data->accept_dirp = dirp;
     return 0;
 }
 
@@ -914,10 +971,33 @@ int accept4_entry_handler(struct kretprobe_instance *ri,
     dirp = (void __user *)p_get_arg2_syscall(regs);
     if(IS_ERR_OR_NULL(dirp))
         return -EINVAL;
-    data->accept_dirp = dirp;
+    return 0;
+}
+
+#else
+
+int accept_entry_handler(struct kretprobe_instance *ri,
+                         struct pt_regs *regs)
+{
+    struct accept_data *data;
+
+    data = (struct accept_data *)ri->data;
+    data->type = 2;
 
     return 0;
 }
+
+int accept4_entry_handler(struct kretprobe_instance *ri,
+                          struct pt_regs *regs)
+{
+    struct accept_data *data;
+
+    data = (struct accept_data *)ri->data;
+    data->type = 1;
+
+    return 0;
+}
+#endif
 
 static int smith_sock_getname(struct socket *s, struct sockaddr *sa, int *l, int peer)
 {
@@ -1720,8 +1800,11 @@ int udp_recvmsg_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     struct sockaddr_in *sin;
     struct sockaddr_in6 *sin6;
 
-    data = (struct udp_recvmsg_data *)ri->data;
+    /* skip if we don't have enough data or get failures in recving */
+    if (regs_return_value(regs) < 20)
+        return 0;
 
+    data = (struct udp_recvmsg_data *)ri->data;
     if (data->dport == 0) {
         if (IS_ERR_OR_NULL(data->msg) || IS_ERR_OR_NULL(data->msg->msg_name))
             return 0;
@@ -1736,7 +1819,7 @@ int udp_recvmsg_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
                 return 0;
             }
 #if IS_ENABLED(CONFIG_IPV6)
-        } else {
+        } else if (data->sa_family == AF_INET6) {
             sin6 = (struct sockaddr_in6 *)data->msg->msg_name;
             if (sin6->sin6_port == 13568 || sin6->sin6_port == 59668) {
                 data->dport = sin6->sin6_port;
@@ -1745,15 +1828,12 @@ int udp_recvmsg_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
             } else {
                 return 0;
             }
-        }
-#else
-        }
 #endif
+        }
     }
 
     if (data->iov_len < 20)
         return 0;
-
     if (data->iov_len < 512)
         iov_len = data->iov_len;
 
@@ -1774,6 +1854,17 @@ int udp_recvmsg_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 }
 
 static void smith_count_dnsv4_kretprobe(void);
+#if IS_ENABLED(CONFIG_IPV6)
+static void smith_count_dnsv6_kretprobe(void);
+#endif
+
+/*
+ * Workaround for kretprobe BUG (fixed in 3.2.6):
+ *
+ * kretprobe instance memory leaking if entry_handler returns failure codes.
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 6)
+
 int udp_recvmsg_entry_handler(struct kretprobe_instance *ri,
                               struct pt_regs *regs) {
     int flags;
@@ -1812,39 +1903,19 @@ int udp_recvmsg_entry_handler(struct kretprobe_instance *ri,
         return -EINVAL;
 
     msg = (struct msghdr *) tmp_msg;
-
     sk = (struct sock *) tmp_sk;
     inet = (struct inet_sock *) sk;
-
     data->sa_family = AF_INET;
 
     //only port == 53 or 5353 UDP data
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
-    if (inet->inet_dport == 13568 || inet->inet_dport == 59668)
-#else
-    if (inet->dport == 13568 || inet->dport == 59668)
-#endif
-    {
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
-        if (inet->inet_daddr) {
-            data->dip4 = inet->inet_daddr;
-            data->sip4 = inet->inet_saddr;
-            data->sport = ntohs(inet->inet_sport);
-            data->dport = ntohs(inet->inet_dport);
-        }
-#else
-        if (inet->daddr) {
-            data->dip4 = inet->daddr;
-            data->sip4 = inet->saddr;
-            data->sport = ntohs(inet->sport);
-            data->dport = ntohs(inet->dport);
-        }
-#endif
-
+    if (inet->inet_dport == 13568 || inet->inet_dport == 59668) {
+        data->dip4 = inet->inet_daddr;
+        data->sip4 = inet->inet_saddr;
+        data->sport = ntohs(inet->inet_sport);
+        data->dport = ntohs(inet->inet_dport);
         udp_msg_parser(msg, data);
-        if (data->iov_len > 0)
+        if (data->iov_len >= 20)
             goto do_kretprobe;
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
     } else if (inet->inet_dport == 0) {
         data->msg = msg;
         data->dport = 0;
@@ -1852,15 +1923,6 @@ int udp_recvmsg_entry_handler(struct kretprobe_instance *ri,
         data->sport = ntohs(inet->inet_sport);
         goto do_kretprobe;
     }
-#else
-    } else if (inet->dport == 0) {
-        data->msg = msg;
-        data->dport = 0;
-        data->sip4 = inet->saddr;
-        data->sport = ntohs(inet->sport);
-        goto do_kretprobe;
-    }
-#endif
 
     return -EINVAL;
 
@@ -1926,34 +1988,21 @@ int udpv6_recvmsg_entry_handler(struct kretprobe_instance *ri,
 
 	data->sa_family = AF_INET6;
 	//only get port == 53 or 5353 UDP data
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
 	if (inet->inet_dport == 13568 || inet->inet_dport == 59668)
-#else
-	if (inet->dport == 13568 || inet->dport == 59668)
-#endif
 	{
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(IPV6_SUPPORT)
-		if (inet->inet_dport) {
-			data->dip6 = &(sk->sk_v6_daddr);
-			data->sip6 = &(sk->sk_v6_rcv_saddr);
-			data->sport = ntohs(inet->inet_sport);
-			data->dport = ntohs(inet->inet_dport);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
-		if (inet->inet_dport) {
-			data->dip6 = &(inet->pinet6->daddr);
-			data->sip6 = &(inet->pinet6->saddr);
-			data->sport = ntohs(inet->inet_sport);
-			data->dport = ntohs(inet->inet_dport);
+		data->dip6 = &(sk->sk_v6_daddr);
+		data->sip6 = &(sk->sk_v6_rcv_saddr);
+		data->sport = ntohs(inet->inet_sport);
+		data->dport = ntohs(inet->inet_dport);
 #else
-		if (inet->dport) {
-			data->dip6 = &(inet->pinet6->daddr);
-			data->sip6 = &(inet->pinet6->saddr);
-			data->sport = ntohs(inet->sport);
-			data->dport = ntohs(inet->dport);
+		data->dip6 = &(inet->pinet6->daddr);
+		data->sip6 = &(inet->pinet6->saddr);
+		data->sport = ntohs(inet->inet_sport);
+		data->dport = ntohs(inet->inet_dport);
 #endif
-		}
         udp_msg_parser(msg, data);
-		if (data->iov_len > 0)
+		if (data->iov_len >= 20)
 			goto do_kretprobe;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0)
 	} else if (inet->inet_dport == 0) {
@@ -1961,20 +2010,15 @@ int udpv6_recvmsg_entry_handler(struct kretprobe_instance *ri,
 	    data->dport = 0;
 		data->sip6 = &(sk->sk_v6_rcv_saddr);
 		data->sport = ntohs(inet->inet_sport);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
+        goto do_kretprobe;
+#else
 	} else if (inet->inet_dport == 0) {
         data->msg = msg;
         data->dport = 0;
         data->sip6 = &(inet->pinet6->saddr);
         data->sport = ntohs(inet->inet_sport);
-#else
-	} else if (inet->dport == 0) {
-        data->msg = msg;
-        data->dport = 0;
-    	data->sip6 = &(inet->pinet6->saddr);
-		data->sport = ntohs(inet->sport);
-#endif
         goto do_kretprobe;
+#endif
     }
 
 	return -EINVAL;
@@ -1987,6 +2031,168 @@ do_kretprobe:
     return 0;
 }
 #endif
+
+#else /* < 3.2.6 */
+
+int udp_recvmsg_entry_handler(struct kretprobe_instance *ri,
+                              struct pt_regs *regs) {
+    int flags;
+    void *tmp_msg;
+    void *tmp_sk;
+
+    struct sock *sk;
+    struct inet_sock *inet;
+    struct msghdr *msg;
+    struct udp_recvmsg_data *data;
+
+    data = (struct udp_recvmsg_data *) ri->data;
+    memset(data, 0, sizeof(struct udp_recvmsg_data));
+
+    flags = (int)p_regs_get_arg6(regs);
+    if (flags & MSG_ERRQUEUE)
+        goto do_kretprobe;
+
+    tmp_sk = (void *)p_regs_get_arg2(regs);
+    if (IS_ERR_OR_NULL(tmp_sk))
+        goto do_kretprobe;
+
+    tmp_msg = (void *)p_regs_get_arg3(regs);
+    if (IS_ERR_OR_NULL(tmp_msg))
+        goto do_kretprobe;
+
+    msg = (struct msghdr *) tmp_msg;
+    sk = (struct sock *) tmp_sk;
+    inet = (struct inet_sock *) sk;
+    data->sa_family = AF_INET;
+
+    //only port == 53 or 5353 UDP data
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
+    if (inet->inet_dport == 13568 || inet->inet_dport == 59668) {
+        data->dip4 = inet->inet_daddr;
+        data->sip4 = inet->inet_saddr;
+        data->sport = ntohs(inet->inet_sport);
+        data->dport = ntohs(inet->inet_dport);
+        udp_msg_parser(msg, data);
+    } else if (inet->inet_dport == 0) {
+        data->msg = msg;
+        data->dport = 0;
+        data->sip4 = inet->inet_saddr;
+        data->sport = ntohs(inet->inet_sport);
+    }
+#else
+    if (inet->dport == 13568 || inet->dport == 59668) {
+        data->dip4 = inet->daddr;
+        data->sip4 = inet->saddr;
+        data->sport = ntohs(inet->sport);
+        data->dport = ntohs(inet->dport);
+        udp_msg_parser(msg, data);
+    } else if (inet->dport == 0) {
+        data->msg = msg;
+        data->dport = 0;
+        data->sip4 = inet->saddr;
+        data->sport = ntohs(inet->sport);
+    }
+#endif
+
+do_kretprobe:
+
+    /* counting dns requests */
+    smith_count_dnsv4_kretprobe();
+
+    return 0;
+}
+
+#if IS_ENABLED(CONFIG_IPV6)
+static void smith_count_dnsv6_kretprobe(void);
+int udpv6_recvmsg_entry_handler(struct kretprobe_instance *ri,
+				struct pt_regs *regs)
+{
+	struct sock *sk;
+	struct inet_sock *inet;
+	struct msghdr *msg;
+	struct udp_recvmsg_data *data;
+	void *tmp_msg;
+	void *tmp_sk;
+	int flags;
+
+	data = (struct udp_recvmsg_data *)ri->data;
+    memset(data, 0, sizeof(struct udp_recvmsg_data));
+
+	flags = (int)p_regs_get_arg6(regs);
+	if (flags & MSG_ERRQUEUE)
+		goto do_kretprobe;
+
+	tmp_sk = (void *)p_regs_get_arg2(regs);
+	if (IS_ERR_OR_NULL(tmp_sk))
+		goto do_kretprobe;
+
+    tmp_msg = (void *)p_regs_get_arg3(regs);
+    if (IS_ERR_OR_NULL(tmp_msg))
+        goto do_kretprobe;
+
+    msg = (struct msghdr *)tmp_msg;
+    sk = (struct sock *)tmp_sk;
+	if (IS_ERR_OR_NULL(sk))
+		goto do_kretprobe;
+
+	inet = (struct inet_sock *)sk;
+	if (IS_ERR_OR_NULL(inet))
+		goto do_kretprobe;
+
+	sk = (struct sock *)tmp_sk;
+	inet = (struct inet_sock *)sk;
+	data->sa_family = AF_INET6;
+
+	//only get port == 53 or 5353 UDP data
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
+	if (inet->inet_dport == 13568 || inet->inet_dport == 59668)
+
+#else
+	if (inet->dport == 13568 || inet->dport == 59668)
+#endif
+	{
+#if defined(IPV6_SUPPORT)
+		data->dip6 = &(sk->sk_v6_daddr);
+		data->sip6 = &(sk->sk_v6_rcv_saddr);
+		data->sport = ntohs(inet->inet_sport);
+		data->dport = ntohs(inet->inet_dport);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
+		data->dip6 = &(inet->pinet6->daddr);
+		data->sip6 = &(inet->pinet6->saddr);
+		data->sport = ntohs(inet->inet_sport);
+		data->dport = ntohs(inet->inet_dport);
+#else
+		data->dip6 = &(inet->pinet6->daddr);
+		data->sip6 = &(inet->pinet6->saddr);
+		data->sport = ntohs(inet->sport);
+		data->dport = ntohs(inet->dport);
+#endif
+        udp_msg_parser(msg, data);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
+	} else if (inet->inet_dport == 0) {
+        data->msg = msg;
+        data->dport = 0;
+        data->sip6 = &(inet->pinet6->saddr);
+        data->sport = ntohs(inet->inet_sport);
+#else
+	} else if (inet->dport == 0) {
+        data->msg = msg;
+        data->dport = 0;
+    	data->sip6 = &(inet->pinet6->saddr);
+		data->sport = ntohs(inet->sport);
+#endif
+    }
+
+do_kretprobe:
+
+    /* counting dns requests */
+    smith_count_dnsv6_kretprobe();
+
+    return 0;
+}
+#endif /* CONFIG_IPV6 */
+
+#endif /* >= 3.2.6 */
 
 int register_udp_recvmsg_kprobe(void);
 void unregister_udp_recvmsg_kprobe(void);
@@ -3073,24 +3279,30 @@ void delete_file_handler(int type, char *path)
 
 int security_path_rmdir_pre_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
-    void *tmp;
     char *pname_buf = NULL;
     char *pathstr = DEFAULT_RET_STR;
+    struct path *dir = (void *)p_regs_get_arg1(regs);
+    struct dentry *de;
 
-    if (IS_PRIVATE((struct inode *)p_regs_get_arg1(regs)))
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 0, 0)
+    if (unlikely(IS_PRIVATE(d_backing_inode(dir->dentry))))
         return 0;
+#else
+    if (unlikely(IS_PRIVATE(dir->dentry->d_inode)))
+        return 0;
+#endif
 
     pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
     if (pname_buf) {
-        tmp = (void *)p_regs_get_arg2(regs);
-        if (IS_ERR_OR_NULL(tmp)) {
+        de = (void *)p_regs_get_arg2(regs);
+        if (IS_ERR_OR_NULL(de)) {
             smith_kfree(pname_buf);
             return 0;
         }
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
-        pathstr = dentry_path_raw((struct dentry *)tmp, pname_buf, PATH_MAX);
+        pathstr = dentry_path_raw(de, pname_buf, PATH_MAX);
 #else
-        pathstr = __dentry_path((struct dentry *)tmp, pname_buf, PATH_MAX);
+        pathstr = __dentry_path(de, pname_buf, PATH_MAX);
 #endif
 
         if (IS_ERR(pathstr))
@@ -3110,6 +3322,11 @@ int rm_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     int uid = 0;
     uid = __get_current_uid();
     if (FAKE_RM && uid != 0) {
+        /*
+         * security_path_rmdir and security_path_unlink are called before
+         * the actual rmdir or unlink. Any return code other than 0 will
+         * skip (prevent) the actual rmdir or unlink in file system.
+         */
         smith_regs_set_return_value(regs, 1);
     }
     return 0;
@@ -3117,24 +3334,30 @@ int rm_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 
 int security_path_unlink_pre_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
-    void *tmp;
     char *pname_buf = NULL;
     char *pathstr = DEFAULT_RET_STR;
+    struct path *dir = (void *)p_regs_get_arg1(regs);
+    struct dentry *de;
 
-    if (IS_PRIVATE((struct inode *)p_regs_get_arg1(regs)))
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 0, 0)
+    if (unlikely(IS_PRIVATE(d_backing_inode(dir->dentry))))
         return 0;
+#else
+    if (unlikely(IS_PRIVATE(dir->dentry->d_inode)))
+        return 0;
+#endif
 
     pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
     if (pname_buf) {
-        tmp = (void *)p_regs_get_arg2(regs);
-        if (IS_ERR_OR_NULL(tmp)) {
+        de = (void *)p_regs_get_arg2(regs);
+        if (IS_ERR_OR_NULL(de)) {
             smith_kfree(pname_buf);
             return 0;
         }
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
-        pathstr = dentry_path_raw((struct dentry *)tmp, pname_buf, PATH_MAX);
+        pathstr = dentry_path_raw(de, pname_buf, PATH_MAX);
 #else
-        pathstr = __dentry_path((struct dentry *)tmp, pname_buf, PATH_MAX);
+        pathstr = __dentry_path(de, pname_buf, PATH_MAX);
 #endif
         if (IS_ERR(pathstr))
             pathstr = DEFAULT_RET_STR;
@@ -3371,13 +3594,13 @@ struct kretprobe compat_execve_kretprobe = {
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0)
 struct kretprobe compat_execveat_kretprobe = {
-	    .kp.symbol_name = P_GET_SYSCALL_NAME(execveat),
+	    .kp.symbol_name = P_GET_COMPAT_SYSCALL_NAME(execveat),
 	    .entry_handler = compat_execveat_entry_handler,
 	    .data_size = sizeof(struct execve_data),
 	    .handler = execve_handler,
 };
-#endif
-#endif
+#endif /* >= 3.19.0 */
+#endif /* CONFIG_COMPAT */
 
 struct kprobe call_usermodehelper_exec_kprobe = {
         .symbol_name = "call_usermodehelper_exec",
@@ -4581,6 +4804,11 @@ void install_kprobe(void)
 static int __init smith_init(void)
 {
     int ret;
+
+#if defined(MODULE)
+    printk(KERN_INFO "[ELKEID] loading kmod %s (%s).\n",
+           THIS_MODULE->name, THIS_MODULE->version);
+#endif
 
     ret = kernel_symbols_init();
     if (ret)

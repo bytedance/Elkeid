@@ -1,0 +1,346 @@
+baseline_id: 1200
+baseline_version: 1.0
+baseline_name: "字节跳动最佳实践-centos基线检查"
+baseline_name_en: "bytedance Standard-centos Security Baseline Check"
+system:
+  - "centos"
+check_list:
+  -
+    check_id: 1
+    type: "Identification"
+    title: "Ensure password expiration is 180 days or less"
+    description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age. It is recommended that the PASS_MAX_DAYS parameter be set to less than or equal to 90 days."
+    solution: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs: PASS_MAX_DAYS 90. Modify user parameters for all users with a password set to match: # chage --maxdays 90 <user>. Notes: You can also check this setting in /etc/shadow directly. The 5th field should be 365 or less for all users with a password. A value of -1 will disable password expiration. Additionally the password expiration must be greater than the minimum days between password changes or users will be unable to change their password"
+    security: "high"
+    type_cn: "身份鉴别"
+    title_cn: "设置密码失效时间<=90天"
+    description_cn: "请设置密码失效时间，定期修改密码策略，减少密码被泄漏和猜测风险，使用非密码登陆方式(如密钥对)请忽略此项。"
+    solution_cn: "使用非密码登陆方式如密钥对，请忽略此项。\n采用root权限登录系统;\n输入:\n在 /etc/login.defs;\n将 PASS_MAX_DAYS 参数设置<=90"
+    check:
+      rules:
+        - type: "file_line_check"
+          param:
+            - "/etc/login.defs"
+          filter: '\s*\t*PASS_MAX_DAYS\s*\t*(\d+)'
+          result: '$(<=)90'
+  -
+    check_id: 2
+    type: "Identification"
+    title: "Ensure minimum days between password changes is 2 or more"
+    description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 2 or more days."
+    solution: "Set the PASS_MIN_DAYS parameter to 2 in /etc/login.defs: PASS_MIN_DAYS 2. Modify user parameters for all users with a password set to match: # chage --mindays 2 <user>. Notes: You can also check this setting in /etc/shadow directly. The 4th field should be 7 or more for all users with a password."
+    security: "high"
+    type_cn: "身份鉴别"
+    title_cn: "密码修改最短周期>=2天"
+    description_cn: "设置密码修改最小间隔时间，限制密码更改过于频繁。"
+    solution_cn: "在 /etc/login.defs 中将 PASS_MIN_DAYS 参数设置为 >=2。"
+    check:
+      rules:
+        - type: "file_line_check"
+          param:
+            - "/etc/login.defs"
+          filter: '\s*\t*PASS_MIN_DAYS\s*\t*(\d+)'
+          result: '$(>=)2'
+  -
+    check_id: 3
+    type: "Identification"
+    title: "Ensure password expiration warning days is 7 or more"
+    description: "The PASS_WARN_AGE parameter in /etc/login.defs allows an administrator to notify users that their password will expire in a defined number of days. It is recommended that the PASS_WARN_AGE parameter be set to 7 or more days."
+    solution: "Set the PASS_WARN_AGE parameter to 7 in /etc/login.defs: PASS_WARN_AGE 7. Modify user parameters for all users with a password set to match: # chage --warndays 7 <user>. Notes: You can also check this setting in /etc/shadow directly. The 6th field should be 7 or more for all users with a password."
+    security: "high"
+    type_cn: "身份鉴别"
+    title_cn: "密码到期时间警告>=7天"
+    description_cn: "确保密码到期警告天数为7或更多。"
+    solution_cn: "在 /etc/login.defs 中将 PASS_WARN_AGE 参数设置为 >=7。"
+    check:
+      rules:
+        - type: "file_line_check"
+          param:
+            - "/etc/login.defs"
+          filter: '\s*\t*PASS_WARN_AGE\s*\t*(\d+)'
+          result: '$(>=)7'
+  -
+    check_id: 4
+    type: "Identification"
+    title: "Ensure password creation requirements are configured"
+    description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following are definitions of the pam_pwquality.so options: - retry=3 (Allow 3 tries before sending back a failure). The following options are set in the /etc/security/pwquality.conf file: - minlen = 14 dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1 (The settings shown above are one possible policy. Alter these values to conform to your own organization's password policies.)"
+    solution: "Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy: minlen = 8     Edit the file /etc/security/pwquality.conf and add or modify the following line for password complexity to conform to site policy: minclass = 3    Edit the /etc/pam.d/password-auth and /etc/pam.d/system-auth files to include the appropriate options for pam_pwquality.so and to conform to site policy:password requisite pam_pwquality.so try_first_pass retry=3."
+    security: "high"
+    type_cn: "身份鉴别"
+    title_cn: "密码复杂性检查"
+    description_cn: "检查密码长度和密码是否使用多种字符类型。"
+    solution_cn: "1.编辑/etc/security/pwquality.conf文件，将minlen设置为>=8的值。\n2.编辑/etc/security/pwquality.conf文件，将minclass设置为>=3的值。\n3.编辑/etc/pam.d/password-auth和/etc/pam.d/system-auth 将pam_pwquality.so这一行的try_first_pass后边的retry=设置为<=3。"
+    check:
+      condition: "all"
+      rules:
+        - type: "file_line_check"
+          param:
+            - "/etc/security/pwquality.conf"
+          filter: '^\s*minclass\s+\t*=\s+\t*(\d+)'
+          result: '$(>=)3'
+        - type: "file_line_check"
+          param:
+            - "/etc/security/pwquality.conf"
+          filter: '^\s*minlen\s+\t*=\s+\t*(\d+)'
+          result: '$(>=)8'
+        - type: "file_line_check"
+          param:
+            - "/etc/pam.d/password-auth"
+          filter: 'try_first_pass.*retry=(\d+)'
+          result: '$(<=)3'
+        - type: "file_line_check"
+          param:
+            - "/etc/pam.d/system-auth"
+          filter: 'try_first_pass.*retry=(\d+)'
+          result: '$(<=)3'
+  -
+    check_id: 5
+    type: "Identification"
+    title: "Ensure root is the only UID 0 account"
+    description: "Any account with UID 0 has superuser privileges on the system."
+    solution: "Remove any users other than root with UID 0 or assign them a new UID if appropriate."
+    security: "high"
+    type_cn: "身份鉴别"
+    title_cn: "确保root是唯一UID为0的用户"
+    description_cn: "除root以外其他UID为0的用户都应该删除，或者为其分配新的UID。"
+    solution_cn: "除root以外其他UID为0的用户(查看命令cat /etc/passwd | awk -F: '($3 == 0) { print $1 }'|grep -v '^root$' )都应该删除，或者为其分配新的UID。"
+    check:
+      condition: "none"
+      rules:
+        - type: "file_line_check"
+          param:
+            - "/etc/passwd"
+          result: '$(not)^root:$(&&)^\w+:\w+:0:'
+  -
+    check_id: 6
+    type: "Identification"
+    title: "Ensure password reuse is limited"
+    description: "The /etc/security/opasswd file stores the users' old passwords and can be checked to ensure that users are not recycling recent passwords."
+    solution: "Edit the /etc/pam.d/password-auth and /etc/pam.d/system-auth files to include the remember option and conform to site policy as shown: password sufficient pam_unix.so remember=5   or    password required pam_pwhistory.so remember=5"
+    security: "high"
+    type_cn: "身份鉴别"
+    title_cn: "检查是否限制密码重用"
+    description_cn: "应限制用户之间重用密码的行为，降低密码泄漏的风险。"
+    solution_cn: "在/etc/pam.d/password-auth和/etc/pam.d/system-auth中password sufficient pam_unix.so 这行插入配置remember设置为>=5的值，建议为5，即在行末尾加上参数remember=5。"
+    check:
+      condition: "all"
+      rules:
+        - type: "file_line_check"
+          param:
+            - "/etc/pam.d/password-auth"
+          filter: '^password\s+sufficient\s+pam_unix.so.*remember=(\d+)'
+          result: '$(>=)5'
+        - type: "file_line_check"
+          param:
+            - "/etc/pam.d/system-auth"
+          filter: '^password\s+sufficient\s+pam_unix.so.*remember=(\d+)'
+          result: '$(>=)5'
+  -
+    check_id: 7
+    type: "SSH Configure"
+    title: "Ensure password fields are not empty"
+    description: "An account with an empty password field means that anybody may log in as that user without providing a password."
+    solution: "If any accounts in the /etc/shadow file do not have a password, run the following command to lock the account until it can be determined why it does not have a password: # passwd -l <em><username></em>. Also, check to see if the account is logged in and investigate what it is being used for to determine if it needs to be forced off."
+    security: "high"
+    type_cn: "身份鉴别"
+    title_cn: "空口令账户检测"
+    description_cn: "检查系统空密码账户。"
+    solution_cn: "为空口令的用户设置安全密码，或者执行passwd -l <username>锁定用户。"
+    check:
+      condition: "none"
+      rules:
+        - type: "file_line_check"
+          param:
+            - "/etc/shadow"
+          result: '^\w+::'
+  -
+    check_id: 8
+    type: "SSH Configure"
+    title: "Ensure SSH PermitEmptyPasswords is disabled"
+    description: "The PermitEmptyPasswords parameter specifies if the server allows login to accounts with empty password strings."
+    solution: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no"
+    security: "high"
+    type_cn: "SSH检测"
+    title_cn: "SSH空密码检测"
+    description_cn: "禁止SSH空密码用户登录。"
+    solution_cn: "编辑文件/etc/ssh/sshd_config，将PermitEmptyPasswords配置为no。"
+    check:
+      rules:
+        - type: "file_line_check"
+          param:
+            - "/etc/ssh/sshd_config"
+          result: 'PermitEmptyPasswords\s*\t*no'
+  -
+    check_id: 9
+    type: "SSH Configure"
+    title: "Ensure SSH MaxAuthTries is set to 5 or less"
+    description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
+    solution: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 5"
+    security: "high"
+    type_cn: "SSH检测"
+    title_cn: "SSH失败尝试次数<5"
+    description_cn: "设置较低的Max AuthTrimes参数将降低SSH服务器被暴力攻击成功的风险。"
+    solution_cn: "在/etc/ssh/sshd_config中取消MaxAuthTries注释符号#，设置最大密码尝试失败次数小于5。"
+    check:
+      rules:
+        - type: "file_line_check"
+          param:
+            - "/etc/ssh/sshd_config"
+          filter: '^MaxAuthTries\s*\t*(\d+)'
+          result: '$(<)5'
+  -
+    check_id: 10
+    type: "security audit"
+    title: "Ensure auditd Service is enabled"
+    description: "Once the auditd package is installed it needs to be activated."
+    solution: "Run the following command to enable auditd: # systemctl enable auditd"
+    security: "high"
+    type_cn: "安全审计"
+    title_cn: "确保开启日志守护进程(auditd)"
+    description_cn: "确保auditd服务已启用，记录日志用于审计。"
+    solution_cn: "运行以下命令启用auditd服务：\nsystemctl --now enable auditd"
+    check:
+      rules:
+        - type: "command_check"
+          param:
+            - "systemctl is-enabled auditd"
+          result: 'enabled'
+        - type: "command_check"
+          param:
+            - "systemctl status auditd"
+          result: 'active \(running\)'
+  -
+    check_id: 11
+    type: "SSH Configure"
+    title: "Ensure SSH Idle Timeout Interval is configured"
+    description: "The two options ClientAliveInterval and ClientAliveCountMax control the timeout of ssh sessions. When the ClientAliveInterval variable is set, ssh sessions that have no activity for the specified length of time are terminated. When the ClientAliveCountMax variable is set, sshd will send client alive messages at every ClientAliveInterval interval. When the number of consecutive client alive messages are sent with no response from the client, the ssh session is terminated. For example, if the ClientAliveInterval is set to 15 seconds and the ClientAliveCountMax is set to 3, the client ssh session will be terminated after 45 seconds of idle time."
+    solution: "Edit the /etc/ssh/sshd_config file to set the parameters according to site policy: ClientAliveInterval 900    ClientAliveCountMax 0"
+    security: "high"
+    type_cn: "SSH检测"
+    title_cn: "减少空闲超时退出时间"
+    description_cn: "设置SSH空闲超时退出时间,可降低未授权用户访问其他用户ssh会话的风险。"
+    solution_cn: "编辑/etc/ssh/sshd_config，将ClientAliveInterval 设置为<=900(15分钟)，将ClientAliveCountMax设置为0-3之间。"
+    check:
+      rules:
+        - type: "file_line_check"
+          param:
+            - "/etc/ssh/sshd_config"
+          filter: 'ClientAliveInterval\s*\t*(\d+)'
+          result: '$(<=)900'
+        - type: "file_line_check"
+          param:
+            - "/etc/ssh/sshd_config"
+          filter: 'ClientAliveCountMax\s*\t*(\d+)'
+          result: '$(<=)3'
+  -
+    check_id: 12
+    type: "SSH Configure"
+    title: "Ensure SSH LogLevel is set to INFO"
+    description: "The INFO parameter specifies that login and logout activity will be logged."
+    solution: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LogLevel INFO"
+    security: "high"
+    type_cn: "SSH检测"
+    title_cn: "确保log level为info"
+    description_cn: "确保SSH LogLevel设置为INFO,记录登录和注销活动。"
+    solution_cn: "编辑 /etc/ssh/sshd_config 文件以按如下方式设置参数(取消注释):\nLogLevel INFO"
+    check:
+      rules:
+        - type: "file_line_check"
+          param:
+            - "/etc/ssh/sshd_config"
+          result: 'LogLevel\s*\t*INFO'
+  -
+    check_id: 14
+    type: "security audit"
+    title: "Ensure rsyslog Service is enabled"
+    description: "Once the rsyslog package is installed it needs to be activated."
+    solution: "Run the following command to enable rsyslog:   # systemctl --now enable rsyslog"
+    security: "high"
+    type_cn: "安全审计"
+    title_cn: "确保开启日志守护进程(rsyslog)"
+    description_cn: "确保rsyslog服务已启用，记录日志用于审计。"
+    solution_cn: "运行以下命令启用rsyslog服务：\nsystemctl --now enable rsyslog"
+    check:
+      rules:
+        - type: "command_check"
+          param:
+            - "systemctl is-enabled rsyslog"
+          result: 'enabled'
+        - type: "command_check"
+          param:
+            - "systemctl status rsyslog"
+          result: 'active \(running\)'
+  -
+    check_id: 15
+    type: "Intrusion prevention"
+    title: "Ensure address space layout randomization (ASLR) is enabled"
+    description: "Address space layout randomization (ASLR) is an exploit mitigation technique which randomly arranges the address space of key data areas of a process."
+    solution: "Set the following parameter in /etc/sysctl.conf: kernel.randomize_va_space = 2 Run the following command to set the active kernel parameter: # sysctl -w kernel.randomize_va_space=2"
+    security: "high"
+    type_cn: "入侵防范"
+    title_cn: "开启地址随机化(ASLR)"
+    description_cn: "它将进程的内存空间地址随机化来增大入侵者预测目的地址难度，从而降低进程被成功入侵的风险。"
+    solution_cn: "在/etc/sysctl.conf文件中设置以下参数： \nkernel.randomize_va_space = 2 \n执行命令： \nsysctl -w kernel.randomize_va_space=2"
+    check:
+      condition: "all"
+      rules:
+        - type: "command_check"
+          param:
+            - 'grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d'
+          result: '\s*kernel.randomize_va_space\s*=\s*2'
+        - type: "command_check"
+          param:
+            - 'sysctl kernel.randomize_va_space'
+          result: '^\s*kernel.randomize_va_space\s*=\s*2'
+  -
+    check_id: 16
+    type: "File Permissions"
+    title: "Ensure permissions on files"
+    description: "Ensure permissions on files"
+    solution: "Run the following commands to set permissions on file_path: # chown root:root file_path # chmod 644 file_path"
+    security: "high"
+    type_cn: "文件权限"
+    title_cn: "确保配置文件的安全性"
+    description_cn: "为了保证系统的安全性，请确保配置文件的安全性和唯一性，限制未授权用户对配置文件的一切操作，包括访问、读写、删除等。"
+    solution_cn: "执行以下5条命令\nchown root:root /etc/passwd /etc/shadow /etc/group /etc/gshadow\nchmod 0644 /etc/group\nchmod 0644 /etc/passwd\nchmod 0400 /etc/shadow\nchmod 0400 /etc/gshadow"
+    check:
+      condition: "all"
+      rules:
+        - type: "file_permission"
+          param:
+            - "/etc/passwd"
+            - "644"
+        - type: "file_permission"
+          param:
+            - "/etc/shadow"
+            - "400"
+        - type: "file_permission"
+          param:
+            - "/etc/group"
+            - "644"
+        - type: "file_permission"
+          param:
+            - "/etc/gshadow"
+            - "400"
+  -
+    check_id: 17
+    type: "File Permissions"
+    title: "Verify permissions on files"
+    description: "Verify permissions on files"
+    solution: "Run the following commands to set permissions on file_path :  # chown root:root file_path  # chmod 644 file_path"
+    security: "high"
+    type_cn: "设置用户访问配置文件的权限"
+    title_cn: "设置用户访问配置文件的权限"
+    description_cn: "设置用户访问配置文件的权限。"
+    solution_cn: "运行以下4条命令：\nchown root:root /etc/hosts.allow\nchown root:root /etc/hosts.deny\nchmod 644 /etc/hosts.allow\nchmod 644 /etc/hosts.deny"
+    check:
+      condition: "all"
+      rules:
+        - type: "file_permission"
+          param:
+            - '/etc/hosts.allow'
+            - "644"
+        - type: "file_permission"
+          param:
+            - '/etc/hosts.deny'
+            - "644"

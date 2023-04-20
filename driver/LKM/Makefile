@@ -1,11 +1,12 @@
 MODULE_NAME		:= hids_driver
 KERNEL_HEAD		:= $(if $(KVERSION),$(KVERSION),$(shell uname -r))
+
+$(MODULE_NAME)-objs	:= src/init.o src/kprobe.o src/trace.o src/trace_buffer.o src/smith_hook.o src/anti_rootkit.o src/filter.o src/util.o
+
 ifneq ($(KERNELRELEASE),)
 
-obj-m += $(MODULE_NAME).o
-$(MODULE_NAME)-objs := src/init.o src/kprobe.o src/trace.o src/trace_buffer.o src/smith_hook.o src/anti_rootkit.o src/filter.o src/util.o
-
 MODULE_DIR		:= $(KBUILD_EXTMOD)
+obj-m			+= $(MODULE_NAME).o
 ldflags-y		+= -r -T $(MODULE_DIR)/kprobe.lds
 ccflags-y		+= -I$(MODULE_DIR)/include -I$(MODULE_DIR)
 
@@ -42,6 +43,12 @@ TRACE_EVENTS_HEADER_CHECK := $(shell test -e $(TRACE_EVENTS_HEADER_V))
 
 ifeq ($(TRACE_EVENTS_HEADER_CHECK),$(TRACE_EVENTS_HEADER))
 ccflags-y += -D SMITH_TRACE_EVENTS
+endif
+
+PROCFS_H_FILES := $(K_S_PATH)/linux/proc_fs.h $(K_B_PATH)/linux/proc_fs.h $(K_K_PATH)/linux/proc_fs.h
+PROCFS_PDE_DATA := $(shell sh -c "grep -s pde_data $(PROCFS_H_FILES)")
+ifneq ($(PROCFS_PDE_DATA),)
+ccflags-y += -D SMITH_PROCFS_PDE_DATA
 endif
 
 else

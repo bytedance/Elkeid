@@ -1,0 +1,9 @@
+FROM tencentos/tencentos_server31:latest AS tlinux31
+CMD [ "sh", "-c", "echo start" ]
+
+RUN yum install -y wget perl gcc make tree elfutils-libelf-devel; 
+RUN yum groupinstall -y  "Development Tools"; 
+
+ADD . /elkeid
+WORKDIR /elkeid/driver
+RUN bash ./build_script/x86_64/batch_compile_tencentos.sh

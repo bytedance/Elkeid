@@ -55,6 +55,10 @@ func FetchRegistry(name string) ([]string, error) {
 	return hosts, nil
 }
 
+func FetchRegistryWithPort(name string) ([]string, error) {
+	return FetchRegistry(name)
+}
+
 func GetHosts() []string {
 	hosts, _ := FetchRegistry(infra.RegisterName)
 	return hosts

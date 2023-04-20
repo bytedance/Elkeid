@@ -8,66 +8,81 @@ use std::{
 use crate::{
     config::*,
     filter::load_local_filter,
-    message::{make_record, parse_message, RASPCommand},
-    process::{poll_pid_func, process_health, ProcessInfo, TracingState},
+    message::{parse_message, RASPCommand},
+    process::{poll_pid_func, process_health},
     report::make_report,
     utils::Control,
 };
 use anyhow::{anyhow, Result as Anyhow};
 use crossbeam::channel::{bounded, Receiver, Sender, TrySendError};
 use librasp::{
-    process::ProcessInfo as RASPProcessInfo,
+    process::{ProcessInfo, TracingState},
     runtime::{Runtime, RuntimeInspect},
 };
-use log::*;
+use log::{debug, info, warn, error};
 use parking_lot::RwLock;
-use plugins::Client;
+use plugins::{Client, Record};
+use rand::Rng;
+use crate::utils::{generate_heartbeat, generate_seq_id, hashmap_to_record, time};
 
-pub fn rasp_monitor_start() -> Anyhow<()> {
-    let client = Client::new(false);
+pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
+    debug!("monitor start");
     let mut ctrl = Control::new();
-    /* data collection thread */
     let (internal_message_sender, internal_message_receiver): (
-        Sender<HashMap<&'static str, String>>,
-        Receiver<HashMap<&'static str, String>>,
+        Sender<Record>,
+        Receiver<Record>,
     ) = bounded(settings_int("internal", "internal_message_capability")? as usize);
-    let mut collect_ctrl = ctrl.clone();
-    let mut collect_client = client.clone();
-    let collect_thread =
-        Builder::new()
-            .name("collect".to_string())
+
+    /* data collection thread */
+    let collect_thread_limit = settings_int("internal", "collect_thread_limit")? as usize;
+    let mut collect_threads = Vec::new();
+    let collect_thread_wait_message_duration = settings_int("internal", "collect_thread_wait_message_duration")? as u64;
+    for collect_thread_n in 0..collect_thread_limit {
+        let internal_message_receiver_clone = internal_message_receiver.clone();
+        let mut collect_ctrl = ctrl.clone();
+        let mut client_clone = client.clone();
+        let collect_thread_ = match Builder::new()
+            .name(format!("collect_{}", collect_thread_n))
             .spawn(move || -> Anyhow<()> {
                 loop {
-                    debug!("collect thread looping");
+                    // debug!("collect thread looping");
                     if !collect_ctrl.check() {
                         warn!("collect thread receive stop signal, quiting");
                         break;
                     }
-                    let mut internal_message = match internal_message_receiver.recv() {
-                        Ok(m) => m,
-                        Err(e) => {
-                            let _ = collect_ctrl.stop();
-                            debug!("internal message channel recv failed: {}", e);
-                            return Err(anyhow!("recv internal channel failed: {}", e));
-                        }
-                    };
-                    let record = make_record(&mut internal_message);
-                    debug!("collect message: {:?}", record);
-                    match collect_client.send_record(&record) {
+                    let message_queue_length = internal_message_receiver_clone.len();
+                    if message_queue_length < 1 {
+                        sleep(Duration::from_millis(collect_thread_wait_message_duration));
+                        continue;
+                    }
+                    if message_queue_length > 300 {
+                        info!("collect thread: {} internal message len: {}", collect_thread_n, message_queue_length)
+                    }
+                    let bundle: Vec<Record> = internal_message_receiver_clone.try_iter().collect();
+                    debug!("sending bundle: {:?}", bundle);
+                    match client_clone.send_records(&bundle) {
                         Ok(_) => {}
                         Err(e) => {
-                            let _ = collect_ctrl.stop();
-                            return Err(anyhow!("send record failed: {}", e));
+                            error!("can not send data to agent, stop the world: {}", e);
+                            break;
                         }
                     }
                 }
                 let _ = collect_ctrl.stop();
                 Ok(())
-            })?;
+            }) {
+            Ok(t) => t,
+            Err(e) => {
+                error!("during collect thread starting, something wrong founded: {}", e);
+                return Err(anyhow!(e));
+            }
+        };
+        collect_threads.push(collect_thread_);
+    }
     let (external_message_sender, external_message_receiver): (
         Sender<RASPCommand>,
         Receiver<RASPCommand>,
-    ) = bounded(settings_int("internal", "external_message_capablility")? as usize);
+    ) = bounded(settings_int("internal", "external_message_capability")? as usize);
     let external_message_sender_clone = external_message_sender.clone();
     let mut external_ctrl = ctrl.clone();
     let mut external_client = client.clone();
@@ -134,24 +149,41 @@ pub fn rasp_monitor_start() -> Anyhow<()> {
                         warn!("internal error: {}", e);
                     }
                 };
-                info!("internal stoped");
+                info!("internal stopped");
                 Ok(())
             })?;
     // WAIT until quit
     loop {
         if !ctrl.check() {
-            let _ = collect_thread.join().unwrap();
-            let _ = external_thread.join().unwrap();
-            let _ = internal_thread.join().unwrap();
+            for collect_thread in collect_threads.into_iter() {
+                match collect_thread.join() {
+                    Ok(_) => {}
+                    Err(e) => {
+                        warn!("from collect thread report a warn: {:?}", e);
+                    }
+                };
+            }
+            match external_thread.join() {
+                Ok(_) => {}
+                Err(e) => {
+                    warn!("from external thread report a warn: {:?}", e);
+                }
+            };
+            match internal_thread.join() {
+                Ok(_) => {}
+                Err(e) => {
+                    warn!("from internal thread report a warn: {:?}", e);
+                }
+            };
             break;
         }
-        sleep(Duration::from_secs(20));
+        sleep(Duration::from_secs(60));
     }
     Ok(())
 }
 
 fn internal_main(
-    internal_message_sender: Sender<HashMap<&'static str, String>>,
+    internal_message_sender: Sender<Record>,
     external_message_receiver: Receiver<RASPCommand>,
     external_message_sender: Sender<RASPCommand>,
     mut ctrl: Control,
@@ -182,6 +214,7 @@ fn internal_main(
                 continue;
             }
             for pid in pids.iter() {
+                debug!("send pid: {}", pid);
                 if let Err(_) = pid_sender.send(*pid) {
                     error!("can not send pid to pid_sender channel, quiting");
                     let _ = pid_recv_ctrl.stop();
@@ -195,10 +228,13 @@ fn internal_main(
     let local_filters = load_local_filter()?;
     let tracing_process_arcrw = Arc::new(RwLock::new(HashMap::new()));
     let inspected_process_rw = Arc::clone(&tracing_process_arcrw);
+    let report_process_r = Arc::clone(&tracing_process_arcrw);
     let cleaning_process_rw = Arc::clone(&tracing_process_arcrw);
     let operation_process_rw = Arc::clone(&tracing_process_arcrw);
     let inspect_reportor = internal_message_sender.clone();
     let external_message_sender_for_inspected = external_message_sender.clone();
+    let report_heartbeat_data_type = settings_int("data_type", "report_heartbeat")?;
+    let report_action_data_type = settings_int("data_type", "report_action")?;
     let inspect_thread = Builder::new()
         .name("inspect".to_string())
         .spawn(move || loop {
@@ -217,15 +253,16 @@ fn internal_main(
                     continue;
                 }
             };
-            let mut process = match ProcessInfo::collect(pid, &local_filters) {
+            debug!("recv pid: {}", pid);
+            let mut process = match crate::process::collect(pid, &local_filters) {
                 Ok(p) => p,
                 Err(e) => {
-                    // warn!("process filting failed: {} {}", pid, e);
+                    debug!("process information collect failed: {} {}", pid, e);
                     sleep(Duration::from_millis(50));
                     continue;
                 }
             };
-            let runtime: Runtime = match RASPProcessInfo::inspect_from_pid(pid) {
+            let runtime: Runtime = match ProcessInfo::inspect_from_process_info(&mut process) {
                 Ok(opt) => match opt {
                     Some(r) => r,
                     None => {
@@ -239,9 +276,9 @@ fn internal_main(
                     continue;
                 }
             };
-            info!("found process: {} runtime: {}", process.pid, runtime);
+            info!("found process: {} runtime: {}", process.pid, runtime,);
             process.tracing_state = Some(TracingState::INSPECTED);
-	    process.runtime = Some(runtime.clone());
+            process.runtime = Some(runtime.clone());
             for rt in local_filters.auto_attach_runtime.iter() {
                 if &runtime.name == rt {
                     let _ = external_message_sender_for_inspected.send(RASPCommand {
@@ -255,10 +292,48 @@ fn internal_main(
             }
             let mut ip = inspected_process_rw.write();
             let report = make_report(&process.clone(), "inspected", String::new());
-            let _ = inspect_reportor.send(report);
+            let mut record = hashmap_to_record(report);
+            record.data_type = report_action_data_type.clone() as i32;
+            record.timestamp = time();
+            let _ = inspect_reportor.send(
+                record
+            );
             (*ip).insert(pid, process);
             drop(ip);
             sleep(Duration::from_millis(100));
+        })?;
+    let mut reporter_ctrl = ctrl.clone();
+    let reporter_sender = internal_message_sender.clone();
+    let reporter_interval = settings_int("internal", "report_interval").unwrap_or(120) as u64;
+    let report_interval_random_min = settings_int("internal", "report_interval_random_min").unwrap_or(1) as u64;
+    let report_interval_random_max = settings_int("internal", "report_interval_random_max").unwrap_or(30) as u64;
+    let reporter_thread = Builder::new()
+        .name("reporter".to_string())
+        .spawn(move || loop {
+            debug!("reporter thread looping");
+            if !reporter_ctrl.check() {
+                break;
+            }
+            sleep(Duration::from_secs(reporter_interval));
+            let mut rng = rand::thread_rng();
+            let random = rng.gen_range(report_interval_random_min..report_interval_random_max);
+            sleep(Duration::from_secs(random));
+            let watched_process = report_process_r.read();
+            let watched_process_cloned = watched_process.clone();
+            drop(watched_process);
+            let seq_id = generate_seq_id();
+            info!("sending heartbeat, len: {}", watched_process_cloned.len());
+            for (_pid, process) in watched_process_cloned.iter() {
+                let mut message = generate_heartbeat(&process);
+                message.insert("package_seq", seq_id.clone());
+                debug!("sending heartbeat: {:?}", &message);
+                let mut record = hashmap_to_record(message);
+                record.data_type = report_heartbeat_data_type.clone() as i32;
+                record.timestamp = time();
+                let _ = reporter_sender.send(
+                    record
+                );
+            }
         })?;
     /* clean missing process */
     let mut cleaner_ctrl = ctrl.clone();
@@ -291,14 +366,14 @@ fn internal_main(
     let mut operation_ctrl = ctrl.clone();
     let operation_reporter = internal_message_sender.clone();
     let mut operator = crate::operation::Operator::new(internal_message_sender, ctrl.clone())?;
-    operator.host_rasp_server()?;
+    // operator.host_rasp_server()?;
     let operation_thread = Builder::new()
         .name("operation".to_string())
         .spawn(move || loop {
             debug!("operation thread looping");
             if !operation_ctrl.check() {
-                warn!("opertation recv stop signal, quiting.");
-		break;
+                warn!("operation recv stop signal, quiting.");
+                break;
             }
             let operation_message = match external_message_receiver.try_recv() {
                 Ok(p) => p,
@@ -332,13 +407,18 @@ fn internal_main(
                     continue;
                 }
             };
-            // handle opertaion
+            // handle operation
             info!("starting operation: {:?}", operation_message);
-            match operator.op(&mut process, state.clone(), probe_message) {
+            match operator.op(&mut process, state.clone(), probe_message.clone()) {
                 Ok(_) => {
                     info!("operation success: {:?}", operation_message);
-                    let report = make_report(&process.clone(), "attach_success", String::new());
-                    let _ = operation_reporter.send(report);
+                    let report = make_report(&process.clone(), format!("{}_success", state.clone()).as_str(), String::new());
+                    let mut record = hashmap_to_record(report);
+                    record.data_type = report_action_data_type.clone() as i32;
+                    record.timestamp = time();
+                    let _ = operation_reporter.send(
+                        record
+                    );
                 }
                 Err(e) => {
                     warn!("operation failed: {:?} {}", operation_message, e);
@@ -347,14 +427,28 @@ fn internal_main(
                         format!("{}_failed", state.clone()).as_str(),
                         e.to_string(),
                     );
-                    let _ = operation_reporter.send(report);
+                    let mut record = hashmap_to_record(report);
+                    record.data_type = report_action_data_type.clone() as i32;
+                    record.timestamp = time();
+                    let _ = operation_reporter.send(
+                        record
+                    );
+                    continue;
                 }
             };
             // update
             let mut opp = operation_process_rw.write();
             match state.as_str() {
                 "WAIT_ATTACH" => {
-                    process.tracing_state = Some(TracingState::WAIT_ATTACH);
+                    process.tracing_state = Some(TracingState::ATTACHED);
+                    // update config hash
+                    let probe_config_hash = if !probe_message.clone().is_empty() {
+                        // calc_hash
+                        format!("{:x}", md5::compute(probe_message.clone()))
+                    } else {
+                        String::new()
+                    };
+                    process.current_config_hash = probe_config_hash;
                     (*opp).insert(process.pid, process);
                 }
                 "MISSING" => {
@@ -372,6 +466,7 @@ fn internal_main(
             inspect_thread.join().unwrap();
             cleaner_thread.join().unwrap();
             operation_thread.join().unwrap();
+            reporter_thread.join().unwrap();
             break;
         }
         sleep(Duration::from_secs(10));

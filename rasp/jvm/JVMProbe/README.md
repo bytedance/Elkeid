@@ -6,8 +6,6 @@
     JVM runtime application self-protection.
     <br />
     <br />
-    <a href="example">View Demo</a>
-    ·
     <a href="https://github.com/bytedance/Elkeid/issues">Report Bug</a>
     ·
     <a href="https://github.com/bytedance/Elkeid/issues">Request Feature</a>
@@ -74,7 +72,7 @@ Modify class bytecode by using [ASM](https://asm.ow2.io), transfer api call argu
    ```
 2. Build
    ```sh
-   mkdir -p output && ./gradlew proguard && cp build/libs/JVMProbe-1.0-SNAPSHOT-pro.jar output/SmithAgent.jar
+   mkdir -p output && ./gradlew shadow && cp build/libs/JVMProbe-1.0-SNAPSHOT-all.jar output/SmithAgent.jar
    ```
 
 
@@ -143,3 +141,5 @@ Project Link: [https://github.com/bytedance/Elkeid](https://github.com/bytedance
 * [jackson](https://github.com/FasterXML/jackson)
 * [commons-lang](https://commons.apache.org/proper/commons-lang)
 * [netty](https://netty.io)
+* [Disruptor](https://github.com/LMAX-Exchange/disruptor)
+* [Javassist](https://www.javassist.org)

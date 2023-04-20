@@ -1,4 +1,4 @@
-use anyhow::Result as Anyhow;
+use anyhow::{anyhow, Result as Anyhow};
 use plugins::Record;
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -78,11 +78,25 @@ impl RASPCommand {
         self.state.to_string()
     }
     pub fn get_probe_message(&self) -> Option<String> {
-	self.probe_message.clone()
+        self.probe_message.clone()
+    }
+    pub fn get_runtime(&self) -> String {
+	self.runtime.clone()
     }
 }
 
 pub fn parse_message(task: &plugins::Task) -> Anyhow<RASPMessage> {
-    let rasp_message = serde_json::from_str(task.get_data())?;
+    let message_str = task.get_data();
+    let rasp_message: RASPMessage = serde_json::from_str(message_str)?;
     Ok(rasp_message)
+}
+
+pub fn file_check_sum(file_path: &String, sum: &String) -> Anyhow<()> {
+    let bytes = std::fs::read(file_path)?;  // Vec<u8>
+    let hash = sha256::digest_bytes(&bytes);
+    if sum == &hash {
+        Ok(())
+    } else {
+        Err(anyhow!("check sum not match downloaded: {} sum: {}", hash, sum))
+    }
 }

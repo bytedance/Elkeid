@@ -16,8 +16,9 @@ clap = "2.33.3"
 # json
 serde = "1.0.117"
 serde_json = "1.0.59"
-# singal
-signal-hook = "0.3.9"
+## singal
+#signal-hook = "0.3.9"
+fs_extra = "1.2.0"
 # process
 procfs = { git = "https://github.com/AlkenePan/procfs.git" }
 # static config
@@ -41,10 +42,19 @@ parking_lot = "0.11"
 md5 = "0.7"
 # lru
 uluru = "3.0.0"
+# base64
+base64 = "0.13.0"
+
+# sha256
+sha256 = "1.0.3"
+
+regex = "1.6"
 
 [dependencies.librasp]
 path = "../librasp"
-features=["bin_mode"]
+
+[dependencies.rasp_server]
+path = "../rasp_server"
 
 [lib]
 name = "elkeid_rasp"

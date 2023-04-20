@@ -1,6 +1,8 @@
 package httptrans
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
@@ -8,14 +10,17 @@ import (
 	"github.com/bytedance/Elkeid/server/agent_center/httptrans/midware"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"io/ioutil"
 	"net/http"
+	"os"
 )
 
 func Run() {
-	runServer(common.HttpPort, common.HttpSSLEnable, common.HttpAuthEnable, common.SSLCertFile, common.SSLKeyFile)
+	go runAPIServer(common.HttpPort, common.HttpSSLEnable, common.HttpAuthEnable, common.SSLCertFile, common.SSLKeyFile)
+	runRawDataServer(common.RawDataPort, common.SSLCaFile, common.SSLRawDataCertFile, common.SSLRawDataKeyFile)
 }
 
-func runServer(port int, enableSSL, enableAuth bool, certFile, keyFile string) {
+func runAPIServer(port int, enableSSL, enableAuth bool, certFile, keyFile string) {
 	router := gin.Default()
 
 	router.GET("/metrics", func(c *gin.Context) {
@@ -37,6 +42,8 @@ func runServer(port int, enableSSL, enableAuth bool, certFile, keyFile string) {
 		apiGroup.POST("/conn/reset", http_handler.ConnReset) //Disconnect the agent
 
 		apiGroup.POST("/command/", http_handler.PostCommand) //Post commands to the agent
+
+		apiGroup.GET("/kube/cluster/list", http_handler.ClusterList)
 	}
 
 	var err error
@@ -49,4 +56,52 @@ func runServer(port int, enableSSL, enableAuth bool, certFile, keyFile string) {
 	if err != nil {
 		ylog.Errorf("RunServer", "####http run error: %v", err)
 	}
+}
+
+func runRawDataServer(port int, caFile, certFile, keyFile string) {
+	router := gin.Default()
+	rawDataGroup := router.Group("/rawdata")
+	{
+		rawDataGroup.POST("/audit", http_handler.RDAudit) //Save audit log from k8s cluster
+	}
+
+	var err error
+	tlsConfig := credential(certFile, keyFile, caFile)
+	if tlsConfig == nil {
+		ylog.Errorf("RunRawDataServer", "####GET_CREDENTIAL_ERROR")
+		os.Exit(-1)
+	}
+	server := http.Server{
+		Addr:      fmt.Sprintf(":%d", port),
+		Handler:   router,
+		TLSConfig: tlsConfig,
+	}
+
+	ylog.Infof("RunRawDataServer", "####RAW_DATA_HTTP_LISTEN_ON:%d", port)
+	err = server.ListenAndServeTLS("", "")
+	if err != nil {
+		ylog.Errorf("RunRawDataServer", "####raw_data http run error: %v", err)
+	}
+}
+
+// Get the encryption certificate
+func credential(crtFile, keyFile, caFile string) *tls.Config {
+	cert, err := tls.LoadX509KeyPair(crtFile, keyFile)
+	if err != nil {
+		ylog.Errorf("Credential", "LOAD_X509_ERROR:%s crtFile:%s keyFile:%s", err.Error(), crtFile, keyFile)
+		return nil
+	}
+
+	caBytes, err := ioutil.ReadFile(caFile)
+	if err != nil {
+		ylog.Errorf("Credential", "READ_CAFILE_ERROR:%s caFile:%s", err.Error(), caFile)
+		return nil
+	}
+
+	certPool := x509.NewCertPool()
+	if ok := certPool.AppendCertsFromPEM(caBytes); !ok {
+		ylog.Errorf("Credential", "####APPEND_CERT_ERROR: %v", err)
+		return nil
+	}
+	return &tls.Config{ClientCAs: certPool, ClientAuth: tls.RequireAndVerifyClientCert, Certificates: []tls.Certificate{cert}}
 }

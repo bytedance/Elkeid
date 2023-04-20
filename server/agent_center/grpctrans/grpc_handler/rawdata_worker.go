@@ -2,12 +2,15 @@ package grpc_handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/kafka"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/pool"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/gogo/protobuf/proto"
+	"github.com/prometheus/client_golang/prometheus"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -22,7 +25,7 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 	var extraInfo = GlobalGRPCPool.GetExtraInfoByID(req.AgentID)
 
 	for k, v := range req.GetData() {
-		ylog.Debugf("handleRawData", "Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
+		ylog.Debugf("handleRawData", "Num:%d Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
 
 		//Loading from the object pool, which can improve performance
 		mqMsg := kafka.MQMsgPool.Get().(*pb.MQData)
@@ -46,21 +49,35 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 			mqMsg.Tag = ""
 		}
 
+		outputDataTypeCounter.With(prometheus.Labels{"data_type": fmt.Sprint(mqMsg.DataType)}).Add(float64(1))
+		outputAgentIDCounter.With(prometheus.Labels{"agent_id": mqMsg.AgentID}).Add(float64(1))
+
 		switch mqMsg.DataType {
 		case 1000:
 			//parse the agent heartbeat data
-			parseAgentHeartBeat(req.GetData()[k], req, conn)
+			detail := parseAgentHeartBeat(req.GetData()[k], req, conn)
+			metricsAgentHeartBeat(req.AgentID, "agent", detail)
 		case 1001:
 			//
 			//parse the agent plugins heartbeat data
-			parsePluginHeartBeat(req.GetData()[k], req, conn)
-		case 2001, 2003, 6003:
-			//Task asynchronously pushed to the remote end for reconciliation.
+			detail := parsePluginHeartBeat(req.GetData()[k], req, conn)
+			if detail != nil {
+				if name, ok := detail["name"].(string); ok {
+					metricsAgentHeartBeat(req.AgentID, name, detail)
+				}
+			}
+		case 2001, 2003, 6000, 5100, 5101, 8010:
+			// Asynchronously pushed to the remote end for reconciliation.
+
+			//5100: 主动触发资产数据扫描
+			//5101: 组件版本验证
+			//8010: 基线扫描
+			//task数据。需要 对账+存储db
 			item, err := parseRecord(req.GetData()[k])
 			if err != nil {
 				continue
 			}
-
+			item["data_type"] = fmt.Sprintf("%d", mqMsg.DataType)
 			err = GlobalGRPCPool.PushTask2Manager(item)
 			if err != nil {
 				ylog.Errorf("handleRawData", "PushTask2Manager error %s", err.Error())
@@ -75,7 +92,7 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 			if err != nil {
 				continue
 			}
-			ylog.Infof("AgentErrorLog", "%s", string(b))
+			ylog.Infof("AgentErrorLog", "AgentID %s, Timestamp %d, DataType %d, Body %s", req.AgentID, req.GetData()[k].Timestamp, req.GetData()[k].DataType, string(b))
 		}
 
 		common.KafkaProducer.SendPBWithKey(req.AgentID, mqMsg)
@@ -83,27 +100,39 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 	return req.AgentID
 }
 
-func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connection) {
-	var fv float64
+func metricsAgentHeartBeat(agentID, name string, detail map[string]interface{}) {
+	if detail == nil {
+		return
+	}
+	for k, v := range agentGauge {
+		if cpu, ok := detail[k]; ok {
+			if fv, ok2 := cpu.(float64); ok2 {
+				v.With(prometheus.Labels{"agent_id": agentID, "name": name}).Set(fv)
+			}
+		}
+	}
+}
+
+func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connection) map[string]interface{} {
 	hb, err := parseRecord(record)
 	if err != nil {
-		return
+		return nil
 	}
 
 	//存储心跳数据到connect
 	detail := make(map[string]interface{}, len(hb)+9)
 	for k, v := range hb {
 		//部分字段不需要修改
-		if k == "platform_version" {
+		if k == "platform_version" || k == "version" || k == "host_serial" || k == "host_id" || k == "host_model" || k == "host_vendor" || k == "cpu_name" {
 			detail[k] = v
 			continue
 		}
 
-		fv, err = strconv.ParseFloat(v, 64)
-		if err == nil {
-			detail[k] = fv
-		} else {
+		fv, err := strconv.ParseFloat(v, 64)
+		if err != nil || math.IsNaN(fv) || math.IsInf(fv, 0) {
 			detail[k] = v
+		} else {
+			detail[k] = fv
 		}
 	}
 	detail["agent_id"] = req.AgentID
@@ -135,21 +164,33 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 
 	//last heartbeat time get from server
 	detail["last_heartbeat_time"] = time.Now().Unix()
-	conn.SetAgentDetail(detail)
+
+	if len(conn.GetAgentDetail()) == 0 {
+		conn.SetAgentDetail(detail)
+
+		//Every time the agent connects to the server
+		//it needs to push the latest configuration to agent
+		err = GlobalGRPCPool.PostLatestConfig(req.AgentID)
+		if err != nil {
+			ylog.Errorf("Transfer", "send config error, %s %s", req.AgentID, err.Error())
+		}
+	} else {
+		conn.SetAgentDetail(detail)
+	}
+
+	return detail
 }
 
-func parsePluginHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connection) {
-	var fv float64
-
+func parsePluginHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connection) map[string]interface{} {
 	data, err := parseRecord(record)
 	if err != nil {
-		return
+		return nil
 	}
 
 	pluginName, ok := data["name"]
 	if !ok {
 		ylog.Errorf("parsePluginHeartBeat", "parsePluginHeartBeat Error, cannot find the name of plugin data %v", data)
-		return
+		return nil
 	}
 
 	detail := make(map[string]interface{}, len(data)+8)
@@ -160,18 +201,18 @@ func parsePluginHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connect
 			continue
 		}
 
-		fv, err = strconv.ParseFloat(v, 64)
-		if err == nil {
-			detail[k] = fv
-		} else {
+		fv, err := strconv.ParseFloat(v, 64)
+		if err != nil || math.IsNaN(fv) || math.IsInf(fv, 0) {
 			detail[k] = v
+		} else {
+			detail[k] = fv
 		}
-
 	}
 	//last heartbeat time get from server
 	detail["last_heartbeat_time"] = time.Now().Unix()
 
 	conn.SetPluginDetail(pluginName, detail)
+	return detail
 }
 
 func parseRecord(hb *pb.Record) (map[string]string, error) {

@@ -40,25 +40,15 @@ rmmod hids_driver
 我们提供了一些预编译好的 Elkeid 内核模块，这些 Ko 文件包括了 Debian / CentOS / Ubuntu 等发行版的不同内核版本。
 
 
-### 预编译好的 Ko 文件
-
-若 Ko 文件不在 [Ko 文件列表](./ko_list.md) 内，或下载失败，请自行编译。
-
-
 ### 获取方式
 
 
 如果所有链接都获取失败，则说明 [预编译的 Ko](./ko_list.md) 中，不包含当前系统的内核版本所需的 Ko 文件，需要自行编译。
 
 ```bash
-wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.4_$(uname -r).ko"
-# or
-curl -O "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.4_$(uname -r).ko"
-# other cdn
-## "http://lf3-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.4_$(uname -r).ko"
-## "http://lf6-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.4_$(uname -r).ko"
-## "http://lf9-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.4_$(uname -r).ko"
+wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.10_$(uname -r)_amd64.ko"
 ```
+
 ### 内核模块的测试方法
 
 可以通过 [LTP](https://linux-test-project.github.io/) 或者 [KASAN](https://www.kernel.org/doc/html/latest/dev-tools/kasan.html) 这两个方法对内核模块进行测试.
@@ -95,7 +85,7 @@ EulerOS|V2.0|3.10.X|-
 ## 关于容器兼容性
 
 | Source | Nodename       |
-| ------ | -------------- |
+|--------|----------------|
 | Host   | hostname       |
 | Docker | container name |
 | K8s    | pod name       |
@@ -104,38 +94,38 @@ EulerOS|V2.0|3.10.X|-
 
 ## Hook List
 
-| Hook               | DataType | Note                                    | Default |
-| ------------------ |----------| --------------------------------------- | ------- |
-| write              | 1        |                                         | OFF     |
-| open               | 2        |                                         | OFF     |
-| mprotect           | 10       | only PROT_EXEC                          | OFF     |
-| nanosleep          | 35       |                                         | OFF     |
-| connect            | 42       |                                         | ON      |
-| accept             | 43       |                                         | OFF     |
-| bind               | 49       |                                         | ON      |
-| execve             | 59       |                                         | ON      |
-| process exit       | 60       |                                         | OFF     |
-| kill               | 62       |                                         | OFF     |
-| rename             | 82       |                                         | ON     |
-| link               | 86       |                                         | ON     |
-| ptrace             | 101      | only PTRACE_POKETEXT or PTRACE_POKEDATA | ON      |
-| setsid             | 112      |                                         | ON     |
-| prctl              | 157      | only PR_SET_NAME                        | ON     |
-| mount              | 165      |                                         | ON     |
-| tkill              | 200      |                                         | OFF     |
-| exit_group         | 231      |                                         | OFF     |
-| memfd_create       | 356      |                                         | ON     |
-| dns query          | 601      |                                         | ON     |
-| create_file        | 602      |                                         | ON      |
-| load_module        | 603      |                                         | ON      |
-| update_cred        | 604      | only old uid ≠0 && new uid == 0         | ON      |
-| unlink             | 605      |                                         | OFF     |
-| rmdir              | 606      |                                         | OFF     |
-| call_usermodehelper_exec     | 607      |                               | ON     |
-| file_write         | 608      |                                          | OFF     |
-| file_read          | 609      |                                          | OFF     |
-| usb_device_event   | 610      |                                          | ON     |
-| privilege_escalation   | 611      |                                          | ON     |
+| Hook                     | DataType | Note                                    | Default |
+|--------------------------|----------|-----------------------------------------|---------|
+| write                    | 1        |                                         | OFF     |
+| open                     | 2        |                                         | OFF     |
+| mprotect                 | 10       | only PROT_EXEC                          | OFF     |
+| nanosleep                | 35       |                                         | OFF     |
+| connect                  | 42       |                                         | ON      |
+| accept                   | 43       |                                         | OFF     |
+| bind                     | 49       |                                         | ON      |
+| execve                   | 59       |                                         | ON      |
+| process exit             | 60       |                                         | OFF     |
+| kill                     | 62       |                                         | OFF     |
+| rename                   | 82       |                                         | ON      |
+| link                     | 86       |                                         | ON      |
+| ptrace                   | 101      | only PTRACE_POKETEXT or PTRACE_POKEDATA | ON      |
+| setsid                   | 112      |                                         | ON      |
+| prctl                    | 157      | only PR_SET_NAME                        | ON      |
+| mount                    | 165      |                                         | ON      |
+| tkill                    | 200      |                                         | OFF     |
+| exit_group               | 231      |                                         | OFF     |
+| memfd_create             | 356      |                                         | ON      |
+| dns query                | 601      |                                         | ON      |
+| create_file              | 602      |                                         | ON      |
+| load_module              | 603      |                                         | ON      |
+| update_cred              | 604      | only old uid ≠0 && new uid == 0         | ON      |
+| unlink                   | 605      |                                         | OFF     |
+| rmdir                    | 606      |                                         | OFF     |
+| call_usermodehelper_exec | 607      |                                         | ON      |
+| file_write               | 608      |                                         | OFF     |
+| file_read                | 609      |                                         | OFF     |
+| usb_device_event         | 610      |                                         | ON      |
+| privilege_escalation     | 611      |                                         | ON      |
 
 
 ## Anti Rootkit List
@@ -621,7 +611,7 @@ Testing Load:
 
 `udp_recvmsg_handler` 仅工作在端口为 53 或 5353 的情况
 
-测试原始数据: [Benchmark Data](driver/benchmark_data/handler)
+测试原始数据: [Benchmark Data](./benchmark_data/handler)
 
 
 ## 关于部署
@@ -636,11 +626,11 @@ Testing Load:
 
 ## 已知问题
 * 内核模块 hook 点初始化失败 : do_init_module
-<br>
-在一些老版本的 Ubuntu / CentOS 内核中出现，dmesg 会有如下输出:<br>
+<br>在一些老版本的 Ubuntu / CentOS 内核中出现，dmesg 会有如下输出:<br>
 do_init_module register_kprobe failed, returned -2.<br>
 内核模块仍然可以使用，但没有 do_init_module 数据
 
+* [Description of Elkeid's Crash caused by fput in low version Kernel](DOC/Description_of_Elkeid's_Crash_caused_by_fput_in_low_version_Kernel.md)
 
 ## License
 

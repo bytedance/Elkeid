@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -29,6 +30,10 @@ var (
 	serviceDiscoveryHost = map[string]string{}
 	privateHost          = map[string]string{}
 	publicHost           = map[string]string{}
+)
+
+const (
+	dialTimeout = 15 * time.Second
 )
 
 func init() {
@@ -70,7 +75,7 @@ func resolveServiceDiscovery(host string, count int) ([]string, error) {
 	}
 	svr := []string{}
 	for _, i := range c.Data {
-		svr = append(svr, i.IP+":"+strconv.Itoa(i.Port))
+		svr = append(svr, net.JoinHostPort(i.IP, strconv.Itoa(i.Port)))
 	}
 	return svr, nil
 }
@@ -79,10 +84,30 @@ func setDialOptions(ca, privkey, cert []byte, svrName string) {
 	certPool.AppendCertsFromPEM(ca)
 	keyPair, _ := tls.X509KeyPair(cert, privkey)
 	dialOptions = append(dialOptions, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
-		Certificates: []tls.Certificate{keyPair},
-		ServerName:   svrName,
-		ClientAuth:   tls.RequireAndVerifyClientCert,
-		RootCAs:      certPool,
+		Certificates:       []tls.Certificate{keyPair},
+		ClientAuth:         tls.RequireAndVerifyClientCert,
+		RootCAs:            certPool,
+		InsecureSkipVerify: true,
+		VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+			certs := make([]*x509.Certificate, len(rawCerts))
+			for i, asn1Data := range rawCerts {
+				cert, err := x509.ParseCertificate(asn1Data)
+				if err != nil {
+					return errors.New("tls: failed to parse certificate from server: " + err.Error())
+				}
+				certs[i] = cert
+			}
+			opts := x509.VerifyOptions{
+				Roots:         certPool,
+				DNSName:       svrName,
+				Intermediates: x509.NewCertPool(),
+			}
+			for _, cert := range certs[1:] {
+				opts.Intermediates.AddCert(cert)
+			}
+			_, err := certs[0].Verify(opts)
+			return err
+		},
 	})), grpc.WithStatsHandler(&DefaultStatsHandler), grpc.WithBlock(), grpc.WithReturnConnectionError(), grpc.FailOnNonTempDialError(true))
 }
 
@@ -120,7 +145,7 @@ func GetConnection(ctx context.Context) (*grpc.ClientConn, error) {
 		addrs, err = resolveServiceDiscovery(host, 10)
 		if err == nil {
 			for _, addr := range addrs {
-				context, cancel := context.WithTimeout(ctx, time.Second*3)
+				context, cancel := context.WithTimeout(ctx, dialTimeout)
 				defer cancel()
 				c, err = grpc.DialContext(context, addr, dialOptions...)
 				if err == nil {
@@ -134,7 +159,7 @@ func GetConnection(ctx context.Context) (*grpc.ClientConn, error) {
 	}
 	host, ok = privateHost[region]
 	if ok {
-		context, cancel := context.WithTimeout(ctx, time.Second*3)
+		context, cancel := context.WithTimeout(ctx, dialTimeout)
 		defer cancel()
 		c, err = grpc.DialContext(context, host, dialOptions...)
 		if err == nil {
@@ -146,7 +171,7 @@ func GetConnection(ctx context.Context) (*grpc.ClientConn, error) {
 	}
 	host, ok = publicHost[region]
 	if ok {
-		context, cancel := context.WithTimeout(ctx, time.Second*3)
+		context, cancel := context.WithTimeout(ctx, dialTimeout)
 		defer cancel()
 		c, err = grpc.DialContext(context, host, dialOptions...)
 		if err == nil {

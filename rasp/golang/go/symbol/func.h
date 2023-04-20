@@ -4,50 +4,50 @@
 #include <cstdint>
 #include <iterator>
 
-struct CFuncEntry {
+struct FuncEntry {
     uintptr_t entry;
     unsigned long offset;
 };
 
-class CFuncTablePtr {
+class FuncTablePtr {
 public:
     using difference_type = std::ptrdiff_t;
-    using value_type = CFuncEntry;
+    using value_type = FuncEntry;
     using pointer = value_type*;
     using reference = value_type&;
     using iterator_category = std::random_access_iterator_tag;
 
 public:
-    explicit CFuncTablePtr(const char *table, unsigned int size);
+    explicit FuncTablePtr(const char *table, unsigned int size);
 
 public:
-    CFuncTablePtr &operator++();
-    CFuncTablePtr &operator--();
-    CFuncTablePtr &operator+=(std::ptrdiff_t offset);
-    CFuncTablePtr operator+(unsigned int offset);
-    CFuncTablePtr operator-(unsigned int offset);
-    std::ptrdiff_t operator-(const CFuncTablePtr &ptr);
+    FuncTablePtr &operator++();
+    FuncTablePtr &operator--();
+    FuncTablePtr &operator+=(std::ptrdiff_t offset);
+    FuncTablePtr operator+(unsigned int offset);
+    FuncTablePtr operator-(unsigned int offset);
+    std::ptrdiff_t operator-(const FuncTablePtr &ptr);
 
 public:
-    const CFuncEntry &operator*();
-    const CFuncEntry *operator->();
-    CFuncEntry operator[](unsigned int index);
+    const FuncEntry &operator*();
+    const FuncEntry *operator->();
+    FuncEntry operator[](unsigned int index);
 
 public:
-    bool operator==(const CFuncTablePtr &ptr);
-    bool operator!=(const CFuncTablePtr &ptr);
+    bool operator==(const FuncTablePtr &ptr);
+    bool operator!=(const FuncTablePtr &ptr);
 
 private:
-    CFuncEntry mEntry{};
+    FuncEntry mEntry{};
 
 private:
     unsigned int mSize;
     const char *mTable;
 };
 
-class CLineTable;
+class LineTable;
 
-class CFunc {
+class Func {
 public:
     uintptr_t getEntry() const;
     const char *getName() const;
@@ -72,7 +72,7 @@ private:
 
 public:
     const char *mFuncData;
-    const CLineTable *mLineTable;
+    const LineTable *mLineTable;
 };
 
 #endif //GO_PROBE_FUNC_H

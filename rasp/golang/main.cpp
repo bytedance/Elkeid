@@ -8,7 +8,6 @@
 #include <z_syscall.h>
 
 void quit(int status) {
-    uintptr_t address = 0;
     char *env = getenv("QUIT");
 
     if (!env) {
@@ -16,50 +15,52 @@ void quit(int status) {
         z_exit_group(-1);
     }
 
-    if (!zero::strings::toNumber(env, address, 16) || !address) {
+    std::optional<uintptr_t> address = zero::strings::toNumber<uintptr_t>(env, 16);
+
+    if (!address) {
         LOG_ERROR("invalid quit function address");
         z_exit_group(-1);
     }
 
-    ((decltype(quit) *)address)(status);
+    ((decltype(quit) *)*address)(status);
 }
 
 int main() {
-    INIT_FILE_LOG(zero::INFO, "go-probe");
-
     sigset_t mask = {};
     sigset_t origin_mask = {};
 
     sigfillset(&mask);
 
-    if (pthread_sigmask(SIG_SETMASK, &mask, &origin_mask) != 0) {
-        LOG_ERROR("set signal mask failed");
+    if (pthread_sigmask(SIG_SETMASK, &mask, &origin_mask) != 0)
         quit(-1);
-    }
+
+    INIT_FILE_LOG(zero::INFO, "go-probe");
 
     if (!gLineTable->load()) {
         LOG_ERROR("line table load failed");
+        pthread_sigmask(SIG_SETMASK, &origin_mask, nullptr);
         quit(-1);
     }
 
     if (gBuildInfo->load()) {
         LOG_INFO("go version: %s", gBuildInfo->mVersion.c_str());
 
-        CInterfaceTable table = {};
+        InterfaceTable table = {};
 
         if (!table.load()) {
             LOG_ERROR("interface table load failed");
+            pthread_sigmask(SIG_SETMASK, &origin_mask, nullptr);
             quit(-1);
         }
 
-        table.findByFuncName("errors.(*errorString).Error", (go::interface_item **)CAPIBase::errorInterface());
+        table.findByFuncName("errors.(*errorString).Error", (go::interface_item **)APIBase::errorInterface());
     }
 
     gSmithProbe->start();
 
     for (const auto &api : GOLANG_API) {
         for (unsigned int i = 0; i < gLineTable->mFuncNum; i++) {
-            CFunc func = {};
+            Func func = {};
 
             if (!gLineTable->getFunc(i, func))
                 break;

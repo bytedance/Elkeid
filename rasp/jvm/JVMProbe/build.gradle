@@ -1,21 +1,9 @@
-import proguard.gradle.ProGuardTask
-
-buildscript {
-    repositories {
-        google()
-    }
-
-    dependencies {
-        classpath 'com.guardsquare:proguard-gradle:7.1.1'
-    }
-}
-
 plugins {
+    id 'java-library'
     id 'com.github.johnrengelman.shadow' version '6.0.0'
-    id 'java'
 }
 
-group 'org.example'
+group 'com.security'
 version '1.0-SNAPSHOT'
 
 repositories {
@@ -23,18 +11,19 @@ repositories {
 }
 
 dependencies {
-    testImplementation group: 'junit', name: 'junit', version: '4.12'
-    implementation group: 'org.ow2.asm', name: 'asm-tree', version: '8.0.1'
-    implementation group: 'org.ow2.asm', name: 'asm-commons', version: '8.0.1'
-    implementation group: 'org.yaml', name: 'snakeyaml', version: '1.26'
-    implementation group: 'io.netty', name: 'netty-all', version: '4.1.51.Final'
-    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.11.2'
+    testImplementation group: 'junit', name: 'junit', version: '4.13.1'
+    implementation group: 'org.ow2.asm', name: 'asm-tree', version: '9.3'
+    implementation group: 'org.ow2.asm', name: 'asm-commons', version: '9.3'
+    implementation group: 'io.netty', name: 'netty-all', version: '4.1.85.Final'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.14.0'
+    implementation group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-yaml', version: '2.14.0'
     implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.11'
     implementation group: 'com.lmax', name: 'disruptor', version: '3.4.4'
+    api group: 'org.javassist', name: 'javassist', version: '3.29.0-GA'
 }
 
 compileJava {
-    options.release = 8
+    options.release.set(8)
 }
 
 jar {
@@ -50,67 +39,13 @@ jar {
     }
 }
 
-task genDict {
-    outputs.file('build/dict/dict.txt')
-
-    doLast {
-        def r = new Random()
-
-        def start = r.nextInt(1000) + 0x0100
-        def end = start + 0x4000
-
-        def chars = (start..end)
-                .findAll { Character.isValidCodePoint(it) && Character.isJavaIdentifierPart(it) }
-                .collect { String.valueOf(Character.toChars(it)) }
-
-        int max = chars.size()
-
-        def startChars = []
-        def dict = []
-
-        for (int i = 0; i < max; i++) {
-            char c = chars.get(i).charAt(0)
-            if (Character.isJavaIdentifierStart(c)) {
-                startChars << String.valueOf(c)
-            }
-        }
-
-        def startSize = startChars.size()
-
-        Collections.shuffle(chars, r)
-        Collections.shuffle(startChars, r)
-
-        for (int i = 0; i < max; i++) {
-            def m = r.nextInt(startSize - 3)
-            def n = m + 3
-            (m..n).each { j ->
-                dict << (startChars.get(j) + chars.get(i))
-            }
-        }
-
-        def f = outputs.files.getSingleFile()
-
-        f.getParentFile().mkdirs()
-        f.withWriter("UTF-8") {
-            it.write(startChars.join(System.lineSeparator()))
-            it.write(dict.join(System.lineSeparator()))
-        }
-    }
-}
-
 shadowJar {
     relocate 'io.netty', 'rasp.io.netty'
+    relocate 'org.objectweb.asm', 'rasp.org.objectweb.asm'
+    relocate 'org.apache.commons', 'rasp.org.apache.commons'
+    relocate 'org.yaml.snakeyaml', 'rasp.org.yaml.snakeyaml'
     relocate 'com.lmax.disruptor', 'rasp.com.lmax.disruptor'
     relocate 'com.fasterxml.jackson', 'rasp.com.fasterxml.jackson'
+    relocate 'javassist', 'rasp.javassist'
     relocate 'META-INF/native/libnetty', 'META-INF/native/librasp_netty'
-}
-
-task proguard(type: ProGuardTask) {
-    dependsOn 'genDict'
-    configuration 'proguard-rules.pro'
-
-    injars shadowJar
-    outjars 'build/libs/JVMProbe-1.0-SNAPSHOT-pro.jar'
-
-    libraryjars files(configurations.runtimeClasspath.collect())
 }

@@ -1,24 +1,22 @@
 package buffer
 
 import (
-	"errors"
 	"sync"
 
 	"github.com/bytedance/Elkeid/agent/proto"
 )
 
 var (
-	mu                = &sync.Mutex{}
-	buf               = [8192]*proto.EncodedRecord{}
-	offset            = 0
-	ErrbufferOverflow = errors.New("buffer overflow")
-	hook              func(interface{}) interface{}
+	mu     = &sync.Mutex{}
+	buf    = [2048]*proto.EncodedRecord{}
+	offset = 0
+	hook   func(any) any
 )
 
-func SetTransmissionHook(fn func(interface{}) interface{}) {
+func SetTransmissionHook(fn func(any) any) {
 	hook = fn
 }
-func WriteEncodedRecord(rec *proto.EncodedRecord) (err error) {
+func WriteEncodedRecord(rec *proto.EncodedRecord) {
 	if hook != nil {
 		rec = hook(rec).(*proto.EncodedRecord)
 	}
@@ -26,12 +24,13 @@ func WriteEncodedRecord(rec *proto.EncodedRecord) (err error) {
 	if offset < len(buf) {
 		buf[offset] = rec
 		offset++
+	} else {
+		PutEncodedRecord(rec)
 	}
 	mu.Unlock()
-	return
 }
 func WriteRecord(rec *proto.Record) (err error) {
-	erec := GetEncodedRecord()
+	erec := GetEncodedRecord(rec.Data.Size())
 	erec.DataType = rec.DataType
 	erec.Timestamp = rec.Timestamp
 	if cap(erec.Data) < rec.Data.Size() {

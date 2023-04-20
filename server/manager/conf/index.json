@@ -7,7 +7,8 @@
           "agent_id": 1
         },
         "unique": true
-      },            {
+      },
+      {
         "keys": {
           "first_heartbeat_time": 1
         },
@@ -48,6 +49,12 @@
           "extranet_ipv4": 1
         },
         "unique": false
+      },
+      {
+        "keys": {
+          "state": 1
+        },
+        "unique": false
       }
     ]
   },
@@ -59,7 +66,8 @@
           "task_id": 1
         },
         "unique": true
-      },            {
+      },
+      {
         "keys": {
           "task_type": 1
         },
@@ -68,6 +76,30 @@
       {
         "keys": {
           "task_status": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "task_name": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "action": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "task_user": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "action": 1
         },
         "unique": false
       }
@@ -80,8 +112,15 @@
         "keys": {
           "token": 1
         },
-        "unique": true
-      },            {
+        "unique": false
+      },
+      {
+        "keys": {
+          "task_id": 1
+        },
+        "unique": false
+      },
+      {
         "keys": {
           "name": 1
         },
@@ -96,6 +135,1583 @@
       {
         "keys": {
           "status": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "arch": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "tags": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "platform_family": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "kernel_version": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "task_data.command.config.name": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "agent_baseline",
+    "index": [
+      {
+        "keys": {
+          "agent_id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "baseline_id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "if_white": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "status": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "check_level": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "check_id": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "baseline_task_status",
+    "index": [
+      {
+        "keys": {
+          "agent_id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "baseline_id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "status": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "baseline_check_info",
+    "index": [
+      {
+        "keys": {
+          "baseline_id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "check_id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "status": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "agent_vuln_info",
+    "index": [
+      {
+        "keys": {
+          "agent_id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "drop_status": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "vuln_id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "status": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "create_time": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "action": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "vuln_heartbeat",
+    "index": [
+      {
+        "keys": {
+          "action": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "infect_status.processed": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "infect_status.unprocessed": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "infect_status.ignore": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "agent_vuln_soft_info",
+    "index": [
+      {
+        "keys": {
+          "agent_id": 1,
+          "vuln_id": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "vuln_info",
+    "index": [
+      {
+        "keys": {
+          "id": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "vuln_task_status",
+    "index": [
+      {
+        "keys": {
+          "agent_id": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "vuln_process",
+    "index": [
+      {
+        "keys": {
+          "agent_id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "pid": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "rasp_vuln_process",
+    "index": [
+      {
+        "keys": {
+          "agent_id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "pid": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "vuln_id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "status": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "cpe_info",
+    "index": [
+      {
+        "keys": {
+          "id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "vuln_id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "cpe_product": 1,
+          "cpe_vendor": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "cpe_product": 1,
+          "cpe_version": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "hub_alarm_v1",
+    "index": [
+      {
+        "keys": {
+          "hostname": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "in_ipv6_list": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "ex_ipv6_list": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "in_ipv4_list": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "ex_ipv4_list": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "agent_id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "alert_type_us": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "__alarm_status": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "__insert_time": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "__hit_wl": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "__checked": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "harm_level": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "rule_name": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "agent_asset_5050",
+    "index": [
+      {
+        "keys": {
+          "hostname": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "agent_id": 1,
+          "package_seq": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "comm": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "cmdline": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "exe": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "checksum": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "rusername": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "agent_asset_5051",
+    "index": [
+      {
+        "keys": {
+          "hostname": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "agent_id": 1,
+          "package_seq": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "sip": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "sport": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "username": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "exe": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "cmdline": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "comm": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "protocol": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "agent_asset_5052",
+    "index": [
+      {
+        "keys": {
+          "hostname": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "agent_id": 1,
+          "package_seq": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "last_login_ip": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "username": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "groupname": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "agent_asset_5053",
+    "index": [
+      {
+        "keys": {
+          "hostname": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "agent_id": 1,
+          "package_seq": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "path": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "username": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "command": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "checksum": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "agent_asset_5054",
+    "index": [
+      {
+        "keys": {
+          "hostname": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "agent_id": 1,
+          "package_seq": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "path": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "name": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "type": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "restart": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "command": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "checksum": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "agent_asset_5055",
+    "index": [
+      {
+        "keys": {
+          "hostname": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "agent_id": 1,
+          "package_seq": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "name": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "type": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "sversion": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "agent_asset_5056",
+    "index": [
+      {
+        "keys": {
+          "hostname": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "agent_id": 1,
+          "package_seq": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "name": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "image_id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "image_name": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "state": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "agent_asset_5057",
+    "index": [
+      {
+        "keys": {
+          "hostname": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "agent_id": 1,
+          "package_seq": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "origin_digest": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "digest": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "exe": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "agent_asset_5058",
+    "index": [
+      {
+        "keys": {
+          "hostname": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "agent_id": 1,
+          "package_seq": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "agent_asset_5059",
+    "index": [
+      {
+        "keys": {
+          "hostname": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "agent_id": 1,
+          "package_seq": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "agent_asset_5060",
+    "index": [
+      {
+        "keys": {
+          "hostname": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "agent_id": 1,
+          "package_seq": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "type": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "name": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "agent_asset_5061",
+    "index": [
+      {
+        "keys": {
+          "hostname": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "agent_id": 1,
+          "package_seq": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "name": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "type": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "agent_asset_5062",
+    "index": [
+      {
+        "keys": {
+          "hostname": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "intranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv4": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "extranet_ipv6": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "agent_id": 1,
+          "package_seq": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "name": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "state": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "component",
+    "index": [
+      {
+        "keys": {
+          "name": 1
+        },
+        "unique": true
+      }
+    ]
+  },
+  {
+    "collection": "component_version",
+    "index": [
+      {
+        "keys": {
+          "version": 1,
+          "component.name": 1
+        },
+        "unique": true
+      }
+    ]
+  },
+  {
+    "collection": "component_policy",
+    "index": [
+      {
+        "keys": {
+          "component_version.component.name": 1
+        },
+        "unique": true
+      },
+      {
+        "keys": {
+          "component_version.version": 1
+        },
+        "unique": true
+      }
+    ]
+  },
+  {
+    "collection": "virus_detection_alarm_v1",
+    "index": [
+      {
+        "keys": {
+          "hostname": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "in_ipv6_list": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "ex_ipv6_list": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "in_ipv4_list": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "ex_ipv4_list": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "agent_id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "alert_type_us": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "__alarm_status": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "__insert_time": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "__hit_wl": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "__checked": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "static_file": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "md5_hash": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "harm_level": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "rule_name": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "rasp_alarm_v1",
+    "index": [
+      {
+        "keys": {
+          "hostname": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "in_ipv6_list": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "ex_ipv6_list": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "in_ipv4_list": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "ex_ipv4_list": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "agent_id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "alert_type_us": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "__alarm_status": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "__insert_time": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "__hit_wl": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "__checked": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "HarmLevel": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "rule_name": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "kube_alarm_v1",
+    "index": [
+      {
+        "keys": {
+          "cluster": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "cluster_id": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "cluster_area": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "alert_type_us": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "__alarm_status": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "__insert_time": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "__hit_wl": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "__checked": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "level": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "rule_name": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "kube_cluster_info",
+    "index": [
+      {
+        "keys": {
+          "cluster_id": 1
+        },
+        "unique": true
+      },
+      {
+        "keys": {
+          "cluster_name": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "update_time": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "kube_node_info",
+    "index": [
+      {
+        "keys": {
+          "node_id": 1
+        },
+        "unique": true
+      },
+      {
+        "keys": {
+          "node_name": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "update_time": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "kube_worker_info",
+    "index": [
+      {
+        "keys": {
+          "worker_id": 1
+        },
+        "unique": true
+      },
+      {
+        "keys": {
+          "worker_name": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "update_time": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "kube_pod_info",
+    "index": [
+      {
+        "keys": {
+          "pod_id": 1
+        },
+        "unique": true
+      },
+      {
+        "keys": {
+          "pod_name": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "update_time": 1
+        },
+        "unique": false
+      }
+    ]
+  },
+  {
+    "collection": "kube_container_info",
+    "index": [
+      {
+        "keys": {
+          "container_id": 1
+        },
+        "unique": true
+      },
+      {
+        "keys": {
+          "container_name": 1
+        },
+        "unique": false
+      },
+      {
+        "keys": {
+          "update_time": 1
         },
         "unique": false
       }
