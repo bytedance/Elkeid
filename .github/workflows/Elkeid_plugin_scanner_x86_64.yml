@@ -19,7 +19,7 @@ jobs:
       uses: docker/setup-buildx-action@v1
 
     - name: Build Scanner
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         file: plugins/scanner/docker/Dockerfile.x86_64
         load: true
@@ -27,7 +27,7 @@ jobs:
 
     - name: Extract Scanner
       id: extract-scanner
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeid/scanner_x86_64:latest
         path: /Elkeid/plugins/scanner/output/.
