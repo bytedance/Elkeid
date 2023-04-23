@@ -7,7 +7,7 @@ cgroup_name = "clamav_"
 ### mega byte
 cgroup_mem_limit = 256
 ### %
-cgroup_cpu_limit = 10
+cgroup_cpu_limit = 4
 
 ### log
 log_level = "info"

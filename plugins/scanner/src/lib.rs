@@ -177,30 +177,16 @@ pub fn setup_cgroup(pid: u32, mem: i64, cpu: i64) -> Result<()> {
     // unlimit : 1024 * 1024 * 500 & 200000
     // limit : 1024 * 1024 * 180 & 10000
     let hier1 = cgroups_rs::hierarchies::auto();
-    let mem_cg = cgroups_rs::cgroup_builder::CgroupBuilder::new("clamav_mem")
+    let scanner_cg = cgroups_rs::cgroup_builder::CgroupBuilder::new("elkeid_scanner")
         .memory()
         .memory_hard_limit(mem) // x MB
         .done()
-        .build(hier1);
-
-    let mems: &cgroups_rs::memory::MemController = match mem_cg.controller_of() {
-        Some(p) => p,
-        None => return Err(anyhow!("cgroup add failed")),
-    };
-    mems.add_task(&cgroups_rs::CgroupPid::from(pid as u64))?;
-
-    let hier = cgroups_rs::hierarchies::auto();
-    let cpu_cg = cgroups_rs::cgroup_builder::CgroupBuilder::new("clamav_cpu")
         .cpu()
         .quota(cpu) //  n / MAX 100 000 = x% CPU
         .done()
-        .build(hier);
+        .build(hier1);
 
-    let cpus: &cgroups_rs::cpu::CpuController = match cpu_cg.controller_of() {
-        Some(p) => p,
-        None => return Err(anyhow!("cgroup add failed")),
-    };
-    cpus.add_task(&cgroups_rs::CgroupPid::from(pid as u64))?;
+    scanner_cg.add_task(&cgroups_rs::CgroupPid::from(pid as u64))?;
     return Ok(());
 }
 
