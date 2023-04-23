@@ -6,6 +6,7 @@ on:
     - main
     - 1.9/scanner
     - 2.0/scanner
+    - 2.2/scanner
 
 jobs:
 

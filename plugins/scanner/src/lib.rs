@@ -186,7 +186,7 @@ pub fn setup_cgroup(pid: u32, mem: i64, cpu: i64) -> Result<()> {
         .done()
         .build(hier1);
 
-    scanner_cg.add_task(&cgroups_rs::CgroupPid::from(pid as u64))?;
+    scanner_cg.add_task(cgroups_rs::CgroupPid::from(pid as u64))?;
     return Ok(());
 }
 
