@@ -63,7 +63,7 @@ check: # 检查规则（详见自定义规则）
 | command_check  | 运行命令行语句 | 1：命令行语句<br>2：特殊参数(如*ignore_exit* 认为当命令行报错时认为通过检测) | 命令运行结果
 | file_line_check  | 遍历文件，逐行匹配 | 1：文件绝对路径<br>2：该行的flag（用于快速筛选行，减轻正则匹配的压力）<br>3：该文件的注释符(默认为#) | true/false/正则筛选值
 | file_permission  | 检测文件权限是否符合安全配置 | 1： 文件绝对路径<br>2： 文件最小权限(基于8进制，如644) | true/false
-| if_flie_exist  | 判断文件是否存在 | 1： 文件绝对路径 | true/false
+| if_file_exist  | 判断文件是否存在 | 1： 文件绝对路径 | true/false
 | file_user_group  | 判断文件用户组 | 1： 文件绝对路径<br>2： 用户组id | true/false
 | file_md5_check  | 判断文件MD5是否一致 | 1： 文件绝对路径<br>2： MD5 | true/false
 | func_check  | 通过特殊基线规则判断 | 1： 目标规则 | true/false
