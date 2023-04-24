@@ -2497,6 +2497,71 @@ PRINT_EVENT_DEFINE(memfd_create,
 );
 #endif
 
+/* Port Scan Attack Detector for ipv4 (tcp) */
+PRINT_EVENT_DEFINE(psad4,
+
+                   PE_PROTO(__be32 sip, int sport, __be32 dip, int dport, int flags),
+
+                   PE_ARGS(sip, sport, dip, dport, flags),
+
+                   PE_STRUCT__entry(
+                           __field(__be32, sip)
+                           __field(int, sport)
+                           __field(__be32, dip)
+                           __field(int, dport)
+                           __field(int, flags)
+                   ),
+
+                   PE_fast_assign(
+                           __entry->sip = sip;
+                           __entry->sport = sport;
+                           __entry->dip = dip;
+                           __entry->dport = dport;
+                           __entry->flags = flags;
+                   ),
+
+                   PE_printk("612" RS "2" RS "%d.%d.%d.%d" RS "%d" RS "%d.%d.%d.%d" RS "%d" RS "%d",
+                           NIPQUAD(__get_ent(sip, sip)),
+                           __get_ent(sport, sport),
+                           NIPQUAD(__get_ent(dip, dip)),
+                           __get_ent(dport, dport),
+                           __get_ent(flags, flags)
+                   )
+);
+
+#if IS_ENABLED(CONFIG_IPV6)
+PRINT_EVENT_DEFINE(psad6,
+
+                   PE_PROTO(const struct in6_addr *sip, int sport, const struct in6_addr *dip, int dport, int flags),
+
+                   PE_ARGS(sip, sport, dip, dport, flags),
+
+                   PE_STRUCT__entry(
+                           __field(struct in6_addr, sip)
+                           __field(int, sport)
+                           __field(struct in6_addr, dip)
+                           __field(int, dport)
+                           __field(int, flags)
+                   ),
+
+                   PE_fast_assign(
+                           memcpy(&__entry->sip, sip, sizeof(*sip));
+                           memcpy(&__entry->dip, dip, sizeof(*dip));
+                           __entry->sport = sport;
+                           __entry->dport = dport;
+                           __entry->flags = flags;
+                   ),
+
+                   PE_printk("612" RS "10" RS "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x" RS "%d" RS "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x" RS "%d" RS "%d",
+                           NIP6(__get_ent(sip, sip)),
+                           __get_ent(sport, sport),
+                           NIP6(__get_ent(dip, dip)),
+                           __get_ent(dport, dport),
+                           __get_ent(flags, flags)
+                   )
+);
+#endif
+
 #endif /* _KPROBE_PRINT_H */
 
 /* This part must be outside protection */
