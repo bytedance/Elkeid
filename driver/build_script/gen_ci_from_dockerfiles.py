@@ -117,6 +117,13 @@ yaml_cfg_build = OrderedDict(
         "name": "Elkeid_driver",
         "on": {
             "push": {
+                "paths":[
+                    "'driver/LKM/**'",
+                    "'driver/build_script/aarch64/**'",
+                    "'driver/build_script/x86_64/**'",
+                    "'driver/dockerfiles.aarch64/**'",
+                    "'driver/dockerfiles.x86_64/**'",
+                ],
                 "branches": [
                     "main",
                 ]

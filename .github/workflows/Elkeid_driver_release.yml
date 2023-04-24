@@ -2239,54 +2239,54 @@ jobs:
         asset_path: ./elkeid_driver_ko.tar.xz
         upload_url: ${{steps.create_release.outputs.upload_url}}
     needs:
-    - build_ubuntu2004_azure_x86_64
-    - build_ubuntu1604_gke_x86_64
-    - build_ubuntu1804_gcp_x86_64
-    - build_amazonlinux_x86_64
-    - build_rhel6_elrepo_x86_64
-    - build_ubuntu1404_k4_x86_64
-    - build_tlinux24_x86_64
+    - build_amazonlinux510_x86_64
+    - build_debian8_x86_64
+    - build_rhel8_elrepo_lt_x86_64
+    - build_ubuntu2004_gke_x86_64
+    - build_rhel6_x86_64
+    - build_aliyun_linux2_x86_64
+    - build_rhel7_elrepo_ml_x86_64
+    - build_ubuntu1604_k48_x86_64
+    - build_ubuntu2004_aws_x86_64
+    - build_ubuntu2204_x86_64
+    - build_rhel7_elrepo_ml_archive_x86_64
+    - build_debian11_x86_64
+    - build_ubuntu1604_auzre_x86_64
     - build_ubuntu1404_k3_x86_64
     - build_ubuntu1204_x86_64
-    - build_ubuntu1804_x86_64
-    - build_rhel7_elrepo_ml_x86_64
-    - build_rhel7_elrepo_lt_archive_x86_64
-    - build_ubuntu2004_x86_64
-    - build_rhel7_elrepo_lt_x86_64
-    - build_ubuntu1604_k48_x86_64
-    - build_rhel8_plus_x86_64
-    - build_rhel7_centosplus_x86_64
-    - build_ubuntu1604_aws_x86_64
-    - build_ubuntu2004_gcp_x86_64
-    - build_aliyun_linux3_x86_64
-    - build_anolis8_x86_64
-    - build_ubuntu1604_k413_x86_64
-    - build_tlinux31_x86_64
-    - build_amazonlinux510_x86_64
-    - build_aliyun_linux2_x86_64
-    - build_debian11_x86_64
-    - build_ubuntu2004_gke_x86_64
-    - build_debian8_x86_64
-    - build_ubuntu1804_azure_x86_64
-    - build_debian10_x86_64
-    - build_debian9_x86_64
-    - build_rhel7_elrepo_ml_archive_x86_64
-    - build_ubuntu1604_auzre_x86_64
-    - build_rocky8_x86_64
-    - build_rhel8_elrepo_ml_x86_64
-    - build_amazonlinux54_x86_64
-    - build_ubuntu1804_aws_x86_64
-    - build_ubuntu2204_x86_64
-    - build_ubuntu1604_k44_x86_64
-    - build_ubuntu2004_aws_x86_64
-    - build_rhel8_elrepo_lt_x86_64
-    - build_rhel7_x86_64
-    - build_almalinux8_x86_64
-    - build_ubuntu1604_gcp_x86_64
     - build_ubuntu1804_gke_x86_64
+    - build_ubuntu1804_aws_x86_64
+    - build_almalinux8_x86_64
+    - build_ubuntu2004_x86_64
+    - build_tlinux24_x86_64
+    - build_rocky8_x86_64
+    - build_ubuntu1404_k4_x86_64
+    - build_ubuntu1804_x86_64
+    - build_rhel8_plus_x86_64
+    - build_rhel7_elrepo_lt_archive_x86_64
+    - build_ubuntu2004_azure_x86_64
+    - build_debian9_x86_64
+    - build_rhel8_elrepo_ml_x86_64
+    - build_rhel7_elrepo_lt_x86_64
     - build_ubuntu1604_k410_x86_64
+    - build_amazonlinux54_x86_64
+    - build_ubuntu1604_aws_x86_64
+    - build_ubuntu1604_k413_x86_64
+    - build_rhel6_elrepo_x86_64
+    - build_anolis8_x86_64
+    - build_ubuntu1604_gke_x86_64
+    - build_ubuntu1604_gcp_x86_64
+    - build_rhel7_x86_64
+    - build_ubuntu2004_gcp_x86_64
+    - build_rhel7_centosplus_x86_64
     - build_rhel8_x86_64
-    - build_rhel6_x86_64
-    - build_aliyun_linux3_aarch64
+    - build_aliyun_linux3_x86_64
+    - build_ubuntu1804_gcp_x86_64
+    - build_ubuntu1804_azure_x86_64
+    - build_amazonlinux_x86_64
+    - build_ubuntu1604_k44_x86_64
+    - build_debian10_x86_64
+    - build_tlinux31_x86_64
     - build_ubuntu2004_aws_aarch64
     - build_rhel7_aarch64
+    - build_aliyun_linux3_aarch64
