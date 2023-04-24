@@ -4,11 +4,6 @@ RUN apt update;
 RUN apt install -y wget curl tree git gcc build-essential kbuild libelf-dev;
 RUN apt-get -y install linux-headers-4.4.*-generic  || true
 RUN apt clean all
-RUN wget http://launchpadlibrarian.net/360564153/linux-headers-4.4.0-117-generic_4.4.0-117.141_amd64.
-RUN wget http://launchpadlibrarian.net/360564155/linux-headers-4.4.0-117_4.4.0-117.141_all.deb
-RUN wget http://launchpadlibrarian.net/349219907/linux-headers-4.4.0-105_4.4.0-105.128_all.deb
-RUN wget http://launchpadlibrarian.net/349219904/linux-headers-4.4.0-105-generic_4.4.0-105.128_amd64.deb
-RUN dpkg -i ./*.deb
 
 ADD . /elkeid
 WORKDIR /elkeid/driver

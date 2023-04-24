@@ -20,10 +20,17 @@ RUN bash ./build_script/x86_64/batch_compile.sh
 RUN apt-get -y remove linux-headers-4.2.*-generic || true
 
 RUN apt-get -y install linux-headers-4.4.*-generic || true
+RUN wget http://launchpadlibrarian.net/360821175/linux-headers-4.4.0-117-generic_4.4.0-117.141~14.04.1_amd64.deb 
+RUN wget http://launchpadlibrarian.net/360812954/linux-headers-4.4.0-117_4.4.0-117.141~14.04.1_all.deb
+RUN wget http://launchpadlibrarian.net/349241213/linux-headers-4.4.0-105_4.4.0-105.128~14.04.1_all.deb
+RUN wget http://launchpadlibrarian.net/349245543/linux-headers-4.4.0-105-generic_4.4.0-105.128~14.04.1_amd64.deb
+RUN dpkg -i ./*.deb
 RUN bash ./build_script/x86_64/batch_compile.sh
 RUN apt-get -y remove linux-headers-4.4.*-generic || true
 
 RUN apt-get -y install linux-headers-4.15.*-generic || true
+
+
 RUN bash ./build_script/x86_64/batch_compile.sh
 RUN apt-get -y remove linux-headers-4.15.*-generic || true
 

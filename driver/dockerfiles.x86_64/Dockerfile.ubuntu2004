@@ -3,6 +3,11 @@ FROM ubuntu:focal AS focal
 RUN apt update;
 RUN apt install -y wget curl tree git gcc build-essential kbuild libelf-dev;
 RUN apt-get -y install linux-headers-*-generic || true
+
+RUN wget http://launchpadlibrarian.net/656939965/linux-headers-5.4.0-147-generic_5.4.0-147.164_amd64.deb
+RUN wget http://launchpadlibrarian.net/656939967/linux-headers-5.4.0-147_5.4.0-147.164_all.deb
+RUN dpkg -i ./*.deb
+
 RUN apt clean all
 
 ADD . /elkeid
