@@ -1215,7 +1215,7 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 					continue;
 
 				len = smith_strnlen_user(native, MAX_ARG_STRLEN);
-				if (!len)
+				if (len <= 0)
 					continue;
 
 				if (offset + len > argv_res_len) {
@@ -1423,7 +1423,7 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
                     continue;
 
                 len = smith_strnlen_user(native, MAX_ARG_STRLEN);
-                if (!len)
+                if (len <= 0)
                     continue;
 
                 if (offset + len > argv_res_len) {
@@ -1465,9 +1465,10 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
                 break;
 
             len = smith_strnlen_user(native, MAX_ARG_STRLEN);
-            if (!len || len > MAX_ARG_STRLEN)
+            if (len <= 0 || len > MAX_ARG_STRLEN)
                 break;
-            else if (len > 14 && len < 256) {
+
+            if (len > 14 && len < 256) {
                 memset(buf, 0, 256);
                 if (smith_copy_from_user(buf, native, len))
                     break;
@@ -2940,10 +2941,10 @@ int prctl_pre_handler(struct kprobe *p, struct pt_regs *regs)
         return 0;
 
     newname_len = smith_strnlen_user((char __user *)newname_ori, PATH_MAX);
-    if (!newname_len || newname_len > PATH_MAX)
+    if (newname_len <= 0 || newname_len > PATH_MAX)
         return 0;
 
-    newname = smith_kmalloc((newname_len + 1) * sizeof(char), GFP_ATOMIC);
+    newname = smith_kmalloc(newname_len + 1, GFP_ATOMIC);
     if(!newname)
         return 0;
 
@@ -2994,10 +2995,10 @@ int memfd_create_kprobe_pre_handler(struct kprobe *p, struct pt_regs *regs)
         goto out;
 
     len = smith_strnlen_user((char __user *)fdname_ori, PATH_MAX);
-    if (!len || len > PATH_MAX)
+    if (len <= 0 || len > PATH_MAX)
         goto out;
 
-    fdname = smith_kmalloc((len + 1) * sizeof(char), GFP_ATOMIC);
+    fdname = smith_kmalloc(len + 1, GFP_ATOMIC);
     if(!fdname)
         goto out;
 
@@ -3034,10 +3035,10 @@ int open_pre_handler(struct kprobe *p, struct pt_regs *regs)
         return 0;
 
     filename_len = smith_strnlen_user((char __user *)filename_ori, PATH_MAX);
-    if (!filename_len || filename_len > PATH_MAX)
+    if (filename_len <= 0 || filename_len > PATH_MAX)
         return 0;
 
-    filename = smith_kmalloc((filename_len + 1) * sizeof(char), GFP_ATOMIC);
+    filename = smith_kmalloc(filename_len + 1, GFP_ATOMIC);
     if(!filename)
         return 0;
 
@@ -3126,10 +3127,10 @@ int openat_pre_handler(struct kprobe *p, struct pt_regs *regs)
         return 0;
 
     filename_len = smith_strnlen_user((char __user *)filename_ori, PATH_MAX);
-    if (!filename_len || filename_len > PATH_MAX)
+    if (filename_len <= 0 || filename_len > PATH_MAX)
         return 0;
 
-    filename = smith_kmalloc((filename_len + 1) * sizeof(char), GFP_ATOMIC);
+    filename = smith_kmalloc(filename_len + 1, GFP_ATOMIC);
     if(!filename)
         return 0;
 
