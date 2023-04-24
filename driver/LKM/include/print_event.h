@@ -2,7 +2,6 @@
 
 #ifndef _PRINT_EVENT_H
 #define _PRINT_EVENT_H
-#include "trace.h"
 
 /* Stage 1 */
 #undef PE_PROTO
@@ -160,8 +159,7 @@
 		.format	= name##_format_event,				\
 	};								\
 	static struct print_event_class * const				\
-		__print_event_class_##name __used			\
-		__attribute__((section(".__print_event_class"))) =	\
+		__print_event_class_##name __used =			\
 		&print_event_class_##name;				\
 									\
 	static inline notrace						\
@@ -193,5 +191,54 @@
 	}
 
 #include TRACE_INCLUDE(TRACE_INCLUDE_FILE)
+
+/* Stage 4 */
+#undef PE_PROTO
+#undef PE_ARGS
+#undef PE_STRUCT__entry
+#undef PE_fast_assign
+#undef PE_printk
+
+#define PE_PROTO(args...)
+#define PE_ARGS(args...)
+#define PE_STRUCT__entry(args...)
+#define PE_fast_assign(args...)
+#define PE_printk(fmt, args...)
+
+#undef PRINT_EVENT_DEFINE
+#define PRINT_EVENT_DEFINE(name, proto, args, tstruct, assign, print) \
+		&print_event_class_##name,
+
+#if defined(_KPROBE_PRINT_H)
+static struct print_event_class *kprobe_print_event_class[] = {
+#include TRACE_INCLUDE(TRACE_INCLUDE_FILE)
+};
+int smith_query_kprobe_events(void)
+{
+	return ARRAY_SIZE(kprobe_print_event_class);
+}
+struct print_event_class *smith_query_kprobe_event_class(int id)
+{
+	if (id < 0 || id >= ARRAY_SIZE(kprobe_print_event_class))
+		return NULL;
+	return kprobe_print_event_class[id];
+}
+#elif defined(_ANTI_ROOTKIT_PRINT_H)
+static struct print_event_class *anti_rootkit_print_event_class[] = {
+#include TRACE_INCLUDE(TRACE_INCLUDE_FILE)
+};
+int smith_query_anti_rootkit_events(void)
+{
+	return ARRAY_SIZE(anti_rootkit_print_event_class);
+}
+struct print_event_class *smith_query_anti_rootkit_event_class(int id)
+{
+	if (id < 0 || id >= ARRAY_SIZE(anti_rootkit_print_event_class))
+		return NULL;
+	return anti_rootkit_print_event_class[id];
+}
+#else
+#error "only kprobe and antiroot are supported."
+#endif
 
 #endif

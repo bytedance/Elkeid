@@ -5,6 +5,7 @@
  * Hook some kernel function
  */
 #include "../include/smith_hook.h"
+#include "../include/trace.h"
 
 #define CREATE_PRINT_EVENT
 #include "../include/kprobe_print.h"
@@ -703,9 +704,8 @@ int bind_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 
 int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
-    int flag = 0;
-    int err, fd, copy_res;
-    int dport, sport, retval, sa_family;
+    int err, fd;
+    int dport = 0, sport = 0, retval, sa_family;
 
     __be32 dip4 = 0;
     __be32 sip4 = 0;
@@ -729,92 +729,73 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     if (!fd || IS_ERR_OR_NULL(data->dirp))
         return 0;
 
+    if (smith_copy_from_user(&tmp_dirp, data->dirp, 16))
+        return 0;
+
     socket = sockfd_lookup(fd, &err);
-    if (socket) {
-        copy_res = smith_copy_from_user(&tmp_dirp, data->dirp, 16);
+    if (IS_ERR_OR_NULL(socket))
+        return 0;
 
-        if (copy_res) {
-            sockfd_put(socket);
-            return 0;
-        }
-
-        switch (tmp_dirp.sa_family) {
-            case AF_INET:
+    switch (tmp_dirp.sa_family) {
+        case AF_INET:
                 sk = socket->sk;
                 inet = (struct inet_sock *)sk;
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
-                if (inet->inet_daddr) {
-                    dip4 = inet->inet_daddr;
-				    //dip4 = ((struct sockaddr_in *)&tmp_dirp)->sin_addr.s_addr;
-				    sip4 = inet->inet_saddr;
-				    sport = ntohs(inet->inet_sport);
-				    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
-				    if(dport == 0)
-				        dport = ntohs(inet->inet_dport);
-				    flag = 1;
-			    }
+				//dip4 = ((struct sockaddr_in *)&tmp_dirp)->sin_addr.s_addr;
+                dip4 = inet->inet_daddr;
+			    sip4 = inet->inet_saddr;
+			    sport = ntohs(inet->inet_sport);
+			    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
+			    if (dport == 0)
+			        dport = ntohs(inet->inet_dport);
 #else
-                if (inet->daddr) {
-                    dip4 = inet->daddr;
-                    //dip4 = ((struct sockaddr_in *)&tmp_dirp)->sin_addr.s_addr;
-                    sip4 = inet->saddr;
-                    sport = ntohs(inet->sport);
-                    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
-                    if(dport == 0)
-                        dport = ntohs(inet->dport);
-                    flag = 1;
-                }
+                //dip4 = ((struct sockaddr_in *)&tmp_dirp)->sin_addr.s_addr;
+                dip4 = inet->daddr;
+                sip4 = inet->saddr;
+                sport = ntohs(inet->sport);
+                dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
+                if (dport == 0)
+                    dport = ntohs(inet->dport);
 #endif
                 sa_family = AF_INET;
                 break;
 #if IS_ENABLED(CONFIG_IPV6)
-            case AF_INET6:
+        case AF_INET6:
 			    sk = socket->sk;
 			    inet = (struct inet_sock *)sk;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(IPV6_SUPPORT)
-			    if (inet->inet_dport) {
-				    //dip6 = &((struct sockaddr_in6 *)&tmp_dirp)->sin6_addr;
-				    dip6 = &(sk->sk_v6_daddr);
-				    sip6 = &(sk->sk_v6_rcv_saddr);
-				    sport = ntohs(inet->inet_sport);
-				    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
-				    if(dport == 0)
-				        dport = ntohs(inet->inet_dport);
-				    flag = 1;
-			    }
+				//dip6 = &((struct sockaddr_in6 *)&tmp_dirp)->sin6_addr;
+				dip6 = &(sk->sk_v6_daddr);
+				sip6 = &(sk->sk_v6_rcv_saddr);
+				sport = ntohs(inet->inet_sport);
+				dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
+				if (dport == 0)
+				    dport = ntohs(inet->inet_dport);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
-			    if (inet->inet_dport) {
-				    //dip6 = &((struct sockaddr_in6 *)&tmp_dirp)->sin6_addr;
-				    dip6 = &(inet->pinet6->daddr);
-				    sip6 = &(inet->pinet6->saddr);
-				    sport = ntohs(inet->inet_sport);
-				    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
-				    if(dport)
-				        dport = ntohs(inet->inet_dport);
-				    flag = 1;
-			    }
+				//dip6 = &((struct sockaddr_in6 *)&tmp_dirp)->sin6_addr;
+				dip6 = &(inet->pinet6->daddr);
+				sip6 = &(inet->pinet6->saddr);
+				sport = ntohs(inet->inet_sport);
+				dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
+				if (dport)
+				    dport = ntohs(inet->inet_dport);
 #else
-			    if (inet->dport) {
-				    //dip6 = &((struct sockaddr_in6 *)&tmp_dirp)->sin6_addr;
-				    dip6 = &(inet->pinet6->daddr);
-				    sip6 = &(inet->pinet6->saddr);
-				    sport = ntohs(inet->sport);
-				    dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
-				    if(dport)
-				        dport = ntohs(inet->dport);
-				    flag = 1;
-			    }
+				//dip6 = &((struct sockaddr_in6 *)&tmp_dirp)->sin6_addr;
+				dip6 = &(inet->pinet6->daddr);
+				sip6 = &(inet->pinet6->saddr);
+				sport = ntohs(inet->sport);
+				dport = ntohs(((struct sockaddr_in *)&tmp_dirp)->sin_port);
+				if (dport)
+				    dport = ntohs(inet->dport);
 #endif
-			sa_family = AF_INET6;
-			break;
+			    sa_family = AF_INET6;
+			    break;
 #endif
-            default:
+        default:
                 break;
-        }
-        sockfd_put(socket);
     }
 
-    if (flag) {
+    if (dport != 0) {
         buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
         exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
@@ -831,16 +812,17 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
             smith_kfree(buffer);
     }
 
+    /* refed by sip6 & dip6 for ipv6 */
+    sockfd_put(socket);
+
     return 0;
 }
 
 int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
-    int flag = 0;
-    int retval, dport, sport;
+    int retval, dport = 0, sport = 0;
 
-    __be32 dip4;
-    __be32 sip4;
+    __be32 dip4 = 0, sip4 = 0;
 
     char *exe_path = DEFAULT_RET_STR;
     char *buffer = NULL;
@@ -848,8 +830,7 @@ int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     struct sock *sk;
     struct connect_data *data;
     struct inet_sock *inet;
-    struct in6_addr *dip6;
-    struct in6_addr *sip6;
+    struct in6_addr *dip6 = NULL, *sip6 = NULL;
 
     retval = regs_return_value(regs);
     data = (struct connect_data *)ri->data;
@@ -872,53 +853,42 @@ int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     switch (data->sa_family) {
         case AF_INET:
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
-            if (inet->inet_daddr) {
 			dip4 = inet->inet_daddr;
 			sip4 = inet->inet_saddr;
 			sport = ntohs(inet->inet_sport);
 			dport = ntohs(inet->inet_dport);
-			flag = 1;
-		}
 #else
-            if (inet->daddr) {
-                dip4 = inet->daddr;
-                sip4 = inet->saddr;
-                sport = ntohs(inet->sport);
-                dport = ntohs(inet->dport);
-                flag = 1;
-            }
+            dip4 = inet->daddr;
+            sip4 = inet->saddr;
+            sport = ntohs(inet->sport);
+            dport = ntohs(inet->dport);
 #endif
             break;
 #if IS_ENABLED(CONFIG_IPV6)
         case AF_INET6:
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(IPV6_SUPPORT)
-		    if (inet->inet_dport) {
-			    dip6 = &(sk->sk_v6_daddr);
-			    sip6 = &(sk->sk_v6_rcv_saddr);
-			    sport = ntohs(inet->inet_sport);
-			    dport = ntohs(inet->inet_dport);
+			dip6 = &(sk->sk_v6_daddr);
+			sip6 = &(sk->sk_v6_rcv_saddr);
+			sport = ntohs(inet->inet_sport);
+			dport = ntohs(inet->inet_dport);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
-		    if (inet->inet_dport) {
-			    dip6 = &(inet->pinet6->daddr);
-			    sip6 = &(inet->pinet6->saddr);
-			    sport = ntohs(inet->inet_sport);
-			    dport = ntohs(inet->inet_dport);
+			dip6 = &(inet->pinet6->daddr);
+			sip6 = &(inet->pinet6->saddr);
+			sport = ntohs(inet->inet_sport);
+			dport = ntohs(inet->inet_dport);
 #else
-		    if (inet->dport) {
-			    dip6 = &(inet->pinet6->daddr);
-			    sip6 = &(inet->pinet6->saddr);
-			    sport = ntohs(inet->sport);
-			    dport = ntohs(inet->dport);
+			dip6 = &(inet->pinet6->daddr);
+			sip6 = &(inet->pinet6->saddr);
+			sport = ntohs(inet->sport);
+			dport = ntohs(inet->dport);
 #endif
-			    flag = 1;
-		    }
-		break;
+		    break;
 #endif
         default:
             break;
     }
 
-    if (flag) {
+    if (dport != 0) {
         if (data->sa_family == AF_INET)
             //connect4_print(data->type, dport, dip4, exe_path, sip4,
             //               sport, retval);
@@ -1029,7 +999,7 @@ int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     data = (struct accept_data *)ri->data;
     retval = regs_return_value(regs);
     sock = sockfd_lookup(retval, &err);
-    if(IS_ERR_OR_NULL(sock))
+    if (IS_ERR_OR_NULL(sock))
         goto out;
 
     buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
@@ -1069,7 +1039,7 @@ int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 #endif
 
 out:
-    if (sock)
+    if (!IS_ERR_OR_NULL(sock))
         sockfd_put(sock);
     if (buffer)
         smith_kfree(buffer);
@@ -1245,7 +1215,7 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 					continue;
 
 				len = smith_strnlen_user(native, MAX_ARG_STRLEN);
-				if (!len)
+				if (len <= 0)
 					continue;
 
 				if (offset + len > argv_res_len) {
@@ -1453,7 +1423,7 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
                     continue;
 
                 len = smith_strnlen_user(native, MAX_ARG_STRLEN);
-                if (!len)
+                if (len <= 0)
                     continue;
 
                 if (offset + len > argv_res_len) {
@@ -1495,9 +1465,10 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
                 break;
 
             len = smith_strnlen_user(native, MAX_ARG_STRLEN);
-            if (!len || len > MAX_ARG_STRLEN)
+            if (len <= 0 || len > MAX_ARG_STRLEN)
                 break;
-            else if (len > 14 && len < 256) {
+
+            if (len > 14 && len < 256) {
                 memset(buf, 0, 256);
                 if (smith_copy_from_user(buf, native, len))
                     break;
@@ -2970,10 +2941,10 @@ int prctl_pre_handler(struct kprobe *p, struct pt_regs *regs)
         return 0;
 
     newname_len = smith_strnlen_user((char __user *)newname_ori, PATH_MAX);
-    if (!newname_len || newname_len > PATH_MAX)
+    if (newname_len <= 0 || newname_len > PATH_MAX)
         return 0;
 
-    newname = smith_kmalloc((newname_len + 1) * sizeof(char), GFP_ATOMIC);
+    newname = smith_kmalloc(newname_len + 1, GFP_ATOMIC);
     if(!newname)
         return 0;
 
@@ -3024,10 +2995,10 @@ int memfd_create_kprobe_pre_handler(struct kprobe *p, struct pt_regs *regs)
         goto out;
 
     len = smith_strnlen_user((char __user *)fdname_ori, PATH_MAX);
-    if (!len || len > PATH_MAX)
+    if (len <= 0 || len > PATH_MAX)
         goto out;
 
-    fdname = smith_kmalloc((len + 1) * sizeof(char), GFP_ATOMIC);
+    fdname = smith_kmalloc(len + 1, GFP_ATOMIC);
     if(!fdname)
         goto out;
 
@@ -3064,10 +3035,10 @@ int open_pre_handler(struct kprobe *p, struct pt_regs *regs)
         return 0;
 
     filename_len = smith_strnlen_user((char __user *)filename_ori, PATH_MAX);
-    if (!filename_len || filename_len > PATH_MAX)
+    if (filename_len <= 0 || filename_len > PATH_MAX)
         return 0;
 
-    filename = smith_kmalloc((filename_len + 1) * sizeof(char), GFP_ATOMIC);
+    filename = smith_kmalloc(filename_len + 1, GFP_ATOMIC);
     if(!filename)
         return 0;
 
@@ -3156,10 +3127,10 @@ int openat_pre_handler(struct kprobe *p, struct pt_regs *regs)
         return 0;
 
     filename_len = smith_strnlen_user((char __user *)filename_ori, PATH_MAX);
-    if (!filename_len || filename_len > PATH_MAX)
+    if (filename_len <= 0 || filename_len > PATH_MAX)
         return 0;
 
-    filename = smith_kmalloc((filename_len + 1) * sizeof(char), GFP_ATOMIC);
+    filename = smith_kmalloc(filename_len + 1, GFP_ATOMIC);
     if(!filename)
         return 0;
 
@@ -5008,7 +4979,7 @@ void install_kprobe(void)
     }
 }
 
-static int __init smith_init(void)
+static int __init kprobe_hook_init(void)
 {
     int ret;
 
@@ -5051,7 +5022,7 @@ static int __init smith_init(void)
     return 0;
 }
 
-static void smith_exit(void)
+static void kprobe_hook_exit(void)
 {
     /* should be done before kprobe cleanup */
     smith_nf_fini();
@@ -5063,4 +5034,4 @@ static void smith_exit(void)
     printk(KERN_INFO "[ELKEID] uninstall_kprobe success\n");
 }
 
-KPROBE_INITCALL(smith_init, smith_exit);
+KPROBE_INITCALL(kprobe_hook, kprobe_hook_init, kprobe_hook_exit);

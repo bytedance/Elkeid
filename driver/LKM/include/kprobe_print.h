@@ -5,11 +5,6 @@
 #if !defined(_KPROBE_PRINT_H) || defined(TRACE_HEADER_MULTI_READ)
 #define _KPROBE_PRINT_H
 
-#include "trace.h"
-#include "struct_wrap.h"
-
-#define RS "\x1e"
-
 PRINT_EVENT_DEFINE(call_usermodehelper_exec,
 
                    PE_PROTO(const char * exe, char * argv, int wait),
@@ -30,7 +25,7 @@ PRINT_EVENT_DEFINE(call_usermodehelper_exec,
 
                    PE_printk("607" RS "%s" RS "%s" RS "%d",
                            __get_str(exe, exe), __get_str(argv, argv), __get_ent(wait, wait))
-);
+)
 
 PRINT_EVENT_DEFINE(security_inode4_create,
 
@@ -105,7 +100,7 @@ PRINT_EVENT_DEFINE(security_inode4_create,
                            __get_ent(socket_pid, socket_pid),
                            __get_str(s_id, s_id)
                    )
-);
+)
 
 PRINT_EVENT_DEFINE(security_inode_create_nosocket,
 
@@ -164,7 +159,7 @@ PRINT_EVENT_DEFINE(security_inode_create_nosocket,
                            __get_str(pathstr, pathstr),
                            __get_str(s_id, s_id)
                    )
-);
+)
 
 
 #if IS_ENABLED(CONFIG_IPV6)
@@ -241,7 +236,7 @@ PRINT_EVENT_DEFINE(security_inode6_create,
                            __get_ent(socket_pid, socket_pid),
                            __get_str(s_id, s_id)
                    )
-);
+)
 #endif
 
 PRINT_EVENT_DEFINE(dns,
@@ -320,7 +315,7 @@ PRINT_EVENT_DEFINE(dns,
                            __get_ent(opcode, opcode),
                            __get_ent(rcode, rcode)
                    )
-);
+)
 
 #if IS_ENABLED(CONFIG_IPV6)
 PRINT_EVENT_DEFINE(dns6,
@@ -399,7 +394,7 @@ PRINT_EVENT_DEFINE(dns6,
                            __get_ent(opcode, opcode),
                            __get_ent(rcode, rcode)
                    )
-);
+)
 #endif
 
 PRINT_EVENT_DEFINE(execve,
@@ -503,7 +498,7 @@ PRINT_EVENT_DEFINE(execve,
                            __get_str(ld_preload, ld_preload),
                            __get_ent(retval, retval)
                    )
-);
+)
 
 PRINT_EVENT_DEFINE(execve_nosocket,
 
@@ -589,7 +584,7 @@ PRINT_EVENT_DEFINE(execve_nosocket,
                            __get_str(ld_preload, ld_preload),
                            __get_ent(retval, retval)
                    )
-);
+)
 
 #if IS_ENABLED(CONFIG_IPV6)
 PRINT_EVENT_DEFINE(execve6,
@@ -693,7 +688,7 @@ PRINT_EVENT_DEFINE(execve6,
                            __get_str(ld_preload, ld_preload),
                            __get_ent(retval, retval)
                    )
-);
+)
 #endif
 
 PRINT_EVENT_DEFINE(accept,
@@ -765,7 +760,7 @@ PRINT_EVENT_DEFINE(accept,
                            __get_ent(sport, sport),
                            __get_ent(retval, retval)
                    )
-);
+)
 
 #if IS_ENABLED(CONFIG_IPV6)
 PRINT_EVENT_DEFINE(accept6,
@@ -835,7 +830,7 @@ PRINT_EVENT_DEFINE(accept6,
                            NIP6(__get_ent(sip, sip)),
                            __get_ent(sport, sport),
                            __get_ent(retval, retval) )
-);
+)
 #endif
 
 PRINT_EVENT_DEFINE(connect4,
@@ -908,7 +903,7 @@ PRINT_EVENT_DEFINE(connect4,
                            __get_ent(sport, sport),
                            __get_ent(retval, retval)
                    )
-);
+)
 
 #if IS_ENABLED(CONFIG_IPV6)
 PRINT_EVENT_DEFINE(connect6,
@@ -981,7 +976,7 @@ PRINT_EVENT_DEFINE(connect6,
                            __get_ent(sport, sport),
                            __get_ent(retval, retval)
                    )
-);
+)
 #endif
 
 PRINT_EVENT_DEFINE(ptrace,
@@ -1049,7 +1044,7 @@ PRINT_EVENT_DEFINE(ptrace,
                            __get_str(data_res, data_res),
                            __get_str(pid_tree, pid_tree)
                    )
-);
+)
 
 PRINT_EVENT_DEFINE(bind,
 
@@ -1113,7 +1108,7 @@ PRINT_EVENT_DEFINE(bind,
                            __get_ent(retval, retval)
                    )
 
-);
+)
 
 #if IS_ENABLED(CONFIG_IPV6)
 PRINT_EVENT_DEFINE(bind6,
@@ -1176,7 +1171,7 @@ PRINT_EVENT_DEFINE(bind6,
                            __get_ent(retval, retval)
                    )
 
-);
+)
 #endif
 
 PRINT_EVENT_DEFINE(update_cred,
@@ -1239,8 +1234,7 @@ PRINT_EVENT_DEFINE(update_cred,
                            __get_ent(old_uid, old_uid),
                            __get_ent(retval, retval)
                    )
-);
-
+)
 
 PRINT_EVENT_DEFINE(do_init_module,
 
@@ -1302,7 +1296,7 @@ PRINT_EVENT_DEFINE(do_init_module,
                            __get_str(pid_tree, pid_tree),
                            __get_str(pwd, pwd)
                    )
-);
+)
 
 PRINT_EVENT_DEFINE(rename,
 
@@ -1364,7 +1358,7 @@ PRINT_EVENT_DEFINE(rename,
                            __get_str(newname, newname),
                            __get_str(s_id, s_id)
                         )
-);
+)
 
 PRINT_EVENT_DEFINE(link,
 
@@ -1426,8 +1420,7 @@ PRINT_EVENT_DEFINE(link,
                            __get_str(newname, newname),
                            __get_str(s_id, s_id)
                    )
-);
-
+)
 
 PRINT_EVENT_DEFINE(mprotect,
 
@@ -1494,7 +1487,7 @@ PRINT_EVENT_DEFINE(mprotect,
                            __get_str(vm_file, vm_file),
                            __get_str(pid_tree, pid_tree)
                    )
-);
+)
 
 PRINT_EVENT_DEFINE(setsid,
 
@@ -1547,7 +1540,7 @@ PRINT_EVENT_DEFINE(setsid,
                            __get_ent(root_pid_inum, ROOT_PID_NS_INUM)
                    )
 
-);
+)
 
 PRINT_EVENT_DEFINE(prctl,
 
@@ -1606,7 +1599,7 @@ PRINT_EVENT_DEFINE(prctl,
                            __get_ent(option, option),
                            __get_str(newname, newname)
                    )
-);
+)
 
 PRINT_EVENT_DEFINE(open,
 
@@ -1667,7 +1660,7 @@ PRINT_EVENT_DEFINE(open,
                            __get_ent(mode, mode),
                            __get_str(filename, filename)
                    )
-);
+)
 
 PRINT_EVENT_DEFINE(nanosleep,
 
@@ -1725,7 +1718,7 @@ PRINT_EVENT_DEFINE(nanosleep,
                            __get_ent(sec, sec),
                            __get_ent(nsec, nsec)
                    )
-);
+)
 
 PRINT_EVENT_DEFINE(kill,
 
@@ -1783,7 +1776,7 @@ PRINT_EVENT_DEFINE(kill,
                            __get_ent(target_pid, target_pid),
                            __get_ent(sig, sig)
                    )
-);
+)
 
 PRINT_EVENT_DEFINE(tkill,
 
@@ -1841,7 +1834,7 @@ PRINT_EVENT_DEFINE(tkill,
                            __get_ent(target_pid, target_pid),
                            __get_ent(sig, sig)
                    )
-);
+)
 
 PRINT_EVENT_DEFINE(exit,
 
@@ -1893,7 +1886,7 @@ PRINT_EVENT_DEFINE(exit,
                            __get_ent(pid_inum, __get_pid_ns_inum()),
                            __get_ent(root_pid_inum, ROOT_PID_NS_INUM)
                    )
-);
+)
 
 PRINT_EVENT_DEFINE(exit_group,
 
@@ -1945,7 +1938,7 @@ PRINT_EVENT_DEFINE(exit_group,
                            __get_ent(pid_inum, __get_pid_ns_inum()),
                            __get_ent(root_pid_inum, ROOT_PID_NS_INUM)
                    )
-);
+)
 
 PRINT_EVENT_DEFINE(security_path_rmdir,
 
@@ -2000,7 +1993,7 @@ PRINT_EVENT_DEFINE(security_path_rmdir,
                            __get_ent(root_pid_inum, ROOT_PID_NS_INUM),
                            __get_str(file, file)
                    )
-);
+)
 
 PRINT_EVENT_DEFINE(security_path_unlink,
 
@@ -2055,7 +2048,7 @@ PRINT_EVENT_DEFINE(security_path_unlink,
                            __get_ent(root_pid_inum, ROOT_PID_NS_INUM),
                            __get_str(file, file)
                    )
-);
+)
 
 PRINT_EVENT_DEFINE(write,
 
@@ -2116,8 +2109,7 @@ PRINT_EVENT_DEFINE(write,
                            __get_str(file, file),
                            __get_str(buf, buf)
                    )
-);
-
+)
 
 PRINT_EVENT_DEFINE(file_permission_write,
 
@@ -2178,7 +2170,7 @@ PRINT_EVENT_DEFINE(file_permission_write,
                            __get_str(file, file),
                            __get_str(s_id, s_id)
                    )
-);
+)
 
 PRINT_EVENT_DEFINE(file_permission_read,
 
@@ -2239,7 +2231,7 @@ PRINT_EVENT_DEFINE(file_permission_read,
                            __get_str(file, file),
                            __get_str(s_id, s_id)
                    )
-);
+)
 
 PRINT_EVENT_DEFINE(mount,
                    PE_PROTO(char * exe_path, char * pid_tree, const char * dev_name, char * file_path, const char * fstype, unsigned long  flags),
@@ -2308,7 +2300,7 @@ PRINT_EVENT_DEFINE(mount,
                            __get_str(fstype, fstype),
                            __get_ent(flags, flags)
                    )
-);
+)
 
 PRINT_EVENT_DEFINE(udev,
                    PE_PROTO(char * exe_path, char * product, char * manufacturer, char * serial, int action),
@@ -2373,7 +2365,7 @@ PRINT_EVENT_DEFINE(udev,
                            __get_str(serial, serial),
                            __get_ent(action, action)
                    )
-);
+)
 
 PRINT_EVENT_DEFINE(privilege_escalation,
                    PE_PROTO(int parent_pid, char * pid_tree, char * p_cred , char * c_cred),
@@ -2435,7 +2427,7 @@ PRINT_EVENT_DEFINE(privilege_escalation,
                            __get_str(p_cred, p_cred),
                            __get_str(c_cred, c_cred)
                    )
-);
+)
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
 PRINT_EVENT_DEFINE(memfd_create,
@@ -2494,7 +2486,7 @@ PRINT_EVENT_DEFINE(memfd_create,
                            __get_str(fdname, fdname),
                            __get_ent(flags, flags)
                    )
-);
+)
 #endif
 
 /* Port Scan Attack Detector for ipv4 (tcp) */
@@ -2527,7 +2519,7 @@ PRINT_EVENT_DEFINE(psad4,
                            __get_ent(dport, dport),
                            __get_ent(flags, flags)
                    )
-);
+)
 
 #if IS_ENABLED(CONFIG_IPV6)
 PRINT_EVENT_DEFINE(psad6,
@@ -2559,7 +2551,7 @@ PRINT_EVENT_DEFINE(psad6,
                            __get_ent(dport, dport),
                            __get_ent(flags, flags)
                    )
-);
+)
 #endif
 
 #endif /* _KPROBE_PRINT_H */

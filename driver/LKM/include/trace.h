@@ -22,10 +22,18 @@
 #endif
 #endif
 
+#define RS "\x1e"
+
 #define SZ_32K				0x00008000
 #define SZ_128K				0x00020000
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
+#else
+#define PDE_DATA(i)  PDE(i)->data
+#endif
+
+#ifdef SMITH_TRACE_EVENTS
 static inline int __trace_seq_used(struct trace_seq *s)
 {
 	return trace_seq_used(s);
@@ -90,6 +98,11 @@ struct print_event_class {
 
 #define RB_BUFFER_SIZE	SZ_128K
 #define PRINT_EVENT_DEFINE(name, proto, args, tstruct, assign, print)
+
+struct print_event_class *smith_query_kprobe_event_class(int id);
+struct print_event_class *smith_query_anti_rootkit_event_class(int id);
+int smith_query_kprobe_events(void);
+int smith_query_anti_rootkit_events(void);
 
 #endif /* __KERNEL__ */
 
