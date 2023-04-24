@@ -69,7 +69,7 @@ EulerOS|V2.0|3.10.X|-
 
 ## About the compatibility with Kernel versions
 
-* Linux Kernel Version >= 2.6.32 && <= 5.14.X
+* Linux Kernel Version >= 2.6.32 && <= 6.3
 
 ## About the compatibility with Containers
 
@@ -113,6 +113,7 @@ EulerOS|V2.0|3.10.X|-
 | file_read                | 609      |                                         | OFF     |
 | usb_device_event         | 610      |                                         | ON      |
 | privilege_escalation     | 611      |                                         | ON      |
+| port-scan detection      | 612      | tunable via module param: psad_switch   | OFF     |
 
 
 
@@ -470,6 +471,16 @@ action = 2 is USB_DEVICE_REMOVE
 ------------------------------
 p_cred = uid|euid|suid|fsuid|gid|egid|sgid|fsgid
 c_cred = uid|euid|suid|fsuid|gid|egid|sgid|fsgid
+```
+
+### Port-scan attack detection (612)
+
+```
+------------------------------------------
+|1   |2        |3  |4    |5  |6    |7    |
+------------------------------------------
+|type|sa_family|sip|sport|dip|dport|flags|
+------------------------------------------
 ```
 
 ### Proc File Hook (700)
