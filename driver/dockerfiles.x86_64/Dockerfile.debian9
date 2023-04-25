@@ -1,6 +1,11 @@
 FROM debian:stretch AS stretch
 
-RUN echo "deb http://deb.debian.org/debian stretch-backports main " >> /etc/apt/sources.list
+
+RUN sed -i '/snapshot.debian.org/s/^#//g' /etc/apt/sources.list 
+RUN sed -i '/security.debian.org/s/^/#/g' /etc/apt/sources.list 
+RUN sed -i '/deb.debian.org/s/^/#/g' /etc/apt/sources.list 
+
+RUN echo "deb http://snapshot.debian.org/archive/debian/20220622T000000Z stretch-backports main" >> /etc/apt/sources.list
 
 
 RUN apt update

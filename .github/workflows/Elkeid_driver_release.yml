@@ -20,7 +20,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build aliyun_linux2
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.aliyun_linux2
@@ -65,7 +65,7 @@ jobs:
         config: /etc/buildkitd.toml
     - name: Build aliyun_linux3
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.aarch64/Dockerfile.aliyun_linux3
@@ -103,7 +103,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build aliyun_linux3
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.aliyun_linux3
@@ -146,7 +146,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build almalinux8
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.almalinux8
@@ -189,7 +189,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build amazonlinux
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux
@@ -232,7 +232,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build amazonlinux510
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux510
@@ -275,7 +275,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build amazonlinux54
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux54
@@ -318,7 +318,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build anolis8
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.anolis8
@@ -361,7 +361,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build debian10
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.debian10
@@ -404,7 +404,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build debian11
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.debian11
@@ -447,7 +447,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build debian8
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.debian8
@@ -490,7 +490,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build debian9
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.debian9
@@ -533,7 +533,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel6
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel6
@@ -576,7 +576,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel6_elrepo
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel6_elrepo
@@ -621,7 +621,7 @@ jobs:
         config: /etc/buildkitd.toml
     - name: Build rhel7
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.aarch64/Dockerfile.rhel7
@@ -659,7 +659,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel7
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7
@@ -702,7 +702,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel7_centosplus
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7_centosplus
@@ -745,7 +745,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel7_elrepo_lt
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7_elrepo_lt
@@ -788,7 +788,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel7_elrepo_lt_archive
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7_elrepo_lt_archive
@@ -831,7 +831,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel7_elrepo_ml
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7_elrepo_ml
@@ -874,7 +874,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel7_elrepo_ml_archive
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel7_elrepo_ml_archive
@@ -917,7 +917,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel8
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8
@@ -960,7 +960,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel8_elrepo_lt
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8_elrepo_lt
@@ -1003,7 +1003,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel8_elrepo_ml
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8_elrepo_ml
@@ -1046,7 +1046,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rhel8_plus
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rhel8_plus
@@ -1089,7 +1089,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build rocky8
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.rocky8
@@ -1132,7 +1132,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build tlinux24
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.tlinux24
@@ -1175,7 +1175,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build tlinux31
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.tlinux31
@@ -1218,7 +1218,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1204
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1204
@@ -1261,7 +1261,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1404_k3
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1404_k3
@@ -1304,7 +1304,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1404_k4
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1404_k4
@@ -1347,7 +1347,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_auzre
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_auzre
@@ -1390,7 +1390,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_aws
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_aws
@@ -1433,7 +1433,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_gcp
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_gcp
@@ -1476,7 +1476,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_gke
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_gke
@@ -1519,7 +1519,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_k410
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k410
@@ -1562,7 +1562,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_k413
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k413
@@ -1605,7 +1605,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_k44
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k44
@@ -1648,7 +1648,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1604_k48
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_k48
@@ -1691,7 +1691,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1804
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804
@@ -1734,7 +1734,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1804_aws
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804_aws
@@ -1777,7 +1777,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1804_azure
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804_azure
@@ -1820,7 +1820,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1804_gcp
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804_gcp
@@ -1863,7 +1863,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu1804_gke
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804_gke
@@ -1906,7 +1906,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu2004
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004
@@ -1951,7 +1951,7 @@ jobs:
         config: /etc/buildkitd.toml
     - name: Build ubuntu2004_aws
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.aarch64/Dockerfile.ubuntu2004_aws
@@ -1989,7 +1989,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu2004_aws
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004_aws
@@ -2032,7 +2032,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu2004_azure
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004_azure
@@ -2075,7 +2075,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu2004_gcp
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004_gcp
@@ -2118,7 +2118,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu2004_gke
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004_gke
@@ -2161,7 +2161,7 @@ jobs:
       uses: docker/setup-buildx-action@v2
     - name: Build ubuntu2204
       uses: docker/build-push-action@v3
-      timeout-minutes: 240
+      timeout-minutes: 300
       with:
         context: .
         file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2204

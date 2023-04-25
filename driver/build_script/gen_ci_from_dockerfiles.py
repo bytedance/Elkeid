@@ -55,7 +55,7 @@ def gen_job(vminfo):
                 OrderedDict({
                     "name": "Build "+vmname,
                     "uses": "docker/build-push-action@v3",
-                    "timeout-minutes": "240",
+                    "timeout-minutes": "300",
                     "with": {
                         "context": ".",
                         "file": dockerpath + "/Dockerfile."+vmname,
@@ -118,6 +118,8 @@ yaml_cfg_build = OrderedDict(
         "on": {
             "push": {
                 "paths":[
+                    "'.github/workflows/Elkeid_driver_build.yml'",
+                    "'.github/workflows/Elkeid_driver_release.yml'",
                     "'driver/LKM/**'",
                     "'driver/build_script/aarch64/**'",
                     "'driver/build_script/x86_64/**'",
