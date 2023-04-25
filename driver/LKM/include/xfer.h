@@ -379,7 +379,7 @@ struct ipaddr_v4 {
 #define SD_DATA_ENTRY_IP4(n, v)
 #define SD_DATA_ENTRY_IP6(n, v)
 
-#define SD_DATA_ENTRY_STR(n, v)         + __l_##n + (__l_##n ? 1 : 0) /* strcpy */
+#define SD_DATA_ENTRY_STR(n, v)         + __l_##n
 #define SD_DATA_ENTRY_STL(n, v, l)      + __l_##n
 
 #define SD_DATA_POINTER_IP4(n, v)       SD_DATA_ENTRY_IP4(n, v)
@@ -502,8 +502,8 @@ enum sd_xfer_typeid {
             __ev->s_##n = ((uint32_t)__l_##n) << 16 |               \
                           (uint32_t)(&__ev->p_data[__tr_used] -     \
                                      (char *)&__ev->o_##n);         \
-            strcpy(&__ev->p_data[__tr_used], __v_##n);              \
-            __tr_used += __l_##n + 1; /* strcpy */                  \
+            tb_memcpy(&__ev->p_data[__tr_used], __v_##n, __l_##n);  \
+            __tr_used += __l_##n;                                   \
         } else {                                                    \
             __ev->s_##n = 0;                                        \
         }                                                           \
