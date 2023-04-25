@@ -2078,10 +2078,10 @@ int openat_pre_handler(struct kprobe *p, struct pt_regs *regs)
 
     tid = smith_lookup_tid(current);
     if (tid) {
+        exe_path = tid->st_img->si_path;
         // exe filter check
         if (execve_exe_check(exe_path))
             goto out;
-        exe_path = tid->st_img->si_path;
     }
 
     filename = smith_kmalloc(filename_len + 1, GFP_ATOMIC);
