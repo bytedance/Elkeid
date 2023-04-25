@@ -5,13 +5,13 @@ RUN yum groupinstall -y  "Development Tools";
 RUN mkdir /root/headers
 
 WORKDIR /root/headers
-RUN wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky/8.7/BaseOS/x86_64/os/Packages/k/';
-RUN wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky/8/BaseOS/x86_64/os/Packages/k/';
-RUN wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky-vault/8.6/BaseOS/x86_64/os/Packages/k/';
-RUN wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky-vault/8.5/BaseOS/x86_64/os/Packages/k/'
-RUN wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky-vault/8.4/BaseOS/x86_64/os/Packages/';
-RUN wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky-vault/8.4-RC1/BaseOS/x86_64/os/Packages/';
-RUN wget -q -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky-vault/8.3/BaseOS/x86_64/os/Packages/';
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky/8.7/BaseOS/x86_64/os/Packages/k/';
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky/8/BaseOS/x86_64/os/Packages/k/';
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky-vault/8.6/BaseOS/x86_64/os/Packages/k/';
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky-vault/8.5/BaseOS/x86_64/os/Packages/k/'
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky-vault/8.4/BaseOS/x86_64/os/Packages/';
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky-vault/8.4-RC1/BaseOS/x86_64/os/Packages/';
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky-vault/8.3/BaseOS/x86_64/os/Packages/';
 
 
 RUN rpm --force -i /root/headers/*.rpm || true
