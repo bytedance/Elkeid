@@ -8,11 +8,11 @@ RUN sed -i '/deb.debian.org/s/^/#/g' /etc/apt/sources.list
 RUN echo "deb http://snapshot.debian.org/archive/debian/20220622T000000Z stretch-backports main" >> /etc/apt/sources.list
 
 
-RUN apt update
-RUN apt install  -y apt-utils apt-transport-https ca-certificates debian-archive-keyring wget curl
-RUN apt install -y gcc build-essential libelf-dev; 
-RUN apt install -y linux-compiler-gcc* || true
-RUN apt install -y linux-kbuild*;
+RUN apt-get -o Acquire::Check-Valid-Until=false update
+RUN apt-get -o Acquire::Check-Valid-Until=false install -y apt-utils apt-transport-https ca-certificates debian-archive-keyring wget curl
+RUN apt-get -o Acquire::Check-Valid-Until=false install -y gcc build-essential libelf-dev; 
+RUN apt-get -o Acquire::Check-Valid-Until=false install -y linux-compiler-gcc* || true
+RUN apt-get -o Acquire::Check-Valid-Until=false install -y linux-kbuild*;
 RUN wget https://mirrors.bytedance.com/debian/pool/stretch-main/l/linux-4.14.81.bm.business.1-amd64/linux-headers-4.14.81.bm.business.1-amd64_4.14.81.bm.business.1_amd64.deb && dpkg -i linux-headers-4.14.81.bm.business.1-amd64_4.14.81.bm.business.1_amd64.deb
 RUN wget https://mirrors.bytedance.com/debian/pool/stretch-main/l/linux-4.14.156.bm.business.1-amd64/linux-headers-4.14.156.bm.business.1-amd64_4.14.156.bm.business.1_amd64.deb && dpkg -i linux-headers-4.14.156.bm.business.1-amd64_4.14.156.bm.business.1_amd64.deb
 RUN wget https://mirrors.bytedance.com/debian/pool/stretch-main/l/linux-4.14.156.bm.business.1-amd64/linux-headers-4.14.156.bm.business.1-amd64_4.14.156.bm.business.1-7-gc3e56d652383_amd64.deb  && dpkg -i linux-headers-4.14.156.bm.business.1-amd64_4.14.156.bm.business.1-7-gc3e56d652383_amd64.deb
@@ -20,7 +20,7 @@ RUN wget https://mirrors.bytedance.com/debian/pool/stretch-main/l/linux-4.19.117
 RUN wget https://mirrors.bytedance.com/debian/pool/stretch-main/l/linux-4.19.117.bsk.business.1-amd64/linux-headers-4.19.117.bsk.business.1-amd64_4.19.117.bsk.business.1_amd64.deb && dpkg -i linux-headers-4.19.117.bsk.business.1-amd64_4.19.117.bsk.business.1_amd64.deb
 RUN wget https://mirrors.bytedance.com/debian/pool/stretch-main/l/linux-4.19.36.bsk.business.1-amd64/linux-headers-4.19.36.bsk.business.1-amd64_4.19.36.bsk.business.1-214-gfa3405186ab1_amd64.deb && dpkg -i linux-headers-4.19.36.bsk.business.1-amd64_4.19.36.bsk.business.1-214-gfa3405186ab1_amd64.deb
 
-RUN apt -t stretch-backports install -y linux-headers*amd64
+RUN apt-get -o Acquire::Check-Valid-Until=false -t stretch-backports install -y linux-headers*amd64
 RUN apt clean all
 
 ADD . /elkeid
