@@ -33,7 +33,7 @@
       name: renameTo
       desc: (Ljava/io/File;)Z
     - id: 1
-      name: list
+      name: normalizedList
       desc: ()[Ljava/lang/String;
     - id: 2
       name: delete
