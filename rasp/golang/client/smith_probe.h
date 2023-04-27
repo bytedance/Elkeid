@@ -1,56 +1,47 @@
 #ifndef GO_PROBE_SMITH_PROBE_H
 #define GO_PROBE_SMITH_PROBE_H
 
-#include "smith_client.h"
-#include <zero/thread.h>
+#include "smith_message.h"
+#include <z_sync.h>
 #include <zero/singleton.h>
 #include <zero/atomic/event.h>
 #include <zero/atomic/circular_buffer.h>
+#include <go/version.h>
+#include <go/symbol/symbol.h>
+
+constexpr auto CLASS_MAX = 15;
+constexpr auto METHOD_MAX = 20;
+
+constexpr auto BLOCK_RULE_LENGTH = 256;
+constexpr auto BLOCK_RULE_MAX_COUNT = 8;
 
 constexpr auto TRACE_BUFFER_SIZE = 100;
 
-class SmithProbe: public IMessageHandler {
-#define gSmithProbe zero::Singleton<SmithProbe>::getInstance()
-public:
-    SmithProbe();
-    ~SmithProbe() override;
-
-public:
-    void start();
-    void stop();
-
-public:
-    void loop();
-
-public:
-    void enqueue(const Trace& trace);
-    void consume();
-
-public:
-    void onTimer();
-    void onMessage(const SmithMessage &message) override;
-
-private:
-    bool filter(const Trace& trace);
-
-private:
-    bool mExit{false};
-
-private:
-    std::mutex mLimitMutex;
-    std::mutex mFilterMutex;
-    std::map<std::tuple<int, int>, int> mLimits;
-    std::map<std::tuple<int, int>, Filter> mFilters;
-
-private:
-    event *mTimer;
-    event_base *mEventBase;
-    Heartbeat mHeartbeat;
-    zero::atomic::Event mEvent;
-    SmithClient mClient{mEventBase, this};
-    zero::Thread<SmithProbe> mConsumer{this};
-    zero::Thread<SmithProbe> mEventLoop{this};
-    zero::atomic::CircularBuffer<Trace, TRACE_BUFFER_SIZE> mBuffer;
+struct Target {
+#define gTarget zero::Singleton<Target>::getInstance()
+    go::Version version;
+    std::unique_ptr<go::symbol::SymbolTable> symbolTable;
 };
+
+struct Policy {
+    size_t ruleCount;
+    size_t KeywordCount;
+    char policyID[POLICY_ID_LENGTH];
+    std::pair<int, char[BLOCK_RULE_LENGTH]> rules[BLOCK_RULE_MAX_COUNT];
+    std::pair<LogicalOperator, char[BLOCK_RULE_MAX_COUNT][BLOCK_RULE_LENGTH]> stackFrame;
+    Policy *next;
+};
+
+struct Probe {
+#define gProbe zero::Singleton<Probe>::getInstance()
+    int efd{-1};
+    std::atomic<bool> waiting;
+    std::atomic<int> quotas[CLASS_MAX][METHOD_MAX];
+    z_rwlock_t locks[CLASS_MAX][METHOD_MAX];
+    std::pair<size_t, Policy *> policies[CLASS_MAX][METHOD_MAX];
+    zero::atomic::CircularBuffer<Trace, TRACE_BUFFER_SIZE> buffer;
+};
+
+void startProbe();
 
 #endif //GO_PROBE_SMITH_PROBE_H

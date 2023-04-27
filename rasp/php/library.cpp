@@ -4,20 +4,16 @@
 #include "client/smith_probe.h"
 #include <php.h>
 #include <standard/info.h>
-#include <csignal>
-#include <sys/prctl.h>
 #include <zero/log.h>
 
-constexpr auto TRACKS = std::array<const char *, 7>{
-        {
-                "_POST",
-                "_GET",
-                "_COOKIE",
-                "_SERVER",
-                "_ENV",
-                "_FILES",
-                "_REQUEST"
-        }
+constexpr auto TRACKS = std::array{
+        "_POST",
+        "_GET",
+        "_COOKIE",
+        "_SERVER",
+        "_ENV",
+        "_FILES",
+        "_REQUEST"
 };
 
 zval *HTTPGlobals(
@@ -30,40 +26,17 @@ zval *HTTPGlobals(
         return nullptr;
 
 #if PHP_MAJOR_VERSION > 5
-    if (Z_TYPE(PG(http_globals)[id]) != IS_ARRAY && !zend_is_auto_global_str((char *)TRACKS[id], strlen(TRACKS[id])))
+    if (Z_TYPE(PG(http_globals)[id]) != IS_ARRAY && !zend_is_auto_global_str((char *) TRACKS[id], strlen(TRACKS[id])))
         return nullptr;
 
     return &PG(http_globals)[id];
 #else
-    if ((!PG(http_globals)[id] || Z_TYPE_P(PG(http_globals)[id]) != IS_ARRAY) && !zend_is_auto_global((char *)TRACKS[id], strlen(TRACKS[id]) TSRMLS_CC))
+    if ((!PG(http_globals)[id] || Z_TYPE_P(PG(http_globals)[id]) != IS_ARRAY) &&
+        !zend_is_auto_global((char *) TRACKS[id], strlen(TRACKS[id]) TSRMLS_CC))
         return nullptr;
 
     return PG(http_globals)[id];
 #endif
-}
-
-void startProbe() {
-    if (fork() != 0)
-        return;
-
-    INIT_FILE_LOG(zero::INFO, "php-probe");
-
-    char name[16] = {};
-    snprintf(name, sizeof(name), "probe(%d)", getppid());
-
-    if (prctl(PR_SET_PDEATHSIG, SIGKILL) < 0) {
-        LOG_ERROR("set death signal failed");
-        exit(-1);
-    }
-
-    if (pthread_setname_np(pthread_self(), name) != 0) {
-        LOG_ERROR("set process name failed");
-        exit(-1);
-    }
-
-    gSmithProbe->start();
-
-    exit(0);
 }
 
 PHP_GINIT_FUNCTION (php_probe) {
@@ -83,8 +56,20 @@ ZEND_DECLARE_MODULE_GLOBALS(php_probe)
 PHP_MINIT_FUNCTION (php_probe) {
     ZEND_INIT_MODULE_GLOBALS(php_probe, PHP_GINIT(php_probe), PHP_GSHUTDOWN(php_probe))
 
-    if (!gAPIConfig || !gAPITrace)
+    if (!gProbe)
         return FAILURE;
+
+    auto nodes = (Policy *) allocShared(sizeof(Policy) * (PREPARED_POLICY_COUNT - 1));
+
+    if (!nodes)
+        return FAILURE;
+
+    for (int i = 0; i < PREPARED_POLICY_COUNT - 1; i++) {
+        if (!gProbe->pushNode(nodes + i)) {
+            freeShared(nodes);
+            return FAILURE;
+        }
+    }
 
     pthread_atfork(
             []() {
@@ -121,7 +106,7 @@ PHP_MINIT_FUNCTION (php_probe) {
 #else
             zend_class_entry **cls;
 
-            if (zend_hash_find(CG(class_table), api.cls, strlen(api.cls) + 1, (void **)&cls) != SUCCESS) {
+            if (zend_hash_find(CG(class_table), api.cls, strlen(api.cls) + 1, (void **) &cls) != SUCCESS) {
                 LOG_WARNING("can't found class: %s", api.cls);
                 continue;
             }
@@ -140,7 +125,7 @@ PHP_MINIT_FUNCTION (php_probe) {
 #else
         zend_function *func;
 
-        if (zend_hash_find(hashTable, api.name, strlen(api.name) + 1, (void **)&func) != SUCCESS) {
+        if (zend_hash_find(hashTable, api.name, strlen(api.name) + 1, (void **) &func) != SUCCESS) {
             LOG_WARNING("can't found function: %s", api.name);
             continue;
         }
@@ -180,7 +165,7 @@ PHP_MSHUTDOWN_FUNCTION (php_probe) {
 #else
             zend_class_entry **cls;
 
-            if (zend_hash_find(CG(class_table), api.cls, strlen(api.cls) + 1, (void **)&cls) != SUCCESS) {
+            if (zend_hash_find(CG(class_table), api.cls, strlen(api.cls) + 1, (void **) &cls) != SUCCESS) {
                 LOG_WARNING("can't found class: %s", api.cls);
                 continue;
             }
@@ -199,7 +184,7 @@ PHP_MSHUTDOWN_FUNCTION (php_probe) {
 #else
         zend_function *func;
 
-        if (zend_hash_find(hashTable, api.name, strlen(api.name) + 1, (void **)&func) != SUCCESS) {
+        if (zend_hash_find(hashTable, api.name, strlen(api.name) + 1, (void **) &func) != SUCCESS) {
             LOG_WARNING("can't found function: %s", api.name);
             continue;
         }
@@ -257,15 +242,31 @@ PHP_RINIT_FUNCTION (php_probe) {
         );
     };
 
-    strncpy(PHP_PROBE_G(request).scheme, fetch(Z_ARRVAL_P(server), "REQUEST_SCHEME").c_str(), SMITH_FIELD_LENGTH - 1);
-    strncpy(PHP_PROBE_G(request).host, fetch(Z_ARRVAL_P(server), "HTTP_HOST").c_str(), SMITH_FIELD_LENGTH - 1);
-    strncpy(PHP_PROBE_G(request).serverName, fetch(Z_ARRVAL_P(server), "SERVER_NAME").c_str(), SMITH_FIELD_LENGTH - 1);
-    strncpy(PHP_PROBE_G(request).serverAddress, fetch(Z_ARRVAL_P(server), "SERVER_ADDR").c_str(), SMITH_FIELD_LENGTH - 1);
-    strncpy(PHP_PROBE_G(request).uri, fetch(Z_ARRVAL_P(server), "REQUEST_URI").c_str(), SMITH_FIELD_LENGTH - 1);
-    strncpy(PHP_PROBE_G(request).query, fetch(Z_ARRVAL_P(server), "QUERY_STRING").c_str(), SMITH_FIELD_LENGTH - 1);
-    strncpy(PHP_PROBE_G(request).method, fetch(Z_ARRVAL_P(server), "REQUEST_METHOD").c_str(), SMITH_FIELD_LENGTH - 1);
-    strncpy(PHP_PROBE_G(request).remoteAddress, fetch(Z_ARRVAL_P(server), "REMOTE_ADDR").c_str(), SMITH_FIELD_LENGTH - 1);
-    strncpy(PHP_PROBE_G(request).documentRoot, fetch(Z_ARRVAL_P(server), "DOCUMENT_ROOT").c_str(), SMITH_FIELD_LENGTH - 1);
+    strncpy(PHP_PROBE_G(request).scheme, fetch(Z_ARRVAL_P(server), "REQUEST_SCHEME").c_str(), FIELD_LENGTH - 1);
+    strncpy(PHP_PROBE_G(request).host, fetch(Z_ARRVAL_P(server), "HTTP_HOST").c_str(), FIELD_LENGTH - 1);
+    strncpy(PHP_PROBE_G(request).serverName, fetch(Z_ARRVAL_P(server), "SERVER_NAME").c_str(), FIELD_LENGTH - 1);
+
+    strncpy(
+            PHP_PROBE_G(request).serverAddress,
+            fetch(Z_ARRVAL_P(server), "SERVER_ADDR").c_str(),
+            FIELD_LENGTH - 1
+    );
+
+    strncpy(PHP_PROBE_G(request).uri, fetch(Z_ARRVAL_P(server), "REQUEST_URI").c_str(), FIELD_LENGTH - 1);
+    strncpy(PHP_PROBE_G(request).query, fetch(Z_ARRVAL_P(server), "QUERY_STRING").c_str(), FIELD_LENGTH - 1);
+    strncpy(PHP_PROBE_G(request).method, fetch(Z_ARRVAL_P(server), "REQUEST_METHOD").c_str(), FIELD_LENGTH - 1);
+
+    strncpy(
+            PHP_PROBE_G(request).remoteAddress,
+            fetch(Z_ARRVAL_P(server), "REMOTE_ADDR").c_str(),
+            FIELD_LENGTH - 1
+    );
+
+    strncpy(
+            PHP_PROBE_G(request).documentRoot,
+            fetch(Z_ARRVAL_P(server), "DOCUMENT_ROOT").c_str(),
+            FIELD_LENGTH - 1
+    );
 
     std::optional<short> port = zero::strings::toNumber<short>(fetch(Z_ARRVAL_P(server), "SERVER_PORT"));
 
@@ -292,10 +293,10 @@ PHP_RINIT_FUNCTION (php_probe) {
             continue;
         }
 
-        strncpy(PHP_PROBE_G(request).headers[index][0], override.c_str(), SMITH_FIELD_LENGTH - 1);
-        strncpy(PHP_PROBE_G(request).headers[index][1], Z_STRVAL_P(e.value), SMITH_FIELD_LENGTH - 1);
+        strncpy(PHP_PROBE_G(request).headers[index][0], override.c_str(), FIELD_LENGTH - 1);
+        strncpy(PHP_PROBE_G(request).headers[index][1], Z_STRVAL_P(e.value), FIELD_LENGTH - 1);
 
-        if (++index >= SMITH_HEADER_COUNT)
+        if (++index >= HEADER_COUNT)
             break;
     }
 
@@ -324,7 +325,7 @@ PHP_RINIT_FUNCTION (php_probe) {
                         TSRMLS_CC
 #endif
                 ).c_str(),
-                SMITH_FIELD_LENGTH - 1
+                FIELD_LENGTH - 1
         );
 
         zval *files = HTTPGlobals(
@@ -343,11 +344,25 @@ PHP_RINIT_FUNCTION (php_probe) {
             if (Z_TYPE_P(e.value) != IS_ARRAY)
                 continue;
 
-            strncpy(PHP_PROBE_G(request).files[index].name, fetch(Z_ARRVAL_P(e.value), "name").c_str(), SMITH_FIELD_LENGTH - 1);
-            strncpy(PHP_PROBE_G(request).files[index].type, fetch(Z_ARRVAL_P(e.value), "type").c_str(), SMITH_FIELD_LENGTH - 1);
-            strncpy(PHP_PROBE_G(request).files[index].tmp_name, fetch(Z_ARRVAL_P(e.value), "tmp_name").c_str(), SMITH_FIELD_LENGTH - 1);
+            strncpy(
+                    PHP_PROBE_G(request).files[index].name,
+                    fetch(Z_ARRVAL_P(e.value), "name").c_str(),
+                    FIELD_LENGTH - 1
+            );
 
-            if (++index >= SMITH_FILE_COUNT)
+            strncpy(
+                    PHP_PROBE_G(request).files[index].type,
+                    fetch(Z_ARRVAL_P(e.value), "type").c_str(),
+                    FIELD_LENGTH - 1
+            );
+
+            strncpy(
+                    PHP_PROBE_G(request).files[index].tmp_name,
+                    fetch(Z_ARRVAL_P(e.value), "tmp_name").c_str(),
+                    FIELD_LENGTH - 1
+            );
+
+            if (++index >= FILE_COUNT)
                 break;
         }
 
@@ -368,7 +383,7 @@ PHP_RINIT_FUNCTION (php_probe) {
         return SUCCESS;
     }
 
-    for (int i = 0, j = 0; i < n && j < SMITH_FIELD_LENGTH - 1; i++) {
+    for (int i = 0, j = 0; i < n && j < FIELD_LENGTH - 1; i++) {
         if (!isprint(buffer[i]))
             continue;
 

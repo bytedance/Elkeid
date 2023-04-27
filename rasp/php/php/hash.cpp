@@ -7,7 +7,7 @@ zval *hashFind(const HashTable *hashTable, const char *key) {
 #else
     zval **val;
 
-    if (zend_hash_find(hashTable, key, strlen(key) + 1, (void **)&val) != SUCCESS)
+    if (zend_hash_find(hashTable, key, strlen(key) + 1, (void **) &val) != SUCCESS)
         return nullptr;
 
     return *val;
@@ -69,9 +69,9 @@ zval *HashIterator::value() {
 
 Element HashIterator::operator*() {
     return {
-        keyType(),
-        key(),
-        value()
+            keyType(),
+            key(),
+            value()
     };
 }
 

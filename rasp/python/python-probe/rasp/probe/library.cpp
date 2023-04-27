@@ -2,7 +2,9 @@
 #include "client/smith_probe.h"
 #include <csignal>
 #include <sys/prctl.h>
+#include <sys/eventfd.h>
 #include <zero/log.h>
+#include <re.h>
 
 struct PyTrace : public PyObject, Trace {
 
@@ -24,13 +26,13 @@ int initPyTrace(PyTrace *self, PyObject *args, PyObject *kwargs) {
     if (!PyArg_ParseTuple(args, "iiOOO", &self->classID, &self->methodID, &argList, &kwargsDict, &stackTraceList))
         return -1;
 
-    self->count = std::min(SMITH_ARG_COUNT, (int) PyList_Size(argList));
+    self->count = std::min(ARG_COUNT, (int) PyList_Size(argList));
 
     for (int i = 0; i < self->count; i++) {
 #if PY_MAJOR_VERSION >= 3
-        strncpy(self->args[i], PyUnicode_AsUTF8(PyList_GetItem(argList, i)), SMITH_ARG_LENGTH - 1);
+        strncpy(self->args[i], PyUnicode_AsUTF8(PyList_GetItem(argList, i)), ARG_LENGTH - 1);
 #else
-        strncpy(self->args[i], PyString_AS_STRING(PyList_GetItem(argList, i)), SMITH_ARG_LENGTH - 1);
+        strncpy(self->args[i], PyString_AS_STRING(PyList_GetItem(argList, i)), ARG_LENGTH - 1);
 #endif
     }
 
@@ -38,19 +40,19 @@ int initPyTrace(PyTrace *self, PyObject *args, PyObject *kwargs) {
 
     for (Py_ssize_t pos = 0, index = 0; PyDict_Next(kwargsDict, &pos, &key, &value); index++) {
 #if PY_MAJOR_VERSION >= 3
-        strncpy(self->kwargs[index][0], PyUnicode_AsUTF8(key), SMITH_ARG_LENGTH - 1);
-        strncpy(self->kwargs[index][1], PyUnicode_AsUTF8(value), SMITH_ARG_LENGTH - 1);
+        strncpy(self->kwargs[index][0], PyUnicode_AsUTF8(key), ARG_LENGTH - 1);
+        strncpy(self->kwargs[index][1], PyUnicode_AsUTF8(value), ARG_LENGTH - 1);
 #else
-        strncpy(self->kwargs[index][0], PyString_AS_STRING(key), SMITH_ARG_LENGTH - 1);
-        strncpy(self->kwargs[index][1], PyString_AS_STRING(value), SMITH_ARG_LENGTH - 1);
+        strncpy(self->kwargs[index][0], PyString_AS_STRING(key), ARG_LENGTH - 1);
+        strncpy(self->kwargs[index][1], PyString_AS_STRING(value), ARG_LENGTH - 1);
 #endif
     }
 
-    for (int i = 0; i < std::min(SMITH_TRACE_COUNT, (int) PyList_Size(stackTraceList)); i++) {
+    for (int i = 0; i < std::min(FRAME_COUNT, (int) PyList_Size(stackTraceList)); i++) {
 #if PY_MAJOR_VERSION >= 3
-        strncpy(self->stackTrace[i], PyUnicode_AsUTF8(PyList_GetItem(stackTraceList, i)), SMITH_TRACE_LENGTH - 1);
+        strncpy(self->stackTrace[i], PyUnicode_AsUTF8(PyList_GetItem(stackTraceList, i)), FRAME_LENGTH - 1);
 #else
-        strncpy(self->stackTrace[i], PyString_AS_STRING(PyList_GetItem(stackTraceList, i)), SMITH_TRACE_LENGTH - 1);
+        strncpy(self->stackTrace[i], PyString_AS_STRING(PyList_GetItem(stackTraceList, i)), FRAME_LENGTH - 1);
 #endif
     }
 
@@ -63,7 +65,24 @@ PyObject *send(PyObject *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "O", &pyTrace))
         return nullptr;
 
-    gAPITrace->enqueue(*pyTrace);
+    std::optional<size_t> index = gProbe->buffer.reserve();
+
+    if (!index)
+        Py_RETURN_NONE;
+
+    gProbe->buffer[*index] = *(Trace *) pyTrace;
+    gProbe->buffer.commit(*index);
+
+    if (gProbe->buffer.size() < TRACE_BUFFER_SIZE / 2)
+        Py_RETURN_NONE;
+
+    bool expected = true;
+
+    if (!gProbe->waiting.compare_exchange_strong(expected, false))
+        Py_RETURN_NONE;
+
+    eventfd_t value = 1;
+    eventfd_write(gProbe->efd, value);
 
     Py_RETURN_NONE;
 }
@@ -74,11 +93,63 @@ PyObject *block(PyObject *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "O", &pyTrace))
         return nullptr;
 
-    if (!gAPIConfig->block(*pyTrace))
+    z_rwlock_t *lock = gProbe->locks[pyTrace->classID] + pyTrace->methodID;
+    z_rwlock_read_lock(lock);
+
+    auto &[size, policies] = gProbe->policies[pyTrace->classID][pyTrace->methodID];
+
+    if (std::none_of(policies, policies + size, [&](const Policy *policy) {
+        if (policy->ruleCount > 0 && std::none_of(
+                policy->rules,
+                policy->rules + policy->ruleCount,
+                [&](const auto &rule) {
+                    if (rule.first >= pyTrace->count)
+                        return false;
+
+                    int length = 0;
+
+                    return re_match(rule.second, pyTrace->args[rule.first], &length) != -1;
+                }))
+            return false;
+
+        if (policy->KeywordCount == 0) {
+            pyTrace->blocked = true;
+            strncpy(pyTrace->policyID, policy->policyID, sizeof(Trace::policyID) - 1);
+            return true;
+        }
+
+        auto pred = [&](const auto &keyword) {
+            return std::any_of(pyTrace->stackTrace, pyTrace->stackTrace + FRAME_COUNT, [=](const auto &frame) {
+                if (!frame)
+                    return false;
+
+                int length = 0;
+
+                return re_match(keyword, frame, &length) != -1;
+            });
+        };
+
+        const auto &[logicalOperator, keywords] = policy->stackFrame;
+
+        if (logicalOperator == OR && std::any_of(keywords, keywords + policy->KeywordCount, pred)) {
+            pyTrace->blocked = true;
+            strncpy(pyTrace->policyID, policy->policyID, sizeof(Trace::policyID) - 1);
+            return true;
+        }
+
+        if (logicalOperator == AND && std::all_of(keywords, keywords + policy->KeywordCount, pred)) {
+            pyTrace->blocked = true;
+            strncpy(pyTrace->policyID, policy->policyID, sizeof(Trace::policyID) - 1);
+            return true;
+        }
+
+        return false;
+    })) {
+        z_rwlock_read_unlock(lock);
         Py_RETURN_FALSE;
+    }
 
-    pyTrace->blocked = true;
-
+    z_rwlock_read_unlock(lock);
     Py_RETURN_TRUE;
 }
 
@@ -89,8 +160,13 @@ PyObject *surplus(PyObject *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "ii", &classID, &methodID))
         return nullptr;
 
-    if (!gAPIConfig->surplus(classID, methodID))
-        Py_RETURN_FALSE;
+    std::atomic<int> &quota = gProbe->quotas[classID][methodID];
+    int n = quota;
+
+    do {
+        if (n <= 0)
+            Py_RETURN_FALSE;
+    } while (!quota.compare_exchange_weak(n, n - 1));
 
     Py_RETURN_TRUE;
 }
@@ -103,29 +179,22 @@ constexpr PyMethodDef MODULE_METHODS[] = {
 };
 
 INIT_FUNCTION(probe) {
-    if (!gAPIConfig || !gAPITrace)
+    if (!gProbe)
         INIT_RETURN(nullptr);
 
-    if (fork() == 0) {
-        INIT_FILE_LOG(zero::INFO, "python-probe-addon");
+    auto nodes = (Policy *) allocShared(sizeof(Policy) * (PREPARED_POLICY_COUNT - 1));
 
-        char name[16] = {};
-        snprintf(name, sizeof(name), "probe(%d)", getppid());
+    if (!nodes)
+        INIT_RETURN(nullptr);
 
-        if (prctl(PR_SET_PDEATHSIG, SIGKILL) < 0) {
-            LOG_ERROR("set death signal failed");
-            exit(-1);
+    for (int i = 0; i < PREPARED_POLICY_COUNT - 1; i++) {
+        if (!gProbe->pushNode(nodes + i)) {
+            freeShared(nodes);
+            INIT_RETURN(nullptr);
         }
-
-        if (pthread_setname_np(pthread_self(), name) != 0) {
-            LOG_ERROR("set process name failed");
-            exit(-1);
-        }
-
-        gSmithProbe->start();
-
-        exit(0);
     }
+
+    startProbe();
 
     static PyTypeObject traceType = {PyVarObject_HEAD_INIT(nullptr, 0)};
 

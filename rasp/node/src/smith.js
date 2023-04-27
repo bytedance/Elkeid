@@ -1,47 +1,71 @@
 const path = require('path');
-const inspector = require('inspector');
-const {SmithClient, OperateEnum} = require('./client');
+const logger = require('./logger');
+const {SmithClient, Operate} = require('./client');
 const {argvProcessor, argvSyncProcessor, socketAddressProcessor} = require('./processor');
+const {validateFilter, validateBlock} = require('./schema');
 
 const fs = require('fs');
 const net = require('net');
 const dns = require('dns');
 const child_process = require('child_process');
 
-const smith_blocks = new Map();
-const smith_filters = new Map();
-const smith_client = new SmithClient();
+const LOGICAL_OR = 0;
+const LOGICAL_AND = 1;
 
-smith_client.on('message', (message) => {
+const heartbeat = {};
+
+const blocks = new Map();
+const filters = new Map();
+
+const client = new SmithClient();
+
+client.on('message', (message) => {
+    logger.info(message);
+
     switch (message.message_type) {
-        case OperateEnum.detect:
+        case Operate.detect:
             if (!require.main)
                 break;
 
             const root = path.dirname(require.main.filename);
             const manifest = path.join(root, 'package.json');
 
-            if (fs.existsSync(manifest)) {
-                const data = fs.readFileSync(manifest);
-                smith_client.postMessage(OperateEnum.detect, {'node': JSON.parse(data)});
-            }
+            if (!fs.existsSync(manifest))
+                break;
+
+            client.postMessage(Operate.detect, {'node': JSON.parse(fs.readFileSync(manifest))});
 
             break;
 
-        case OperateEnum.filter:
-            smith_filters.clear();
+        case Operate.filter:
+            if (!validateFilter(message.data)) {
+                logger.warn(validateFilter.errors);
+                break;
+            }
+
+            filters.clear();
+
+            heartbeat.filter = message.data.uuid;
 
             for (let filter of message.data.filters) {
-                smith_filters.set(`${filter.class_id} ${filter.method_id}`, filter);
+                filters.set(`${filter.class_id} ${filter.method_id}`, filter);
             }
 
             break;
 
-        case OperateEnum.block:
-            smith_blocks.clear();
+        case Operate.block:
+            if (!validateBlock(message.data)) {
+                logger.warn(validateBlock.errors);
+                break;
+            }
+
+            blocks.clear();
+
+            heartbeat.block = message.data.uuid;
 
             for (let block of message.data.blocks) {
-                smith_blocks.set(`${block.class_id} ${block.method_id}`, block);
+                const key = `${block.class_id} ${block.method_id}`;
+                blocks.set(key, [block, ...(blocks.get(key) || [])]);
             }
 
             break;
@@ -51,7 +75,11 @@ smith_client.on('message', (message) => {
     }
 });
 
-smith_client.connect();
+client.connect();
+
+setInterval(() => {
+    client.postMessage(Operate.heartbeat, heartbeat);
+}, 60 * 1000).unref();
 
 function smithHook(func, classID, methodID, canBlock = false, processors = {}) {
     return function (...args) {
@@ -100,7 +128,7 @@ function smithHook(func, classID, methodID, canBlock = false, processors = {}) {
             stack_trace: new Error().stack.split('\n').slice(1).map(s => s.trim())
         }
 
-        const pred = (rule) => {
+        const pred = rule => {
             if (rule.index >= smithTrace.args.length)
                 return false;
 
@@ -108,19 +136,47 @@ function smithHook(func, classID, methodID, canBlock = false, processors = {}) {
         }
 
         if (canBlock) {
-            const block = smith_blocks.get(`${classID} ${methodID}`);
+            const policies = blocks.get(`${classID} ${methodID}`);
 
-            if (block && block.rules.some(pred)) {
-                smithTrace.blocked = true;
-                smith_client.postMessage(OperateEnum.trace, smithTrace);
+            if (policies && policies.some(policy => {
+                if (policy.rules.length > 0 && !policy.rules.some(pred))
+                    return false;
+
+                if (policy.stack_frame === null) {
+                    smithTrace.blocked = true;
+                    smithTrace.policy_id = policy.policy_id;
+                    return true;
+                }
+
+                const framePred = keyword => {
+                    return smithTrace.stack_trace.some(frame => {
+                        return new RegExp(keyword).test(frame);
+                    });
+                };
+
+                if (policy.stack_frame.operator === LOGICAL_OR && policy.stack_frame.keywords.some(framePred)) {
+                    smithTrace.blocked = true;
+                    smithTrace.policy_id = policy.policy_id;
+                    return true;
+                }
+
+                if (policy.stack_frame.operator === LOGICAL_AND && policy.stack_frame.keywords.every(framePred)) {
+                    smithTrace.blocked = true;
+                    smithTrace.policy_id = policy.policy_id;
+                    return true;
+                }
+
+                return false;
+            })) {
+                client.postMessage(Operate.trace, smithTrace);
                 throw new Error('API blocked by RASP');
             }
         }
 
-        const filter = smith_filters.get(`${classID} ${methodID}`);
+        const filter = filters.get(`${classID} ${methodID}`);
 
         if (!filter) {
-            smith_client.postMessage(OperateEnum.trace, smithTrace);
+            client.postMessage(Operate.trace, smithTrace);
             return func.call(this, ...args);
         }
 
@@ -135,7 +191,7 @@ function smithHook(func, classID, methodID, canBlock = false, processors = {}) {
             return func.call(this, ...args);
         }
 
-        smith_client.postMessage(OperateEnum.trace, smithTrace);
+        client.postMessage(Operate.trace, smithTrace);
 
         return func.call(this, ...args);
     }

@@ -4,11 +4,13 @@
 #include <list>
 #include <vector>
 #include <nlohmann/json.hpp>
-#include <go/symbol/func.h>
+#include <go/symbol/symbol.h>
 
-constexpr auto ARG_COUNT = 20;
+constexpr auto ARG_COUNT = 8;
 constexpr auto ARG_LENGTH = 256;
-constexpr auto TRACE_COUNT = 20;
+constexpr auto FRAME_COUNT = 20;
+constexpr auto HEADER_COUNT = 20;
+constexpr auto POLICY_ID_LENGTH = 256;
 
 enum Operate {
     EXIT,
@@ -33,38 +35,23 @@ struct Heartbeat {
     std::string limit;
 };
 
-struct StackTrace {
-    uintptr_t pc;
-    Func func;
+struct Request {
+    char method[ARG_LENGTH];
+    char uri[ARG_LENGTH];
+    char host[ARG_LENGTH];
+    char remote[ARG_LENGTH];
+    char headers[HEADER_COUNT][2][ARG_LENGTH];
 };
 
 struct Trace {
     int classID;
     int methodID;
-    bool blocked;
     int count;
+    bool blocked;
+    char policyID[POLICY_ID_LENGTH];
     char args[ARG_COUNT][ARG_LENGTH];
-    StackTrace stackTrace[TRACE_COUNT];
-};
-
-struct Module {
-    std::string path;
-    std::string version;
-    std::string sum;
-    Module *replace{};
-
-    ~Module() {
-        if (replace) {
-            delete replace;
-            replace = nullptr;
-        }
-    }
-};
-
-struct ModuleInfo {
-    std::string path;
-    Module main;
-    std::list<Module> deps;
+    std::pair<uintptr_t, std::optional<go::symbol::Symbol>> stackTrace[FRAME_COUNT];
+    Request request;
 };
 
 struct MatchRule {
@@ -84,10 +71,22 @@ struct FilterConfig {
     std::list<Filter> filters;
 };
 
+enum LogicalOperator {
+    OR,
+    AND
+};
+
+struct StackFrame {
+    std::vector<std::string> keywords;
+    LogicalOperator logicalOperator;
+};
+
 struct Block {
     int classID;
     int methodID;
-    std::list<MatchRule> rules;
+    std::string policyID;
+    std::vector<MatchRule> rules;
+    std::optional<StackFrame> stackFrame;
 };
 
 struct BlockConfig {
@@ -110,16 +109,16 @@ void to_json(nlohmann::json &j, const SmithMessage &message);
 void from_json(const nlohmann::json &j, SmithMessage &message);
 
 void to_json(nlohmann::json &j, const Heartbeat &heartbeat);
+void to_json(nlohmann::json &j, const Request &request);
 void to_json(nlohmann::json &j, const Trace &trace);
-void to_json(nlohmann::json &j, const Module &module);
-void to_json(nlohmann::json &j, const ModuleInfo &moduleInfo);
 
-void from_json(const nlohmann::json &j, MatchRule &matchRule);
+void from_json(const nlohmann::json &j, MatchRule &rule);
 void from_json(const nlohmann::json &j, Filter &filter);
-void from_json(const nlohmann::json &j, Block &block);
-void from_json(const nlohmann::json &j, Limit &limit);
 void from_json(const nlohmann::json &j, FilterConfig &config);
+void from_json(const nlohmann::json &j, StackFrame &stackFrame);
+void from_json(const nlohmann::json &j, Block &block);
 void from_json(const nlohmann::json &j, BlockConfig &config);
+void from_json(const nlohmann::json &j, Limit &limit);
 void from_json(const nlohmann::json &j, LimitConfig &config);
 
 #endif //GO_PROBE_SMITH_MESSAGE_H

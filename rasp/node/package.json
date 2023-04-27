@@ -1,0 +1,21 @@
+{
+  "name": "node-probe",
+  "version": "1.0.0",
+  "description": "Node.js runtime application self-protection",
+  "scripts": {
+    "build": "rollup -c && cp scripts/* output"
+  },
+  "author": "bytedance",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "ajv": "^8.11.2",
+    "winston": "^3.8.2",
+    "winston-daily-rotate-file": "^4.7.1"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^23.0.3",
+    "@rollup/plugin-json": "^5.0.2",
+    "@rollup/plugin-node-resolve": "^15.0.1",
+    "rollup": "^3.5.0"
+  }
+}

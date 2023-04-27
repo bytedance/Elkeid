@@ -56,7 +56,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     private final Map<String, SmithClass> smithClasses;
     private final Map<String, Patcher> patchers;
     private final Map<Pair<Integer, Integer>, Filter> filters;
-    private final Map<Pair<Integer, Integer>, Block> blocks;
+    private final Map<Pair<Integer, Integer>, List<Block>> blocks;
     private final Map<Pair<Integer, Integer>, Integer> limits;
     private final AtomicIntegerArray[] quotas;
 
@@ -153,49 +153,99 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         }
     }
 
-    public void detect(int classID, int methodID, Object[] args) {
-        Block block = blocks.get(new ImmutablePair<>(classID, methodID));
-
-        if (block == null)
-            return;
-
-        if (Arrays.stream(block.getRules()).anyMatch(rule -> {
-            if (rule.getIndex() >= args.length)
-                return false;
-
-            return Pattern.compile(rule.getRegex()).matcher(args[rule.getIndex()].toString()).find();
-        })) {
-            throw new SecurityException("API blocked by RASP");
-        }
-    }
-
-    public void trace(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+    public boolean surplus(int classID, int methodID) {
         if (classID >= CLASS_MAX_ID || methodID >= METHOD_MAX_ID)
-            return;
+            return false;
 
         while (true) {
             int quota = quotas[classID].get(methodID);
 
             if (quota <= 0)
-                return;
+                return false;
 
             if (quotas[classID].compareAndSet(methodID, quota, quota - 1))
                 break;
         }
 
+        return true;
+    }
+
+    public Trace newTrace(int classID, int methodID, Object[] args) {
+        Trace trace = new Trace();
+
+        trace.setClassID(classID);
+        trace.setMethodID(methodID);
+        trace.setArgs(args);
+        trace.setStackTrace(Thread.currentThread().getStackTrace());
+
+        return trace;
+    }
+
+    public void detect(Trace trace) {
+        List<Block> policies = blocks.get(new ImmutablePair<>(trace.getClassID(), trace.getMethodID()));
+
+        if (policies == null)
+            return;
+
+        for (Block block : policies) {
+            MatchRule[] rules = block.getRules();
+
+            if (rules.length > 0 && Arrays.stream(block.getRules()).noneMatch(rule -> {
+                if (rule.getIndex() >= trace.getArgs().length)
+                    return false;
+
+                return Pattern.compile(rule.getRegex()).matcher(trace.getArgs()[rule.getIndex()].toString()).find();
+            }))
+                continue;
+
+            StackFrame stackFrame = block.getStackFrame();
+
+            if (stackFrame == null) {
+                trace.setBlocked(true);
+                trace.setPolicyID(block.getPolicyID());
+                throw new SecurityException("API blocked by RASP");
+            }
+
+            StackTraceElement[] elements = trace.getStackTrace();
+
+            if (elements.length <= 2)
+                continue;
+
+            String[] frames = Arrays.stream(Arrays.copyOfRange(elements, 2, elements.length))
+                    .map(StackTraceElement::toString)
+                    .toArray(String[]::new);
+
+            Predicate<String> pred = keyword -> Arrays.stream(frames).anyMatch(frame -> Pattern.compile(keyword).matcher(frame).find());
+
+            if (stackFrame.getOperator() == StackFrame.Operator.OR && Arrays.stream(stackFrame.getKeywords()).anyMatch(pred)) {
+                trace.setBlocked(true);
+                trace.setPolicyID(block.getPolicyID());
+                throw new SecurityException("API blocked by RASP");
+            }
+
+            if (stackFrame.getOperator() == StackFrame.Operator.AND && Arrays.stream(stackFrame.getKeywords()).allMatch(pred)) {
+                trace.setBlocked(true);
+                trace.setPolicyID(block.getPolicyID());
+                throw new SecurityException("API blocked by RASP");
+            }
+        }
+    }
+
+    public void post(Trace trace) {
         RingBuffer<Trace> ringBuffer = disruptor.getRingBuffer();
 
         try {
             long sequence = ringBuffer.tryNext();
 
-            Trace trace = ringBuffer.get(sequence);
+            Trace t = ringBuffer.get(sequence);
 
-            trace.setClassID(classID);
-            trace.setMethodID(methodID);
-            trace.setBlocked(blocked);
-            trace.setRet(ret);
-            trace.setArgs(args);
-            trace.setStackTrace(Thread.currentThread().getStackTrace());
+            t.setClassID(trace.getClassID());
+            t.setMethodID(trace.getMethodID());
+            t.setBlocked(trace.isBlocked());
+            t.setPolicyID(trace.getPolicyID());
+            t.setRet(trace.getRet());
+            t.setArgs(trace.getArgs());
+            t.setStackTrace(trace.getStackTrace());
 
             ringBuffer.publish(sequence);
         } catch (InsufficientCapacityException ignored) {
@@ -372,10 +422,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         blocks.clear();
 
         for (Block block : config.getBlocks()) {
-            blocks.put(
+            blocks.computeIfAbsent(
                     new ImmutablePair<>(block.getClassID(), block.getMethodID()),
-                    block
-            );
+                    k -> new ArrayList<>()
+            ).add(block);
         }
 
         heartbeat.setBlock(config.getUUID());
