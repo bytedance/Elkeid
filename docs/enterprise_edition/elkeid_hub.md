@@ -1,0 +1,76 @@
+# Elkeid HUB 社区版和企业版能力对比
+
+<table>
+<tbody>
+  <tr>
+    <td>功能</td>
+    <td>Elkeid HUB Community Edition</td>
+    <td>Elkeid HUB Enterprise Edition</td>
+  </tr>
+  <tr>
+    <td>完全规则编写能力(详见Elkedi HUB社区版使用指南):<br>基础检测(等于/包含/以……开头/正则等)<br>阈值/频率/GROUP&nbsp;&nbsp;BY检测<br>多关键词检测<br>数组/复杂结构检测<br>CEP 节点检测能力<br>字段添加/修改/删除<br>插件联动能力</td>
+    <td>✅<br></td>
+    <td>✅</td>
+  </tr>
+  <tr>
+    <td>系统/用户管理能力</td>
+    <td>✅</td>
+    <td>✅</td>
+  </tr>
+  <tr>
+    <td>集群部署能力</td>
+    <td>❌</td>
+    <td>✅</td>
+  </tr>
+  <tr>
+    <td>多工作空间</td>
+    <td>❌</td>
+    <td>✅</td>
+  </tr>
+  <tr>
+    <td>输入/输出/规则集/项目组建操作能力</td>
+    <td>✅</td>
+    <td>✅</td>
+  </tr>
+  <tr>
+    <td>负载、规则监控能力</td>
+    <td>✅</td>
+    <td>✅</td>
+  </tr>
+  <tr>
+    <td>组件数据抽样能力</td>
+    <td>✅</td>
+    <td>✅</td>
+  </tr>
+  <tr>
+    <td>规则测试能力</td>
+    <td>✅</td>
+    <td>✅</td>
+  </tr>
+  <tr>
+    <td>数据表(MYSQL/REDIS/ClickHouse/Mongodb/ES)消费/规则关联能力</td>
+    <td>❌</td>
+    <td>✅</td>
+  </tr>
+  <tr>
+    <td>自定义插件能力</td>
+    <td>✅</td>
+    <td>✅</td>
+  </tr>
+  <tr>
+    <td>插件供外部调用能力</td>
+    <td>❌</td>
+    <td>✅</td>
+  </tr>
+  <tr>
+    <td>日志/事件监控能力</td>
+    <td>✅</td>
+    <td>✅</td>
+  </tr>
+  <tr>
+    <td>溯源/持久化能力</td>
+    <td>❌</td>
+    <td>✅</td>
+  </tr>
+</tbody>
+</table>
