@@ -1,0 +1,24 @@
+[book]
+tittle = "Elkeid 文档中心"
+authors = ["Elkeid 团队"]
+src = "."
+description = ""
+
+[rust]
+edition = "2018"
+
+[build]
+build-dir = "book"
+create-missing = false
+
+[preprocessor.index]
+
+[preprocessor.links]
+
+[preprocessor.filter]
+command = "python3 filter.py"
+
+[output.html]
+git-repository-url = "https://elkeid.bytedance.com/English/"
+git-repository-icon = "fa-language"
+
