@@ -19,6 +19,6 @@ create-missing = false
 command = "python3 filter.py"
 
 [output.html]
-git-repository-url = "https://elkeid.bytedance.com/Chinese/"
+git-repository-url = "https://elkeid.bytedance.com/docs/"
 git-repository-icon = "fa-language"
 
