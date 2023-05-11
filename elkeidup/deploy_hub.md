@@ -11,7 +11,7 @@ date && ssh root@{ip} date
 ### 2、Download the release product and configure the catalog
 ```
 mkdir -p /root/.elkeidup && cd /root/.elkeidup
-wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_hub_v1.9.1.tar.gz -O elkeidup.tar.gz && tar -xf elkeidup.tar.gz
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.4/elkeidup_hub_v1.9.1.tar.gz -O elkeidup.tar.gz && tar -xf elkeidup.tar.gz
 chmod a+x /root/.elkeidup/elkeidup
 ```
 ### 3、Generate and modify config.yaml
