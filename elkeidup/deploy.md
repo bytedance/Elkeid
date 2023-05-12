@@ -4,10 +4,10 @@
 
 ### 1.1、Import Mirroring
 ```bash
-wget https://github.com/bytedance/Elkeid/releases/download/v1.9.4/elkeidup_image_v1.9.1.tar.gz.00
-wget https://github.com/bytedance/Elkeid/releases/download/v1.9.4/elkeidup_image_v1.9.1.tar.gz.01
-wget https://github.com/bytedance/Elkeid/releases/download/v1.9.4/elkeidup_image_v1.9.1.tar.gz.02
-wget https://github.com/bytedance/Elkeid/releases/download/v1.9.4/elkeidup_image_v1.9.1.tar.gz.03
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1.4/elkeidup_image_v1.9.1.tar.gz.00
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1.4/elkeidup_image_v1.9.1.tar.gz.01
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1.4/elkeidup_image_v1.9.1.tar.gz.02
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1.4/elkeidup_image_v1.9.1.tar.gz.03
 cat elkeidup_image_v1.9.1.tar.gz.* > elkeidup_image_v1.9.1.tar.gz
 
 docker load -i elkeidup_image_v1.9.1.tar.gz
@@ -77,9 +77,9 @@ date && ssh root@{ip} date
 ### 2.2、Download the release product and configure the catalog
 - Download the release product (rolled compressed packet) and merge compressed packets
 ```
-wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_package_v1.9.1.tar.gz.00
-wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_package_v1.9.1.tar.gz.01
-wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1/elkeidup_package_v1.9.1.tar.gz.02
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1.4/elkeidup_package_v1.9.1.tar.gz.00
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1.4/elkeidup_package_v1.9.1.tar.gz.01
+wget https://github.com/bytedance/Elkeid/releases/download/v1.9.1.4/elkeidup_package_v1.9.1.tar.gz.02
 cat elkeidup_package_v1.9.1.tar.gz.* > elkeidup_package_v1.9.1.tar.gz
 ```
 You can also refer to [Build Elkeid from Source](./build_package.md) to compile and build packages yourself.
