@@ -5289,26 +5289,44 @@ static DEFINE_MUTEX(g_nf_psad_lock);
 static int g_nf_psad_switch = 0;
 static int g_nf_psad_status = 0;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 3, 0)
+
 static int smith_nf_psad_reg(struct net *net)
 {
-    int rc;
+    return nf_register_net_hooks(net, g_smith_nf_psad, ARRAY_SIZE(g_smith_nf_psad));
+}
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 3, 0)
-    rc = nf_register_net_hooks(net, g_smith_nf_psad, ARRAY_SIZE(g_smith_nf_psad));
+static void smith_nf_psad_unreg(struct net *net)
+{
+    nf_unregister_net_hooks(net, g_smith_nf_psad, ARRAY_SIZE(g_smith_nf_psad));
+}
+
 #else
-    rc = nf_register_hooks(g_smith_nf_psad, ARRAY_SIZE(g_smith_nf_psad));
-#endif
+
+static atomic_t g_nf_hooks_regged = ATOMIC_INIT(0);
+
+static int smith_nf_psad_reg(struct net *net)
+{
+    int rc = 0;
+
+    /*
+     * only do register for the 1st time. We need control the callings of
+     * nf_register_hooks if we keep register_pernet_subsys for kernels < 4.3
+     */
+    if (1 == atomic_inc_return(&g_nf_hooks_regged))
+        rc = nf_register_hooks(g_smith_nf_psad, ARRAY_SIZE(g_smith_nf_psad));
+
     return rc;
 }
 
 static void smith_nf_psad_unreg(struct net *net)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 3, 0)
-    nf_unregister_net_hooks(net, g_smith_nf_psad, ARRAY_SIZE(g_smith_nf_psad));
-#else
-    nf_unregister_hooks(g_smith_nf_psad, ARRAY_SIZE(g_smith_nf_psad));
-#endif
+    /* do cleanup for the last instance of net namespace */
+    if (0 == atomic_dec_return(&g_nf_hooks_regged))
+        nf_unregister_hooks(g_smith_nf_psad, ARRAY_SIZE(g_smith_nf_psad));
 }
+
+#endif /* >= 4.3.0 */
 
 static struct pernet_operations smith_psad_net_ops = {
     .init = smith_nf_psad_reg,
