@@ -24,10 +24,10 @@ int filter_init(void);
 
 void filter_cleanup(void);
 
-int execve_exe_check(char *data);
+int execve_exe_check(char *data, int len);
 
 int file_notify_check(u8 *uuid, unsigned long inode, const char *name, int nlen, int mask);
 
-int execve_argv_check(char *data);
+int execve_argv_check(char *data, int len);
 
 #endif /* FILTER_H */

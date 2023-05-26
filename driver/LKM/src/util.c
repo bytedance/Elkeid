@@ -117,3 +117,16 @@ u8 *smith_query_sb_uuid(struct super_block *sb)
     return (u8 *)&sb->s_uuid[0];
 #endif
 }
+
+uint64_t hash_murmur_OAAT64(char *s, int len)
+{
+    uint64_t h = 525201411107845655ull;
+    int i;
+
+    for (i = 0; i < len; i++) {
+        h ^= (uint64_t)(s[i]);
+        h *= 0x5bd1e9955bd1e995;
+        h ^= h >> 47;
+    }
+    return h;
+}
