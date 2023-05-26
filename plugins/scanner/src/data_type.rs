@@ -179,7 +179,7 @@ pub struct FanotifyEvent {
     pub pns: String,
 
     pub file_path: String, // notify file
-    //pub file_hash: String, // notify file sha256
+    pub file_hash: String, // notify file sha256
     pub file_mask: String, // notify file fanotify_metadata.mask
     pub docker_id: String,
 }
@@ -208,7 +208,7 @@ impl ToAgentRecord for FanotifyEvent {
         hmp.insert("docker_id".to_string(), self.docker_id.to_string());
 
         hmp.insert("file_path".to_string(), self.file_path.to_string());
-        //hmp.insert("file_hash".to_string(), self.file_hash.to_string());
+        hmp.insert("file_hash".to_string(), self.file_hash.to_string());
         hmp.insert("file_mask".to_string(), self.file_mask.to_string());
 
         pld.set_fields(hmp);
@@ -240,7 +240,7 @@ impl ToAgentRecord for FanotifyEvent {
         hmp.insert("docker_id".to_string(), self.docker_id.to_string());
 
         hmp.insert("file_path".to_string(), self.file_path.to_string());
-        //hmp.insert("file_hash".to_string(), self.file_hash.to_string());
+        hmp.insert("file_hash".to_string(), self.file_hash.to_string());
         hmp.insert("file_mask".to_string(), self.file_mask.to_string());
 
         pld.set_fields(hmp);
@@ -259,7 +259,7 @@ impl FanotifyEvent {
         create_at: u64,
         modify_at: u64,
         file_path: &str,
-        //file_hash: &str,
+        file_hash: &str,
         file_mask: &str,
     ) -> Self {
         let mut pf = Self::default();
@@ -271,7 +271,7 @@ impl FanotifyEvent {
         pf.modify_at = modify_at.to_string();
 
         pf.file_path = file_path.to_string();
-        //pf.file_hash = file_hash.to_string();
+        pf.file_hash = file_hash.to_string();
         pf.file_mask = file_mask.to_string();
 
         pf.comm = "-3".to_string();
@@ -910,7 +910,7 @@ pub struct ScanTaskFanotify {
     pub pid_exe: String,
     pub size: usize,
     pub btime: (u64, u64),
-    //pub event_file_hash: String,
+    pub event_file_hash: String,
     pub event_file_path: String,
     pub event_file_mask: String,
 }

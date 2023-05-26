@@ -120,122 +120,7 @@ filter = [
 
 ### fanotify file monitor config
 [[file_monitor]]
-    path = "/"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
     path = "/bin"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/lib64"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/etc"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/etc/apt"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/etc/cron.d"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/etc/cron.daily"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/etc/cron.hourly"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/etc/cron.monthly"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/etc/cron.weekly"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/etc/dpkg"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/etc/init.d"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/etc/ld.so.conf.d"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/etc/ldap"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/etc/pam.d"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/etc/security"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/etc/profile.d"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/etc/ssh"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/etc/ssl"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/home/"
-    watch_mode = 2
-    follow_link = true
-    sp_child = ".ssh"
-[[file_monitor]]
-    path = "/lib/x86_64-linux-gnu"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/opt"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/root"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/root/.ssh"
     watch_mode = 0
     follow_link = false
     sp_child = ""
@@ -250,7 +135,7 @@ filter = [
     follow_link = false
     sp_child = ""
 [[file_monitor]]
-    path = "/usr/lib/cron/tabs"
+    path = "/usr/sbin"
     watch_mode = 0
     follow_link = false
     sp_child = ""
@@ -261,31 +146,6 @@ filter = [
     sp_child = ""
 [[file_monitor]]
     path = "/usr/local/sbin"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/usr/sbin"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/var/spool/cron"
-    watch_mode = 2
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/boot/grub"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/sys/fs/cgroup"
-    watch_mode = 1
-    follow_link = false
-    sp_child = ""
-[[file_monitor]]
-    path = "/dev/shm"
     watch_mode = 0
     follow_link = false
     sp_child = ""

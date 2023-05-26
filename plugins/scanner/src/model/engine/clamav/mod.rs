@@ -231,7 +231,39 @@ impl ScanEngine for Clamav {
                         }
                         mem::forget(v);
                         clamav::cl_yr_hit_cb_ctx_free(nil_ctx);
-                        return Ok((target_virust_name, Some(hitstring)));
+
+                        // 0.104.3 bug fixes
+                        let mut hits_offset = Vec::new();
+                        for each_match_item in hitstring {
+                            let tmp_v: Vec<&str> = each_match_item.splitn(3, ",").collect();
+                            if tmp_v.len() == 3 {
+                                let file_offset: u64 = tmp_v[1].parse::<u64>().unwrap();
+                                hits_offset.push(file_offset);
+                            }
+                        }
+                        let checksum: u64 = hits_offset.iter().sum();
+                        if checksum == 0 && hits_offset.len() > 1 {
+                            return Ok(("OK".to_string(), None));
+                        }
+                        let mut hit_data: Option<Vec<String>> = None;
+                        if let Ok(mut f) = File::open(fpath) {
+                            if let Ok(fmeta) = f.metadata() {
+                                let mut new_matched_data = Vec::new();
+                                for each_offset in hits_offset {
+                                    if each_offset < fmeta.len() {
+                                        let hit_raw = match raw_read(&mut f, each_offset) {
+                                            Ok(rdata) => rdata,
+                                            Err(_) => continue,
+                                        };
+                                        new_matched_data.push(hit_raw);
+                                    }
+                                }
+                                hit_data = Some(new_matched_data);
+                            }
+                        }
+                        // fix 0 offset matches
+
+                        return Ok((target_virust_name, hit_data));
                     }
                     clamav::cl_yr_hit_cb_ctx_free(nil_ctx);
                     return Ok((target_virust_name, None));
@@ -283,25 +315,4 @@ pub fn raw_read(f: &mut File, off: u64) -> Result<String> {
         Err(_) => hex::encode(&buf),
     };
     return Ok(result);
-}
-
-pub fn get_hit_data(fpath: &str, hit_data: &Vec<String>) -> Result<Vec<String>> {
-    let mut new_matched_data = Vec::<String>::new();
-    if hit_data.len() <= 0 {
-        return Ok(new_matched_data);
-    }
-    let mut f = File::open(fpath)?;
-    let fmeta = f.metadata()?;
-
-    for each_match_item in hit_data {
-        let tmp_v: Vec<&str> = each_match_item.splitn(3, ",").collect();
-        if tmp_v.len() == 3 {
-            let file_offset: u64 = tmp_v[1].parse::<u64>().unwrap();
-            if file_offset < fmeta.len() {
-                let hit_raw = raw_read(&mut f, file_offset)?;
-                new_matched_data.push(hit_raw);
-            }
-        }
-    }
-    return Ok(new_matched_data);
 }

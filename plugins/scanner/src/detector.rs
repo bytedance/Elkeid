@@ -12,7 +12,7 @@ use crate::{
     get_file_btime, get_file_md5, get_file_md5_fast, get_file_xhash,
     model::{
         engine::{
-            clamav::{self, get_hit_data, updater, Clamav},
+            clamav::{self, updater, Clamav},
             ScanEngine,
         },
         functional::{
@@ -99,6 +99,7 @@ impl Scanner {
                     name = res[2].to_string();
                 }
 
+                /*
                 if (ftype.starts_with("Php")
                     && class.starts_with("Webshell")
                     && !fpath.ends_with(".php"))
@@ -110,17 +111,12 @@ impl Scanner {
                     class = "".to_string();
                     name = "".to_string();
                 }
-
+                 */
                 if &ftype != "not_detected" {
                     info!(
                         "[Catch] filepath:{} result:{}.{}.{}",
                         &fpath, &ftype, &class, &name
                     );
-                    if let Some(data) = &matched_data {
-                        info!("[Catch] yara hit data:{:?}", data);
-                        let mut new_matched_data = get_hit_data(fpath, data)?;
-                        matched_data = Some(new_matched_data);
-                    }
                 }
 
                 return Ok((ftype, class, name, xhash, md5sum, matched_data));
@@ -186,6 +182,7 @@ impl Scanner {
                     name = res[2].to_string();
                 }
 
+                /*
                 if (ftype.starts_with("Php")
                     && class.starts_with("Webshell")
                     && !fpath.ends_with(".php"))
@@ -197,17 +194,12 @@ impl Scanner {
                     class = "".to_string();
                     name = "".to_string();
                 }
-
+                 */
                 if &ftype != "not_detected" {
                     info!(
                         "[Catch] filepath:{} result:{}.{}.{}",
                         &fpath, &ftype, &class, &name
                     );
-                    if let Some(data) = &matched_data {
-                        info!("[Catch] yara hit data:{:?}", data);
-                        let mut new_matched_data = get_hit_data(fpath, data)?;
-                        matched_data = Some(new_matched_data);
-                    }
                 }
 
                 return Ok((ftype, class, name, xhash, md5sum, matched_data));
@@ -257,7 +249,6 @@ impl Detector {
             let s_arf_worker = task_sender.clone();
             let s_arf_lock = recv_worker_s_locker.clone();
 
-            /* 
             _arf_t = match HoneyPot::new(s_arf_worker, s_arf_lock) {
                 Ok(mut hp) => {
                     info!("fanotify turn on.");
@@ -269,7 +260,7 @@ impl Detector {
                     None
                 }
             };
-            */
+
             loop {
                 match r_client.receive() {
                     Ok(t) => {
@@ -859,7 +850,7 @@ impl Detector {
                                 task_data.btime.0,
                                 task_data.btime.1,
                                 &task_data.event_file_path,
-                                //&task_data.event_file_hash,
+                                &task_data.event_file_hash,
                                 &task_data.event_file_mask,
                             );
                             if let Err(e) = self.client.send_record(&event.to_record()) {
