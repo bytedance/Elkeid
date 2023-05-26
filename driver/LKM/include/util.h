@@ -54,6 +54,8 @@ extern unsigned long smith_kallsyms_lookup_name(const char *);
 
 extern u8 *smith_query_sb_uuid(struct super_block *sb);
 
+extern uint64_t hash_murmur_OAAT64(char *s, int len);
+
 static inline struct task_struct *smith_get_task_struct(struct task_struct *tsk)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)

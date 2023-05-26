@@ -736,7 +736,7 @@ static void smith_trace_sysret_bind(long sockfd, long ret)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
         pid_tree = tid->st_pid_tree;
     }
@@ -792,7 +792,7 @@ static void smith_trace_sysret_connect(long sockfd, int retval)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
         pid_tree = tid->st_pid_tree;
     }
@@ -861,7 +861,7 @@ static void smith_trace_sysret_accept(long sockfd)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
     }
 
@@ -918,6 +918,7 @@ struct execve_data {
     char *ssh_connection;
     char *ld_preload;
     char *ld_library_path;
+    int  len_argv;
 };
 
 static int smith_trace_process_exec(struct execve_data *data, int rc)
@@ -943,7 +944,7 @@ static int smith_trace_process_exec(struct execve_data *data, int rc)
     struct tty_struct *tty = NULL;
 
     // argv filter check
-    if (execve_argv_check(data->argv))
+    if (execve_argv_check(data->argv, data->len_argv))
         goto out;
 
     tty = get_current_tty();
@@ -954,7 +955,7 @@ static int smith_trace_process_exec(struct execve_data *data, int rc)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
         pid_tree = tid->st_pid_tree;
     }
@@ -1071,7 +1072,6 @@ static void smith_trace_prepare_exec(struct execve_data *data)
     parg = smith_kzalloc(larg < 16 ? 16 : larg, GFP_ATOMIC);
     if (!parg)
         goto proc_env;
-    data->argv= parg;
     i = larg - 1 - smith_copy_from_user(parg, (void *)args, larg - 1);
     if (i == 0 || i >= larg) {
         smith_kfree(parg);
@@ -1082,6 +1082,8 @@ static void smith_trace_prepare_exec(struct execve_data *data)
         data->argv= smith_strim(parg);
         data->len_argv = strlen(data->argv);
     }
+    data->argv= smith_strim(parg);
+    data->len_argv = strlen(data->argv);
 
 proc_env:
 
@@ -1154,7 +1156,7 @@ int security_inode_create_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
         pid_tree = tid->st_pid_tree;
     }
@@ -1229,7 +1231,7 @@ static void smith_trace_sysret_ptrace(long request, long pid, void *addr, long r
         if (tid) {
             exe_path = tid->st_img->si_path;
             // exe filter check
-            if (execve_exe_check(exe_path))
+            if (execve_exe_check(exe_path, tid->st_img->si_len))
                 goto out;
             pid_tree = tid->st_pid_tree;
         }
@@ -1607,7 +1609,7 @@ int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
         pid_tree = tid->st_pid_tree;
     }
@@ -1730,7 +1732,7 @@ void rename_and_link_handler(int type, char * oldori, char * newori, char * s_id
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
     }
 
@@ -1869,7 +1871,7 @@ static void smith_trace_sysret_setsid(int ret)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
         pid_tree = tid->st_pid_tree;
     }
@@ -1917,7 +1919,7 @@ static void smith_trace_sysret_prctl(long option, char __user *name)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
     }
 
@@ -1950,7 +1952,7 @@ static void smith_trace_sysret_memfd_create(char __user *name, long flags, long 
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
     }
 
@@ -1998,7 +2000,7 @@ int open_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
     }
 
@@ -2049,7 +2051,7 @@ int write_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
     }
 
@@ -2089,7 +2091,7 @@ int openat_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
     }
 
@@ -2153,7 +2155,7 @@ int file_permission_handler(struct kprobe *p, struct pt_regs *regs)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
     }
 
@@ -2290,7 +2292,7 @@ static void smith_trace_sysret_chmod_comm(char *file_path, mode_t mode, int ret)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
         pid_tree = tid->st_pid_tree;
     }
@@ -2452,7 +2454,7 @@ int mount_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
         pid_tree = tid->st_pid_tree;
     }
@@ -2500,7 +2502,7 @@ static void smith_trace_sysent_nanosleep(long tsu)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
     }
 
@@ -2521,7 +2523,7 @@ static void smith_trace_sysret_kill(int pid, int sig, int ret)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
     }
 
@@ -2541,7 +2543,7 @@ static void smith_trace_sysret_tkill(int pid, int sig, int ret)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
     }
 
@@ -2561,7 +2563,7 @@ static void smith_trace_sysret_tgkill(int tgid, int pid, int sig, int ret)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
     }
 
@@ -2582,7 +2584,7 @@ static void delete_file_handler(int type, char *path)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
     }
 
@@ -2694,7 +2696,7 @@ static void exit_handler(int type)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
     }
 
@@ -2993,7 +2995,7 @@ static void smith_trace_sysret_init_module(void __user *mod, int len, int ret)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
         pid_tree = tid->st_pid_tree;
     }
@@ -3034,7 +3036,7 @@ static void smith_trace_sysret_finit_module(int fd, int ret)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
         pid_tree = tid->st_pid_tree;
     }
@@ -3099,7 +3101,7 @@ int update_cred_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
         pid_tree = tid->st_pid_tree;
     }
@@ -3130,7 +3132,7 @@ int smith_usb_ncb(struct notifier_block *nb, unsigned long val, void *priv)
     if (tid) {
         exe_path = tid->st_img->si_path;
         // exe filter check
-        if (execve_exe_check(exe_path))
+        if (execve_exe_check(exe_path, tid->st_img->si_len))
             goto out;
     }
 
@@ -3742,6 +3744,7 @@ static int smith_build_img(struct smith_img *img)
     img->si_path = smith_build_path(img);
     if (!img->si_path)
         return -ENOMEM;
+    img->si_len = (uint16_t)strlen(img->si_path);
 
     return 0;
 }

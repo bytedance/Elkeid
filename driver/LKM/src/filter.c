@@ -8,7 +8,6 @@
 #include "../include/filter.h"
 #include "../include/util.h"
 
-
 #define ADD_EXECVE_EXE_ALLOWLIST 89         /* Y */
 #define DEL_EXECVE_EXE_ALLOWLIST 70         /* F */
 #define DEL_ALL_EXECVE_EXE_ALLOWLIST 119    /* w */
@@ -60,11 +59,6 @@ static const struct file_operations mchar_fops = {
         .write = device_write,
 };
 
-struct allowlist_node {
-    struct rb_node node;
-    char *data;
-};
-
 struct file_notify_node {
     struct rb_node node;
     unsigned long  ino;
@@ -105,13 +99,13 @@ struct mask_info {
 
 #define TAG_SIZE(tag)  *((uint32_t *)((tag) + SOSIZE))
 
-int _mask_assert(struct file_notify_node *node)
+static int _mask_assert(struct file_notify_node *node)
 {
     return (memcmp(node->data, STTAG, SOTAG) || 0 == TAG_SIZE(node->data) ||
             TAG_SIZE(node->data) > node->used);
 }
 
-char *_mask_lookup(struct file_notify_node *node, struct mask_item *id, struct mask_info *mi)
+static char *_mask_lookup(struct file_notify_node *node, struct mask_item *id, struct mask_info *mi)
 {
     char *s = node->data, *t = NULL;
     uint32_t len = 0, i = SOMASK;
@@ -189,7 +183,7 @@ char *_mask_lookup(struct file_notify_node *node, struct mask_item *id, struct m
     return NULL;
 }
 
-int _mask_realloc(struct file_notify_node *node)
+static int _mask_realloc(struct file_notify_node *node)
 {
     char *buf;
     uint32_t size;
@@ -212,7 +206,7 @@ int _mask_realloc(struct file_notify_node *node)
     return 0;
 }
 
-int _mask_insert(struct file_notify_node *node, struct mask_item *id)
+static int _mask_insert(struct file_notify_node *node, struct mask_item *id)
 {
     struct mask_info mi;
     uint32_t len;
@@ -281,7 +275,7 @@ errorout:
     return rc;
 }
 
-int _mask_remove(struct file_notify_node *node, struct mask_item *id)
+static int _mask_remove(struct file_notify_node *node, struct mask_item *id)
 {
     struct mask_info mi = {.nameonly = 1,};
     uint32_t len;
@@ -329,7 +323,7 @@ errorout:
     return rc;
 }
 
-char *mask_lookup(struct file_notify_node *node, u8 *uuid, const char *name, int nlen, uint32_t mask)
+static char *mask_lookup(struct file_notify_node *node, u8 *uuid, const char *name, int nlen, uint32_t mask)
 {
     struct mask_item item;
 
@@ -341,7 +335,7 @@ char *mask_lookup(struct file_notify_node *node, u8 *uuid, const char *name, int
     return _mask_lookup(node, &item, NULL);
 }
 
-int mask_insert(struct file_notify_node *node, u8 *uuid, const char *name, int nlen, uint32_t mask)
+static int mask_insert(struct file_notify_node *node, u8 *uuid, const char *name, int nlen, uint32_t mask)
 {
     struct mask_item item;
 
@@ -353,7 +347,7 @@ int mask_insert(struct file_notify_node *node, u8 *uuid, const char *name, int n
     return _mask_insert(node, &item);
 }
 
-int mask_remove(struct file_notify_node *node, u8 *uuid, const char *name, int nlen, uint32_t mask)
+static int mask_remove(struct file_notify_node *node, u8 *uuid, const char *name, int nlen, uint32_t mask)
 {
     struct mask_item item;
 
@@ -369,7 +363,7 @@ int mask_remove(struct file_notify_node *node, u8 *uuid, const char *name, int n
 /*
  * function test for mask & path support routines
  */
-void mask_function_test(void)
+static void mask_function_test(void)
 {
     struct file_notify_node node = {0};
     u8 uuid[16] = {1, };
@@ -417,7 +411,7 @@ int file_notify_exist_rb(struct rb_root *root, unsigned long d)
     return 0;
 }
 
-struct file_notify_node *file_notify_search_rb(struct rb_root *root, unsigned long d)
+static struct file_notify_node *file_notify_search_rb(struct rb_root *root, unsigned long d)
 {
     struct rb_node *node = root->rb_node;
     while (node) {
@@ -433,7 +427,7 @@ struct file_notify_node *file_notify_search_rb(struct rb_root *root, unsigned lo
     return NULL;
 }
 
-int file_notify_insert_rb(struct rb_root *root, struct file_notify_node *data)
+static int file_notify_insert_rb(struct rb_root *root, struct file_notify_node *data)
 {
     struct rb_node **new = &(root->rb_node), *parent = NULL;
 
@@ -455,7 +449,7 @@ int file_notify_insert_rb(struct rb_root *root, struct file_notify_node *data)
     return 1;
 }
 
-int del_rb_by_data_file_notify_checklist(unsigned long inode, u8 *uuid, const char *name, int nlen, int mask)
+static int del_rb_by_data_file_notify_checklist(unsigned long inode, u8 *uuid, const char *name, int nlen, int mask)
 {
     struct file_notify_node *node = NULL;
 
@@ -480,7 +474,7 @@ int del_rb_by_data_file_notify_checklist(unsigned long inode, u8 *uuid, const ch
     return 1;
 }
 
-void add_file_notify_checklist(u8 *uuid, unsigned long inode, const char *name, int nlen, int mask)
+static void add_file_notify_checklist(u8 *uuid, unsigned long inode, const char *name, int nlen, int mask)
 {
     struct file_notify_node *node;
 
@@ -550,18 +544,25 @@ static void del_all_file_notify_checklist(void)
     write_unlock(&file_notify_checklist_lock);
 }
 
-int exist_rb(struct rb_root *root, char *string)
+struct allowlist_node {
+    struct rb_node node;
+    char *data;
+    uint64_t hash;
+    int len;
+};
+
+static int exist_rb(struct rb_root *root, char *string)
 {
     struct rb_node *node = root->rb_node;
+    uint64_t hash;
+
+    hash = hash_murmur_OAAT64(string, strlen(string));
+
     while (node) {
-        struct allowlist_node *data = container_of(node,struct allowlist_node, node);
-
-        int res;
-        res = strcmp(string, data->data);
-
-        if (res < 0) {
+        struct allowlist_node *data = container_of(node, struct allowlist_node, node);
+        if (hash < data->hash) {
             node = node->rb_left;
-        } else if (res > 0) {
+        } else if (hash > data->hash) {
             node = node->rb_right;
         } else {
             return 1;
@@ -570,16 +571,18 @@ int exist_rb(struct rb_root *root, char *string)
     return 0;
 }
 
-struct allowlist_node *search_rb(struct rb_root *root, char *string)
+static struct allowlist_node *search_rb(struct rb_root *root, char *string)
 {
     struct rb_node *node = root->rb_node;
+    uint64_t hash;
+
+    hash = hash_murmur_OAAT64(string, strlen(string));
+
     while (node) {
         struct allowlist_node *data = container_of(node, struct allowlist_node, node);
-
-        int res = strcmp(string, data->data);
-        if (res < 0) {
+        if (hash < data->hash) {
             node = node->rb_left;
-        } else if (res > 0) {
+        } else if (hash > data->hash) {
             node = node->rb_right;
         } else {
             return data;
@@ -593,25 +596,23 @@ struct allowlist_node *search_rb(struct rb_root *root, char *string)
  *  0: succeeded to insert node to rbtree
  *  1: same record was already inserted
  */
-int insert_rb(struct rb_root *root, struct allowlist_node *data)
+static int insert_rb(struct rb_root *root, struct allowlist_node *data)
 {
-    struct rb_node **new = &(root->rb_node), *parent = NULL;
+    struct rb_node **nod = &(root->rb_node), *parent = NULL;
 
-    while (*new) {
-        struct allowlist_node *this = container_of(*new, struct allowlist_node, node);
-
-        int res = strcmp(data->data, this->data);
-        parent = *new;
-        if (res < 0) {
-            new = &((*new)->rb_left);
-        } else if (res > 0) {
-            new = &((*new)->rb_right);
+    while (*nod) {
+        struct allowlist_node *node = container_of(*nod, struct allowlist_node, node);
+        parent = *nod;
+        if (data->hash < node->hash) {
+            nod = &((*nod)->rb_left);
+        } else if (data->hash > node->hash) {
+            nod = &((*nod)->rb_right);
         } else {
             return 1;
         }
     }
 
-    rb_link_node(&data->node, parent, new);
+    rb_link_node(&data->node, parent, nod);
     rb_insert_color(&data->node, root);
     return 0;
 }
@@ -649,6 +650,8 @@ static int add_execve_exe_allowlist(char *data)
     if (!node)
         return -ENOMEM;
     node->data = data;
+    node->len = strlen(data);
+    node->hash = hash_murmur_OAAT64(data, node->len);
 
     write_lock(&exe_allowlist_lock);
     rc = insert_rb(&execve_exe_allowlist, node);
@@ -706,13 +709,14 @@ static void print_all_execve_allowlist(void)
     read_unlock(&exe_allowlist_lock);
 }
 
-int execve_exe_check(char *data)
+int execve_exe_check(char *data, int len)
 {
     int res;
-    if (IS_ERR_OR_NULL(data) || strcmp(data, "-1") == 0
-        || strcmp(data, "-2") == 0) {
+
+    if (IS_ERR_OR_NULL(data) || len == 0)
         return 0;
-    }
+    if (len == 2 && data[0] == '-' && (data[1] == '1' || data[1] == '2'))
+        return 0;
 
     read_lock(&exe_allowlist_lock);
     res = exist_rb(&execve_exe_allowlist, data);
@@ -739,6 +743,8 @@ static int add_execve_argv_allowlist(char *data)
     if (!node)
         return -ENOMEM;
     node->data = data;
+    node->len = strlen(data);
+    node->hash = hash_murmur_OAAT64(data, node->len);
 
     write_lock(&argv_allowlist_lock);
     rc = insert_rb(&execve_argv_allowlist, node);
@@ -794,16 +800,17 @@ static void print_all_argv_allowlist(void)
     read_unlock(&argv_allowlist_lock);
 }
 
-int execve_argv_check(char *data)
+int execve_argv_check(char *data, int len)
 {
     int res;
-    if (IS_ERR_OR_NULL(data) || strcmp(data, "-1") == 0
-        || strcmp(data, "-2") == 0) {
+
+    if (IS_ERR_OR_NULL(data) || len == 0)
         return 0;
-    }
+    if (len == 2 && data[0] == '-' && (data[1] == '1' || data[1] == '2'))
+        return 0;
 
     read_lock(&exe_allowlist_lock);
-    res = exist_rb(&execve_argv_allowlist, strim(data));
+    res = exist_rb(&execve_argv_allowlist, data);
     read_unlock(&exe_allowlist_lock);
 
     return res;
@@ -862,9 +869,13 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
             break;
 
         case EXECVE_EXE_CHECK:
-            res = execve_exe_check(strim(data_main));
-            printk("[ELKEID DEBUG] execve_exe_check:%s %d\n", strim(data_main), res);
+        {
+            char *exe_name = strim(data_main);
+            int len_name = strlen(exe_name);
+            res = execve_exe_check(exe_name, len_name);
+            printk("[ELKEID DEBUG] execve_exe_check:%s %d\n", exe_name, res);
             break;
+        }
 
         case PRINT_ALL_ALLOWLIST:
             print_all_execve_allowlist();
@@ -885,9 +896,13 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
             break;
 
         case EXECVE_ARGV_CHECK:
-            res = execve_argv_check(strim(data_main));
-            printk("[ELKEID DEBUG] execve_argv_check:%s %d\n", strim(data_main), res);
+        {
+            char *exe_argv = strim(data_main);
+            int len_argv = strlen(exe_argv);
+            res = execve_argv_check(exe_argv, len_argv);
+            printk("[ELKEID DEBUG] execve_argv_check:%s %d\n", exe_argv, res);
             break;
+        }
 
         case ADD_WRITE_NOTIFI:
             err = kern_path(strim(data_main), LOOKUP_FOLLOW, &path);
