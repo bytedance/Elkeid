@@ -327,6 +327,9 @@ impl FileMonitor {
                                 let default_mask_set: u64 = FANOTIFY_DEFAULT_CONFIG.2;
                                 if match_event_mask(&each_metadata.mask, &default_mask_set) {
                                     fpath_real_sha256 = get_file_sha256(event_path_full);
+                                    if &fpath_real_sha256 == "" {
+                                        fpath_real_sha256 = get_file_sha256(&event_fpath);
+                                    }
                                     let task = ScanTaskFanotify {
                                         pid: each_metadata.pid as i32,
                                         pid_exe: exe_real.to_string(),
@@ -363,6 +366,9 @@ impl FileMonitor {
 
                         if let Some(fhash) = HONEYPOTSSHA256.get(&event_fpath) {
                             fpath_real_sha256 = get_file_sha256(event_path_full);
+                            if &fpath_real_sha256 == "" {
+                                fpath_real_sha256 = get_file_sha256(&event_fpath);
+                            }
                             if fhash == &fpath_real_sha256 {
                                 continue;
                             } else if crate::model::functional::anti_ransom::check_av_file(
