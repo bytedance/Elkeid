@@ -7,19 +7,17 @@ RUN dnf groupinstall -y  "Development Tools";
 RUN mkdir /root/headers
 
 WORKDIR /root/headers
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9/BaseOS/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9/AppStream/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9/devel/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9.1/BaseOS/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.1/AppStream/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9.1/devel/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9.2/BaseOS/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.2/AppStream/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9.2/devel/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.0/devel/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.0/AppStream/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.1/devel/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.1/AppStream/x86_64/os/Packages/';
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9/BaseOS/x86_64/os/Packages/' || true ;
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9/devel/x86_64/os/Packages/' || true ;
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9.1/BaseOS/x86_64/os/Packages/' || true ;
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.1/AppStream/x86_64/os/Packages/' || true ;
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9.1/devel/x86_64/os/Packages/' || true ;
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9.2/BaseOS/x86_64/os/Packages/' || true ;
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9.2/devel/x86_64/os/Packages/' || true ;
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.0/devel/x86_64/os/Packages/' || true ;
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.0/AppStream/x86_64/os/Packages/' || true ;
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.1/devel/x86_64/os/Packages/' || true ;
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.1/AppStream/x86_64/os/Packages/' || true ;
 
 RUN rpm --force -i /root/headers/*.rpm || true
 
