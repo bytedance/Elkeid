@@ -173,6 +173,49 @@ jobs:
       with:
         name: elkeid_driver_almalinux8_x86_64
         path: ${{steps.extract-almalinux8.outputs.destination}}
+  build_almalinux9_x86_64:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: false
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx almalinux9
+      uses: docker/setup-buildx-action@v2
+    - name: Build almalinux9
+      uses: docker/build-push-action@v3
+      timeout-minutes: 300
+      with:
+        context: .
+        file: driver/dockerfiles.x86_64/Dockerfile.almalinux9
+        load: false
+        push: true
+        tags: elkeidteam/elkeid_driver_almalinux9_x86_64:latest
+    - name: Docker Hub Description almalinux9
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_almalinux9_x86_64
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Extract almalinux9
+      if: always()
+      id: extract-almalinux9
+      uses: shrink/actions-docker-extract@v2
+      with:
+        image: elkeidteam/elkeid_driver_almalinux9_x86_64:latest
+        path: /ko_output/.
+    - name: Upload almalinux9
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: elkeid_driver_almalinux9_x86_64
+        path: ${{steps.extract-almalinux9.outputs.destination}}
   build_amazonlinux_x86_64:
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -1116,6 +1159,49 @@ jobs:
       with:
         name: elkeid_driver_rocky8_x86_64
         path: ${{steps.extract-rocky8.outputs.destination}}
+  build_rocky9_x86_64:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: false
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx rocky9
+      uses: docker/setup-buildx-action@v2
+    - name: Build rocky9
+      uses: docker/build-push-action@v3
+      timeout-minutes: 300
+      with:
+        context: .
+        file: driver/dockerfiles.x86_64/Dockerfile.rocky9
+        load: false
+        push: true
+        tags: elkeidteam/elkeid_driver_rocky9_x86_64:latest
+    - name: Docker Hub Description rocky9
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_rocky9_x86_64
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Extract rocky9
+      if: always()
+      id: extract-rocky9
+      uses: shrink/actions-docker-extract@v2
+      with:
+        image: elkeidteam/elkeid_driver_rocky9_x86_64:latest
+        path: /ko_output/.
+    - name: Upload rocky9
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: elkeid_driver_rocky9_x86_64
+        path: ${{steps.extract-rocky9.outputs.destination}}
   build_tlinux24_x86_64:
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -1503,6 +1589,49 @@ jobs:
       with:
         name: elkeid_driver_ubuntu1604_gke_x86_64
         path: ${{steps.extract-ubuntu1604_gke.outputs.destination}}
+  build_ubuntu1604_hwe_x86_64:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: false
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx ubuntu1604_hwe
+      uses: docker/setup-buildx-action@v2
+    - name: Build ubuntu1604_hwe
+      uses: docker/build-push-action@v3
+      timeout-minutes: 300
+      with:
+        context: .
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1604_hwe
+        load: false
+        push: true
+        tags: elkeidteam/elkeid_driver_ubuntu1604_hwe_x86_64:latest
+    - name: Docker Hub Description ubuntu1604_hwe
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu1604_hwe_x86_64
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Extract ubuntu1604_hwe
+      if: always()
+      id: extract-ubuntu1604_hwe
+      uses: shrink/actions-docker-extract@v2
+      with:
+        image: elkeidteam/elkeid_driver_ubuntu1604_hwe_x86_64:latest
+        path: /ko_output/.
+    - name: Upload ubuntu1604_hwe
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: elkeid_driver_ubuntu1604_hwe_x86_64
+        path: ${{steps.extract-ubuntu1604_hwe.outputs.destination}}
   build_ubuntu1604_k410_x86_64:
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -1890,6 +2019,49 @@ jobs:
       with:
         name: elkeid_driver_ubuntu1804_gke_x86_64
         path: ${{steps.extract-ubuntu1804_gke.outputs.destination}}
+  build_ubuntu1804_hwe_x86_64:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: false
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx ubuntu1804_hwe
+      uses: docker/setup-buildx-action@v2
+    - name: Build ubuntu1804_hwe
+      uses: docker/build-push-action@v3
+      timeout-minutes: 300
+      with:
+        context: .
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu1804_hwe
+        load: false
+        push: true
+        tags: elkeidteam/elkeid_driver_ubuntu1804_hwe_x86_64:latest
+    - name: Docker Hub Description ubuntu1804_hwe
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu1804_hwe_x86_64
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Extract ubuntu1804_hwe
+      if: always()
+      id: extract-ubuntu1804_hwe
+      uses: shrink/actions-docker-extract@v2
+      with:
+        image: elkeidteam/elkeid_driver_ubuntu1804_hwe_x86_64:latest
+        path: /ko_output/.
+    - name: Upload ubuntu1804_hwe
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: elkeid_driver_ubuntu1804_hwe_x86_64
+        path: ${{steps.extract-ubuntu1804_hwe.outputs.destination}}
   build_ubuntu2004_x86_64:
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -2145,6 +2317,49 @@ jobs:
       with:
         name: elkeid_driver_ubuntu2004_gke_x86_64
         path: ${{steps.extract-ubuntu2004_gke.outputs.destination}}
+  build_ubuntu2004_hwe_x86_64:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: false
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx ubuntu2004_hwe
+      uses: docker/setup-buildx-action@v2
+    - name: Build ubuntu2004_hwe
+      uses: docker/build-push-action@v3
+      timeout-minutes: 300
+      with:
+        context: .
+        file: driver/dockerfiles.x86_64/Dockerfile.ubuntu2004_hwe
+        load: false
+        push: true
+        tags: elkeidteam/elkeid_driver_ubuntu2004_hwe_x86_64:latest
+    - name: Docker Hub Description ubuntu2004_hwe
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ubuntu2004_hwe_x86_64
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Extract ubuntu2004_hwe
+      if: always()
+      id: extract-ubuntu2004_hwe
+      uses: shrink/actions-docker-extract@v2
+      with:
+        image: elkeidteam/elkeid_driver_ubuntu2004_hwe_x86_64:latest
+        path: /ko_output/.
+    - name: Upload ubuntu2004_hwe
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: elkeid_driver_ubuntu2004_hwe_x86_64
+        path: ${{steps.extract-ubuntu2004_hwe.outputs.destination}}
   build_ubuntu2204_x86_64:
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -2249,8 +2464,10 @@ jobs:
     - build_ubuntu1604_k48_x86_64
     - build_ubuntu2004_aws_x86_64
     - build_ubuntu2204_x86_64
+    - build_almalinux9_x86_64
     - build_rhel7_elrepo_ml_archive_x86_64
     - build_debian11_x86_64
+    - build_rocky9_x86_64
     - build_ubuntu1604_auzre_x86_64
     - build_ubuntu1404_k3_x86_64
     - build_ubuntu1204_x86_64
@@ -2267,6 +2484,7 @@ jobs:
     - build_ubuntu2004_azure_x86_64
     - build_debian9_x86_64
     - build_rhel8_elrepo_ml_x86_64
+    - build_ubuntu2004_hwe_x86_64
     - build_rhel7_elrepo_lt_x86_64
     - build_ubuntu1604_k410_x86_64
     - build_amazonlinux54_x86_64
@@ -2277,6 +2495,7 @@ jobs:
     - build_ubuntu1604_gke_x86_64
     - build_ubuntu1604_gcp_x86_64
     - build_rhel7_x86_64
+    - build_ubuntu1804_hwe_x86_64
     - build_ubuntu2004_gcp_x86_64
     - build_rhel7_centosplus_x86_64
     - build_rhel8_x86_64
@@ -2287,6 +2506,7 @@ jobs:
     - build_ubuntu1604_k44_x86_64
     - build_debian10_x86_64
     - build_tlinux31_x86_64
+    - build_ubuntu1604_hwe_x86_64
     - build_ubuntu2004_aws_aarch64
     - build_rhel7_aarch64
     - build_aliyun_linux3_aarch64
