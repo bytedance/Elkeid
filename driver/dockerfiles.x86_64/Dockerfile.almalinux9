@@ -2,24 +2,20 @@ FROM almalinux/9-base AS almalinux9
 CMD [ "sh", "-c", "echo start" ]
 
 RUN sed -i "s/enabled=0/enabled=1/g" /etc/yum.repos.d/almalinux*.repo;
-RUN dnf install -y wget perl gcc make tree elfutils-libelf-devel; 
+RUN dnf install -y wget perl gcc make tree elfutils-libelf-devel openssl-devel; 
+
 RUN dnf groupinstall -y  "Development Tools"; 
 RUN mkdir /root/headers
 
 WORKDIR /root/headers
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9/BaseOS/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9/AppStream/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9/devel/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9.1/BaseOS/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.1/AppStream/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9.1/devel/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9.2/BaseOS/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.2/AppStream/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9.2/devel/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.0/devel/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.0/AppStream/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-rt-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.1/devel/x86_64/os/Packages/';
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.1/AppStream/x86_64/os/Packages/';
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.0/AppStream/x86_64/os/Packages/' || true;
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.1/AppStream/x86_64/os/Packages/' || true;
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.2-beta/AppStream/x86_64/os/Packages/' || true;
+
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9/AppStream/x86_64/os/Packages/' || true ;
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9.1/AppStream/x86_64/os/Packages/' || true ;
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux/9.2/AppStream/x86_64/os/Packages/' || true ;
+RUN rm -f /root/headers/kernel-devel-matched*
 
 RUN rpm --force -i /root/headers/*.rpm || true
 
@@ -27,3 +23,4 @@ ADD . /elkeid
 WORKDIR /elkeid/driver
 RUN bash ./build_script/x86_64/batch_compile.sh
 RUN rm -rf /root/headers/*.rpm 
+
