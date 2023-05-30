@@ -45,6 +45,8 @@ extern char *__dentry_path(struct dentry *dentry, char *buf, int buflen);
 
 extern u8 *smith_query_sb_uuid(struct super_block *sb);
 
+extern uint64_t hash_murmur_OAAT64(char *s, int len);
+
 static struct task_struct *smith_get_task_struct(struct task_struct *tsk)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
@@ -174,7 +176,7 @@ static inline char *smith_strim(char *s)
  *     __do_page_fault just cease when atomic-context is detected when
  *     processing page fault due to user-mode address
  *
- *     WARNING: pagefault_enable could trigger re-schedulinga, that's not
+ *     WARNING: pagefault_enable could trigger re-scheduling, that's not
  *     allowed under atomic-context of kprobe callback
  */
 static inline void smith_pagefault_disable(void)

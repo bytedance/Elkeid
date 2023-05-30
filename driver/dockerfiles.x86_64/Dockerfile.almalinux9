@@ -3,11 +3,11 @@ CMD [ "sh", "-c", "echo start" ]
 
 RUN sed -i "s/enabled=0/enabled=1/g" /etc/yum.repos.d/almalinux*.repo;
 RUN dnf install -y wget perl gcc make tree elfutils-libelf-devel openssl-devel; 
+
 RUN dnf groupinstall -y  "Development Tools"; 
 RUN mkdir /root/headers
 
 WORKDIR /root/headers
-
 RUN wget -q -k -e robots=off -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.0/AppStream/x86_64/os/Packages/' || true;
 RUN wget -q -k -e robots=off -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.1/AppStream/x86_64/os/Packages/' || true;
 RUN wget -q -k -e robots=off -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/almalinux-vault/9.2-beta/AppStream/x86_64/os/Packages/' || true;
@@ -23,5 +23,4 @@ ADD . /elkeid
 WORKDIR /elkeid/driver
 RUN bash ./build_script/x86_64/batch_compile.sh
 RUN rm -rf /root/headers/*.rpm 
-
 

@@ -566,6 +566,7 @@ struct execve_data {
     char *ssh_connection;
     char *ld_preload;
 
+    int len_argv;
     int free_argv;
     int free_ssh_connection;
     int free_ld_preload;
@@ -686,8 +687,7 @@ int bind_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 
     buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
     exe_path = smith_get_exe_file(buffer, PATH_MAX);
-
-    if (!execve_exe_check(exe_path)) {
+    if (!execve_exe_check(exe_path, strlen(exe_path))) {
         if (sa_family == AF_INET)
             bind_print(exe_path, in_addr, sport, retval);
 #if IS_ENABLED(CONFIG_IPV6)
@@ -798,8 +798,7 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     if (dport != 0) {
         buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
         exe_path = smith_get_exe_file(buffer, PATH_MAX);
-
-        if (!execve_exe_check(exe_path)) {
+        if (!execve_exe_check(exe_path, strlen(exe_path))) {
             if (sa_family == AF_INET)
                 connect4_print(dport, dip4, exe_path, sip4, sport, retval);
 #if IS_ENABLED(CONFIG_IPV6)
@@ -843,7 +842,7 @@ int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
     //exe filter check
-    if (execve_exe_check(exe_path)) {
+    if (execve_exe_check(exe_path, strlen(exe_path))) {
         if (buffer)
             smith_kfree(buffer);
         return 0;
@@ -1099,7 +1098,9 @@ int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 
     //exe filter check and argv filter check
     exe_path = smith_query_exe_path(&buffer, PATH_MAX, 128);
-    if (execve_exe_check(exe_path) || execve_argv_check(data->argv))
+    if (execve_exe_check(exe_path, strlen(exe_path)))
+        goto out;
+    if (execve_argv_check(data->argv, data->len_argv))
         goto out;
 
     get_process_socket(&sip4, &sip6, &sport, &dip4, &dip6, &dport,
@@ -1301,7 +1302,8 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 	data->ld_preload = ld_preload;
 	data->free_ld_preload = free_ld_preload;
 
-	data->argv = argv_res;
+	data->argv = smith_strim(argv_res);
+	data->len_argv = strlen(data->argv);
 	data->free_argv = free_argv;
 }
 
@@ -1511,7 +1513,8 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
     data->ld_preload = ld_preload;
     data->free_ld_preload = free_ld_preload;
 
-    data->argv = argv_res;
+    data->argv = smith_strim(argv_res);
+    data->len_argv = strlen(data->argv);
     data->free_argv = free_argv;
 }
 
@@ -1563,7 +1566,7 @@ int security_inode_create_pre_handler(struct kprobe *p, struct pt_regs *regs)
     exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
     //exe filter check
-    if (execve_exe_check(exe_path))
+    if (execve_exe_check(exe_path, strlen(exe_path)))
         goto out;
 
     pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
@@ -1666,7 +1669,7 @@ void dns_data_transport(char *query, __be32 dip, __be32 sip, int dport,
     exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
     //exe filter check
-    if (execve_exe_check(exe_path))
+    if (execve_exe_check(exe_path, strlen(exe_path)))
         goto out;
 
     dns_print(dport, dip, exe_path, sip, sport, opcode, rcode, query);
@@ -1688,7 +1691,7 @@ void dns6_data_transport(char *query, struct in6_addr *dip,
 	exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
 	//exe filter check
-	if (execve_exe_check(exe_path))
+	if (execve_exe_check(exe_path, strlen(exe_path)))
 		goto out;
 
 	dns6_print(dport, dip, exe_path, sip, sport, opcode, rcode, query);
@@ -2409,11 +2412,7 @@ static int smith_dns_work_handler(void *argu)
 #endif
     } while (!kthread_should_stop());
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
-    kthread_complete_and_exit(NULL, 0);
-#else
-    do_exit(0);
-#endif
+    /* kernen thread entry aka kernel() will finally call do_exit */
     return 0;
 }
 
@@ -2809,8 +2808,7 @@ void rename_and_link_handler(int type, char * oldori, char * newori, char * s_id
 
     buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
     exe_path = smith_get_exe_file(buffer, PATH_MAX);
-
-    if (execve_exe_check(exe_path))
+    if (execve_exe_check(exe_path, strlen(exe_path)))
         goto out_free;
 
     if (type)
@@ -2944,8 +2942,7 @@ int setsid_pre_handler(struct kprobe *p, struct pt_regs *regs)
 
     buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
     exe_path = smith_get_exe_file(buffer, PATH_MAX);
-
-    if (execve_exe_check(exe_path))
+    if (execve_exe_check(exe_path, strlen(exe_path)))
         goto out;
 
     setsid_print(exe_path);
@@ -3001,8 +2998,7 @@ int prctl_pre_handler(struct kprobe *p, struct pt_regs *regs)
 
     buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
     exe_path = smith_get_exe_file(buffer, PATH_MAX);
-
-    if (execve_exe_check(exe_path))
+    if (execve_exe_check(exe_path, strlen(exe_path)))
         goto out;
 
     prctl_print(exe_path, PR_SET_NAME, newname);
@@ -3386,8 +3382,7 @@ int mount_pre_handler(struct kprobe *p, struct pt_regs *regs)
 
     buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
     exe_path = smith_get_exe_file(buffer, PATH_MAX);
-
-    if (!execve_exe_check(exe_path))
+    if (!execve_exe_check(exe_path, strlen(exe_path)))
         mount_print(exe_path, pid_tree, dev_name, file_path, fstype, flags);
 
     if (buffer)
