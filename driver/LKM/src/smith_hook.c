@@ -4054,28 +4054,30 @@ static int smith_query_parents(struct task_struct *task)
     return i;
 }
 
-#define PID_TREE_MATEDATA_LEN (10 /* len of max uint32_t */ + 2 + TASK_COMM_LEN)
-static char *smith_get_pid_tree(struct task_struct *task)
+#define PID_TREE_METADATA_LEN (10 /* len of max uint32_t */ + 2 + 16 /* TASK_COMM_LEN */ + 4 /* rounded to 32 */)
+static char *smith_build_pid_tree(struct smith_tid *tid, struct task_struct *task)
 {
+    char pid[PID_TREE_METADATA_LEN];
     char *tree = NULL;
-    char pid[24];
-    int n;
+    int n, rc;
 
     get_task_struct(task);
     n = smith_query_parents(task);
     if (n > PID_TREE_LIMIT)
         n = PID_TREE_LIMIT;
-    if (n <= 0)
+    if (n < 1)
         n = 1;
 
-    tree = smith_kzalloc(n * PID_TREE_MATEDATA_LEN, GFP_ATOMIC);
+    tree = smith_kzalloc(n * PID_TREE_METADATA_LEN, GFP_ATOMIC);
     if (!tree)
         goto out;
+    tid->st_pid_tree = tree;
+    tid->st_size_pidtree = n * PID_TREE_METADATA_LEN;
 
-    snprintf(pid, 24, "%d", task->tgid);
-    strcat(tree, pid);
-    strcat(tree, ".");
-    strncat(tree, task->comm, TASK_COMM_LEN - 1);
+    rc = snprintf(tree, PID_TREE_METADATA_LEN, "%u.%.16s", task->tgid, task->comm);
+    if (rc <= 0 || rc >= PID_TREE_METADATA_LEN)
+        goto out;
+    tid->st_len_pidtree = tid->st_len_current_pid = (uint16_t)rc;
 
     while (--n > 0) {
 
@@ -4087,11 +4089,11 @@ static char *smith_get_pid_tree(struct task_struct *task)
         if (!task || task->pid == 0)
             break;
 
-        snprintf(pid, 24, "%d", task->tgid);
-        strcat(tree, "<");
+        rc = snprintf(pid, PID_TREE_METADATA_LEN, "<%u.%.16s", task->tgid, task->comm);
+        if (rc <= 0 || rc >= PID_TREE_METADATA_LEN)
+            break;
         strcat(tree, pid);
-        strcat(tree, ".");
-        strncat(tree, task->comm, TASK_COMM_LEN - 1);
+        tid->st_len_pidtree += (uint16_t)rc;
     }
 
 out:
@@ -4103,30 +4105,23 @@ out:
 
 static void smith_update_comm(struct smith_tid *tid, char *comm_new)
 {
-    char *pid_tree = tid->st_pid_tree;
-    char *s = NULL;
-    int o = 0, i = 1, n, l;
+    char pid[PID_TREE_METADATA_LEN];
+    char *tree = tid->st_pid_tree;
+    int n, o = tid->st_len_current_pid, l = tid->st_len_pidtree;
 
-    if (!pid_tree)
+    if (!tree || l < o || l <= 0 || l >= tid->st_size_pidtree)
         return;
-    l = strlen(pid_tree);
 
-    /* locate 1st '.' in pid-tree */
-    while (i < l) {
-        if (pid_tree[i++] == '.') {
-            s = &pid_tree[i];
-            break;
-        }
-    }
-    if (!s)
+    /* comm_new could be longer than TASK_COMM_LEN */
+    n = snprintf(pid, PID_TREE_METADATA_LEN, "%u.%.16s", tid->st_tgid, comm_new);
+    if (n <= 0 || n >= PID_TREE_METADATA_LEN || l - o + n >= tid->st_size_pidtree)
         return;
-    while (o + i < l && s[o] != '<')
-        o++;
 
-    n = strnlen(comm_new, TASK_COMM_LEN - 1);
     if (o != n)
-        memmove(s + n, s + o, l - o - i + 1); /* extra tailing 0 */
-    memcpy(s, comm_new, n);
+        memmove(tree + n, tree + o, l - o + 1); /* extra tailing 0 */
+    memcpy(tree, pid, n);
+    tid->st_len_pidtree = l - o + n;
+    tid->st_len_current_pid = n;
 }
 
 static int smith_build_tid(struct smith_tid *tid, struct task_struct *task)
@@ -4139,7 +4134,7 @@ static int smith_build_tid(struct smith_tid *tid, struct task_struct *task)
     tid->st_img = smith_find_img(task);
     if (!tid->st_img)
         return -ENOMEM;
-    tid->st_pid_tree = smith_get_pid_tree(task);
+    smith_build_pid_tree(tid, task);
     tid->st_root = smith_query_mntns_id(task);
     return 0;
 }
