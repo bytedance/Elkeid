@@ -931,7 +931,7 @@ static int smith_trace_process_exec(struct execve_data *data, int rc)
     char *tmp_stdout = DEFAULT_RET_STR;
     char *pname_buf = NULL;
     char *pid_tree = NULL;
-    char *tty_name = "-1";
+    char *tty_name = NULL;
     char *exe_path = DEFAULT_RET_STR;
     struct smith_tid *tid = NULL;
     char *stdin_buf = NULL;
@@ -947,8 +947,8 @@ static int smith_trace_process_exec(struct execve_data *data, int rc)
         goto out;
 
     tty = get_current_tty();
-    if(tty && strlen(tty->name) > 0)
-        tty_name = tty->name;
+    if (tty && strlen(tty->name) > 0)
+        tty_name = tty->name;;
 
     tid = smith_lookup_tid(current);
     if (tid) {
@@ -1027,7 +1027,7 @@ out:
         smith_kfree(stdin_buf);
     if (stdout_buf)
         smith_kfree(stdout_buf);
-    if(tty)
+    if (tty)
         tty_kref_put(tty);
     if (tid)
         smith_put_tid(tid);
@@ -1135,7 +1135,7 @@ int security_inode_create_pre_handler(struct kprobe *p, struct pt_regs *regs)
     char *pathstr = DEFAULT_RET_STR;
     char *exe_path = DEFAULT_RET_STR;
     char *pid_tree = NULL;
-    char *s_id = DEFAULT_RET_STR;
+    char *s_id = NULL;
 
     struct dentry * file = NULL;
     struct in6_addr dip6;
@@ -1739,7 +1739,7 @@ int rename_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     char *old_path_str = DEFAULT_RET_STR;
     char *new_path_str = DEFAULT_RET_STR;
-    char *s_id = DEFAULT_RET_STR;
+    char *s_id = NULL;
 
     char *old_buf = NULL;
     char *new_buf = NULL;
@@ -1796,7 +1796,7 @@ int link_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     char *old_path_str = DEFAULT_RET_STR;
     char *new_path_str = DEFAULT_RET_STR;
-    char *s_id = DEFAULT_RET_STR;
+    char *s_id = NULL;
 
     char *old_buf = NULL;
     char *new_buf = NULL;
@@ -1835,7 +1835,7 @@ int link_pre_handler(struct kprobe *p, struct pt_regs *regs)
     if (IS_ERR(new_path_str))
         new_path_str = DEFAULT_RET_STR;
 
-    if(!IS_ERR_OR_NULL(old_dentry->d_sb))
+    if (!IS_ERR_OR_NULL(old_dentry->d_sb))
         s_id = old_dentry->d_sb->s_id;
 
     rename_and_link_handler(0, old_path_str, new_path_str, s_id);

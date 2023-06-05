@@ -101,7 +101,7 @@ static void analyze_syscalls(void)
 
 	
 	for (i = 0; i < NR_syscalls; i++) {
-		char *mod_name = "-1";
+		char *mod_name = NULL;
 		addr = sct[i];
 	
 		if (!ckt(addr)) {
@@ -115,7 +115,6 @@ static void analyze_syscalls(void)
 				    module_list_unlock();
 				    continue;
 				}
-
 				mod_name = name;
 			}
 			
@@ -136,7 +135,7 @@ static void analyze_interrupts(void)
 		return;
 
 	for (i = 0; i < IDT_ENTRIES; i++) {
-		char *mod_name = "-1";
+		char *mod_name = NULL;
 
 		addr = idt[i];
 		if (!ckt(addr)) {
@@ -151,7 +150,6 @@ static void analyze_interrupts(void)
 				    module_list_unlock();
 				    continue;
 				}
-
 				mod_name = name;
 			}
 
