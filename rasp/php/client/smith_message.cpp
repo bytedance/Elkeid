@@ -30,7 +30,7 @@ std::string getVersion() {
         return "";
     }
 
-    version = {Z_STRVAL(val), (std::size_t)Z_STRLEN(val)};
+    version = {Z_STRVAL(val), (std::size_t) Z_STRLEN(val)};
     zval_dtor(&val);
 
     return version;
@@ -88,14 +88,14 @@ void to_json(nlohmann::json &j, const Request &request) {
             {"documentRoot",  request.documentRoot}
     };
 
-    for (const auto &header : request.headers) {
+    for (const auto &header: request.headers) {
         if (!*header[0])
             break;
 
         j["headers"][header[0]] = header[1];
     }
 
-    for (const auto &file : request.files) {
+    for (const auto &file: request.files) {
         if (!*file.name)
             break;
 
@@ -111,6 +111,9 @@ void to_json(nlohmann::json &j, const Trace &trace) {
             {"request",   trace.request}
     };
 
+    if (*trace.policyID)
+        j["policy_id"] = trace.policyID;
+
     if (*trace.ret)
         j["ret"] = trace.ret;
 
@@ -125,9 +128,9 @@ void to_json(nlohmann::json &j, const Trace &trace) {
     }
 }
 
-void from_json(const nlohmann::json &j, MatchRule &matchRule) {
-    j.at("index").get_to(matchRule.index);
-    j.at("regex").get_to(matchRule.regex);
+void from_json(const nlohmann::json &j, MatchRule &rule) {
+    j.at("index").get_to(rule.index);
+    j.at("regex").get_to(rule.regex);
 }
 
 void from_json(const nlohmann::json &j, Filter &filter) {
@@ -137,26 +140,35 @@ void from_json(const nlohmann::json &j, Filter &filter) {
     j.at("exclude").get_to(filter.exclude);
 }
 
+void from_json(const nlohmann::json &j, FilterConfig &config) {
+    j.at("uuid").get_to(config.uuid);
+    j.at("filters").get_to(config.filters);
+}
+
+void from_json(const nlohmann::json &j, StackFrame &stackFrame) {
+    j.at("keywords").get_to(stackFrame.keywords);
+    j.at("operator").get_to(stackFrame.logicalOperator);
+}
+
 void from_json(const nlohmann::json &j, Block &block) {
     j.at("class_id").get_to(block.classID);
     j.at("method_id").get_to(block.methodID);
+    j.at("policy_id").get_to(block.policyID);
     j.at("rules").get_to(block.rules);
+
+    if (j.contains("stack_frame") && !j.at("stack_frame").is_null())
+        block.stackFrame = j.at("stack_frame").get<StackFrame>();
+}
+
+void from_json(const nlohmann::json &j, BlockConfig &config) {
+    j.at("uuid").get_to(config.uuid);
+    j.at("blocks").get_to(config.blocks);
 }
 
 void from_json(const nlohmann::json &j, Limit &limit) {
     j.at("class_id").get_to(limit.classID);
     j.at("method_id").get_to(limit.methodID);
     j.at("quota").get_to(limit.quota);
-}
-
-void from_json(const nlohmann::json &j, FilterConfig &config) {
-    j.at("uuid").get_to(config.uuid);
-    j.at("filters").get_to(config.filters);
-}
-
-void from_json(const nlohmann::json &j, BlockConfig &config) {
-    j.at("uuid").get_to(config.uuid);
-    j.at("blocks").get_to(config.blocks);
 }
 
 void from_json(const nlohmann::json &j, LimitConfig &config) {

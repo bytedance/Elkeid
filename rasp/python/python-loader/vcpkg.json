@@ -1,0 +1,20 @@
+{
+  "name": "python-loader",
+  "version": "1.0.0",
+  "builtin-baseline": "69efe9cc2df0015f0bb2d37d55acde4a75c9a25b",
+  "dependencies": [
+    {
+      "name": "zero",
+      "version>=": "1.0.2"
+    },
+    {
+      "name": "elf-cpp",
+      "version>=": "1.0.0"
+    },
+    "mimalloc",
+    {
+      "name": "trap",
+      "version>=": "1.0.0"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 35d5d65..352a183 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -303,6 +303,9 @@ if(WIN32)
+   set(pc_libraries "-lpsapi -lshell32 -luser32 -ladvapi32 -lbcrypt")
+ else()
+   set(pc_libraries "")
++  if(MI_BUILD_STATIC)
++    set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
++  endif()
+   find_library(MI_LIBPTHREAD pthread)
+   if (MI_LIBPTHREAD)
+     list(APPEND mi_libraries ${MI_LIBPTHREAD})

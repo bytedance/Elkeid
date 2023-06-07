@@ -40,7 +40,7 @@ transfer(
 
                         uint32_t length = htonl(msg.length());
 
-                        buffer->write(&length, sizeof(uint32_t));
+                        buffer->write({(const std::byte *) &length, sizeof(uint32_t)});
 
                         if (buffer->write(msg) > 1024 * 1024)
                             return buffer->drain();

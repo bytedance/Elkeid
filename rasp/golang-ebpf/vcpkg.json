@@ -1,0 +1,21 @@
+{
+  "name": "go-probe-ebpf",
+  "version": "1.0.0",
+  "builtin-baseline": "69efe9cc2df0015f0bb2d37d55acde4a75c9a25b",
+  "dependencies": [
+    {
+      "name": "aio",
+      "default-features": false,
+      "version>=": "1.0.3"
+    },
+    {
+      "name": "curl",
+      "default-features": false
+    },
+    {
+      "name": "go-symbol",
+      "version>=": "1.0.0"
+    },
+    "zydis"
+  ]
+}

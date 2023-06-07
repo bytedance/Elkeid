@@ -1,0 +1,18 @@
+{
+  "registries": [
+    {
+      "kind": "git",
+      "repository": "https://github.com/Hackerl/vcpkg-registry",
+      "baseline": "323afcddc5bbe35f55205cec76befb42b4fe82b2",
+      "packages": [
+        "aio",
+        "c-runtime",
+        "elf-cpp",
+        "elf-loader",
+        "go-symbol",
+        "tiny-regex-c",
+        "zero"
+      ]
+    }
+  ]
+}

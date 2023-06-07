@@ -19,19 +19,29 @@ namespace go {
     }
 
     template<typename>
-    struct is_non_trivial_array : public std::false_type {};
+    struct is_non_trivial_array : public std::false_type {
+
+    };
 
     template<typename T>
-    struct is_non_trivial_array<T[0]> : public std::false_type {};
+    struct is_non_trivial_array<T[0]> : public std::false_type {
+
+    };
 
     template<typename T>
-    struct is_non_trivial_array<T[1]> : public std::false_type {};
+    struct is_non_trivial_array<T[1]> : public std::false_type {
+
+    };
 
     template<typename T, std::size_t N>
-    struct is_non_trivial_array<T[N]> : public std::true_type {};
+    struct is_non_trivial_array<T[N]> : public std::true_type {
+
+    };
 
     template<typename T>
-    struct is_non_trivial_array<T[]> : public std::true_type {};
+    struct is_non_trivial_array<T[]> : public std::true_type {
+
+    };
 
     struct Field {
         size_t offset;
@@ -52,7 +62,7 @@ namespace go {
         static constexpr size_t size = sizeof(T);
 
         static constexpr auto getFields(size_t offset = 0) {
-            return std::array<Field, 1> {
+            return std::array<Field, 1>{
                     Field{
                             offset + (offset % align ? align - (offset % align) : 0),
                             size,

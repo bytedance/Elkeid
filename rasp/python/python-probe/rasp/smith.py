@@ -6,6 +6,9 @@ from rasp.probe import *
 
 def smith_hook(func, class_id, method_id, constructor=False, can_block=False, check_recursion=False):
     def smith_wrapper(*args, **kwargs):
+        if not can_block and not surplus(class_id, method_id):
+            return func(*args, **kwargs)
+
         if check_recursion:
             current = inspect.currentframe().f_back
 
@@ -28,12 +31,15 @@ def smith_hook(func, class_id, method_id, constructor=False, can_block=False, ch
             ]
         )
 
-        if can_block and block(trace):
-            send(trace)
-            raise RuntimeError('API blocked by RASP')
+        if can_block:
+            if block(trace):
+                send(trace)
+                raise RuntimeError('API blocked by RASP')
 
-        if surplus(class_id, method_id):
-            send(trace)
+            if not surplus(class_id, method_id):
+                return func(*args, **kwargs)
+
+        send(trace)
 
         return func(*args, **kwargs)
 

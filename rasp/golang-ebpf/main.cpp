@@ -188,23 +188,22 @@ std::optional<int> getAPIOffset(const elf::Reader &reader, uint64_t address) {
 
     ZydisDecoder decoder;
 
-    if (!ZYAN_SUCCESS(ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64))) {
+    if (!ZYAN_SUCCESS(ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64))) {
         LOG_ERROR("disassembler init failed");
         return std::nullopt;
     }
 
     ZydisDecodedInstruction instruction;
-    ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
 
     int offset = 0;
 
     while (true) {
-        if (!ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, buffer->data() + offset, INSTRUCTION_BUFFER_SIZE - offset, &instruction, operands))) {
+        if (!ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, buffer->data() + offset, INSTRUCTION_BUFFER_SIZE - offset, &instruction))) {
             LOG_ERROR("disassemble failed");
             return std::nullopt;
         }
 
-        if ((instruction.mnemonic == ZYDIS_MNEMONIC_SUB || instruction.mnemonic == ZYDIS_MNEMONIC_ADD) && operands[0].reg.value == ZYDIS_REGISTER_RSP)
+        if ((instruction.mnemonic == ZYDIS_MNEMONIC_SUB || instruction.mnemonic == ZYDIS_MNEMONIC_ADD) && instruction.operands[0].reg.value == ZYDIS_REGISTER_RSP)
             break;
 
         offset += instruction.length;

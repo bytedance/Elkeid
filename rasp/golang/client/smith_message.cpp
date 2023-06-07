@@ -1,18 +1,21 @@
 #include "smith_message.h"
+#include "smith_probe.h"
 #include <unistd.h>
-#include <ctime>
-#include <go/symbol/build_info.h>
+#include <zero/cache/lru.h>
+#include <zero/strings/strings.h>
 
 constexpr auto RUNTIME = "golang";
 constexpr auto PROBE_VERSION = "1.0.0";
+constexpr auto FRAME_CACHE_SIZE = 128;
 
 void to_json(nlohmann::json &j, const SmithMessage &message) {
     static pid_t pid = getpid();
+    static std::string version = zero::strings::format("%d.%d", gTarget->version.major, gTarget->version.minor);
 
     j = {
             {"pid",             pid},
             {"runtime",         RUNTIME},
-            {"runtime_version", gBuildInfo->mVersion},
+            {"runtime_version", version},
             {"time",            std::time(nullptr)},
             {"message_type",    message.operate},
             {"probe_version",   PROBE_VERSION},
@@ -33,56 +36,62 @@ void to_json(nlohmann::json &j, const Heartbeat &heartbeat) {
     };
 }
 
+void to_json(nlohmann::json &j, const Request &request) {
+    j = {
+            {"method",  request.method},
+            {"uri",     request.uri},
+            {"host",    request.host},
+            {"headers", request.headers},
+            {"remote",  request.remote}
+    };
+}
+
 void to_json(nlohmann::json &j, const Trace &trace) {
     j = {
             {"class_id",  trace.classID},
             {"method_id", trace.methodID},
-            {"blocked",   trace.blocked}
+            {"blocked",   trace.blocked},
     };
 
     for (int i = 0; i < trace.count; i++)
-        j["args"].push_back(std::string(trace.args[i], ARG_LENGTH).c_str());
+        j["args"].push_back(trace.args[i]);
 
-    for (const auto &stackTrace: trace.stackTrace) {
-        if (stackTrace.pc == 0)
+    if (*trace.policyID)
+        j["policy_id"] = trace.policyID;
+
+    for (const auto &[pc, symbol]: trace.stackTrace) {
+        if (!pc)
             break;
 
-        char stack[4096] = {};
+        static zero::cache::LRUCache<uintptr_t, std::string> frameCache(FRAME_CACHE_SIZE);
 
-        snprintf(stack, sizeof(stack),
-                 "%s %s:%d +0x%lx",
-                 stackTrace.func.getName(),
-                 stackTrace.func.getSourceFile(stackTrace.pc),
-                 stackTrace.func.getSourceLine(stackTrace.pc),
-                 stackTrace.pc - stackTrace.func.getEntry()
+        std::optional<std::string> cache = frameCache.get(pc);
+
+        if (cache) {
+            j["stack_trace"].push_back(std::move(*cache));
+            continue;
+        }
+
+        char frame[4096] = {};
+
+        snprintf(
+                frame,
+                sizeof(frame),
+                "%s %s:%d +0x%lx",
+                symbol->name(),
+                symbol->sourceFile(pc),
+                symbol->sourceLine(pc),
+                pc - symbol->entry()
         );
 
-        j["stack_trace"].push_back(stack);
+        frameCache.set(pc, frame);
+        j["stack_trace"].push_back(frame);
     }
 }
 
-void to_json(nlohmann::json &j, const Module &module) {
-    j = {
-            {"path",    module.path},
-            {"version", module.version},
-            {"sum",     module.sum}
-    };
-
-    if (module.replace)
-        j["replace"] = *module.replace;
-}
-
-void to_json(nlohmann::json &j, const ModuleInfo &moduleInfo) {
-    j = {
-            {"path", moduleInfo.path},
-            {"main", moduleInfo.main},
-            {"deps", moduleInfo.deps}
-    };
-}
-
-void from_json(const nlohmann::json &j, MatchRule &matchRule) {
-    j.at("index").get_to(matchRule.index);
-    j.at("regex").get_to(matchRule.regex);
+void from_json(const nlohmann::json &j, MatchRule &rule) {
+    j.at("index").get_to(rule.index);
+    j.at("regex").get_to(rule.regex);
 }
 
 void from_json(const nlohmann::json &j, Filter &filter) {
@@ -92,26 +101,35 @@ void from_json(const nlohmann::json &j, Filter &filter) {
     j.at("exclude").get_to(filter.exclude);
 }
 
+void from_json(const nlohmann::json &j, FilterConfig &config) {
+    j.at("uuid").get_to(config.uuid);
+    j.at("filters").get_to(config.filters);
+}
+
+void from_json(const nlohmann::json &j, StackFrame &stackFrame) {
+    j.at("keywords").get_to(stackFrame.keywords);
+    j.at("operator").get_to(stackFrame.logicalOperator);
+}
+
 void from_json(const nlohmann::json &j, Block &block) {
     j.at("class_id").get_to(block.classID);
     j.at("method_id").get_to(block.methodID);
+    j.at("policy_id").get_to(block.policyID);
     j.at("rules").get_to(block.rules);
+
+    if (j.contains("stack_frame") && !j.at("stack_frame").is_null())
+        block.stackFrame = j.at("stack_frame").get<StackFrame>();
+}
+
+void from_json(const nlohmann::json &j, BlockConfig &config) {
+    j.at("uuid").get_to(config.uuid);
+    j.at("blocks").get_to(config.blocks);
 }
 
 void from_json(const nlohmann::json &j, Limit &limit) {
     j.at("class_id").get_to(limit.classID);
     j.at("method_id").get_to(limit.methodID);
     j.at("quota").get_to(limit.quota);
-}
-
-void from_json(const nlohmann::json &j, FilterConfig &config) {
-    j.at("uuid").get_to(config.uuid);
-    j.at("filters").get_to(config.filters);
-}
-
-void from_json(const nlohmann::json &j, BlockConfig &config) {
-    j.at("uuid").get_to(config.uuid);
-    j.at("blocks").get_to(config.blocks);
 }
 
 void from_json(const nlohmann::json &j, LimitConfig &config) {

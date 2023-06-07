@@ -1,0 +1,24 @@
+{
+  "name": "go-probe",
+  "version": "1.0.0",
+  "builtin-baseline": "69efe9cc2df0015f0bb2d37d55acde4a75c9a25b",
+  "dependencies": [
+    {
+      "name": "aio",
+      "default-features": false,
+      "version>=": "1.0.3"
+    },
+    {
+      "name": "c-runtime",
+      "version>=": "1.0.0"
+    },
+    {
+      "name": "curl",
+      "default-features": false
+    },
+    {
+      "name": "tiny-regex-c",
+      "version>=": "1.0.0"
+    }
+  ]
+}

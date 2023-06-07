@@ -1,21 +1,15 @@
-#include <elf/loader.h>
 #include <zero/log.h>
 #include <csignal>
-#include <go/symbol/build_info.h>
-#include <go/symbol/line_table.h>
-#include <go/symbol/interface_table.h>
 #include <go/api/api.h>
+#include <go/symbol/reader.h>
 #include <asm/api_hook.h>
-
-/*
- * Usually elf loader does not need to perform relocation work, but we need to hook golang runtime in advance.
- * So we manually resolve relocation entry, just for "R_X86_64_RELATIVE" type.
- * */
+#include <elf/loader.h>
 
 constexpr auto TASK_COMM_LEN = 16;
+constexpr auto LATEST_VERSION = go::Version{1, 20};
 
-int main(int argc, char **argv, char **envp) {
-    INIT_CONSOLE_LOG(zero::INFO);
+int main(int argc, char *argv[], char *envp[]) {
+    INIT_CONSOLE_LOG(zero::INFO_LEVEL);
 
     if (argc < 2) {
         LOG_ERROR("require input file");
@@ -24,58 +18,8 @@ int main(int argc, char **argv, char **envp) {
 
     elf_context_t ctx[2] = {};
 
-    if (load_elf(argv[1], ctx) < 0)
+    if (load_elf_file(argv[1], ctx) < 0)
         return -1;
-
-    ELFIO::elfio reader;
-
-    if (!reader.load(argv[1]))
-        return -1;
-
-    if (reader.get_type() == ET_DYN) {
-        std::vector<ELFIO::segment *> loads;
-
-        std::copy_if(
-                reader.segments.begin(),
-                reader.segments.end(),
-                std::back_inserter(loads),
-                [](const auto &i) {
-                    return i->get_type() == PT_LOAD;
-                });
-
-        uintptr_t minVA = std::min_element(
-                loads.begin(),
-                loads.end(),
-                [](const auto &i, const auto &j) {
-                    return i->get_virtual_address() < j->get_virtual_address();
-                }).operator*()->get_virtual_address() & ~(PAGE_SIZE - 1);
-
-        for (const auto &section: reader.sections) {
-            if (section->get_type() != SHT_RELA)
-                continue;
-
-            ELFIO::relocation_section_accessor relocations(reader, section);
-
-            for (ELFIO::Elf_Xword i = 0; i < relocations.get_entries_num(); i++) {
-                ELFIO::Elf64_Addr offset = 0;
-                ELFIO::Elf64_Addr symbolValue = 0;
-                std::string symbolName;
-                ELFIO::Elf_Word type = 0;
-                ELFIO::Elf_Sxword addend = 0;
-                ELFIO::Elf_Sxword calcValue = 0;
-
-                if (!relocations.get_entry(i, offset, symbolValue, symbolName, type, addend, calcValue)) {
-                    LOG_ERROR("get relocation entry %lu failed", i);
-                    return -1;
-                }
-
-                if (type != R_X86_64_RELATIVE)
-                    continue;
-
-                *(size_t *) (ctx[0].base + offset - minVA) = (ctx[0].base + calcValue - minVA);
-            }
-        }
-    }
 
     sigset_t mask = {};
     sigset_t origin_mask = {};
@@ -87,35 +31,52 @@ int main(int argc, char **argv, char **envp) {
         return -1;
     }
 
-    if (!gLineTable->load(argv[1], ctx[0].base)) {
-        LOG_ERROR("line table load failed");
+    std::optional<go::symbol::Reader> reader = go::symbol::openFile(argv[1]);
+
+    if (!reader) {
+        LOG_ERROR("load golang binary failed");
         return -1;
     }
 
-    if (gBuildInfo->load(argv[1], ctx[0].base)) {
-        LOG_INFO("go version: %s", gBuildInfo->mVersion.c_str());
+    std::optional<go::Version> version = reader->version();
 
-        InterfaceTable table = {};
-
-        if (!table.load(argv[1], ctx[0].base)) {
-            LOG_ERROR("interface table load failed");
-            return -1;
-        }
-
-        table.findByFuncName("errors.(*errorString).Error", (go::interface_item **) APIBase::errorInterface());
+    if (!version) {
+        LOG_ERROR("get golang version failed");
+        return -1;
     }
 
-    gSmithProbe->start();
+    LOG_INFO("golang version: %d.%d", version->major, version->minor);
+
+    if (*version > LATEST_VERSION) {
+        LOG_ERROR("unsupported golang version");
+        return -1;
+    }
+
+    std::optional<go::symbol::InterfaceTable> interfaceTable = reader->interfaces(ctx[0].base);
+
+    if (interfaceTable) {
+        auto it = std::find_if(interfaceTable->begin(), interfaceTable->end(), [](const auto &interface) {
+            return interface.name() == "*errors.errorString";
+        });
+
+        if (it != interfaceTable->end()) {
+            *go::errors::ErrorString::errorTab() = (void *) it.operator*().address();
+        }
+    }
+
+    std::optional<go::symbol::SymbolTable> symbolTable = reader->symbols(go::symbol::FileMapping, ctx[0].base);
+
+    if (!symbolTable) {
+        LOG_ERROR("get symbol table failed");
+        return -1;
+    }
 
     for (const auto &api: GOLANG_API) {
-        for (unsigned int i = 0; i < gLineTable->mFuncNum; i++) {
-            Func func = {};
+        for (const auto &symbolEntry: *symbolTable) {
+            go::symbol::Symbol symbol = symbolEntry.symbol();
 
-            if (!gLineTable->getFunc(i, func))
-                break;
-
-            const char *name = func.getName();
-            void *entry = (void *) func.getEntry();
+            const char *name = symbol.name();
+            void *entry = (void *) symbol.entry();
 
             if ((api.ignoreCase ? strcasecmp(api.name, name) : strcmp(api.name, name)) == 0) {
                 LOG_INFO("hook %s: %p", name, entry);
@@ -129,6 +90,11 @@ int main(int argc, char **argv, char **envp) {
             }
         }
     }
+
+    gTarget->version = *version;
+    gTarget->symbolTable = std::make_unique<go::symbol::SymbolTable>(std::move(*symbolTable));
+
+    std::thread(startProbe).detach();
 
     pthread_sigmask(SIG_SETMASK, &origin_mask, nullptr);
     pthread_setname_np(
