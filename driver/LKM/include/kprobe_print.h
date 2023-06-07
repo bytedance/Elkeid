@@ -733,8 +733,8 @@ SD_XFER_DEFINE( NAME(privilege_escalation),
                 XFER(ENTRY_COMMON(611),
                      ENTRY_INT(parent_pid, parent_pid),
                      ENTRY_STR(pid_tree, pid_tree),
-                     ENTRY_STR(p_cred, p_cred),
-                     ENTRY_STR(c_cred, c_cred)
+                     ENTRY_STL(p_cred, p_cred, 128),
+                     ENTRY_STL(c_cred, c_cred, 128)
                 )
 )
 
