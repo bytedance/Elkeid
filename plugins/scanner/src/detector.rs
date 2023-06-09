@@ -1,9 +1,10 @@
 use crate::{
     config::{
-        self, FULLSCAN_CPU_IDLE_100PCT, FULLSCAN_CPU_IDLE_INTERVAL, FULLSCAN_CPU_MAX_TIME_SECS,
-        FULLSCAN_CPU_QUOTA_DEFAULT_MAX, FULLSCAN_CPU_QUOTA_DEFAULT_MIN, FULLSCAN_MAX_SCAN_CPU_100,
-        FULLSCAN_MAX_SCAN_ENGINES, FULLSCAN_MAX_SCAN_MEM_MB, FULLSCAN_SCAN_MODE_FULL,
-        FULLSCAN_SCAN_MODE_QUICK, SERVICE_DEFAULT_CG_CPU, SERVICE_DEFAULT_CG_MEM,
+        self, FULLSCAN_CPU_IDLE_100PCT, FULLSCAN_CPU_IDLE_INTERVAL, FULLSCAN_CPU_QUOTA_DEFAULT_MAX,
+        FULLSCAN_CPU_QUOTA_DEFAULT_MIN, FULLSCAN_MAX_SCAN_CPU_100, FULLSCAN_MAX_SCAN_ENGINES,
+        FULLSCAN_MAX_SCAN_MEM_MB, FULLSCAN_MAX_SCAN_TIMEOUT_FULL, FULLSCAN_MAX_SCAN_TIMEOUT_QUICK,
+        FULLSCAN_SCAN_MODE_FULL, FULLSCAN_SCAN_MODE_QUICK, SERVICE_DEFAULT_CG_CPU,
+        SERVICE_DEFAULT_CG_MEM,
     },
     data_type::{
         self, AntiRansomEvent, DetectFileEvent, DetectOneTaskEvent, DetectProcEvent, FanotifyEvent,
@@ -477,14 +478,6 @@ impl Detector {
                                         full_scan_config.cpu_idle_100pct = worker_cu64;
                                     }
                                 }
-
-                                if let Some(worker_c) = task_map.get("timeout") {
-                                    let worker_cu64: u64 = worker_c.parse().unwrap_or_default();
-                                    if worker_cu64 != 0 {
-                                        full_scan_config.max_scan_timeout = worker_cu64;
-                                    }
-                                }
-
                                 if let Some(worker_c) = task_map.get("cpu") {
                                     let worker_cu32: u32 = worker_c.parse().unwrap_or_default();
                                     if worker_cu32 != 0 {
@@ -498,14 +491,21 @@ impl Detector {
                                         full_scan_config.max_scan_mem_mb = worker_cu32;
                                     }
                                 }
-
                                 if let Some(worker_c) = task_map.get("mode") {
                                     match worker_c.as_str() {
                                         FULLSCAN_SCAN_MODE_FULL => {
                                             full_scan_config.scan_mode_full = true;
+                                            full_scan_config.max_scan_timeout_hour =
+                                                *FULLSCAN_MAX_SCAN_TIMEOUT_FULL;
                                         }
                                         _ => {}
                                     };
+                                }
+                                if let Some(worker_c) = task_map.get("timeout") {
+                                    let worker_cu64: u64 = worker_c.parse().unwrap_or_default();
+                                    if worker_cu64 != 0 {
+                                        full_scan_config.max_scan_timeout_hour = worker_cu64;
+                                    }
                                 }
 
                                 if let Err(e) = task_sender

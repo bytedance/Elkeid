@@ -410,7 +410,7 @@ pub fn FullScan(
     });
 
     let mut worker_job = Vec::new();
-    let exit_timeout = fullscan_cfg.max_scan_timeout;
+    let exit_timeout = fullscan_cfg.max_scan_timeout_hour;
 
     for i in 0..engine_count {
         let nt_client = client.clone();

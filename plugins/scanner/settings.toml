@@ -38,13 +38,12 @@ fullscan_cpu_idle_interval = 5
 fullscan_cpu_idle_100pct = 30
 fullscan_cpu_quota_default_min = 10000
 fullscan_cpu_quota_default_max = 800000
-fullscan_cpu_max_time_secs = 172800
 
 fullscan_max_scan_engines = 6
 fullscan_max_scan_cpu_100 = 600
 fullscan_max_scan_mem_mb = 512
-fullscan_max_scan_timeout_full = 172800
-fullscan_max_scan_timeout_quick = 3600
+fullscan_max_scan_timeout_full = 48
+fullscan_max_scan_timeout_quick = 1
 
 [scan]
 filter = [

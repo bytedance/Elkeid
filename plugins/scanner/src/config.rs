@@ -25,8 +25,6 @@ lazy_static::lazy_static!(
     pub static ref FULLSCAN_CPU_IDLE_100PCT: u64 = settings_int("fullscan","fullscan_cpu_idle_100pct").unwrap() as _;
     pub static ref FULLSCAN_CPU_QUOTA_DEFAULT_MIN: u64 = settings_int("fullscan","fullscan_cpu_quota_default_min").unwrap() as _;
     pub static ref FULLSCAN_CPU_QUOTA_DEFAULT_MAX: u64 = settings_int("fullscan","fullscan_cpu_quota_default_max").unwrap() as _;
-    pub static ref FULLSCAN_CPU_MAX_TIME_SECS: u64 = settings_int("fullscan","fullscan_cpu_max_time_secs").unwrap() as _;
-
     pub static ref FULLSCAN_MAX_SCAN_ENGINES: u32 = settings_int("fullscan","fullscan_max_scan_engines").unwrap() as _;
     pub static ref FULLSCAN_MAX_SCAN_CPU_100: u32 = settings_int("fullscan","fullscan_max_scan_cpu_100").unwrap() as _;
     pub static ref FULLSCAN_MAX_SCAN_MEM_MB: u32 = settings_int("fullscan","fullscan_max_scan_mem_mb").unwrap() as _;

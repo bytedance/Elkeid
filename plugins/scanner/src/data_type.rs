@@ -6,10 +6,10 @@ use std::{collections::HashMap, hash::Hash};
 
 use crate::{
     config::{
-        FULLSCAN_CPU_IDLE_100PCT, FULLSCAN_CPU_IDLE_INTERVAL, FULLSCAN_CPU_MAX_TIME_SECS,
-        FULLSCAN_CPU_QUOTA_DEFAULT_MAX, FULLSCAN_CPU_QUOTA_DEFAULT_MIN, FULLSCAN_MAX_SCAN_CPU_100,
-        FULLSCAN_MAX_SCAN_ENGINES, FULLSCAN_MAX_SCAN_MEM_MB, FULLSCAN_MAX_SCAN_TIMEOUT_FULL,
-        FULLSCAN_MAX_SCAN_TIMEOUT_QUICK, FULLSCAN_SCAN_MODE_FULL, FULLSCAN_SCAN_MODE_QUICK,
+        FULLSCAN_CPU_IDLE_100PCT, FULLSCAN_CPU_IDLE_INTERVAL, FULLSCAN_CPU_QUOTA_DEFAULT_MAX,
+        FULLSCAN_CPU_QUOTA_DEFAULT_MIN, FULLSCAN_MAX_SCAN_CPU_100, FULLSCAN_MAX_SCAN_ENGINES,
+        FULLSCAN_MAX_SCAN_MEM_MB, FULLSCAN_MAX_SCAN_TIMEOUT_FULL, FULLSCAN_MAX_SCAN_TIMEOUT_QUICK,
+        FULLSCAN_SCAN_MODE_FULL, FULLSCAN_SCAN_MODE_QUICK,
     },
     get_file_md5, get_file_xhash, pid_to_docker_id, ToAgentRecord,
 };
@@ -921,11 +921,10 @@ pub struct FullScanTask {
     pub cpu_idle_100pct: u64,
     pub cpu_quota_default_min: u64,
     pub cpu_quota_default_max: u64,
-    pub cpu_max_time_secs: u64,
     pub max_scan_engine: u32,
     pub max_scan_cpu100: u32,
     pub max_scan_mem_mb: u32,
-    pub max_scan_timeout: u64,
+    pub max_scan_timeout_hour: u64,
     pub scan_mode_full: bool,
     pub token: String,
 }
@@ -937,11 +936,10 @@ impl FullScanTask {
             cpu_idle_100pct: *FULLSCAN_CPU_IDLE_100PCT,
             cpu_quota_default_min: *FULLSCAN_CPU_QUOTA_DEFAULT_MIN,
             cpu_quota_default_max: *FULLSCAN_CPU_QUOTA_DEFAULT_MAX,
-            cpu_max_time_secs: *FULLSCAN_CPU_MAX_TIME_SECS,
             max_scan_engine: *FULLSCAN_MAX_SCAN_ENGINES,
             max_scan_cpu100: *FULLSCAN_MAX_SCAN_CPU_100,
             max_scan_mem_mb: *FULLSCAN_MAX_SCAN_MEM_MB,
-            max_scan_timeout: *FULLSCAN_MAX_SCAN_TIMEOUT_FULL,
+            max_scan_timeout_hour: *FULLSCAN_MAX_SCAN_TIMEOUT_QUICK,
             scan_mode_full: false,
             token: "".to_string(),
         }
