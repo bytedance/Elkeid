@@ -681,15 +681,12 @@ unsigned long smith_kallsyms_lookup_name(const char *name)
 
 u8 *smith_query_sb_uuid(struct super_block *sb)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
-    /* uuid_t s_uuid; */
-    return (u8 *)&sb->s_uuid;
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
     /* s_uuid not defined, using fixed zone of this sb */
-    return (u8 *)&sb->s_dev;
+    return (u8 *)sb + offsetof(struct super_block, s_dev);
 #else
-    /* u8 s_uuid[16]; */
-    return (u8 *)&sb->s_uuid[0];
+    /* u8 s_uuid[16] or uuid_t s_uuid */
+    return (u8 *)sb + offsetof(struct super_block, s_uuid);
 #endif
 }
 
