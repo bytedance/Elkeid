@@ -1045,16 +1045,22 @@ static void smith_trace_prepare_exec(struct execve_data *data)
 {
     struct task_struct *task = current;
     unsigned long args, envs, larg, lenv, i;
-    char *parg = NULL, *penv = NULL;
+    char *parg, *penv;
 
     /* query arg and env mmap sections */
     if (!task->mm)
         return;
     task_lock(task);
     args = task->mm->arg_start;
-    larg = task->mm->arg_end - args;
+    if (task->mm->arg_end > args)
+        larg = task->mm->arg_end - args;
+    else
+        larg = 0;
     envs = task->mm->env_start;
-    lenv = task->mm->env_end - envs;
+    if (task->mm->env_end > envs)
+        lenv = task->mm->env_end - envs;
+    else
+        lenv = 0;
     task_unlock(task);
 
     /* query argv of current task */
@@ -1062,24 +1068,27 @@ static void smith_trace_prepare_exec(struct execve_data *data)
         larg = SMITH_MAX_CMDLINE;
     if (!larg || !args)
         goto proc_env;
-    parg = smith_kzalloc(larg, GFP_ATOMIC);
+    parg = smith_kzalloc(larg < 16 ? 16 : larg, GFP_ATOMIC);
     if (!parg)
         goto proc_env;
     data->argv= parg;
     i = larg - 1 - smith_copy_from_user(parg, (void *)args, larg - 1);
-    if (i <= 1) {
-        strcpy(parg, "-1");
+    if (i == 0 || i >= larg) {
+        smith_kfree(parg);
     } else {
+        parg[i] = 0;
         while(--i > 0)
             if (!parg[i]) parg[i] = ' ';
+        data->argv= smith_strim(parg);
+        data->len_argv = strlen(data->argv);
     }
 
 proc_env:
 
-    /* now query envion of current task */
-    if (lenv > PAGE_SIZE)
-        lenv = PAGE_SIZE;
-    if (!lenv || !envs)
+    /* query envion of current task, maxlen of env could be ARG_MAX or 32 pages */
+    if (lenv > PAGE_SIZE * 4)
+        lenv = PAGE_SIZE * 4;
+    if (lenv < 16 || !envs)
         goto errorout;
     penv = smith_kzalloc(lenv, GFP_ATOMIC);
     if (!penv)
