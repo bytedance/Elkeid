@@ -21,7 +21,8 @@ struct tt_node *tt_rb_alloc_node(struct tt_rb *rb)
     if (mnod) {
         struct tt_node *tnod;
         tnod = container_of(mnod, struct tt_node, cache);
-        tnod->flags = 0;
+        memset((s8 *)tnod + offsetof(struct tt_node, node),
+                0, size - offsetof(struct tt_node, node));
         tnod->flag_pool = 1;
         return tnod;
     }
@@ -339,7 +340,8 @@ struct hlist_hnod *hlist_alloc_node(struct hlist_root *hr)
     mnod = memcache_pop(&hr->cache);
     if (mnod) {
         hnod = container_of(mnod, struct hlist_hnod, cache);
-        hnod->flags = 0;
+        memset((s8 *)hnod + offsetof(struct hlist_hnod, link),
+                0, size - offsetof(struct hlist_hnod, link));
         hnod->flag_pool = 1;
         hnod->hash = hr;
         atomic_inc(&hr->allocs);
@@ -513,9 +515,11 @@ int hlist_remove_node(struct hlist_root *hr, struct hlist_hnod *hnod)
 
     spin_lock(&hr->lock);
     rc = hlist_remove_node_nolock(hr, hnod);
-    spin_unlock(&hr->lock);
-    if (0 == rc)
+    if (0 == rc && !hnod->flag_rcu) {
+        hnod->flag_rcu = 1;
         call_rcu(&hnod->rcu, hlist_free_node_rcu);
+    }
+    spin_unlock(&hr->lock);
 
     return 0;
 }
@@ -529,12 +533,14 @@ int hlist_remove_key(struct hlist_root *hr, void *key)
     hnod = hlist_lookup_key_noref(hr, key);
     if (hnod) {
         rc = hlist_remove_node_nolock(hr, hnod);
+        if (0 == rc && !hnod->flag_rcu) {
+            hnod->flag_rcu = 1;
+            call_rcu(&hnod->rcu, hlist_free_node_rcu);
+        }
     } else {
         rc = -ENOENT;
     }
     spin_unlock(&hr->lock);
-    if (0 == rc)
-        call_rcu(&hnod->rcu, hlist_free_node_rcu);
 
     return rc;
 }
@@ -542,8 +548,14 @@ int hlist_remove_key(struct hlist_root *hr, void *key)
 int hlist_deref_node(struct hlist_root *hr, struct hlist_hnod *hnod)
 {
     int rc = atomic_dec_return(&hnod->refs);
-    if (0 == rc)
-        call_rcu(&hnod->rcu, hlist_free_node_rcu);
+    if (0 == rc) {
+        spin_lock(&hr->lock);
+        if (!hnod->flag_rcu) {
+            hnod->flag_rcu = 1;
+            call_rcu(&hnod->rcu, hlist_free_node_rcu);
+        }
+        spin_unlock(&hr->lock);
+    }
     return rc;
 }
 

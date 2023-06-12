@@ -391,6 +391,7 @@ struct hlist_hnod {
         struct {
           uint32_t      flag_pool:1;
           uint32_t      flag_newsid:1;
+          uint32_t      flag_rcu:1;
         };
     };
 };
