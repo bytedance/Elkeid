@@ -3,7 +3,7 @@ FROM ubuntu:xenial AS xenial
 RUN apt update;
 RUN apt install -y wget curl tree git gcc build-essential kbuild libelf-dev;
 RUN apt-get -y install linux-headers-4.13.*-generic  || true
-RUN apt-get -y install linux-headers-4.15.*-generic  || true
+RUN apt-get -y install linux-headers-4.15.*-generic linux-headers-generic-hwe-16.04* || true
 
 RUN apt clean all
 
@@ -12,4 +12,4 @@ WORKDIR /elkeid/driver
 RUN bash ./build_script/x86_64/batch_compile.sh
 
 RUN apt-get -y remove linux-headers-4.13.*-generic  || true
-RUN apt-get -y remove linux-headers-4.15.*-generic  || true
+RUN apt-get -y remove linux-headers-4.15.*-generic linux-headers-generic-hwe-16.04* || true

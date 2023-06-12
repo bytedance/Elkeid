@@ -2,7 +2,7 @@ FROM ubuntu:focal AS focal
 
 RUN apt update;
 RUN apt install -y wget curl tree git gcc build-essential kbuild libelf-dev;
-RUN apt-get -y install linux-headers-*-generic || true
+RUN apt-get -y install linux-headers-*-generic linux-hwe-*-headers-* || true
 
 RUN wget http://launchpadlibrarian.net/656939965/linux-headers-5.4.0-147-generic_5.4.0-147.164_amd64.deb
 RUN wget http://launchpadlibrarian.net/656939967/linux-headers-5.4.0-147_5.4.0-147.164_all.deb
@@ -14,4 +14,4 @@ ADD . /elkeid
 WORKDIR /elkeid/driver
 RUN bash ./build_script/x86_64/batch_compile.sh
 
-RUN apt-get -y remove linux-headers-*-generic || true
+RUN apt-get -y remove linux-headers-*-generic linux-hwe-*-headers-* || true
