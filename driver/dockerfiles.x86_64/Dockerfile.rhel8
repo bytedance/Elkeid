@@ -5,6 +5,8 @@ RUN dnf groupinstall -y  "Development Tools";
 RUN mkdir /root/headers
 
 RUN for eachversion in `dnf --showduplicates list kernel-devel | grep kernel-devel.x86_64 | awk '{print $2}'` ; do dnf download --downloaddir=/root/headers kernel-devel-$eachversion.x86_64 || true ; done;
+RUN wget -q -k -e robots=off  -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'http://repos-va.psychz.net/centos/8-stream/BaseOS/x86_64/os/Packages/'
+RUN wget -q -k -e robots=off  -c -r -np -nd -nH -A 'kernel-devel*x86_64.rpm' 'https://mirrors.tuna.tsinghua.edu.cn/cc/s8/BaseOS/x86_64/os/Packages/'
 
 RUN rpm --force -i /root/headers/*.rpm || true
 
