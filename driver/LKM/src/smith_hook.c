@@ -1235,6 +1235,7 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 				*(argv_res + offset) = '\0';
 			else
 				strcpy(argv_res, "<FAIL>");
+			smith_strim(argv_res);
 		}
 	}
 
@@ -1302,8 +1303,8 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 	data->ld_preload = ld_preload;
 	data->free_ld_preload = free_ld_preload;
 
-	data->argv = smith_strim(argv_res);
-	data->len_argv = strlen(data->argv);
+	data->argv = argv_res;
+	data->len_argv = argv_res ? strlen(argv_res) : 0;
 	data->free_argv = free_argv;
 }
 
@@ -1444,6 +1445,7 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
                 *(argv_res + offset) = '\0';
             else
                 strcpy(argv_res, "<FAIL>");
+            smith_strim(argv_res);
         }
     }
 
@@ -1513,8 +1515,8 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
     data->ld_preload = ld_preload;
     data->free_ld_preload = free_ld_preload;
 
-    data->argv = smith_strim(argv_res);
-    data->len_argv = strlen(data->argv);
+    data->argv = argv_res;
+    data->len_argv = argv_res ? strlen(argv_res) : 0;
     data->free_argv = free_argv;
 }
 
