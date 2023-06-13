@@ -1152,7 +1152,7 @@ PRINT_EVENT_DEFINE(bind6,
                            __entry->root_pid_inum = ROOT_PID_NS_INUM;
                    ),
 
-                   PE_printk("49" RS "%d" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%u" RS "%u" RS "2" RS "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x" RS "%d" RS "%d",
+                   PE_printk("49" RS "%d" RS "%s" RS "%d" RS "%d" RS "%d" RS "%d" RS "%d" RS "%s" RS "%s" RS "%u" RS "%u" RS "%u" RS "10" RS "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x" RS "%d" RS "%d",
                            __get_ent(uid, __get_current_uid()),
                            __get_str(exe_path, exe_path),
                            __get_ent(pid, current->pid),
