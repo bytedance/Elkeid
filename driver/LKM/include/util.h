@@ -226,14 +226,49 @@ static __always_inline long __must_check smith_strnlen_user(const char __user *s
     return res;
 }
 
+/*
+ * WARNING:
+ *
+ * access_ok() might sleep as it 's said, but actaully what it does
+ * is just a comparison between user addr and current's TASK_SIZE_MAX.
+ */
+static __always_inline int smith_access_ok(const void __user *from, unsigned long n)
+{
+#if defined(UACCESS_TYPE_SUPPORT)
+    return access_ok(VERIFY_READ, from, n);
+#else
+    return access_ok(from, n);
+#endif
+}
+
 static __always_inline unsigned long __must_check smith_copy_from_user(void *to, const void __user *from, unsigned long n)
 {
     unsigned long res;
     smith_pagefault_disable();
-    res = __copy_from_user_inatomic(to, from, n);
+    /* validate user-mode buffer: ['from' - 'from' + 'n') */
+    if (smith_access_ok(from, n))
+        res = __copy_from_user_inatomic(to, from, n);
+    else
+        res = n;
     smith_pagefault_enable();
     return res;
 }
+
+/* get_user() will call might_fault(), which violates
+   the rules of atomic context (introdcued by kprobe) */
+#define smith_get_user(x, ptr)                                  \
+({                                                              \
+    unsigned long __val = 0;                                    \
+    int __ret;                                                  \
+    smith_pagefault_disable();                                  \
+    /* validate user-mode buffer: ['from' - 'from' + 'n') */    \
+    __ret = sizeof(*(ptr));                                     \
+    if (smith_access_ok(ptr, __ret))                            \
+        __ret = __copy_from_user_inatomic(&__val, ptr, __ret);  \
+    smith_pagefault_enable();                                   \
+    (x) = (__typeof__(*(ptr)))__val;                            \
+    __ret;                                                      \
+})
 
 static __always_inline char *smith_d_path(const struct path *path, char *buf, int buflen)
 {
@@ -308,20 +343,6 @@ static __always_inline char *smith_get_exe_file(char *buffer, int size)
 
     return exe_file_str;
 }
-
-/* get_user() will call might_fault(), which violates
-   the rules of atomic context (introdcued by kprobe) */
-#define smith_get_user(x, ptr)                                  \
-({                                                              \
-    unsigned long __val = 0;                                    \
-    int __ret;                                                  \
-    smith_pagefault_disable();                                  \
-    __ret = __copy_from_user_inatomic(&__val, ptr,              \
-                                      sizeof(*(ptr)));          \
-    smith_pagefault_enable();                                   \
-    (x) = (__typeof__(*(ptr)))__val;                            \
-    __ret;                                                      \
-})
 
 static inline void *__get_dns_query(unsigned char *data, int index, char *res) {
     int i;
