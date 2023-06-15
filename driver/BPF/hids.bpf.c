@@ -9,6 +9,23 @@
 
 struct proc_tid empty_tid SEC(".rodata") = {};
 
+/* trusted list of executable imgs (full path) */
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__uint(max_entries, MAX_N_TRUSTED_APPS);
+	__type(key, u64);
+	__type(value, struct exe_item);
+} trusted_exes SEC(".maps");
+
+/* trusted list of command lines (with arguments) */
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__uint(max_entries, MAX_N_TRUSTED_APPS);
+	__type(key, u64);
+	__type(value, struct exe_item);
+} trusted_cmds SEC(".maps");
+
+/* cache list for process & task items */
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 10240);
@@ -16,6 +33,7 @@ struct {
 	__type(value, struct proc_tid);
 } g_tid_cache SEC(".maps");
 
+/* output channel of perf ringbuf events */
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 	__uint(key_size, sizeof(u32));
@@ -757,6 +775,28 @@ static __noinline int query_ipv6(struct sock *sk,
 }
 
 /*
+ * allowlists for trusted apps or cmds (with args)
+ */
+
+static int exe_is_trusted(struct proc_tid *tid)
+{
+    uint64_t n = tid->exe_path_hash;
+    struct exe_item *ei;
+
+    ei = bpf_map_lookup_elem(&trusted_exes, &n);
+    return (ei && ei->len == tid->exe_path_len);
+}
+
+static int cmd_is_trusted(struct proc_tid *tid)
+{
+    uint64_t n = tid->args_hash;
+    struct exe_item *ei;
+
+    ei = bpf_map_lookup_elem(&trusted_cmds, &n);
+    return (ei && ei->len == tid->args_len);
+}
+
+/*
  * dns answer record processing
  */
 
@@ -950,7 +990,7 @@ static __noinline unsigned int append_string(char *s, int len, int n, int max, v
     return n;
 }
 
-static __noinline unsigned int read_args(struct proc_tid *tid, struct task_struct *task)
+static __noinline unsigned int construct_args(struct proc_tid *tid, struct task_struct *task)
 {
     struct var_swap {
         char skip[SD_EVENT_MAX - 2 * SD_STR_MAX];
@@ -991,6 +1031,8 @@ static __noinline unsigned int read_args(struct proc_tid *tid, struct task_struc
 
 out:
     sd_put_local(swap);
+    tid->args_len = len;
+    cmd_murmur_OAAT64(tid);
     return len;
 }
 
@@ -1140,7 +1182,7 @@ static __noinline char * d_path(char *data, char *swap, struct path *path, uint3
 }
 
 /* length of path: SD_STR_MAX; length of swap: PATH_NAME_LEN + 4 */
-static __noinline char * dentry_path(char *path, char *swap, struct dentry *de, uint32_t *sz)
+static __noinline char *dentry_path(char *path, char *swap, struct dentry *de, uint32_t *sz)
 {
     uint32_t len = 1;
 
@@ -1163,10 +1205,12 @@ static __noinline char * dentry_path(char *path, char *swap, struct dentry *de, 
 static __always_inline int construct_exe_path(struct task_struct *task, struct proc_tid *tid)
 {
     struct var_swap {
-        char skip[SD_EVENT_MAX - SD_STR_MAX - PATH_NAME_LEN - 4];
+        char skip[SD_EVENT_MAX - SD_STR_MAX * 2 - PATH_NAME_LEN - 4];
         char path[SD_STR_MAX];
+        char cmds[SD_STR_MAX];
         char swap[PATH_NAME_LEN + 4];
     } *swap;
+    char *exe_path;
 
     swap = sd_get_local(sizeof(*swap));
     if (!swap)
@@ -1174,8 +1218,9 @@ static __always_inline int construct_exe_path(struct task_struct *task, struct p
     struct path exe;
     exe.mnt = READ_KERN(task, mm, exe_file, f_path.mnt);
     exe.dentry = READ_KERN(task, mm, exe_file, f_path.dentry);
-    tid->exe_path = d_path(tid->exe_path_dat, swap->swap,
-                           &exe, &tid->exe_path_len);
+    exe_path = d_path(swap->cmds, swap->swap, &exe, &tid->exe_path_len);
+    bpf_probe_read(tid->exe_path, (tid->exe_path_len + 1) & SD_STR_MASK, exe_path);
+    exe_murmur_OAAT64(tid);
 
     sd_put_local(swap);
     return 0;
@@ -1279,7 +1324,7 @@ static __noinline void refresh_tid(struct task_struct *task, struct proc_tid *ti
     construct_pid_tree(task, tid);
 
     /* build cmdline */
-    tid->args_len = read_args(tid, task);
+    construct_args(tid, task);
 
     /* save owner's credentials */
     construct_xids(task, &tid->xids);
@@ -1398,7 +1443,7 @@ static __noinline struct proc_tid *construct_tid(struct task_struct *task, int f
         return NULL;
 
     pid = READ_KERN(task, pid);
-    tgid= READ_KERN(task, tgid);
+    tgid = READ_KERN(task, tgid);
 
     /* reserve cache from g_tid_cache for this task */
     if (bpf_map_update_elem(&g_tid_cache, &tgid, &empty_tid, BPF_NOEXIST))
@@ -2462,7 +2507,6 @@ static __noinline int sysret_exit(struct bpf_raw_tracepoint_args *ctx)
     if (id != NR_exit && id != NR_exit_group) {
         if (!find_current_tid())
             construct_tid((void *)bpf_get_current_task(), 0);
-
     }
 
     switch (id) {
@@ -2660,6 +2704,10 @@ int tp__proc_exit(struct bpf_raw_tracepoint_args *ctx)
 SEC("raw_tracepoint/sys_exit")
 int tp__compat_sys_exit(struct bpf_raw_tracepoint_args *ctx)
 {
+    struct task_struct *task;
+    struct proc_tid *tid;
+    pid_t tgid;
+
 #if 0
     int ret = ctx->args[1];
     /* ignoring all failed syscalls */
@@ -2668,8 +2716,20 @@ int tp__compat_sys_exit(struct bpf_raw_tracepoint_args *ctx)
 #endif
 
     /* current process is 32bit */
-    if (in_compat_task())
+    if (in_compat_task()) {
+
+        /* locate tid cache in map: g_tid_cache */
+        task = (void *)bpf_get_current_task();
+        tgid = READ_KERN(task, tgid);
+        tid = bpf_map_lookup_elem(&g_tid_cache, &tgid);
+        if (!tid)
+            return 0;
+
+        if (exe_is_trusted(tid))
+            return 0;
+
         compat_sysret_exit(ctx);
+    }
 
     return 0;
 }
@@ -2677,8 +2737,23 @@ int tp__compat_sys_exit(struct bpf_raw_tracepoint_args *ctx)
 SEC("raw_tracepoint/sys_exit")
 int tp__sys_exit(struct bpf_raw_tracepoint_args *ctx)
 {
+    struct task_struct *task;
+    struct proc_tid *tid;
+    pid_t tgid;
+
     /* current process is 64bit */
     if (!in_compat_task()) {
+
+        /* locate tid cache in map: g_tid_cache */
+        task = (void *)bpf_get_current_task();
+        tgid = READ_KERN(task, tgid);
+        tid = bpf_map_lookup_elem(&g_tid_cache, &tgid);
+        if (!tid)
+            return 0;
+
+        if (exe_is_trusted(tid))
+            return 0;
+
         /* do general handling for syscall-exit events */
         sysret_exit(ctx);
     }
@@ -2690,6 +2765,9 @@ SEC("raw_tracepoint/sys_exit")
 int tp__sys_exec(struct bpf_raw_tracepoint_args *ctx)
 {
     struct pt_regs *regs = (struct pt_regs *)ctx->args[0];
+    struct task_struct *task;
+    struct proc_tid *tid;
+    pid_t tgid;
     int id, compat;
 
     /* query syscall id */
@@ -2698,6 +2776,17 @@ int tp__sys_exec(struct bpf_raw_tracepoint_args *ctx)
 
     if ((compat && is_compat_exec(id)) ||
         (!compat && (id == NR_execve || id == NR_execveat))) {
+
+        /* locate tid cache in map: g_tid_cache */
+        task = (void *)bpf_get_current_task();
+        tgid = READ_KERN(task, tgid);
+        tid = bpf_map_lookup_elem(&g_tid_cache, &tgid);
+        if (!tid)
+            return 0;
+
+        if (exe_is_trusted(tid) || cmd_is_trusted(tid))
+            return 0;
+
         sysret_exec(ctx, ctx->args[1]);
     }
 
@@ -2738,9 +2827,22 @@ static __noinline void show_create6(void *ctx, struct var_create *create);
 SEC("kprobe/security_inode_create")
 int kp__inode_create(struct pt_regs *regs)
 {
+    struct task_struct *task;
+    struct proc_tid *tid;
+    pid_t tgid;
+
+    /* locate tid cache in map: g_tid_cache */
+    task = (void *)bpf_get_current_task();
+    tgid = READ_KERN(task, tgid);
+    tid = bpf_map_lookup_elem(&g_tid_cache, &tgid);
+    if (!tid)
+        return 0;
+
+    if (exe_is_trusted(tid))
+        return 0;
+
     struct var_create *create;
     struct sock *sk;
-    struct task_struct *task;
 
     create = sd_get_local(sizeof(*create));
     if (!create)
@@ -2755,7 +2857,6 @@ int kp__inode_create(struct pt_regs *regs)
                               &create->sz_path);
 
     /* enumerate fd to locate 1st socket connection */
-    task = (struct task_struct *)bpf_get_current_task();
     sk = process_socket(task, &create->pid);
     if (sk)
         create->ip.sa_family = sock_family(sk);
@@ -2806,6 +2907,20 @@ static __noinline void show_create0(void *ctx, struct var_create *create)
 SEC("kprobe/security_inode_rename")
 int kp__inode_rename(struct pt_regs *regs)
 {
+    struct task_struct *task;
+    struct proc_tid *tid;
+    pid_t tgid;
+
+    /* locate tid cache in map: g_tid_cache */
+    task = (void *)bpf_get_current_task();
+    tgid = READ_KERN(task, tgid);
+    tid = bpf_map_lookup_elem(&g_tid_cache, &tgid);
+    if (!tid)
+        return 0;
+
+    if (exe_is_trusted(tid))
+        return 0;
+
     struct var_rename {
         char *old;
         char *new;
@@ -2843,6 +2958,20 @@ errorout:
 SEC("kprobe/security_inode_link")
 int kp__inode_link(struct pt_regs *regs)
 {
+    struct task_struct *task;
+    struct proc_tid *tid;
+    pid_t tgid;
+
+    /* locate tid cache in map: g_tid_cache */
+    task = (void *)bpf_get_current_task();
+    tgid = READ_KERN(task, tgid);
+    tid = bpf_map_lookup_elem(&g_tid_cache, &tgid);
+    if (!tid)
+        return 0;
+
+    if (exe_is_trusted(tid))
+        return 0;
+
     struct var_link {
         char *old;
         char *new;
@@ -2950,9 +3079,22 @@ int kp__init_module(struct pt_regs *regs)
         uint32_t pwd_len;
         uint32_t mod_len;
     } *module;
+
+    struct task_struct *task;
+    struct proc_tid *tid;
+    pid_t tgid;
     int rc;
 
-    struct task_struct *task = (void *)bpf_get_current_task();
+    /* locate tid cache in map: g_tid_cache */
+    task = (void *)bpf_get_current_task();
+    tgid = READ_KERN(task, tgid);
+    tid = bpf_map_lookup_elem(&g_tid_cache, &tgid);
+    if (!tid)
+        return 0;
+
+    if (exe_is_trusted(tid))
+        return 0;
+
     module = sd_get_local(sizeof(*module));
     if (!task || !module)
         return 0;
@@ -2987,7 +3129,20 @@ out:
 SEC("kprobe/commit_creds")
 int kp__commit_creds(struct pt_regs *regs)
 {
-    struct task_struct *task = (void *)bpf_get_current_task();
+    struct task_struct *task;
+    struct proc_tid *tid;
+    pid_t tgid;
+
+    /* locate tid cache in map: g_tid_cache */
+    task = (void *)bpf_get_current_task();
+    tgid = READ_KERN(task, tgid);
+    tid = bpf_map_lookup_elem(&g_tid_cache, &tgid);
+    if (!tid)
+        return 0;
+
+    if (exe_is_trusted(tid))
+        return 0;
+
     struct cred *cred = (void *)FC_REGS_PARM1(regs);
     int uid1, euid1, uid2, euid2;
 

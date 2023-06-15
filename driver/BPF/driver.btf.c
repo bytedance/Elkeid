@@ -120,7 +120,25 @@ static size_t mkdirs(char *path,  const char *parent, const char *subdirs, mode_
     return len;
 }
 
-static size_t prepare_map(char *path, char *base, char *subs, char *map)
+char g_pb_event[PATH_MAX];
+char g_map_rodata[PATH_MAX];
+char g_trusted_cmds[PATH_MAX];
+char g_trusted_exes[PATH_MAX];
+
+struct _ebpf_map {
+    char *target;
+    const char *bpffs;
+    const char *path;
+    const char *name;
+    int mapfd;
+} g_maps[] = {
+    {g_map_rodata, "/sys/fs/bpf/", "bpfd/trace/hids/map/", RODATA_SECTION_MAP, },
+    {g_pb_event, "/sys/fs/bpf/", "bpfd/trace/hids/map/", PERF_BUFFER_EVENT, },
+    {g_trusted_cmds, "/sys/fs/bpf/", "bpfd/trace/hids/map/", TRUSTED_CMDS, },
+    {g_trusted_exes, "/sys/fs/bpf/", "bpfd/trace/hids/map/", TRUSTED_EXES, },
+};
+
+static size_t prepare_map(char *path, const char *base, const char *subs, const char *map)
 {
     size_t lp, lm;
 
@@ -134,8 +152,128 @@ static size_t prepare_map(char *path, char *base, char *subs, char *map)
     return lp + lm;
 }
 
-char g_pb_event[PATH_MAX];
-char g_map_rodata[PATH_MAX];
+static void load_maps(struct hids_btf *obj, struct bpf_map *rdmap, int pin)
+{
+    struct bpf_map *maps[] = {  rdmap, obj->maps.events,
+                                obj->maps.trusted_cmds,
+                                obj->maps.trusted_exes, 0};
+    int i, err;
+
+    for (i = 0; maps[i]; i++) {
+        if (i >= sizeof(g_maps) / sizeof(struct _ebpf_map))
+            break;
+        g_maps[i].mapfd = bpf_map__fd(maps[i]);
+        if (g_maps[i].mapfd <= 0)
+            continue;
+        if (!pin)
+            continue;
+        prepare_map(g_maps[i].target, g_maps[i].bpffs, g_maps[i].path, g_maps[i].name);
+        err = bpf_obj_pin(g_maps[i].mapfd, g_maps[i].target);
+        if (!err)
+            printf("%s pinned to %s\n", g_maps[i].name, g_maps[i].target);
+        else
+            printf("failed to pin %s to %s with err %d\n", g_maps[i].name, g_maps[i].target, err);
+    }
+}
+
+static int add_trusted_item(int mapfd, int sid, char *str, int len)
+{
+    struct exe_item ei = {0};
+
+    ei.hash = hash_murmur_OAAT64(str, len);
+    ei.sid = sid;
+    ei.len = len;
+    strncpy(ei.name, str, CMDLINE_LEN - 1);
+    if (len >= CMDLINE_LEN - 1)
+        ei.name[CMDLINE_LEN - 1] = 0;
+
+    return bpf_map_update_elem(mapfd, &ei.hash, &ei, BPF_NOEXIST);
+}
+
+static int del_trusted_item(int mapfd, char *str, int len)
+{
+    struct exe_item ei = {0};
+
+    ei.hash = hash_murmur_OAAT64(str, len);
+    ei.len = len;
+
+    if (bpf_map_lookup_elem(mapfd, &ei.hash, &ei))
+        return 0;
+
+    return bpf_map_delete_elem(mapfd, &ei.hash);
+}
+
+static void enum_trusted_map(int mapfd)
+{
+    struct exe_item ei = {0};
+    uint64_t item = 0, next = 0;
+
+    while (bpf_map_get_next_key(mapfd, &item, &next) == 0) {
+        item = next;
+        if (0 == bpf_map_lookup_elem(mapfd, &next, &ei)) {
+            printf("%u %llx %s\n", ei.sid, ei.hash, ei.name);
+        }
+    }
+}
+
+static void clear_trusted_map(int mapfd)
+{
+    uint64_t item = 0, next = 0;
+
+    while (bpf_map_get_next_key(mapfd, &item, &next) == 0) {
+        bpf_map_delete_elem(mapfd, &next);
+        item = next;
+    }
+}
+
+static void process_trusted_exes(int mapfd)
+{
+    char *exes[] = {"/usr/bin/pwd",
+                    "/usr/bin/top",
+                    "/usr/bin/ls",
+                    "/usr/bin/git",
+                    "/usr/lib/git-core/git",
+                    "/usr/bin/sleep",
+                    "/usr/bin/uname",
+                    "/usr/bin/pidstat",
+                    NULL
+                   };
+    int i;
+
+    for (i = 0; exes[i]; i++)
+        add_trusted_item(mapfd, 0xEE000001 + i, exes[i],
+                         strlen(exes[i]) + 1);
+
+    printf("enumerating ...\n");
+    enum_trusted_map(mapfd);
+
+    del_trusted_item(mapfd, exes[1], strlen(exes[1]));
+
+    printf("enumerating (after removing %s) ...\n", exes[1]);
+    enum_trusted_map(mapfd);
+}
+
+static void process_trusted_cmds(int mapfd)
+{
+    char *cmds[] = {"test/rst -i 10",
+                    "test/rst -i 20",
+                    "test/rst -i 30",
+                    NULL
+                   };
+    int i;
+
+    for (i = 0; cmds[i]; i++)
+        add_trusted_item(mapfd, 0xA0000001 + i, cmds[i],
+                         strlen(cmds[i]) + 1);
+
+    printf("enumerating ...\n");
+    enum_trusted_map(mapfd);
+
+    del_trusted_item(mapfd, cmds[1], strlen(cmds[1]));
+
+    printf("enumerating (after removing %s) ...\n", cmds[1]);
+    enum_trusted_map(mapfd);
+}
 
 int main(int argc, char **argv)
 {
@@ -143,17 +281,18 @@ int main(int argc, char **argv)
 
     struct perf_buffer *pb = NULL;
     struct hids_btf *obj = NULL;
-    int err, pid_max = get_pid_max();
 
     struct bpf_map *datmap;
     char *sd = NULL;
-    int datfd, pbfd, pin = 0;
 
     struct btf *btf;
     const struct btf_type *datsec;
     struct btf_var_secinfo *infs;
-    int datid, i;
+
     __u32 sd_event_point = -1, sd_event_proto = -1;
+
+    int err, pid_max = get_pid_max();
+    int pin = 0, datid, i;
 
     libbpf_set_strict_mode(LIBBPF_STRICT_ALL);
     libbpf_set_print(libbpf_print_fn);
@@ -244,18 +383,11 @@ int main(int argc, char **argv)
         goto start;
     }
 
-    datfd = bpf_map__fd(datmap);
-    if (datfd <= 0)
-        goto start;
-    if (pin) {
-        prepare_map(g_map_rodata, "/sys/fs/bpf/",
-                    "bpfd/trace/hids/map/", RODATA_SECTION_MAP);
-        err = bpf_obj_pin(datfd, g_map_rodata);
-        if (!err)
-            printf("rodata pinned to %s\n", g_map_rodata);
-        else
-            printf("failed to pin rodata to %s with err %d\n", g_map_rodata, err);
-    }
+    /* loading pre-defined maps */
+    load_maps(obj, datmap, pin);
+
+    process_trusted_cmds(g_maps[2].mapfd);
+    process_trusted_exes(g_maps[3].mapfd);
 
     /* loading */
     sd = malloc(datsec->size);
@@ -263,7 +395,7 @@ int main(int argc, char **argv)
         uint32_t rokey = 0;
         memset(sd, 0, datsec->size);
         /* bpf_map_get_fd_by_id() */
-        err = bpf_map_lookup_elem(datfd, &rokey, sd);
+        err = bpf_map_lookup_elem(g_maps[0].mapfd, &rokey, sd);
         if (sd_event_point >= bpf_map__value_size(datmap))
             goto start;
         err = sd_init_format(sd, datsec->size, sd_event_proto, sd_event_point);
@@ -273,20 +405,7 @@ int main(int argc, char **argv)
 
 start:
 
-    pbfd = bpf_map__fd(obj->maps.events);
-    if (pbfd < 0) {
-        printf("failed to get perf events.\n");
-        goto cleanup;
-    }
     if (pin) {
-        prepare_map(g_pb_event, "/sys/fs/bpf/", "bpfd/trace/hids/map/",
-                    PERF_BUFFER_EVENT);
-        err = bpf_obj_pin(pbfd, g_pb_event);
-        if (!err)
-            printf("events pinned to %s\n", g_pb_event);
-        else
-            printf("failed to pin events to %s with err %d\n", g_pb_event, err);
-
         while (!g_exiting) {
             sleep(10);
         }
@@ -294,7 +413,7 @@ start:
     }
 
     /* setup event callbacks */
-    pb = perf_buffer__new(pbfd, PERF_BUFFER_PAGES,
+    pb = perf_buffer__new(g_maps[1].mapfd, PERF_BUFFER_PAGES,
                           event_handling, event_missing,
                           NULL, NULL);
     if (!pb) {
