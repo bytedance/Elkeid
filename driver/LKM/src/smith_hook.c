@@ -1726,9 +1726,30 @@ void udp_msg_parser(struct msghdr *msg, struct udp_recvmsg_data *data) {
     return;
 }
 
-int udp_process_dns(struct udp_recvmsg_data *data, unsigned char *recv_data, int iov_len)
+static void *get_dns_query(unsigned char *data, int query_len, char *res, int *type) {
+    int i;
+    int flag = -1;
+
+    for (i = 0; i < query_len; i++) {
+        if (flag == -1) {
+            flag = (data + 12)[i];
+        } else if (flag == 0) {
+            flag = (data + 12)[i];
+            res[i - 1] = 46;
+        } else {
+            res[i - 1] = (data + 12)[i];
+            flag = flag - 1;
+        }
+    }
+
+    //get dns queries type: https://en.wikipedia.org/wiki/List_of_DNS_record_types
+    *type = be16_to_cpu(*((uint16_t *)(data + query_len + 13)));
+    return 0;
+}
+
+static int udp_process_dns(struct udp_recvmsg_data *data, unsigned char *recv_data, int iov_len)
 {
-    int qr, opcode = 0, rcode = 0;
+    int qr, opcode = 0, rcode = 0, type = 0;
     int query_len = 0;
 
     char *query;
@@ -1738,18 +1759,18 @@ int udp_process_dns(struct udp_recvmsg_data *data, unsigned char *recv_data, int
         opcode = (recv_data[2] >> 3) & 0x0f;
         rcode = recv_data[3] & 0x0f;
 
-        query_len = strlen(recv_data + 12);
-        if (query_len == 0 || query_len > 253) {
+        query_len = strnlen(recv_data + 12, iov_len - 12);
+        if (query_len == 0 || query_len > 253 || query_len + 17 > iov_len) {
             return 0;
         }
 
         //parser DNS protocol and get DNS query info
-        query = smith_kzalloc(query_len, GFP_ATOMIC);
+        query = smith_kzalloc(query_len + 1, GFP_ATOMIC);
         if (!query) {
             return 0;
         }
 
-        __get_dns_query(recv_data, 12, query);
+        get_dns_query(recv_data, query_len, query, &type);
         if (data && data->sa_family == AF_INET)
             dns_data_transport(query, data->dip4,
                                data->sip4, data->dport,
@@ -1767,7 +1788,7 @@ int udp_process_dns(struct udp_recvmsg_data *data, unsigned char *recv_data, int
     return 0;
 }
 
-int udp_recvmsg_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int udp_recvmsg_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     unsigned char *recv_data = NULL;
     int iov_len = 512;
@@ -1841,8 +1862,8 @@ static void smith_count_dnsv6_kretprobe(void);
  */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 6)
 
-int udp_recvmsg_entry_handler(struct kretprobe_instance *ri,
-                              struct pt_regs *regs) {
+static int udp_recvmsg_entry_handler(struct kretprobe_instance *ri,
+                                     struct pt_regs *regs) {
     int flags;
     void *tmp_msg;
     void *tmp_sk;
@@ -1912,8 +1933,9 @@ do_kretprobe:
 
 #if IS_ENABLED(CONFIG_IPV6)
 static void smith_count_dnsv6_kretprobe(void);
-int udpv6_recvmsg_entry_handler(struct kretprobe_instance *ri,
-				struct pt_regs *regs)
+static int udpv6_recvmsg_entry_handler(
+                struct kretprobe_instance *ri,
+                struct pt_regs *regs)
 {
 	struct sock *sk;
 	struct inet_sock *inet;
@@ -2010,8 +2032,8 @@ do_kretprobe:
 
 #else /* < 3.2.6 */
 
-int udp_recvmsg_entry_handler(struct kretprobe_instance *ri,
-                              struct pt_regs *regs) {
+static int udp_recvmsg_entry_handler(struct kretprobe_instance *ri,
+                                     struct pt_regs *regs) {
     int flags;
     void *tmp_msg;
     void *tmp_sk;
@@ -2080,8 +2102,9 @@ do_kretprobe:
 
 #if IS_ENABLED(CONFIG_IPV6)
 static void smith_count_dnsv6_kretprobe(void);
-int udpv6_recvmsg_entry_handler(struct kretprobe_instance *ri,
-				struct pt_regs *regs)
+static int udpv6_recvmsg_entry_handler(
+                struct kretprobe_instance *ri,
+                struct pt_regs *regs)
 {
 	struct sock *sk;
 	struct inet_sock *inet;
