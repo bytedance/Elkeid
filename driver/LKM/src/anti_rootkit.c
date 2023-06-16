@@ -59,7 +59,11 @@ static const char *find_hidden_module(unsigned long addr)
         if (!kobj || !kobj->mod)
             continue;
 
-#ifdef KMOD_CORE_LAYOUT
+#if defined(KMOD_MODULE_MEM)
+		if (BETWEEN_PTR(addr, kobj->mod->mem[MOD_TEXT].base,
+			kobj->mod->mem[MOD_TEXT].size))
+			mod_name = kobj->mod->name;
+#elif defined(KMOD_CORE_LAYOUT) || LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
 		/*
 		 * vanilla kernels (kernel.org): >= 4.5.0
 		 * ubuntu kernels: >= 4.4.0

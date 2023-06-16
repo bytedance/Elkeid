@@ -441,7 +441,11 @@ int filter_init(void)
         return filter_major;
     }
 
+#if defined(CLASS_CREATE_HAVE_OWNER)
     filter_class = class_create(THIS_MODULE, FILTER_CLASS_NAME);
+#else
+    filter_class = class_create(FILTER_CLASS_NAME);
+#endif
     if (IS_ERR(filter_class)) {
         pr_err("[ELKEID FILTER] CLASS_CREATE_ERROR");
         ret = PTR_ERR(filter_class);
