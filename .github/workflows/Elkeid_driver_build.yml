@@ -226,7 +226,7 @@ jobs:
       with:
         name: elkeid_driver_almalinux9_x86_64
         path: ${{steps.extract-almalinux9.outputs.destination}}
-  build_amazonlinux_x86_64:
+  build_amazonlinux1_x86_64:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
@@ -238,38 +238,38 @@ jobs:
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
-    - name: Set up Docker Buildx amazonlinux
+    - name: Set up Docker Buildx amazonlinux1
       uses: docker/setup-buildx-action@v2
-    - name: Build amazonlinux
+    - name: Build amazonlinux1
       uses: docker/build-push-action@v3
       timeout-minutes: 300
       with:
         context: .
-        file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux
+        file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux1
         load: false
         push: true
-        tags: elkeidteam/elkeid_driver_amazonlinux_x86_64:latest
-    - name: Docker Hub Description amazonlinux
+        tags: elkeidteam/elkeid_driver_amazonlinux1_x86_64:latest
+    - name: Docker Hub Description amazonlinux1
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_amazonlinux_x86_64
+        repository: elkeidteam/elkeid_driver_amazonlinux1_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
-    - name: Extract amazonlinux
+    - name: Extract amazonlinux1
       if: always()
-      id: extract-amazonlinux
+      id: extract-amazonlinux1
       uses: shrink/actions-docker-extract@v2
       with:
-        image: elkeidteam/elkeid_driver_amazonlinux_x86_64:latest
+        image: elkeidteam/elkeid_driver_amazonlinux1_x86_64:latest
         path: /ko_output/.
-    - name: Upload amazonlinux
+    - name: Upload amazonlinux1
       uses: actions/upload-artifact@v3
       if: always()
       with:
-        name: elkeid_driver_amazonlinux_x86_64
-        path: ${{steps.extract-amazonlinux.outputs.destination}}
-  build_amazonlinux510_x86_64:
+        name: elkeid_driver_amazonlinux1_x86_64
+        path: ${{steps.extract-amazonlinux1.outputs.destination}}
+  build_amazonlinux2_x86_64:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
@@ -281,38 +281,38 @@ jobs:
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
-    - name: Set up Docker Buildx amazonlinux510
+    - name: Set up Docker Buildx amazonlinux2
       uses: docker/setup-buildx-action@v2
-    - name: Build amazonlinux510
+    - name: Build amazonlinux2
       uses: docker/build-push-action@v3
       timeout-minutes: 300
       with:
         context: .
-        file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux510
+        file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux2
         load: false
         push: true
-        tags: elkeidteam/elkeid_driver_amazonlinux510_x86_64:latest
-    - name: Docker Hub Description amazonlinux510
+        tags: elkeidteam/elkeid_driver_amazonlinux2_x86_64:latest
+    - name: Docker Hub Description amazonlinux2
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_amazonlinux510_x86_64
+        repository: elkeidteam/elkeid_driver_amazonlinux2_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
-    - name: Extract amazonlinux510
+    - name: Extract amazonlinux2
       if: always()
-      id: extract-amazonlinux510
+      id: extract-amazonlinux2
       uses: shrink/actions-docker-extract@v2
       with:
-        image: elkeidteam/elkeid_driver_amazonlinux510_x86_64:latest
+        image: elkeidteam/elkeid_driver_amazonlinux2_x86_64:latest
         path: /ko_output/.
-    - name: Upload amazonlinux510
+    - name: Upload amazonlinux2
       uses: actions/upload-artifact@v3
       if: always()
       with:
-        name: elkeid_driver_amazonlinux510_x86_64
-        path: ${{steps.extract-amazonlinux510.outputs.destination}}
-  build_amazonlinux54_x86_64:
+        name: elkeid_driver_amazonlinux2_x86_64
+        path: ${{steps.extract-amazonlinux2.outputs.destination}}
+  build_amazonlinux2_510_x86_64:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
@@ -324,37 +324,80 @@ jobs:
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
-    - name: Set up Docker Buildx amazonlinux54
+    - name: Set up Docker Buildx amazonlinux2_510
       uses: docker/setup-buildx-action@v2
-    - name: Build amazonlinux54
+    - name: Build amazonlinux2_510
       uses: docker/build-push-action@v3
       timeout-minutes: 300
       with:
         context: .
-        file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux54
+        file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux2_510
         load: false
         push: true
-        tags: elkeidteam/elkeid_driver_amazonlinux54_x86_64:latest
-    - name: Docker Hub Description amazonlinux54
+        tags: elkeidteam/elkeid_driver_amazonlinux2_510_x86_64:latest
+    - name: Docker Hub Description amazonlinux2_510
       uses: peter-evans/dockerhub-description@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
-        repository: elkeidteam/elkeid_driver_amazonlinux54_x86_64
+        repository: elkeidteam/elkeid_driver_amazonlinux2_510_x86_64
         short-description: ${{github.event.repository.description}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
-    - name: Extract amazonlinux54
+    - name: Extract amazonlinux2_510
       if: always()
-      id: extract-amazonlinux54
+      id: extract-amazonlinux2_510
       uses: shrink/actions-docker-extract@v2
       with:
-        image: elkeidteam/elkeid_driver_amazonlinux54_x86_64:latest
+        image: elkeidteam/elkeid_driver_amazonlinux2_510_x86_64:latest
         path: /ko_output/.
-    - name: Upload amazonlinux54
+    - name: Upload amazonlinux2_510
       uses: actions/upload-artifact@v3
       if: always()
       with:
-        name: elkeid_driver_amazonlinux54_x86_64
-        path: ${{steps.extract-amazonlinux54.outputs.destination}}
+        name: elkeid_driver_amazonlinux2_510_x86_64
+        path: ${{steps.extract-amazonlinux2_510.outputs.destination}}
+  build_amazonlinux2_54_x86_64:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: false
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx amazonlinux2_54
+      uses: docker/setup-buildx-action@v2
+    - name: Build amazonlinux2_54
+      uses: docker/build-push-action@v3
+      timeout-minutes: 300
+      with:
+        context: .
+        file: driver/dockerfiles.x86_64/Dockerfile.amazonlinux2_54
+        load: false
+        push: true
+        tags: elkeidteam/elkeid_driver_amazonlinux2_54_x86_64:latest
+    - name: Docker Hub Description amazonlinux2_54
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_amazonlinux2_54_x86_64
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Extract amazonlinux2_54
+      if: always()
+      id: extract-amazonlinux2_54
+      uses: shrink/actions-docker-extract@v2
+      with:
+        image: elkeidteam/elkeid_driver_amazonlinux2_54_x86_64:latest
+        path: /ko_output/.
+    - name: Upload amazonlinux2_54
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: elkeid_driver_amazonlinux2_54_x86_64
+        path: ${{steps.extract-amazonlinux2_54.outputs.destination}}
   build_anolis8_x86_64:
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -570,6 +613,46 @@ jobs:
       with:
         name: elkeid_driver_debian9_x86_64
         path: ${{steps.extract-debian9.outputs.destination}}
+  build_ol8_uek_aarch64:
+    runs-on: [self-hosted,linux,ARM64]
+    continue-on-error: true
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: false
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx ol8_uek
+      uses: docker/setup-buildx-action@v2
+      with:
+        config: /etc/buildkitd.toml
+    - name: Build ol8_uek
+      uses: docker/build-push-action@v3
+      timeout-minutes: 300
+      with:
+        context: .
+        file: driver/dockerfiles.aarch64/Dockerfile.ol8_uek
+        load: true
+        push: false
+        tags: elkeidteam/elkeid_driver_ol8_uek_aarch64:latest
+    - name: Docker Hub Description Skipped ol8_uek
+      run: echo Docker Hub Description Skipped
+    - name: Extract ol8_uek
+      if: always()
+      id: extract-ol8_uek
+      uses: shrink/actions-docker-extract@v2
+      with:
+        image: elkeidteam/elkeid_driver_ol8_uek_aarch64:latest
+        path: /ko_output/.
+    - name: Upload ol8_uek
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: elkeid_driver_ol8_uek_aarch64
+        path: ${{steps.extract-ol8_uek.outputs.destination}}
   build_ol8_uek_x86_64:
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -997,6 +1080,46 @@ jobs:
       with:
         name: elkeid_driver_rhel7_elrepo_ml_archive_x86_64
         path: ${{steps.extract-rhel7_elrepo_ml_archive.outputs.destination}}
+  build_rhel8_aarch64:
+    runs-on: [self-hosted,linux,ARM64]
+    continue-on-error: true
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: false
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx rhel8
+      uses: docker/setup-buildx-action@v2
+      with:
+        config: /etc/buildkitd.toml
+    - name: Build rhel8
+      uses: docker/build-push-action@v3
+      timeout-minutes: 300
+      with:
+        context: .
+        file: driver/dockerfiles.aarch64/Dockerfile.rhel8
+        load: true
+        push: false
+        tags: elkeidteam/elkeid_driver_rhel8_aarch64:latest
+    - name: Docker Hub Description Skipped rhel8
+      run: echo Docker Hub Description Skipped
+    - name: Extract rhel8
+      if: always()
+      id: extract-rhel8
+      uses: shrink/actions-docker-extract@v2
+      with:
+        image: elkeidteam/elkeid_driver_rhel8_aarch64:latest
+        path: /ko_output/.
+    - name: Upload rhel8
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: elkeid_driver_rhel8_aarch64
+        path: ${{steps.extract-rhel8.outputs.destination}}
   build_rhel8_x86_64:
     runs-on: ubuntu-latest
     continue-on-error: true
