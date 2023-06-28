@@ -13,7 +13,7 @@ else:
 
 logger.info("python probe start")
 
-subprocess.Popen.__init__ = smith_hook(subprocess.Popen.__init__, 0, 0, constructor=True, can_block=True)
+subprocess.Popen.__init__ = smith_hook(subprocess.Popen.__init__, 0, 0, constructor=True, can_block=True, static=False)
 
 os.system = smith_hook(os.system, 0, 1, can_block=True)
 os.execv = smith_hook(os.execv, 0, 2, can_block=True)
@@ -37,7 +37,7 @@ os.listdir = smith_hook(os.listdir, 1, 5)
 if sys.version_info >= (3, 5):
     os.scandir = smith_hook(os.scandir, 1, 6)
 
-socket.socket.connect = smith_hook(socket.socket.connect, 2, 0)
+socket.socket.connect = smith_hook(socket.socket.connect, 2, 0, static=False)
 
 socket.getaddrinfo = smith_hook(socket.getaddrinfo, 3,  0)
 socket.gethostbyname = smith_hook(socket.gethostbyname, 3, 1)

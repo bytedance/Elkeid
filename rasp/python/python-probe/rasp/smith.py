@@ -4,7 +4,7 @@ import traceback
 from rasp.probe import *
 
 
-def smith_hook(func, class_id, method_id, constructor=False, can_block=False, check_recursion=False):
+def smith_hook(func, class_id, method_id, constructor=False, can_block=False, check_recursion=False, static=True):
     def smith_wrapper(*args, **kwargs):
         if not can_block and not surplus(class_id, method_id):
             return func(*args, **kwargs)
@@ -43,4 +43,4 @@ def smith_hook(func, class_id, method_id, constructor=False, can_block=False, ch
 
         return func(*args, **kwargs)
 
-    return smith_wrapper
+    return staticmethod(smith_wrapper) if static else smith_wrapper
