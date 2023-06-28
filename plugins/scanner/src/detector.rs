@@ -721,9 +721,11 @@ impl Detector {
                                 if let Err(e) = self.client.send_record(
                                     &finished.to_record_token(&task_data.token),
                                     ) {
-
                                         warn!("send err, should exit : {:?}", e);
+                                        work_s_locker.send(()).unwrap();
+                                        return
                                     };
+                                continue
                             }
 
                             let fp = Path::new(&task_data.scan_path);
