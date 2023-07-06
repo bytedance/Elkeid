@@ -3,7 +3,7 @@ use log::*;
 use bytes::Bytes;
 use std::collections::HashMap;
 use std::fs;
-use std::fs::create_dir;
+use std::fs::create_dir_all;
 use std::os::unix::prelude::PermissionsExt;
 use std::path::Path;
 use std::sync::Arc;
@@ -30,9 +30,9 @@ pub fn clean_bind_addr(addr: &str) -> Result<(), String> {
     }
     if let Some(d) = Path::new(addr.clone()).parent() {
         if !d.exists() {
-            match create_dir(d) {
-                Ok(_) => {},
-                Err(e) => return Err(format!("create dir failed: {:?} {}", d, e))
+            match create_dir_all(d) {
+                Ok(_) => {}
+                Err(e) => return Err(format!("create dir failed: {:?} {}", d, e)),
             }
         }
     }
