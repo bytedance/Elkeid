@@ -19,7 +19,7 @@ pub fn RASP_NS_ENTER_BIN() -> String {
     format!("{}{}", RASP_BASE_DIR(), "/nsenter")
 }
 pub fn RASP_MOUNT_SCRIPT_BIN() -> String {
-    format!("{}{}", RASP_BASE_DIR(), "/mount_script")
+    format!("{}{}", RASP_BASE_DIR(), "/NSMount")
 }
 
 pub fn RASP_LIB_DIR() -> String {

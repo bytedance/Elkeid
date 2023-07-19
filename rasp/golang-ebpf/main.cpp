@@ -94,7 +94,7 @@ bool filter(const Trace &trace, const std::map<std::tuple<int, int>, Filter> &fi
 }
 
 void onEvent(probe_event *event, void *ctx) {
-    auto &[skeleton, instances, channel] = *(std::tuple<probe_bpf *, std::map<pid_t, Instance> &, std::shared_ptr<aio::IChannel<SmithMessage>>> *) ctx;
+    auto &[skeleton, instances, channel] = *(std::tuple<probe_bpf *, std::map<pid_t, Instance> &, zero::ptr::RefPtr<aio::ISender<SmithMessage>>> *) ctx;
 
     auto it = instances.find(event->pid);
 
@@ -177,7 +177,7 @@ void onEvent(probe_event *event, void *ctx) {
 #endif
 #endif
 
-    channel->sendNoWait({it->first, it->second.version, it->second.processInfo, TRACE, trace});
+    channel->trySend({it->first, it->second.version, it->second.processInfo, TRACE, trace});
 }
 
 std::optional<int> getAPIOffset(const elf::Reader &reader, uint64_t address) {
@@ -217,12 +217,12 @@ std::optional<int> getAPIOffset(const elf::Reader &reader, uint64_t address) {
     return offset;
 }
 
-std::shared_ptr<aio::IChannel<pid_t>> inputChannel(const std::shared_ptr<aio::Context> &context) {
-    std::shared_ptr channel = std::make_shared<aio::Channel<pid_t, 10>>(context);
-    std::shared_ptr buffer = std::make_shared<aio::ev::Buffer>(bufferevent_socket_new(context->base(), STDIN_FILENO, 0));
+zero::ptr::RefPtr<aio::IReceiver<pid_t>> inputChannel(const std::shared_ptr<aio::Context> &context) {
+    zero::ptr::RefPtr<aio::IChannel<pid_t>> channel = zero::ptr::makeRef<aio::Channel<pid_t, 10>>(context);
+    zero::ptr::RefPtr<aio::ev::IBuffer> buffer = aio::ev::newBuffer(context, STDIN_FILENO, false);
 
-    zero::async::promise::loop<void>([=](const auto &loop) {
-        buffer->readLine(EVBUFFER_EOL_ANY)->then([=](const std::string &line) {
+    zero::async::promise::doWhile([=]() {
+        return buffer->readLine(aio::ev::EOL::ANY)->then([=](const std::string &line) {
             std::optional<pid_t> pid = zero::strings::toNumber<pid_t>(line);
 
             if (!pid) {
@@ -231,13 +231,11 @@ std::shared_ptr<aio::IChannel<pid_t>> inputChannel(const std::shared_ptr<aio::Co
             }
 
             return channel->send(*pid);
-        })->then([=]() {
-            P_CONTINUE(loop);
-        }, [=](const zero::async::promise::Reason &reason) {
-            LOG_ERROR("read stdin failed: %s", reason.message.c_str());
-            channel->close();
-            P_BREAK(loop);
         });
+    })->fail([=](const zero::async::promise::Reason &reason) {
+        LOG_ERROR("read stdin failed: %s", reason.message.c_str());
+    })->finally([=]() {
+        channel->close();
     });
 
     return channel;
@@ -424,18 +422,16 @@ int main() {
     std::shared_ptr<aio::Context> context = aio::newContext();
     std::map<pid_t, Instance> instances;
 
-    zero::async::promise::loop<void>([skeleton, &instances, channel = inputChannel(context)](const auto &loop) {
-        channel->receive()->then([skeleton, loop, &instances](pid_t pid) {
+    zero::async::promise::doWhile([skeleton, &instances, receiver = inputChannel(context)]() {
+        return receiver->receive()->then([skeleton, &instances](pid_t pid) {
             if (instances.find(pid) != instances.end()) {
                 LOG_WARNING("ignore process %d", pid);
-                P_CONTINUE(loop);
                 return;
             }
 
             std::optional<Instance> instance = attach(skeleton, pid);
 
             if (!instance) {
-                P_CONTINUE(loop);
                 std::cout << pid << ":failed" << std::endl;
                 return;
             }
@@ -444,15 +440,12 @@ int main() {
 
             std::fill_n(instance->quotas[0], sizeof(instance->quotas) / sizeof(**instance->quotas), DEFAULT_QUOTAS);
             instances.insert({pid, std::move(*instance)});
-
-            P_CONTINUE(loop);
-        }, [=](const zero::async::promise::Reason &reason) {
-            LOG_ERROR("receive failed: %s", reason.message.c_str());
-            P_BREAK(loop);
         });
+    })->fail([=](const zero::async::promise::Reason &reason) {
+        LOG_ERROR("receive failed: %s", reason.message.c_str());
     });
 
-    std::make_shared<aio::ev::Timer>(context)->setInterval(1min, [&]() {
+    zero::ptr::makeRef<aio::ev::Timer>(context)->setInterval(1min, [&]() {
         auto it = instances.begin();
 
         while (it != instances.end()) {
@@ -496,10 +489,10 @@ int main() {
         return true;
     });
 
-    std::array<std::shared_ptr<aio::IChannel<SmithMessage>>, 2> channels = startClient(context);
+    const auto [receiver, sender] = startClient(context);
 
-    zero::async::promise::loop<void>([channels, &instances](const auto &loop) {
-        channels[0]->receive()->then([loop, &instances](const SmithMessage &message) {
+    zero::async::promise::doWhile([receiver = receiver, &instances]() {
+        return receiver->receive()->then([&instances](const SmithMessage &message) {
             auto it = instances.find(message.pid);
 
             if (it == instances.end()) {
@@ -553,18 +546,15 @@ int main() {
                 default:
                     break;
             }
-
-            P_CONTINUE(loop);
-        })->fail([=](const zero::async::promise::Reason &reason) {
-            LOG_ERROR("receive failed: %s", reason.message.c_str());
-            P_BREAK(loop);
         });
+    })->fail([=](const zero::async::promise::Reason &reason) {
+        LOG_ERROR("receive failed: %s", reason.message.c_str());
     });
 
-    std::tuple<probe_bpf *, std::map<pid_t, Instance> &, std::shared_ptr<aio::IChannel<SmithMessage>>> ctx = {
+    std::tuple<probe_bpf *, std::map<pid_t, Instance> &, zero::ptr::RefPtr<aio::ISender<SmithMessage>>> ctx = {
             skeleton,
             instances,
-            channels[1]
+            sender
     };
 
 #ifdef USE_RING_BUFFER
@@ -584,7 +574,7 @@ int main() {
         return -1;
     }
 
-    std::make_shared<aio::ev::Event>(context, bpf_map__fd(skeleton->maps.events))->onPersist(
+    zero::ptr::makeRef<aio::ev::Event>(context, bpf_map__fd(skeleton->maps.events))->onPersist(
             EV_READ,
             [=](short what) {
                 ring_buffer__consume(rb);
@@ -611,7 +601,7 @@ int main() {
     }
 
     for (size_t i = 0; i < perf_buffer__buffer_cnt(pb); i++) {
-        std::make_shared<aio::ev::Event>(context, perf_buffer__buffer_fd(pb, i))->onPersist(
+        zero::ptr::makeRef<aio::ev::Event>(context, perf_buffer__buffer_fd(pb, i))->onPersist(
                 EV_READ,
                 [=](short what) {
                     perf_buffer__consume_buffer(pb, i);
