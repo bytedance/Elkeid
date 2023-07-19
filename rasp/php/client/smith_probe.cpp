@@ -144,7 +144,7 @@ void startProbe() {
 
     const auto [receiver, sender] = startClient(context);
 
-    std::make_shared<aio::ev::Timer>(context)->setInterval(1min, [=, sender = sender]() {
+    zero::ptr::makeRef<aio::ev::Timer>(context)->setInterval(1min, [=, sender = sender]() {
         for (int cid = 0; cid < CLASS_MAX; cid++) {
             for (int mid = 0; mid < METHOD_MAX; mid++) {
                 auto it = limits->find({cid, mid});
@@ -158,12 +158,12 @@ void startProbe() {
             }
         }
 
-        sender->sendNoWait({HEARTBEAT, *heartbeat});
+        sender->trySend({HEARTBEAT, *heartbeat});
         return true;
     });
 
-    zero::async::promise::loop<void>([=, receiver = receiver](const auto &loop) {
-        receiver->receive()->then([=](const SmithMessage &message) {
+    zero::async::promise::doWhile([=, receiver = receiver]() {
+        return receiver->receive()->then([=](const SmithMessage &message) {
             switch (message.operate) {
                 case FILTER: {
                     try {
@@ -328,16 +328,13 @@ void startProbe() {
                 default:
                     break;
             }
-
-            P_CONTINUE(loop);
-        })->fail([=](const zero::async::promise::Reason &reason) {
-            LOG_ERROR("receive failed: %s", reason.message.c_str());
-            P_BREAK(loop);
         });
+    })->fail([=](const zero::async::promise::Reason &reason) {
+        LOG_ERROR("receive failed: %s", reason.message.c_str());
     });
 
     zero::async::promise::loop<void>(
-            [=, sender = sender, event = std::make_shared<aio::ev::Event>(context, efd)](const auto &loop) {
+            [=, sender = sender, event = zero::ptr::makeRef<aio::ev::Event>(context, efd)](const auto &loop) {
                 std::optional<size_t> index = gProbe->buffer.acquire();
 
                 if (!index) {
@@ -362,7 +359,7 @@ void startProbe() {
                 gProbe->buffer.release(*index);
 
                 if (pass(trace, *filters))
-                    sender->sendNoWait({TRACE, gProbe->buffer[*index]});
+                    sender->trySend({TRACE, gProbe->buffer[*index]});
 
                 P_CONTINUE(loop);
             }

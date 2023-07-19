@@ -4,7 +4,7 @@
 #include "smith_message.h"
 #include <aio/channel.h>
 
-std::pair<std::shared_ptr<aio::IReceiver<SmithMessage>>, std::shared_ptr<aio::ISender<SmithMessage>>>
+std::pair<zero::ptr::RefPtr<aio::IReceiver<SmithMessage>>, zero::ptr::RefPtr<aio::ISender<SmithMessage>>>
 startClient(const std::shared_ptr<aio::Context> &context);
 
 #endif //GO_PROBE_SMITH_CLIENT_H
