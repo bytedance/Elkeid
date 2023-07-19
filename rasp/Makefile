@@ -6,7 +6,7 @@ DEBUG_SYMBOLS ?= debug
 LIB_OUTPUT ?= $(OUTPUT)/lib-$(VERSION)
 VCPKG_OVERLAY_PORTS ?= $(abspath overlay-ports)
 
-.PHONY: all help install clean set-version agent-plugin nsenter pangolin jattach JVMProbe python-probe python-loader go-probe go-probe-ebpf node-probe php-probe librasp rasp-server
+.PHONY: all help install clean set-version agent-plugin nsenter pangolin jattach JVMProbe python-probe python-loader go-probe go-probe-ebpf node-probe php-probe librasp rasp-server NSMount
 
 all: rasp-$(VERSION).tar.gz rasp-$(VERSION)-debug.tar.gz SHA256SUMS
 
@@ -73,6 +73,17 @@ ifeq ($(STATIC), TRUE)
 else
 	$(MAKE) -C plugin plugin
 endif
+
+
+NSMount:
+	cd NSMount && \
+	mkdir -p build && \
+	cmake -B build \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DSTATIC_BUILD=$(STATIC) \
+		-DCMAKE_TOOLCHAIN_FILE="$(VCPKG_INSTALLATION_ROOT)/scripts/buildsystems/vcpkg.cmake" \
+		-DVCPKG_TARGET_TRIPLET=x64-linux-release && \
+	$(MAKE) -C build
 
 
 nsenter:
@@ -396,10 +407,9 @@ else
 endif
 
 
-$(OUTPUT): set-version agent-plugin nsenter pangolin jattach JVMProbe python-probe python-loader go-probe go-probe-ebpf node-probe php-probe rasp-server librasp
+$(OUTPUT): set-version agent-plugin nsenter pangolin jattach JVMProbe python-probe python-loader go-probe go-probe-ebpf node-probe php-probe rasp-server librasp NSMount
 	mkdir -p $(OUTPUT) $(LIB_OUTPUT) $(LIB_OUTPUT)/golang $(LIB_OUTPUT)/java $(LIB_OUTPUT)/node $(LIB_OUTPUT)/php $(LIB_OUTPUT)/python
 
-	cp mount_script $(OUTPUT)/mount_script
 	cp plugin/settings.toml $(OUTPUT)/settings.toml
 
 ifeq ($(STATIC), TRUE)
@@ -414,6 +424,7 @@ else
 	cp util-linux/nsenter $(OUTPUT)/nsenter
 endif
 
+	cp NSMount/bin/NSMount $(LIB_OUTPUT)/NSMount
 	cp pangolin/bin/pangolin $(LIB_OUTPUT)/pangolin
 
 	cp jvm/JVMProbe/output/SmithAgent.jar $(LIB_OUTPUT)/java/SmithAgent.jar

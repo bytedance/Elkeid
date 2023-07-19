@@ -21,5 +21,5 @@ RASP 插件包含以下部件：
 │     ├── python
 │     └── rasp_server
 ├── nsenter
-└── mount_script
+└── NSMount
 ```

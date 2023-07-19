@@ -574,7 +574,7 @@ int main() {
         return -1;
     }
 
-    std::make_shared<aio::ev::Event>(context, bpf_map__fd(skeleton->maps.events))->onPersist(
+    zero::ptr::makeRef<aio::ev::Event>(context, bpf_map__fd(skeleton->maps.events))->onPersist(
             EV_READ,
             [=](short what) {
                 ring_buffer__consume(rb);

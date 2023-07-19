@@ -249,8 +249,7 @@ impl RASPComm for ThreadMode {
 
 fn mount(pid: i32, from: &str, to: &str) -> AnyhowResult<()> {
     let pid_str = pid.to_string();
-    let nsenter_str = settings::RASP_NS_ENTER_BIN();
-    let args = [pid_str.as_str(), from, to, nsenter_str.as_str()];
+    let args = [pid_str.as_str(), from, to];
     return match run_async_process(
         std::process::Command::new(settings::RASP_MOUNT_SCRIPT_BIN()).args(args),
     ) {
