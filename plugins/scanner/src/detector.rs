@@ -914,12 +914,6 @@ impl Detector {
                                 {
                                     warn!("send err, should exit : {:?}", e);
                                 };
-                                crate::setup_cgroup(
-                                    self.ppid,
-                                    1024 * 1024 * (*SERVICE_DEFAULT_CG_MEM),
-                                    1000 * (*SERVICE_DEFAULT_CG_CPU),
-                                );
-
                             }
                         }
                          _ =>{

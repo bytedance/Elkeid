@@ -189,27 +189,7 @@ pub fn FullScan(
 ) -> (JoinHandle<()>, Vec<JoinHandle<Result<FullScanResult>>>) {
     // unlimit_cgroup
     info!("[FullScan] init: bankai");
-    let mut engine_count = *FULLSCAN_MAX_SCAN_ENGINES;
-    if let Ok((worker_count, cgroup_cpu_quota)) = get_available_worker_cpu_quota(
-        *FULLSCAN_CPU_IDLE_INTERVAL,
-        fullscan_cfg.cpu_idle_100pct,
-        *FULLSCAN_CPU_QUOTA_DEFAULT_MIN,
-        *FULLSCAN_CPU_QUOTA_DEFAULT_MAX,
-    ) {
-        engine_count = worker_count;
-        crate::setup_cgroup(
-            pid,
-            (1024 * 1024 * fullscan_cfg.max_scan_mem_mb).into(),
-            (cgroup_cpu_quota).into(),
-        );
-    } else {
-        crate::setup_cgroup(
-            pid,
-            (1024 * 1024 * fullscan_cfg.max_scan_mem_mb).into(),
-            (1000 * fullscan_cfg.max_scan_cpu100).into(),
-        );
-    }
-
+    let mut engine_count = 1;
     let fullscan_mode = fullscan_cfg.scan_mode_full;
 
     let (s, r) = bounded(64);

@@ -173,23 +173,6 @@ pub fn pid_to_docker_id(pid: i32) -> Option<String> {
     return None;
 }
 
-pub fn setup_cgroup(pid: u32, mem: i64, cpu: i64) -> Result<()> {
-    // unlimit : 1024 * 1024 * 500 & 200000
-    // limit : 1024 * 1024 * 180 & 10000
-    let hier1 = cgroups_rs::hierarchies::auto();
-    let scanner_cg = cgroups_rs::cgroup_builder::CgroupBuilder::new("elkeid_scanner")
-        .memory()
-        .memory_hard_limit(mem) // x MB
-        .done()
-        .cpu()
-        .quota(cpu) //  n / MAX 100 000 = x% CPU
-        .done()
-        .build(hier1);
-
-    scanner_cg.add_task(cgroups_rs::CgroupPid::from(pid as u64))?;
-    return Ok(());
-}
-
 pub fn is_filetype_filter_skipped(fpath: &str) -> Result<bool> {
     /*
         App,

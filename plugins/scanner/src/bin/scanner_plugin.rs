@@ -50,15 +50,6 @@ fn main() {
     let pid = std::process::id();
     info!("pid : {:?}", pid);
 
-    #[cfg(feature = "cg_ctrl")]
-    if let Err(e) = scanner::setup_cgroup(
-        pid,
-        1024 * 1024 * (*SERVICE_DEFAULT_CG_MEM),
-        1000 * (*SERVICE_DEFAULT_CG_CPU),
-    ) {
-        return;
-    }
-
     let client = Client::new(true);
 
     // set logger
