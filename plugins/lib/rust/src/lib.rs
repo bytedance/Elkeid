@@ -6,18 +6,25 @@ use crossbeam::channel::{select, tick};
 use log::{debug, info};
 use parking_lot::Mutex;
 use protobuf::Message;
-use signal_hook::{
-    consts::{SIGTERM, SIGUSR1},
-    iterator::Signals,
-};
+use signal_hook::consts::SIGTERM;
 use std::{
     fs::File,
     io::{BufReader, BufWriter, Error, Read, Write},
-    os::unix::prelude::FromRawFd,
     sync::Arc,
     thread,
     time::Duration,
 };
+
+#[cfg(target_family = "unix")]
+use signal_hook::{consts::SIGUSR1, iterator::Signals};
+#[cfg(target_family = "unix")]
+use std::os::unix::prelude::FromRawFd;
+
+#[cfg(target_family = "windows")]
+use std::os::windows::prelude::{FromRawHandle, RawHandle};
+#[cfg(target_family = "windows")]
+use windows::Win32::System::Console::{GetStdHandle, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE};
+
 #[derive(Clone)]
 pub enum EncodeType {
     Protobuf,
@@ -40,10 +47,28 @@ const WRITE_PIPE_FD: i32 = 4;
 impl Client {
     pub fn new(ignore_terminate: bool) -> Self {
         let writer = Arc::new(Mutex::new(BufWriter::with_capacity(512 * 1024, unsafe {
-            File::from_raw_fd(WRITE_PIPE_FD)
+            #[cfg(target_family = "unix")]
+            {
+                File::from_raw_fd(WRITE_PIPE_FD)
+            }
+
+            #[cfg(target_family = "windows")]
+            {
+                let raw_handle = GetStdHandle(STD_OUTPUT_HANDLE).unwrap();
+                File::from_raw_handle(raw_handle.0 as _)
+            }
         })));
         let reader = Arc::new(Mutex::new(BufReader::new(unsafe {
-            File::from_raw_fd(READ_PIPE_FD)
+            #[cfg(target_family = "unix")]
+            {
+                File::from_raw_fd(READ_PIPE_FD)
+            }
+
+            #[cfg(target_family = "windows")]
+            {
+                let raw_handle = GetStdHandle(STD_INPUT_HANDLE).unwrap();
+                File::from_raw_handle(raw_handle.0 as _)
+            }
         })));
         let writer_c = writer.clone();
         thread::spawn(move || {
@@ -59,6 +84,7 @@ impl Client {
                 }
             }
         });
+        #[cfg(target_family = "unix")]
         if ignore_terminate {
             let mut signals = Signals::new(&[SIGTERM, SIGUSR1]).unwrap();
             thread::spawn(move || {

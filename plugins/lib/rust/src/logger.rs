@@ -3,13 +3,15 @@ use std::{
     ffi::{OsStr, OsString},
     fs::{create_dir_all, read_dir, remove_file, rename, File, OpenOptions},
     io::{BufReader, Read, Write},
-    os::unix::fs::OpenOptionsExt,
     path::{Path, PathBuf},
     process,
     sync::{Mutex, MutexGuard},
     thread::spawn,
     time::{SystemTime, UNIX_EPOCH},
 };
+
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::OpenOptionsExt;
 
 use chrono::{DateTime, Local};
 use crossbeam::channel::{bounded, Sender};
@@ -51,7 +53,12 @@ pub struct Logger {
 }
 impl Logger {
     pub fn new(config: Config) -> Self {
+        #[cfg(target_family = "unix")]
         let dir = config.path.parent().unwrap_or(Path::new("/tmp")).to_owned();
+
+        #[cfg(target_family = "windows")]
+        let dir = config.path.parent().unwrap_or(Path::new(".")).to_owned();
+
         let _ = create_dir_all(&dir);
         let filename = config
             .path
@@ -59,6 +66,8 @@ impl Logger {
             .unwrap_or(OsStr::new(&format!("{}.log", process::id())))
             .to_owned();
         let mut size = 0;
+
+        #[cfg(target_family = "unix")]
         let file = match OpenOptions::new()
             .write(true)
             .append(true)
@@ -75,6 +84,24 @@ impl Logger {
                 None
             }
         };
+
+        #[cfg(target_family = "windows")]
+        let file = match OpenOptions::new()
+            .write(true)
+            .append(true)
+            .create(true)
+            .open(dir.join(&filename))
+        {
+            Ok(f) => {
+                size = f.metadata().unwrap().len();
+                Some(f)
+            }
+            Err(err) => {
+                println!("create file failed: {}", err);
+                None
+            }
+        };
+
         set_max_level(if config.remote_level > config.file_level {
             config.remote_level
         } else {
@@ -166,11 +193,27 @@ impl Logger {
             if let Err(_) = rename(&file_path, self.dir.join(new_name)) {
                 **file = None;
             } else {
+                #[cfg(target_family = "unix")]
                 match OpenOptions::new()
                     .write(true)
                     .truncate(true)
                     .create(true)
                     .mode(0o600)
+                    .open(&file_path)
+                {
+                    Ok(f) => {
+                        **file = Some(f);
+                    }
+                    Err(_) => {
+                        **file = None;
+                    }
+                };
+
+                #[cfg(target_family = "windows")]
+                match OpenOptions::new()
+                    .write(true)
+                    .truncate(true)
+                    .create(true)
                     .open(&file_path)
                 {
                     Ok(f) => {
@@ -257,5 +300,10 @@ impl Log for Logger {
         if let Some(ref mut file) = *file {
             let _ = file.flush();
         }
+    }
+}
+impl Drop for Logger {
+    fn drop(&mut self) {
+        self.flush()
     }
 }
