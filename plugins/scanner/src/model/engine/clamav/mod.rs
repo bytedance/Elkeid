@@ -52,7 +52,7 @@ impl Clamav {
             engine: pointer,
             scan_option: clamav::cl_scan_options {
                 general: clamav::CL_SCAN_GENERAL_YARAHIT,
-                parse: clamav::CL_SCAN_PARSE_ELF,
+                parse: clamav::CL_SCAN_PARSE_ELF | clamav::CL_SCAN_PARSE_ARCHIVE,
                 heuristic: 0,
                 mail: 0,
                 dev: 0,
@@ -295,7 +295,7 @@ impl Clone for Clamav {
             engine: *&self.engine,
             scan_option: clamav::cl_scan_options {
                 general: clamav::CL_SCAN_GENERAL_YARAHIT,
-                parse: clamav::CL_SCAN_PARSE_ELF,
+                parse: clamav::CL_SCAN_PARSE_ELF | clamav::CL_SCAN_PARSE_ARCHIVE,
                 heuristic: 0,
                 mail: 0,
                 dev: 0,
