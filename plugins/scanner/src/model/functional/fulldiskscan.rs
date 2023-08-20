@@ -3,36 +3,33 @@ use std::{
     fs,
     path::Path,
     thread::{self, JoinHandle},
-    time::{self, Duration},
-};
-
-use coarsetime::Clock;
-use crossbeam_channel::{after, bounded, select, tick};
-use log::*;
-use walkdir::WalkDir;
-
-use crate::{
-    configs::{
-        self, FULLSCAN_CPU_IDLE_INTERVAL, FULLSCAN_CPU_QUOTA_DEFAULT_MAX,
-        FULLSCAN_CPU_QUOTA_DEFAULT_MIN, FULLSCAN_MAX_SCAN_ENGINES, FULLSCAN_SCAN_MODE_QUICK,
-    },
-    data_type::{DetectFileEvent, DetectProcEvent},
-    detector::{self, Scanner},
-    filter::Filter,
-    get_file_btime, is_filetype_filter_skipped,
-    model::engine::clamav::{updater, Clamav},
-    ToAgentRecord,
-};
-use crate::{
-    data_type::{FullScanTask, ScanTaskProcExe, ScanTaskStaticFile, DETECT_TASK},
-    get_available_worker_cpu_quota,
+    time::Duration,
 };
 
 use super::cronjob::get_pid_live_time;
 use anyhow::{anyhow, Result};
-
+use coarsetime::Clock;
+use crossbeam_channel::{after, bounded, select, tick};
+use log::*;
 use serde::{self, Deserialize, Serialize};
 use serde_json;
+use walkdir::WalkDir;
+
+use crate::{
+    config::{
+        FULLSCAN_CPU_IDLE_INTERVAL, FULLSCAN_CPU_QUOTA_DEFAULT_MAX, FULLSCAN_CPU_QUOTA_DEFAULT_MIN,
+        FULLSCAN_MAX_SCAN_ENGINES, FULLSCAN_SCAN_MODE_QUICK, SCAN_DIR_CONFIG,
+    },
+    data_type::{
+        DetectFileEvent, DetectProcEvent, FullScanTask, ScanTaskProcExe, ScanTaskStaticFile,
+        DETECT_TASK,
+    },
+    detector::Scanner,
+    filter::Filter,
+    get_available_worker_cpu_quota, get_file_btime, is_filetype_filter_skipped,
+    model::engine::clamav::{updater, Clamav},
+    ToAgentRecord,
+};
 
 #[derive(PartialEq)]
 pub enum FullScanResult {
@@ -78,9 +75,10 @@ impl SuperDetector {
             token: token,
         };
     }
-    pub fn work(&mut self, recv_timeout: time::Duration) -> Result<FullScanResult> {
+    pub fn work(&mut self, recv_timeout: Duration) -> Result<FullScanResult> {
         let mut first = true;
         let exit_timeout_ticker = tick(Duration::from_secs(self.exit_timeout * 3600));
+
         loop {
             select! {
                 recv(self.task_receiver)->data=>{
@@ -107,7 +105,6 @@ impl SuperDetector {
                                         exe_hash: xhash.to_string(),
                                         md5_hash: md5sum.to_string(),
                                         matched_data: matched_data
-
                                     };
 
                                     if &ftype != "not_detected"{
@@ -127,14 +124,12 @@ impl SuperDetector {
                                         };
                                     }
                                 }
-
                         },
                         DETECT_TASK::TASK_6052_PROC_EXE(t) =>{
                             debug!("scan pid {:?}",t.pid);
                             match self.scanner.scan_fast(&t.scan_path){
-
                                 Ok((ftype,fclass,fname,xhash,md5sum,matched_data)) => {
-                                    let event = match DetectProcEvent::new(
+                                    let event = DetectProcEvent::new(
                                             t.pid,
                                             &ftype,
                                             &fclass,
@@ -146,13 +141,7 @@ impl SuperDetector {
                                             t.btime.0,
                                             t.btime.1,
                                             matched_data,
-                                        ){
-                                            Ok(pt)=>pt,
-                                            Err(_)=>{
-                                                continue;
-                                            }
-                                        };
-
+                                        );
 
                                     if &ftype != "not_detected"{
                                         info!("[FullScan]filepath:{} filesize:{} md5sum:{} create_at:{} motidy_at:{} types:{} class:{}name:{}",
@@ -178,7 +167,6 @@ impl SuperDetector {
                         },
                         _=>{},
                    }
-
                 }
                 recv(after(recv_timeout)) -> _ => {
                     info!("[FullScan] work recv timed out, clean buf");
@@ -187,7 +175,6 @@ impl SuperDetector {
                 recv(exit_timeout_ticker) -> _ =>{
                     info!("[FullScan] work exit timed out, clean buf");
                     return Ok(FullScanResult::FULLSCANN_TIMEOUT)
-
                 }
             }
         }
@@ -197,17 +184,17 @@ impl SuperDetector {
 pub fn FullScan(
     pid: u32,
     client: plugins::Client,
-    engine: &detector::Scanner,
+    engine: &Scanner,
     fullscan_cfg: &FullScanTask,
 ) -> (JoinHandle<()>, Vec<JoinHandle<Result<FullScanResult>>>) {
     // unlimit_cgroup
     info!("[FullScan] init: bankai");
-    let mut engine_count = FULLSCAN_MAX_SCAN_ENGINES;
+    let mut engine_count = *FULLSCAN_MAX_SCAN_ENGINES;
     if let Ok((worker_count, cgroup_cpu_quota)) = get_available_worker_cpu_quota(
-        FULLSCAN_CPU_IDLE_INTERVAL,
+        *FULLSCAN_CPU_IDLE_INTERVAL,
         fullscan_cfg.cpu_idle_100pct,
-        FULLSCAN_CPU_QUOTA_DEFAULT_MIN,
-        FULLSCAN_CPU_QUOTA_DEFAULT_MAX,
+        *FULLSCAN_CPU_QUOTA_DEFAULT_MIN,
+        *FULLSCAN_CPU_QUOTA_DEFAULT_MAX,
     ) {
         engine_count = worker_count;
         crate::setup_cgroup(
@@ -247,31 +234,27 @@ pub fn FullScan(
 
             let pstr: &str = &format!("/proc/{}/exe", pid);
             let fp = Path::new(pstr);
+            let (mut fsize, mut btime) = (0, (0, 0));
             let exe_real = match fs::read_link(fp) {
                 Ok(pf) => pf.to_string_lossy().to_string(),
                 Err(_) => continue,
             };
 
             // proc filter
-            let filter_flag = filter.catch(Path::new(&exe_real));
-            if filter_flag != 0 {
+            if filter.catch(Path::new(&exe_real)) != 0 {
                 continue;
             }
-            let rfp = Path::new(&exe_real);
-            let (fsize, btime) = match rfp.metadata() {
+            let pfstr = format!("/proc/{}/root{}", pid, &exe_real);
+            (fsize, btime) = match Path::new(&pfstr).metadata() {
                 Ok(p) => {
-                    if p.is_dir() {
-                        continue;
-                    }
                     let fsize = p.len() as usize;
                     let btime = get_file_btime(&p);
                     (fsize, btime)
                 }
-                Err(_) => {
-                    continue;
-                }
+                Err(_) => (0, (0, 0)),
             };
-            if fsize <= 4 || fsize > 1024 * 1024 * 100 {
+
+            if fsize <= 8 || fsize > 1024 * 1024 * 100 {
                 continue;
             }
             // send to scan
@@ -307,14 +290,19 @@ pub fn FullScan(
                         }
                         Some(Ok(entry)) => entry,
                     };
-                    let filter_flag = filter.catch(&entry.path());
-                    if filter_flag == 1 {
-                        continue;
-                    } else if filter_flag == 2 {
-                        w_dir.skip_current_dir();
-                        debug!("skip cur dir{:?}", &entry.path());
-                        continue;
-                    }
+
+                    match filter.catch(&entry.path()) {
+                        1 => {
+                            continue;
+                        }
+                        2 => {
+                            w_dir.skip_current_dir();
+                            debug!("skip cur dir{:?}", &entry.path());
+                            continue;
+                        }
+                        _ => {}
+                    };
+
                     let fp = entry.path();
                     let (fsize, btime) = match fp.metadata() {
                         Ok(p) => {
@@ -326,7 +314,7 @@ pub fn FullScan(
                             (fsize, btime)
                         }
                         Err(_err) => {
-                            warn!("walkdir err while full: get {:?} metadata {:?}", fp, _err);
+                            //warn!("walkdir err while full: get {:?} metadata {:?}", fp, _err);
                             continue;
                         }
                     };
@@ -334,79 +322,7 @@ pub fn FullScan(
                         continue;
                     }
                     let fpath_str = fp.to_string_lossy().to_string();
-                    if let Ok(t) = is_filetype_filter_skipped(&fpath_str) {
-                        if t {
-                            continue;
-                        }
-                    } else {
-                        continue;
-                    }
-                    // send to scan
-                    let task = ScanTaskStaticFile {
-                        scan_path: fpath_str.to_string(),
-                        size: fsize,
-                        btime: btime,
-                    };
-
-                    match sender.send(DETECT_TASK::TASK_6051_STATIC_FILE(task)) {
-                        Ok(_) => {}
-                        Err(e) => {
-                            warn!("internal task send err {:?}", e);
-                            break;
-                        }
-                    };
-                }
-            }
-            false => {
-                for conf in configs::SCAN_DIR_CONFIG {
-                    let mut w_dir = WalkDir::new(conf.fpath)
-                        .same_file_system(true)
-                        .follow_links(false)
-                        .into_iter();
-                    loop {
-                        let entry = match w_dir.next() {
-                            None => break,
-                            Some(Err(_err)) => {
-                                warn!("walkdir err while full:{:?}", _err);
-                                continue;
-                            }
-                            Some(Ok(entry)) => entry,
-                        };
-                        let filter_flag = filter.catch(&entry.path());
-                        if filter_flag == 1 {
-                            continue;
-                        } else if filter_flag == 2 {
-                            w_dir.skip_current_dir();
-                            debug!("skip cur dir{:?}", &entry.path());
-                            continue;
-                        }
-
-                        let fp = entry.path();
-                        let (fsize, btime) = match fp.metadata() {
-                            Ok(p) => {
-                                if p.is_dir() {
-                                    continue;
-                                }
-                                let fsize = p.len() as usize;
-                                let btime = get_file_btime(&p);
-                                (fsize, btime)
-                            }
-                            Err(_err) => {
-                                warn!("walkdir err while full: get {:?} metadata {:?}", fp, _err);
-                                continue;
-                            }
-                        };
-                        if fsize <= 4 || fsize > 1024 * 1024 * 100 {
-                            continue;
-                        }
-                        let fpath_str = fp.to_string_lossy().to_string();
-                        if let Ok(t) = is_filetype_filter_skipped(&fpath_str) {
-                            if t {
-                                continue;
-                            }
-                        } else {
-                            continue;
-                        }
+                    if let Ok(false) = is_filetype_filter_skipped(&fpath_str) {
                         // send to scan
                         let task = ScanTaskStaticFile {
                             scan_path: fpath_str.to_string(),
@@ -421,6 +337,71 @@ pub fn FullScan(
                                 break;
                             }
                         };
+                    }
+                }
+            }
+            false => {
+                for conf in &*SCAN_DIR_CONFIG {
+                    let mut w_dir = WalkDir::new(&conf.fpath)
+                        .same_file_system(true)
+                        .follow_links(false)
+                        .into_iter();
+                    loop {
+                        let entry = match w_dir.next() {
+                            None => break,
+                            Some(Err(_err)) => {
+                                warn!("walkdir err while full:{:?}", _err);
+                                continue;
+                            }
+                            Some(Ok(entry)) => entry,
+                        };
+                        match filter.catch(&entry.path()) {
+                            1 => {
+                                continue;
+                            }
+                            2 => {
+                                w_dir.skip_current_dir();
+                                debug!("skip cur dir{:?}", &entry.path());
+                                continue;
+                            }
+                            _ => {}
+                        };
+
+                        let fp = entry.path();
+                        let (fsize, btime) = match fp.metadata() {
+                            Ok(p) => {
+                                if p.is_dir() {
+                                    continue;
+                                }
+                                let fsize = p.len() as usize;
+                                let btime = get_file_btime(&p);
+                                (fsize, btime)
+                            }
+                            Err(_err) => {
+                                //warn!("walkdir err while full: get {:?} metadata {:?}", fp, _err);
+                                continue;
+                            }
+                        };
+                        if fsize <= 4 || fsize > 1024 * 1024 * 100 {
+                            continue;
+                        }
+                        let fpath_str = fp.to_string_lossy().to_string();
+                        if let Ok(false) = is_filetype_filter_skipped(&fpath_str) {
+                            // send to scan
+                            let task = ScanTaskStaticFile {
+                                scan_path: fpath_str.to_string(),
+                                size: fsize,
+                                btime: btime,
+                            };
+
+                            match sender.send(DETECT_TASK::TASK_6051_STATIC_FILE(task)) {
+                                Ok(_) => {}
+                                Err(e) => {
+                                    warn!("internal task send err {:?}", e);
+                                    break;
+                                }
+                            };
+                        }
                     }
                 }
             }

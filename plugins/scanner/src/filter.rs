@@ -1,4 +1,4 @@
-use crate::configs;
+use crate::config::SCAN_DIR_FILTER;
 use std::{collections::HashSet, path::Path};
 
 pub struct Filter {
@@ -15,7 +15,7 @@ impl Filter {
                 set.insert(agent_path.to_string_lossy().to_string());
             }
         }
-        for each in configs::SCAN_DIR_FILTER {
+        for each in &*SCAN_DIR_FILTER {
             set.insert(each.to_string());
         }
         Self { set }

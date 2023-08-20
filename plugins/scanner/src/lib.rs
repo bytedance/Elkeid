@@ -6,8 +6,9 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+use crate::config::FULLSCAN_CPU_IDLE_100PCT;
 use anyhow::{anyhow, Result};
-use configs::FULLSCAN_CPU_IDLE_100PCT;
+use regex::Regex;
 use sha2::{Digest, Sha256};
 use std::{
     ffi::{c_void, CStr, CString},
@@ -20,7 +21,7 @@ use std::{
 use cgroups_rs::{self, Controller};
 use infer::MatcherType;
 
-pub mod configs;
+pub mod config;
 pub mod data_type;
 pub mod detector;
 pub mod filter;
@@ -155,7 +156,24 @@ pub fn get_file_btime(m: &std::fs::Metadata) -> (u64, u64) {
     return (ct, mt);
 }
 
-pub fn setup_cgroup(pid: u32, mem: i64, cpu: i64) {
+lazy_static::lazy_static! {
+    static ref RE_DOCKER: Regex = Regex::new(r"docker/([0-9a-f]*)\n").unwrap();
+    static ref RE_KUBEPODS: Regex = Regex::new(r"kubepods/[0-9a-z-]*/([0-9a-f]*)\n").unwrap();
+}
+
+pub fn pid_to_docker_id(pid: i32) -> Option<String> {
+    if let Ok(raw) = std::fs::read_to_string(format!("/proc/{}/cgroup", pid)) {
+        if let Some(t) = RE_DOCKER.captures(&raw) {
+            return t.get(1).map_or(None, |m| Some(m.as_str().to_string()));
+        }
+        if let Some(t) = RE_KUBEPODS.captures(&raw) {
+            return t.get(1).map_or(None, |m| Some(m.as_str().to_string()));
+        }
+    }
+    return None;
+}
+
+pub fn setup_cgroup(pid: u32, mem: i64, cpu: i64) -> Result<()> {
     // unlimit : 1024 * 1024 * 500 & 200000
     // limit : 1024 * 1024 * 180 & 10000
     let hier1 = cgroups_rs::hierarchies::auto();
@@ -165,9 +183,11 @@ pub fn setup_cgroup(pid: u32, mem: i64, cpu: i64) {
         .done()
         .build(hier1);
 
-    let mems: &cgroups_rs::memory::MemController = mem_cg.controller_of().unwrap();
-    mems.add_task(&cgroups_rs::CgroupPid::from(pid as u64))
-        .unwrap();
+    let mems: &cgroups_rs::memory::MemController = match mem_cg.controller_of() {
+        Some(p) => p,
+        None => return Err(anyhow!("cgroup add failed")),
+    };
+    mems.add_task(&cgroups_rs::CgroupPid::from(pid as u64))?;
 
     let hier = cgroups_rs::hierarchies::auto();
     let cpu_cg = cgroups_rs::cgroup_builder::CgroupBuilder::new("clamav_cpu")
@@ -176,9 +196,12 @@ pub fn setup_cgroup(pid: u32, mem: i64, cpu: i64) {
         .done()
         .build(hier);
 
-    let cpus: &cgroups_rs::cpu::CpuController = cpu_cg.controller_of().unwrap();
-    cpus.add_task(&cgroups_rs::CgroupPid::from(pid as u64))
-        .unwrap();
+    let cpus: &cgroups_rs::cpu::CpuController = match cpu_cg.controller_of() {
+        Some(p) => p,
+        None => return Err(anyhow!("cgroup add failed")),
+    };
+    cpus.add_task(&cgroups_rs::CgroupPid::from(pid as u64))?;
+    return Ok(());
 }
 
 pub fn is_filetype_filter_skipped(fpath: &str) -> Result<bool> {
@@ -223,7 +246,7 @@ pub fn get_available_worker_cpu_quota(
 ) -> Result<(u32, i64)> {
     let mut cpu_usage = cpu_idle;
     if cpu_idle <= 0 || cpu_idle > 100 {
-        cpu_usage = FULLSCAN_CPU_IDLE_100PCT;
+        cpu_usage = *FULLSCAN_CPU_IDLE_100PCT;
     }
     let kstats = procfs::KernelStats::new()?;
     thread::sleep(std::time::Duration::from_secs(interval_secs));
@@ -233,10 +256,10 @@ pub fn get_available_worker_cpu_quota(
     let idle_e = kstate.total.idle_ms();
     let idle_len = ((idle_e - idle_s) as f64 / interval_secs as f64).floor() as u64;
     let mut cgroup_cpu_quota = std::cmp::max(idle_len * cpu_idle, default_cpu_min) as i64;
-    // quota min = 0.1 U
+    // 当 空闲 quota 不足时，至少使用 0.1 U
     cgroup_cpu_quota = std::cmp::min(cgroup_cpu_quota, default_cpu_max as i64);
-    // quota max = 8 U
+    // 当 空闲 quota 过多时（几百个CPU），最多使用 8 U
     let worker = (cgroup_cpu_quota as f64 / 100_000.00).ceil() as u32;
-    // worker > 0
+    // 向上取整 worker 数量不为 0
     return Ok((worker, cgroup_cpu_quota));
 }

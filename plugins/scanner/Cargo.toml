@@ -15,6 +15,10 @@ plugins = { path = "../lib/rust" }
 
 anyhow = "1.0"
 coarsetime = "0.1"
+crossbeam-channel = "0.5"
+# static config
+config = "0.11"
+
 serde = { version = "1.0" , features = ["derive"]}
 serde_json = "1.0"
 lazy_static = "1.4"
@@ -29,14 +33,14 @@ reqwest = { version = "0.11", features = [
 
 walkdir = "2.3"
 procfs = "0.14"
-crossbeam-channel = "0.5"
+
+
 sha2 = "0.10"
 md5 = "0.7"
 hex = "0.4"
 
 nix = "0.24"
 
-rust-crypto = "0.2"
 libc = "0.2"
 
 fs2 = "0.4.3"
@@ -51,7 +55,7 @@ regex = "1.5"
 base64 = "0.13"
 
 infer = { version = "0.9", default-features = false }
-
+cached = "0.41"
 
 [dev-dependencies]
 crossbeam = "0.8"

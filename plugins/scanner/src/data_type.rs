@@ -5,13 +5,13 @@ use serde_json;
 use std::{collections::HashMap, hash::Hash};
 
 use crate::{
-    configs::{
+    config::{
         FULLSCAN_CPU_IDLE_100PCT, FULLSCAN_CPU_IDLE_INTERVAL, FULLSCAN_CPU_MAX_TIME_SECS,
         FULLSCAN_CPU_QUOTA_DEFAULT_MAX, FULLSCAN_CPU_QUOTA_DEFAULT_MIN, FULLSCAN_MAX_SCAN_CPU_100,
         FULLSCAN_MAX_SCAN_ENGINES, FULLSCAN_MAX_SCAN_MEM_MB, FULLSCAN_MAX_SCAN_TIMEOUT_FULL,
         FULLSCAN_MAX_SCAN_TIMEOUT_QUICK, FULLSCAN_SCAN_MODE_FULL, FULLSCAN_SCAN_MODE_QUICK,
     },
-    ToAgentRecord,
+    get_file_md5, get_file_xhash, pid_to_docker_id, ToAgentRecord,
 };
 
 // fullscan finished datatype
@@ -125,7 +125,202 @@ impl ToAgentRecord for DetectFileEvent {
     }
 }
 
-// DetectProcEvent = Proc pid/exe detect event
+// DetectFanotifyEvent = Proc pid/exe detect event
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AnitRansomFunc {
+    pub status: String,
+}
+
+impl ToAgentRecord for AnitRansomFunc {
+    fn to_record(&self) -> plugins::Record {
+        let mut r = plugins::Record::new();
+        let mut pld = plugins::Payload::new();
+        r.set_data_type(6011);
+        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
+        let mut hmp = HashMap::with_capacity(4);
+        hmp.insert("status".to_string(), self.status.to_string());
+        pld.set_fields(hmp);
+        r.set_data(pld);
+        return r;
+    }
+
+    fn to_record_token(&self, token: &str) -> plugins::Record {
+        let mut r = plugins::Record::new();
+        let mut pld = plugins::Payload::new();
+        r.set_data_type(6011);
+        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
+        let mut hmp = HashMap::with_capacity(4);
+        hmp.insert("status".to_string(), self.status.to_string());
+        hmp.insert("token".to_string(), token.to_string());
+        pld.set_fields(hmp);
+        r.set_data(pld);
+        return r;
+    }
+}
+
+// DetectFanotifyEvent = Proc pid/exe detect event
+#[derive(Serialize, Debug, Default)]
+pub struct FanotifyEvent {
+    pub pid: String, //
+    //pub exe_hash: String, //  exe sha256
+    //pub md5_hash: String,
+    pub exe_size: String,
+    pub exe: String, //
+
+    pub create_at: String,
+    pub modify_at: String,
+    pub ppid: String,      //  status|stat - PID of parent process.
+    pub pgid: String,      //  stat - The process group ID
+    pub tgid: String,      //  status - Thread group ID
+    pub argv: String,      //  /proc/pid/cmdline
+    pub comm: String, // status: Name | stat: comm - The filename of the executable TASK_COMM_LEN (16)
+    pub sessionid: String, //  stat  - session id
+    pub uid: String,  // * real user uid
+    pub pns: String,
+
+    pub file_path: String, // notify file
+    //pub file_hash: String, // notify file sha256
+    pub file_mask: String, // notify file fanotify_metadata.mask
+    pub docker_id: String,
+}
+
+impl ToAgentRecord for FanotifyEvent {
+    fn to_record(&self) -> plugins::Record {
+        let mut r = plugins::Record::new();
+        let mut pld = plugins::Payload::new();
+        r.set_data_type(6012);
+        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
+        let mut hmp = HashMap::with_capacity(32);
+        hmp.insert("exe".to_string(), self.exe.to_string());
+        hmp.insert("exe_size".to_string(), self.exe_size.to_string());
+        hmp.insert("create_at".to_string(), self.create_at.to_string());
+        hmp.insert("modify_at".to_string(), self.modify_at.to_string());
+        hmp.insert("pid".to_string(), self.pid.to_string());
+        hmp.insert("ppid".to_string(), self.ppid.to_string());
+        hmp.insert("pgid".to_string(), self.pgid.to_string());
+        hmp.insert("tgid".to_string(), self.tgid.to_string());
+        hmp.insert("argv".to_string(), self.argv.to_string());
+        hmp.insert("comm".to_string(), self.comm.to_string());
+        hmp.insert("sessionid".to_string(), self.sessionid.to_string());
+        hmp.insert("uid".to_string(), self.uid.to_string());
+        hmp.insert("pns".to_string(), self.pns.to_string());
+
+        hmp.insert("docker_id".to_string(), self.docker_id.to_string());
+
+        hmp.insert("file_path".to_string(), self.file_path.to_string());
+        //hmp.insert("file_hash".to_string(), self.file_hash.to_string());
+        hmp.insert("file_mask".to_string(), self.file_mask.to_string());
+
+        pld.set_fields(hmp);
+        r.set_data(pld);
+
+        return r;
+    }
+    fn to_record_token(&self, token: &str) -> plugins::Record {
+        let mut r = plugins::Record::new();
+        let mut pld = plugins::Payload::new();
+        r.set_data_type(6012);
+        r.set_timestamp(Clock::now_since_epoch().as_secs() as i64);
+        let mut hmp = HashMap::with_capacity(32);
+        hmp.insert("exe".to_string(), self.exe.to_string());
+        hmp.insert("exe_size".to_string(), self.exe_size.to_string());
+        hmp.insert("create_at".to_string(), self.create_at.to_string());
+        hmp.insert("modify_at".to_string(), self.modify_at.to_string());
+        hmp.insert("pid".to_string(), self.pid.to_string());
+        hmp.insert("ppid".to_string(), self.ppid.to_string());
+        hmp.insert("pgid".to_string(), self.pgid.to_string());
+        hmp.insert("tgid".to_string(), self.tgid.to_string());
+        hmp.insert("argv".to_string(), self.argv.to_string());
+        hmp.insert("comm".to_string(), self.comm.to_string());
+        hmp.insert("sessionid".to_string(), self.sessionid.to_string());
+        hmp.insert("uid".to_string(), self.uid.to_string());
+        hmp.insert("pns".to_string(), self.pns.to_string());
+        hmp.insert("token".to_string(), token.to_string());
+
+        hmp.insert("docker_id".to_string(), self.docker_id.to_string());
+
+        hmp.insert("file_path".to_string(), self.file_path.to_string());
+        //hmp.insert("file_hash".to_string(), self.file_hash.to_string());
+        hmp.insert("file_mask".to_string(), self.file_mask.to_string());
+
+        pld.set_fields(hmp);
+        r.set_data(pld);
+
+        return r;
+    }
+}
+
+//AntiRansomEvent get pid info from proc
+impl FanotifyEvent {
+    pub fn new(
+        pid: i32,
+        exe: &str,
+        size: usize,
+        create_at: u64,
+        modify_at: u64,
+        file_path: &str,
+        //file_hash: &str,
+        file_mask: &str,
+    ) -> Self {
+        let mut pf = Self::default();
+        pf.pid = pid.to_string();
+
+        pf.exe = exe.to_string();
+        pf.exe_size = size.to_string();
+        pf.create_at = create_at.to_string();
+        pf.modify_at = modify_at.to_string();
+
+        pf.file_path = file_path.to_string();
+        //pf.file_hash = file_hash.to_string();
+        pf.file_mask = file_mask.to_string();
+
+        pf.comm = "-3".to_string();
+        pf.ppid = "-3".to_string();
+        pf.uid = "-3".to_string();
+        pf.tgid = "-3".to_string();
+        pf.pns = "-3".to_string();
+        pf.pgid = "-3".to_string();
+        pf.sessionid = "-3".to_string();
+        pf.argv = "-3".to_string();
+
+        if let Some(docker_id) = pid_to_docker_id(pid) {
+            pf.docker_id = docker_id;
+        }
+
+        let p = match procfs::process::Process::new(pid) {
+            Ok(pinner) => pinner,
+            Err(_) => return pf,
+        };
+
+        if let Ok(ps) = p.status() {
+            pf.comm = ps.name.to_owned();
+            pf.ppid = ps.ppid.to_string();
+            pf.uid = ps.ruid.to_string();
+            pf.tgid = ps.tgid.to_string();
+
+            let pidns = format!("/proc/{}/ns/pid", pid);
+            if let Ok(pns) = std::fs::read_link(&pidns) {
+                if let Some(pns_str) = pns.to_str() {
+                    pf.pns = pns_str
+                        .trim_start_matches("pid:[")
+                        .trim_end_matches("]")
+                        .to_string();
+                }
+            }
+        }
+        if let Ok(ps) = p.stat() {
+            pf.pgid = ps.pgrp.to_string();
+            pf.sessionid = ps.session.to_string();
+        }
+
+        if let Ok(ps) = p.cmdline() {
+            pf.argv = ps.join(" ");
+        }
+        return pf;
+    }
+}
+
+// DetectAntiRansomEvent = Proc pid/exe detect event
 #[derive(Serialize, Debug, Default)]
 pub struct AntiRansomEvent {
     pub types: String,    // rule type
@@ -149,7 +344,8 @@ pub struct AntiRansomEvent {
     pub pns: String,
 
     pub file_path: String, // honeypot file
-    pub file_hash: String, // honeypot file sha256
+    //pub file_hash: String, // honeypot file sha256
+    pub file_mask: String,
 
     pub matched_data: Option<Vec<String>>,
 }
@@ -182,7 +378,8 @@ impl ToAgentRecord for AntiRansomEvent {
         hmp.insert("pns".to_string(), self.pns.to_string());
 
         hmp.insert("file_path".to_string(), self.file_path.to_string());
-        hmp.insert("file_hash".to_string(), self.file_hash.to_string());
+        //hmp.insert("file_hash".to_string(), self.file_hash.to_string());
+        hmp.insert("file_mask".to_string(), self.file_mask.to_string());
 
         if let Some(mdata) = &self.matched_data {
             hmp.insert(
@@ -224,7 +421,8 @@ impl ToAgentRecord for AntiRansomEvent {
         hmp.insert("token".to_string(), token.to_string());
 
         hmp.insert("file_path".to_string(), self.file_path.to_string());
-        hmp.insert("file_hash".to_string(), self.file_hash.to_string());
+        //hmp.insert("file_hash".to_string(), self.file_hash.to_string());
+        hmp.insert("file_mask".to_string(), self.file_mask.to_string());
 
         if let Some(mdata) = &self.matched_data {
             hmp.insert(
@@ -240,7 +438,7 @@ impl ToAgentRecord for AntiRansomEvent {
     }
 }
 
-//DetectProcEvent get pid info from proc
+//AntiRansomEvent get pid info from proc
 impl AntiRansomEvent {
     pub fn new(
         pid: i32,
@@ -254,10 +452,10 @@ impl AntiRansomEvent {
         create_at: u64,
         modify_at: u64,
         file_path: &str,
-        file_hash: &str,
+        //file_hash: &str,
+        file_mask: &str,
         matched_data: Option<Vec<String>>,
-    ) -> Result<Self> {
-        let p = procfs::process::Process::new(pid)?;
+    ) -> Self {
         let mut pf = Self::default();
         pf.pid = pid.to_string();
         pf.types = ftype.to_string();
@@ -272,7 +470,8 @@ impl AntiRansomEvent {
         pf.modify_at = modify_at.to_string();
 
         pf.file_path = file_path.to_string();
-        pf.file_hash = file_hash.to_string();
+        //pf.file_hash = file_hash.to_string();
+        pf.file_mask = file_mask.to_string();
         pf.matched_data = matched_data;
 
         pf.comm = "-3".to_string();
@@ -283,6 +482,11 @@ impl AntiRansomEvent {
         pf.pgid = "-3".to_string();
         pf.sessionid = "-3".to_string();
         pf.argv = "-3".to_string();
+
+        let p = match procfs::process::Process::new(pid) {
+            Ok(pinner) => pinner,
+            Err(_) => return pf,
+        };
 
         if let Ok(ps) = p.status() {
             pf.comm = ps.name.to_owned();
@@ -308,7 +512,7 @@ impl AntiRansomEvent {
         if let Ok(ps) = p.cmdline() {
             pf.argv = ps.join(" ");
         }
-        return Ok(pf);
+        return pf;
     }
 }
 
@@ -433,8 +637,7 @@ impl DetectProcEvent {
         create_at: u64,
         modify_at: u64,
         matched_data: Option<Vec<String>>,
-    ) -> Result<Self> {
-        let p = procfs::process::Process::new(pid)?;
+    ) -> Self {
         let mut pf = Self::default();
         pf.pid = pid.to_string();
         pf.types = ftype.to_string();
@@ -456,6 +659,10 @@ impl DetectProcEvent {
         pf.sessionid = "-3".to_string();
         pf.argv = "-3".to_string();
 
+        let p = match procfs::process::Process::new(pid) {
+            Ok(pinner) => pinner,
+            Err(_) => return pf,
+        };
         if let Ok(ps) = p.status() {
             pf.comm = ps.name.to_owned();
             pf.ppid = ps.ppid.to_string();
@@ -481,7 +688,7 @@ impl DetectProcEvent {
             pf.argv = ps.join(" ");
         }
         pf.matched_data = matched_data;
-        return Ok(pf);
+        return pf;
     }
 }
 
@@ -644,10 +851,10 @@ pub enum DETECT_TASK {
     TASK_6051_STATIC_FILE(ScanTaskStaticFile),
     TASK_6052_PROC_EXE(ScanTaskProcExe),
     TASK_6053_USER_TASK(ScanTaskUserTask),
-    TASK_6054_ANTIVIRUS(ScanTaskAntiVirus),
-    TASK_6054_RESET_HONEYPOT,
-    TASK_6055_SUPPER_MODE_ON,
-    TASK_6056_SUPPER_MODE_OFF,
+    TASK_6054_ANTIVIRUS(ScanTaskFanotify),
+    TASK_6054_FANOTIFY(ScanTaskFanotify),
+    TASK_6054_TASK_6054_ANTIVIRUS_STATUS(AnitRansomFunc),
+    //TASK_6054_RESET_HONEYPOT,
     TASK_6057_FULLSCAN(FullScanTask),
 }
 
@@ -698,13 +905,14 @@ impl ScanTaskUserTask {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct ScanTaskAntiVirus {
+pub struct ScanTaskFanotify {
     pub pid: i32,
     pub pid_exe: String,
     pub size: usize,
     pub btime: (u64, u64),
-    pub event_file_hash: String,
+    //pub event_file_hash: String,
     pub event_file_path: String,
+    pub event_file_mask: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -725,15 +933,15 @@ pub struct FullScanTask {
 impl FullScanTask {
     pub fn new_default() -> Self {
         Self {
-            cpu_idle_interval: FULLSCAN_CPU_IDLE_INTERVAL,
-            cpu_idle_100pct: FULLSCAN_CPU_IDLE_100PCT,
-            cpu_quota_default_min: FULLSCAN_CPU_QUOTA_DEFAULT_MIN,
-            cpu_quota_default_max: FULLSCAN_CPU_QUOTA_DEFAULT_MAX,
-            cpu_max_time_secs: FULLSCAN_CPU_MAX_TIME_SECS,
-            max_scan_engine: FULLSCAN_MAX_SCAN_ENGINES,
-            max_scan_cpu100: FULLSCAN_MAX_SCAN_CPU_100,
-            max_scan_mem_mb: FULLSCAN_MAX_SCAN_MEM_MB,
-            max_scan_timeout: FULLSCAN_MAX_SCAN_TIMEOUT_FULL,
+            cpu_idle_interval: *FULLSCAN_CPU_IDLE_INTERVAL,
+            cpu_idle_100pct: *FULLSCAN_CPU_IDLE_100PCT,
+            cpu_quota_default_min: *FULLSCAN_CPU_QUOTA_DEFAULT_MIN,
+            cpu_quota_default_max: *FULLSCAN_CPU_QUOTA_DEFAULT_MAX,
+            cpu_max_time_secs: *FULLSCAN_CPU_MAX_TIME_SECS,
+            max_scan_engine: *FULLSCAN_MAX_SCAN_ENGINES,
+            max_scan_cpu100: *FULLSCAN_MAX_SCAN_CPU_100,
+            max_scan_mem_mb: *FULLSCAN_MAX_SCAN_MEM_MB,
+            max_scan_timeout: *FULLSCAN_MAX_SCAN_TIMEOUT_FULL,
             scan_mode_full: false,
             token: "".to_string(),
         }
