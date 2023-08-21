@@ -28,6 +28,7 @@ use anyhow::{anyhow, Result};
 use coarsetime::Clock;
 use crossbeam_channel::{after, bounded, select};
 use log::*;
+use rand::distributions::{Alphanumeric, DistString};
 use std::{collections::HashMap, path::Path, thread, time};
 use walkdir::WalkDir;
 
@@ -132,6 +133,10 @@ impl Scanner {
         self: &mut Self,
         fpath: &str,
     ) -> Result<(String, String, String, String, String, Option<Vec<String>>)> {
+        if fpath.ends_with(".lzh") || fpath.ends_with(".lha") {
+            return self.scan_lzh(fpath);
+        }
+
         match self.inner.scan_file(fpath) {
             Ok((result, mut matched_data)) => {
                 let mut res: Vec<String> = Vec::new();
@@ -209,6 +214,82 @@ impl Scanner {
                 return Err(err);
             }
         };
+    }
+
+    pub fn scan_lzh(
+        self: &mut Self,
+        fpath: &str,
+    ) -> Result<(String, String, String, String, String, Option<Vec<String>>)> {
+        let mut res: Vec<String> = Vec::new();
+        let xhash = get_file_xhash(fpath);
+        let md5sum = get_file_md5(fpath);
+        let mut ftype = "not_detected".to_string();
+        let mut class = "".to_string();
+        let mut name = "".to_string();
+        let mut matched_data = None;
+
+        if let Err(e) = crate::extract_lzh(fpath) {
+            error!("extract_lzh error {}", e);
+        }
+
+        let tmp_dir = format!(
+            "tmp_{}",
+            Alphanumeric.sample_string(&mut rand::thread_rng(), 16)
+        );
+
+        let result = std::fs::read_dir(&tmp_dir);
+        if let Ok(rdir) = result {
+            for each_entry in rdir.into_iter() {
+                if let Ok(entry) = each_entry {
+                    let target_path = entry.path().to_string_lossy().to_string();
+                    if !std::path::Path::new(&target_path).exists() {
+                        continue;
+                    }
+                    if let Ok((result, matched)) = self.inner.scan_file(&target_path) {
+                        // not_detected
+                        if &result == "OK" {
+                            continue;
+                        }
+                        // format clamav result
+                        if result.starts_with("YARA.") {
+                            res = result
+                                .trim_start_matches("YARA.")
+                                .trim_end_matches(".UNOFFICIAL")
+                                .splitn(3, '_')
+                                .into_iter()
+                                .map(|s| s.to_string())
+                                .collect();
+                        } else {
+                            res = result
+                                .trim_end_matches(".UNOFFICIAL")
+                                .splitn(3, '.')
+                                .into_iter()
+                                .map(|s| s.to_string())
+                                .collect();
+                        }
+                        // format clamav result len
+                        if res.len() != 3 {
+                            // result is not formated, return origin rule name.
+                            ftype = "Archive".to_string();
+                            class = "Unknown".to_string();
+                            name = result;
+                        } else {
+                            ftype = "Archive".to_string();
+                            class = res[1].to_string();
+                            name = res[2].to_string();
+                        }
+                        if let Some(data) = &matched {
+                            info!("[Catch] yara hit data:{:?}", data);
+                        }
+                        matched_data = matched;
+                        break;
+                    }
+                }
+            }
+        }
+
+        let _ = std::fs::remove_dir_all(&tmp_dir);
+        return Ok((ftype, class, name, xhash, md5sum, matched_data));
     }
 }
 

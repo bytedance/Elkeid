@@ -150,8 +150,7 @@ impl ScanEngine for Clamav {
         let mut virus_name: *const ::std::os::raw::c_char = ptr::null();
         let mut scann_bytes: u64 = 0;
         unsafe {
-            let cfmap_t =
-                clamav::cl_fmap_open_memory(buf.as_ptr() as *const c_void, buf.len() as u64);
+            let cfmap_t = clamav::cl_fmap_open_memory(buf.as_ptr() as *const c_void, buf.len());
             let mut nil_ctx = clamav::cl_yr_hit_cb_ctx_init();
             let mut yr_ctx: *mut c_void = nil_ctx as _;
 
