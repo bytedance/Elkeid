@@ -49,13 +49,24 @@ func (h *FileExtHandler) Download(request *pb.DownloadRequest, server pb.FileExt
 		ylog.Errorf("Download", "unZipSingleFileFromMemory token %s error %s", request.GetToken(), err.Error())
 		return err
 	}
-	resp := &pb.DownloadResponse{
-		Data: out,
-	}
-	err = server.Send(resp)
-	if err != nil {
-		ylog.Errorf("Download", "error while sending chunk: %s", err.Error())
-		return err
+
+	//根据2M(2097152) 拆分发送
+	bufRead := bytes.NewBuffer(out)
+	buf := make([]byte, 2097152)
+	for {
+		buf = bufRead.Next(2097150)
+		if len(buf) == 0 {
+			break
+		}
+
+		resp := &pb.DownloadResponse{
+			Data: buf,
+		}
+		err = server.Send(resp)
+		if err != nil {
+			ylog.Errorf("Download", "error while sending chunk: %s", err.Error())
+			return err
+		}
 	}
 	return nil
 }
