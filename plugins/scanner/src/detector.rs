@@ -228,14 +228,14 @@ impl Scanner {
         let mut name = "".to_string();
         let mut matched_data = None;
 
-        if let Err(e) = crate::extract_lzh(fpath) {
-            error!("extract_lzh error {}", e);
-        }
-
         let tmp_dir = format!(
             "tmp_{}",
             Alphanumeric.sample_string(&mut rand::thread_rng(), 16)
         );
+
+        if let Err(e) = crate::extract_lzh(fpath, &tmp_dir) {
+            error!("extract_lzh error {}", e);
+        }
 
         let result = std::fs::read_dir(&tmp_dir);
         if let Ok(rdir) = result {

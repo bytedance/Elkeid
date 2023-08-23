@@ -235,12 +235,12 @@ pub fn get_available_worker_cpu_quota(
     return Ok((worker, cgroup_cpu_quota));
 }
 
-pub fn extract_lzh(target_lzh_file: &str) -> Result<()> {
+pub fn extract_lzh(target_lzh_file: &str, target_dir: &str) -> Result<()> {
     if !std::path::Path::new(target_lzh_file).exists() {
         return Err(anyhow!("extract_lzh target {} not exists", target_lzh_file));
     }
-    if !std::path::Path::new("tmp").exists() {
-        std::fs::create_dir_all("tmp")?;
+    if !std::path::Path::new(target_dir).exists() {
+        std::fs::create_dir_all(target_dir)?;
     }
     let mut lha_reader = delharc::parse_file(target_lzh_file)?;
     let mut counter = 0;
@@ -252,8 +252,21 @@ pub fn extract_lzh(target_lzh_file: &str) -> Result<()> {
             Some(ext) => ext.to_string_lossy().to_string(),
             None => "bin".to_string(),
         };
-        info!("extract: {:?} into tmp/{}.{}", filepath, counter, fileext);
-        let tmp_file = match std::fs::File::create(format!("tmp/{}.{}", counter, fileext)) {
+        info!(
+            "extract: {:?} into {}{}{}.{}",
+            filepath,
+            target_dir,
+            std::path::MAIN_SEPARATOR,
+            counter,
+            fileext
+        );
+        let tmp_file = match std::fs::File::create(format!(
+            "{}{}{}.{}",
+            target_dir,
+            std::path::MAIN_SEPARATOR,
+            counter,
+            fileext
+        )) {
             Ok(f) => f,
             Err(e) => {
                 if e.kind() == ErrorKind::AlreadyExists {}
@@ -270,15 +283,24 @@ pub fn extract_lzh(target_lzh_file: &str) -> Result<()> {
                         continue;
                     } else {
                         info!(
-                            "extract: {:?} into tmp/{}.{} ok",
-                            filepath, counter, fileext
+                            "extract: {:?} into {}{}{}.{} ok",
+                            filepath,
+                            target_dir,
+                            std::path::MAIN_SEPARATOR,
+                            counter,
+                            fileext
                         );
                     }
                 }
                 Err(e) => {
                     error!(
-                        "extract: {:?} into tmp/{}.{} error {}",
-                        filepath, counter, fileext, e
+                        "extract: {:?} into {}{}{}.{} error {}",
+                        filepath,
+                        target_dir,
+                        std::path::MAIN_SEPARATOR,
+                        counter,
+                        fileext,
+                        e
                     );
                     continue;
                 }

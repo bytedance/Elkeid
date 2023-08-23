@@ -32,6 +32,7 @@ reqwest = { version = "0.11", features = [
 ], default-features = false }
 
 rand = "0.8"
+delharc = "0.5"
 
 walkdir = "2.3"
 procfs = "0.14"
@@ -50,8 +51,6 @@ fs2 = "0.4.3"
 cgroups-rs = "0.2"
 
 zip = "0.6"
-
-delharc = "0.5"
 
 
 phf = { version = "0.10", features = ["macros"] }
