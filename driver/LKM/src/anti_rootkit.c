@@ -169,12 +169,13 @@ static void analyze_interrupts(void)
 
 static void analyze_modules(void)
 {
-    struct kobject *cur;
+	struct kobject *cur;
 	struct module_kobject *kobj;
 
 	if (unlikely(!mod_kset))
 		return;
 
+	module_list_lock();
 	spin_lock(&mod_kset->list_lock);
 	list_for_each_entry(cur, &mod_kset->list, entry) {
 		if (!kobject_name(cur)) {
@@ -188,6 +189,7 @@ static void analyze_modules(void)
 		}
 	}
 	spin_unlock(&mod_kset->list_lock);
+	module_list_unlock();
 }
 
 static void analyze_fops(void)
@@ -280,7 +282,7 @@ static int __init anti_rootkit_init(void)
 #endif
     sct = (void *)smith_kallsyms_lookup_name("sys_call_table");
     ckt = (void *)smith_kallsyms_lookup_name("core_kernel_text");
-	mod_lock = (void *)smith_kallsyms_lookup_name("module_lock");
+	mod_lock = (void *)smith_kallsyms_lookup_name("module_mutex");
 	mod_find_module = (void *)smith_kallsyms_lookup_name("find_module");
     get_module_from_addr = (void *)smith_kallsyms_lookup_name("__module_address");
     kset = (void *)smith_kallsyms_lookup_name("module_kset");
