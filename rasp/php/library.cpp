@@ -39,6 +39,21 @@ zval *HTTPGlobals(
 #endif
 }
 
+void prepare() {
+    pid_t pid = getpid();
+
+    if (pid != getpgid(0))
+        return;
+
+    static pid_t initialized = 0;
+
+    if (initialized && initialized == pid)
+        return;
+
+    initialized = pid;
+    startProbe();
+}
+
 PHP_GINIT_FUNCTION (php_probe) {
 #ifdef ZTS
     new (php_probe_globals) _zend_php_probe_globals();
@@ -71,24 +86,8 @@ PHP_MINIT_FUNCTION (php_probe) {
         }
     }
 
-    pthread_atfork(
-            []() {
-                pid_t pid = getpid();
-
-                if (pid != getpgid(0))
-                    return;
-
-                static pid_t initialized = 0;
-
-                if (initialized && initialized == pid)
-                    return;
-
-                initialized = pid;
-                startProbe();
-            },
-            nullptr,
-            nullptr
-    );
+    prepare();
+    pthread_atfork(prepare, nullptr, nullptr);
 
     for (const auto &api: PHP_API) {
         HashTable *hashTable = CG(function_table);
