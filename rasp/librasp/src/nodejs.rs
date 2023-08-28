@@ -23,7 +23,7 @@ pub fn nodejs_attach(
     node_path: &str,
 ) -> Result<bool> {
     debug!("node attach: {}", pid);
-    let smith_module_path = settings::RASP_NODEJS_DIR();
+    let smith_module_path = settings::RASP_NODEJS_ENTRY();
     nodejs_run(pid, node_path, smith_module_path.as_str())
 }
 

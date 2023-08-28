@@ -24,7 +24,12 @@
       "name": "go-symbol",
       "version>=": "1.0.0"
     },
-    "mimalloc",
+    {
+      "name": "mimalloc",
+      "features": [
+        "override"
+      ]
+    },
     {
       "name": "tiny-regex-c",
       "version>=": "1.0.0"

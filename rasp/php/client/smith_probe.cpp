@@ -100,6 +100,16 @@ bool pass(const Trace &trace, const std::map<std::tuple<int, int>, Filter> &filt
 }
 
 void startProbe() {
+    int efd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+
+    if (efd < 0) {
+        LOG_ERROR("create event fd failed");
+        return;
+    }
+
+    gProbe->efd = efd;
+    std::fill_n(gProbe->quotas[0], sizeof(gProbe->quotas) / sizeof(**gProbe->quotas), DEFAULT_QUOTAS);
+
     if (fork() != 0)
         return;
 
@@ -127,16 +137,6 @@ void startProbe() {
         LOG_ERROR("create aio context failed");
         return;
     }
-
-    int efd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
-
-    if (efd < 0) {
-        LOG_ERROR("create event fd failed");
-        return;
-    }
-
-    gProbe->efd = efd;
-    std::fill_n(gProbe->quotas[0], sizeof(gProbe->quotas) / sizeof(**gProbe->quotas), DEFAULT_QUOTAS);
 
     std::shared_ptr<Heartbeat> heartbeat = std::make_shared<Heartbeat>();
     std::shared_ptr<std::map<std::tuple<int, int>, Filter>> filters = std::make_shared<std::map<std::tuple<int, int>, Filter>>();
