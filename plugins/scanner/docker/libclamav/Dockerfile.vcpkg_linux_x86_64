@@ -1,0 +1,31 @@
+FROM debian:bullseye as scanner_compiler_x86_64
+
+SHELL ["/bin/bash", "-c"]
+
+RUN apt update
+RUN apt-get install -y apt-utils gnutls-bin rsync
+RUN apt-get install -y apt-transport-https ca-certificates debian-archive-keyring 
+RUN apt-get install -y bison autoconf gettext curl unzip git wget curl
+RUN apt-get install -y python3.9 python3-pip python3.9-dev libc-dev
+RUN apt-get install -y clang llvm flex ninja-build lsb-release
+RUN apt-get install -y libstdc++-10-dev cmake make libpcre2-dev gcc g++
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Rust  
+
+WORKDIR /root
+
+ENV RUSTUP_HOME=/opt/rust
+ENV CARGO_HOME=/opt/rust
+ENV PATH=/root/.cargo/bin:$PATH
+
+RUN echo 'export PATH=/opt/rust/bin:$PATH' >> /etc/profile
+RUN echo 'export RUSTUP_HOME=/opt/rust' >> /etc/profile
+
+RUN echo 'export PATH=/opt/rust/bin:$PATH' >> /root/.bashrc
+RUN echo 'export RUSTUP_HOME=/opt/rust' >> /root/.bashrc
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path -t x86_64-unknown-linux-gnu
+# Rust == END ==
+

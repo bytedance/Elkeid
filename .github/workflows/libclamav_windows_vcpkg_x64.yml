@@ -1,0 +1,25 @@
+name: libclamav_win_vcpkg_x64
+on:
+  push:
+    branches:
+    - main
+    - 2.2.2/scanner
+    paths:
+    - .github/workflows/libclamav_build.yml
+    - Elkeid/plugins/scanner/build_script/libclamav_win_vcpkg_x64.ps1
+jobs:
+  build_vcpkg_win_x64:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: false
+    - name: Build lib
+      run: .\Elkeid\plugins\scanner\build_script\libclamav_win_vcpkg_x64.ps1
+    - name: Package
+      run: 7z a libclamav_win_vcpkg_x64.zip ./output/*
+    - name: Upload 
+      uses: actions/upload-artifact@v3
+      with:
+        name: libclamav_win_vcpkg_x64
+        path: output/*
