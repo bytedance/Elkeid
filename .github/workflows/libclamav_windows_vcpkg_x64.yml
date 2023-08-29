@@ -6,7 +6,7 @@ on:
     - 2.2.2/scanner
     paths:
     - .github/workflows/libclamav_build.yml
-    - plugins/scanner/build_script/libclamav_win_vcpkg_x64.ps1
+    - plugins/scanner/build_script/libclamav/libclamav_win_vcpkg_x64.ps1
 jobs:
   build_vcpkg_win_x64:
     runs-on: windows-latest
@@ -15,7 +15,7 @@ jobs:
       with:
         submodules: false
     - name: Build lib
-      run: .\plugins\scanner\build_script\libclamav_win_vcpkg_x64.ps1
+      run: .\plugins\scanner\build_script\libclamav\libclamav_win_vcpkg_x64.ps1
     - name: Package
       run: 7z a libclamav_win_vcpkg_x64.zip ./output/*
     - name: Upload 
