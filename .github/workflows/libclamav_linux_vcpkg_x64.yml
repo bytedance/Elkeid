@@ -6,7 +6,7 @@ on:
     - 2.2.2/scanner
     paths:
     - .github/workflows/libclamav_linux_vcpkg_x64.yml
-    - Elkeid/plugins/scanner/build_script/libclamav_linux_vcpkg_x64.sh
+    - plugins/scanner/build_script/libclamav_linux_vcpkg_x64.sh
 jobs:
   build_vcpkg_linux_x64:
     runs-on: ubuntu-latest
@@ -15,7 +15,7 @@ jobs:
       with:
         submodules: false
     - name: Build lib
-      run: bash Elkeid/plugins/scanner/build_script/libclamav_linux_vcpkg_x64.sh
+      run: bash plugins/scanner/build_script/libclamav_linux_vcpkg_x64.sh
     - name: Package
       run: 7z a libclamav_linux_vcpkg_x64.zip ./output/*
     - name: Upload 
