@@ -1,0 +1,9 @@
+FROM kulukami/libclamav_icm_aarch64 as scanner_compiler
+
+ADD . /Elkeid
+WORKDIR /Elkeid/plugins/scanner
+RUN rm -rf clamav clamav-mussels-cookbook lib include
+RUN rustup update
+RUN rustup target add aarch64-unknown-linux-gnu
+RUN apt-get install gcc g++ llvm clang -y
+RUN bash build_script/libclamav/libclamav_linux_vcpkg_arm64.sh

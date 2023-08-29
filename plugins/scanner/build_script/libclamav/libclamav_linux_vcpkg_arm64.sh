@@ -50,7 +50,7 @@ cmake --build . --config Release --target install -j2
 
 cd ../..
 
-rm -rf lib
+rm -rf lib || true
 mkdir lib
 
 cp clamav/build/libclamav/libclamav_static.a ./lib
@@ -62,7 +62,7 @@ cp clamav/build/*.a ./lib
 
 cp $VCPKG_ROOT/installed/$VCPKG_DEFAULT_TRIPLET/lib/*.a ./lib
 
-rm -rf ./include/*
+rm -rf ./include/* || true
 mkdir include 
 cp clamav/build/*.h ./include
 cp clamav/libclamav/clamav.h ./include

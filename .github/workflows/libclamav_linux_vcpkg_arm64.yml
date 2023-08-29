@@ -7,6 +7,7 @@ on:
     paths:
     - .github/workflows/libclamav_linux_vcpkg_arm64.yml
     - plugins/scanner/build_script/libclamav/libclamav_linux_vcpkg_arm64.sh
+    - plugins/scanner/docker/Dockerfile.linux_aarch64
 jobs:
   build_vcpkg_linux_arm64:
     runs-on: [self-hosted,linux,ARM64]
@@ -14,12 +15,29 @@ jobs:
     - uses: actions/checkout@v3
       with:
         submodules: false
-    - name: Build lib
-      run: bash plugins/scanner/build_script/libclamav/libclamav_linux_vcpkg_arm64.sh
-    - name: Package
-      run: 7z a libclamav_linux_vcpkg_arm64.zip ./output/*
-    - name: Upload 
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build libclamav
+      uses: docker/build-push-action@v3
+      with:
+        file: plugins/scanner/docker/Dockerfile.linux_aarch64
+        load: true
+        tags: elkeid/libclamav_aarch64:latest
+        context: .
+        platforms: linux/arm64
+
+    - name: Extract libclamav
+      id: extract-libclamav
+      uses: shrink/actions-docker-extract@v1
+      with:
+        image: elkeid/libclamav_aarch64:latest
+        path: /Elkeid/plugins/scanner/output/.
+
+    - name: Upload Scanner
       uses: actions/upload-artifact@v3
       with:
         name: libclamav_linux_vcpkg_arm64
-        path: output/*
+        path: ${{ steps.extract-scanner.outputs.destination }}/*
+        
