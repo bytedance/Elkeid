@@ -31,8 +31,6 @@ cmake .. \
   -D VCPKG_TARGET_TRIPLET="$VCPKG_DEFAULT_TRIPLET"                       \
   -D VCPKG_TARGET_ARCHITECTURE="$TARGET_ARCH"                            \
   -D RUST_COMPILER_TARGET="$RUSTC_TARGET"                                \
-  -D CMAKE_SYSTEM_NAME=Darwin                                            \
-  -D CMAKE_OSX_ARCHITECTURES="x86_64"                                    \
   -D ENABLE_TESTS=OFF                                                    \
   -D ENABLE_STATIC_LIB=ON                                                \
   -D ENABLE_LIBCLAMAV_ONLY=ON                                            \
