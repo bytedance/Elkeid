@@ -14,12 +14,7 @@
 #ifdef SMITH_TRACE_EVENTS
 #include <linux/trace_events.h>
 #else
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
-#define SMITH_TRACE_EVENTS
-#include <linux/trace_events.h>
-#else
 #include <linux/ftrace_event.h>
-#endif
 #endif
 
 #define RS "\x1e"
@@ -28,12 +23,7 @@
 #define SZ_128K				0x00020000
 
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-#else
-#define PDE_DATA(i)  PDE(i)->data
-#endif
-
-#ifdef SMITH_TRACE_EVENTS
+#ifdef SMITH_TRACE_SEQ
 static inline int __trace_seq_used(struct trace_seq *s)
 {
 	return trace_seq_used(s);

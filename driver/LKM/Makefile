@@ -67,15 +67,20 @@ ccflags-y += -D SMITH_TRACE_EVENTS
 endif
 
 TRACE_SEQ_FILES := $(shell find -L $(K_I_PATH) -path \*/linux/trace_seq.h) /dev/null
-TRACE_SEQ_SEQ := $(shell sh -c "grep -sE struct[[:space:]]\+seq_buf[[:space:]]\+seq\; $(TRACE_SEQ_FILES)")
+TRACE_SEQ_SEQ := $(shell sh -c "grep -s trace_seq_used $(TRACE_SEQ_FILES)")
 ifneq ($(TRACE_SEQ_SEQ),)
 ccflags-y += -D SMITH_TRACE_SEQ
 endif
 
 PROCFS_H_FILES := $(shell find -L $(K_I_PATH) -path "*/linux/proc_fs.h") /dev/null
-PROCFS_PDE_DATA := $(shell sh -c "grep -s pde_data $(PROCFS_H_FILES)")
+PROCFS_PDE_DATA := $(shell sh -c "grep -s PDE_DATA $(PROCFS_H_FILES)")
 ifneq ($(PROCFS_PDE_DATA),)
 ccflags-y += -D SMITH_PROCFS_PDE_DATA
+else
+PROCFS_pde_data := $(shell sh -c "grep -s pde_data $(PROCFS_H_FILES)")
+ifneq ($(PROCFS_pde_data),)
+ccflags-y += -D SMITH_PROCFS_pde_data
+endif
 endif
 
 PROCNS_H_FILES := $(shell find -L $(K_I_PATH) -path "*/linux/proc_ns.h") /dev/null
