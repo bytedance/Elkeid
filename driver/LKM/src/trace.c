@@ -63,10 +63,10 @@ static int trace_open_pipe(struct inode *inode, struct file *filp)
     trace_seq_init(&iter->seq);
     mutex_init(&iter->mutex);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0) || defined(SMITH_PROCFS_PDE_DATA)
-    iter->ring = pde_data(inode);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
+#if defined(SMITH_PROCFS_PDE_DATA)
     iter->ring = PDE_DATA(inode);
+#elif defined(SMITH_PROCFS_pde_data)
+    iter->ring = pde_data(inode);
 #else
     iter->ring = PDE(inode)->data;
 #endif
