@@ -11,7 +11,12 @@
       "name": "elf-cpp",
       "version>=": "1.0.0"
     },
-    "mimalloc",
+    {
+      "name": "mimalloc",
+      "features": [
+        "override"
+      ]
+    },
     {
       "name": "trap",
       "version>=": "1.0.0"
