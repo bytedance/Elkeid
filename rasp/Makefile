@@ -125,8 +125,7 @@ pangolin:
 	mkdir -p build && \
 	cmake -B build \
 		-DCMAKE_BUILD_TYPE=Release \
-		-DSTATIC_BUILD=$(STATIC) \
-		 && \
+		-DSTATIC_BUILD=$(STATIC) && \
 	$(MAKE) -C build
 
 
