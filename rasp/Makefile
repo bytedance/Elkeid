@@ -125,9 +125,7 @@ pangolin:
 	mkdir -p build && \
 	cmake -B build \
 		-DCMAKE_BUILD_TYPE=Release \
-		-DSTATIC_BUILD=$(STATIC) \
-		-DCMAKE_TOOLCHAIN_FILE="$(VCPKG_INSTALLATION_ROOT)/scripts/buildsystems/vcpkg.cmake" \
-		-DVCPKG_TARGET_TRIPLET=x64-linux-release && \
+		-DSTATIC_BUILD=$(STATIC) && \
 	$(MAKE) -C build
 
 
