@@ -13,13 +13,15 @@ use sha2::{Digest, Sha256};
 use std::{
     ffi::{c_void, CStr, CString},
     hash::Hasher,
-    io::{ErrorKind, Read, Seek, SeekFrom},
+    io::{BufWriter, ErrorKind, Read, Seek, SeekFrom},
     path::Path,
     ptr, thread, time,
 };
 
 use cgroups_rs::{self, Controller};
+use delharc;
 use infer::MatcherType;
+use log::*;
 
 pub mod config;
 pub mod data_type;
@@ -248,4 +250,83 @@ pub fn get_available_worker_cpu_quota(
     let worker = (cgroup_cpu_quota as f64 / 100_000.00).ceil() as u32;
     // 向上取整 worker 数量不为 0
     return Ok((worker, cgroup_cpu_quota));
+}
+
+pub fn extract_lzh(target_lzh_file: &str, target_dir: &str) -> Result<()> {
+    if !std::path::Path::new(target_lzh_file).exists() {
+        return Err(anyhow!("extract_lzh target {} not exists", target_lzh_file));
+    }
+    if !std::path::Path::new(target_dir).exists() {
+        std::fs::create_dir_all(target_dir)?;
+    }
+    let mut lha_reader = delharc::parse_file(target_lzh_file)?;
+    let mut counter = 0;
+    loop {
+        let header = lha_reader.header();
+        let filepath = header.parse_pathname();
+        let filesize = header.original_size;
+        let fileext = match filepath.extension() {
+            Some(ext) => ext.to_string_lossy().to_string(),
+            None => "bin".to_string(),
+        };
+        info!(
+            "extract: {:?} into {}{}{}.{}",
+            filepath,
+            target_dir,
+            std::path::MAIN_SEPARATOR,
+            counter,
+            fileext
+        );
+        let tmp_file = match std::fs::File::create(format!(
+            "{}{}{}.{}",
+            target_dir,
+            std::path::MAIN_SEPARATOR,
+            counter,
+            fileext
+        )) {
+            Ok(f) => f,
+            Err(e) => {
+                if e.kind() == ErrorKind::AlreadyExists {}
+                continue;
+            }
+        };
+        counter += 1;
+        if lha_reader.is_decoder_supported() {
+            let mut writer = Box::new(BufWriter::with_capacity(128 * 1024, tmp_file));
+            match std::io::copy(&mut lha_reader, &mut writer) {
+                Ok(n) => {
+                    if n != filesize {
+                        error!("write {} with origin {}", n, filesize);
+                        continue;
+                    } else {
+                        info!(
+                            "extract: {:?} into {}{}{}.{} ok",
+                            filepath,
+                            target_dir,
+                            std::path::MAIN_SEPARATOR,
+                            counter,
+                            fileext
+                        );
+                    }
+                }
+                Err(e) => {
+                    error!(
+                        "extract: {:?} into {}{}{}.{} error {}",
+                        filepath,
+                        target_dir,
+                        std::path::MAIN_SEPARATOR,
+                        counter,
+                        fileext,
+                        e
+                    );
+                    continue;
+                }
+            };
+            lha_reader.crc_check()?;
+        }
+        if !lha_reader.next_file()? {
+            break;
+        }
+    }
+    return Ok(());
 }

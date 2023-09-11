@@ -9,6 +9,7 @@ RUN mv /LibClamavDocker/clamav-mussels-cookbook /Elkeid/plugins/scanner/.
 RUN mv /LibClamavDocker/lib /Elkeid/plugins/scanner/.
 RUN mv /LibClamavDocker/include /Elkeid/plugins/scanner/.
 
+RUN rustup update
 RUN rustup target add x86_64-unknown-linux-musl
 RUN CC="x86_64-linux-musl-gcc" CXX="x86_64-linux-musl-c++" RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --bin scanner_plugin --target x86_64-unknown-linux-musl
 

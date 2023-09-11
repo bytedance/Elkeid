@@ -38,7 +38,7 @@ pub fn clamav_init() -> Result<()> {
         if retc != 0 {
             return Err(anyhow!(
                 "clamav::cl_init {:?} err",
-                clamav::cl_strerror(retc as ::std::os::raw::c_int)
+                clamav::cl_strerror(retc as _)
             ));
         };
     }
@@ -52,7 +52,7 @@ impl Clamav {
             engine: pointer,
             scan_option: clamav::cl_scan_options {
                 general: clamav::CL_SCAN_GENERAL_YARAHIT,
-                parse: clamav::CL_SCAN_PARSE_ELF,
+                parse: clamav::CL_SCAN_PARSE_ELF | clamav::CL_SCAN_PARSE_ARCHIVE,
                 heuristic: 0,
                 mail: 0,
                 dev: 0,
@@ -106,7 +106,7 @@ impl Clamav {
             if retc != clamav::cl_error_t_CL_SUCCESS {
                 return Err(anyhow!(
                     "clamav::cl_load {:?} err",
-                    clamav::cl_strerror(retc as ::std::os::raw::c_int)
+                    clamav::cl_strerror(retc as _)
                 ));
             };
         }
@@ -120,7 +120,7 @@ impl Clamav {
             if retc != clamav::cl_error_t_CL_SUCCESS {
                 return Err(anyhow!(
                     "clamav::cl_engine_compile {:?} err",
-                    clamav::cl_strerror(retc as ::std::os::raw::c_int)
+                    clamav::cl_strerror(retc as _)
                 ));
             };
         }
@@ -150,8 +150,7 @@ impl ScanEngine for Clamav {
         let mut virus_name: *const ::std::os::raw::c_char = ptr::null();
         let mut scann_bytes: u64 = 0;
         unsafe {
-            let cfmap_t =
-                clamav::cl_fmap_open_memory(buf.as_ptr() as *const c_void, buf.len() as u64);
+            let cfmap_t = clamav::cl_fmap_open_memory(buf.as_ptr() as *const c_void, buf.len());
             let mut nil_ctx = clamav::cl_yr_hit_cb_ctx_init();
             let mut yr_ctx: *mut c_void = nil_ctx as _;
 
@@ -174,7 +173,7 @@ impl ScanEngine for Clamav {
                 tc => {
                     return Err(anyhow!(
                         "clamav::cl_scanmap_callback {:?} err",
-                        clamav::cl_strerror(tc as ::std::os::raw::c_int)
+                        clamav::cl_strerror(retc as _)
                     ));
                 }
             };
@@ -269,7 +268,7 @@ impl ScanEngine for Clamav {
                     return Ok((target_virust_name, None));
                 }
                 tc => {
-                    let errmsg = CStr::from_ptr(clamav::cl_strerror(tc as ::std::os::raw::c_int))
+                    let errmsg = CStr::from_ptr(clamav::cl_strerror(retc as _))
                         .to_string_lossy()
                         .into_owned();
                     clamav::cl_yr_hit_cb_ctx_free(nil_ctx);
@@ -295,7 +294,7 @@ impl Clone for Clamav {
             engine: *&self.engine,
             scan_option: clamav::cl_scan_options {
                 general: clamav::CL_SCAN_GENERAL_YARAHIT,
-                parse: clamav::CL_SCAN_PARSE_ELF,
+                parse: clamav::CL_SCAN_PARSE_ELF | clamav::CL_SCAN_PARSE_ARCHIVE,
                 heuristic: 0,
                 mail: 0,
                 dev: 0,

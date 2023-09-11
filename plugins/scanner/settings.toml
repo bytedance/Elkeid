@@ -7,7 +7,7 @@ cgroup_name = "clamav_"
 ### mega byte
 cgroup_mem_limit = 256
 ### %
-cgroup_cpu_limit = 4
+cgroup_cpu_limit = 39
 
 ### log
 log_level = "info"
@@ -29,8 +29,8 @@ db_urls = [
     "http://lf26-elkeid.bytetos.com/obj/elkeid-download/18249e0cbe7c6aca231f047cb31d753fa4604434fcb79f484ea477f6009303c3/archive_db_default_20221206",
 ]
 
-archive_db_pwd     = "clamav_default_passwd"
-archive_db_hash    = "8db8c2ddddbead44a61cc4b5e373ca0a397c3ce211ba47bdfb01e4c5e7aae56a"
+archive_db_pwd = "clamav_default_passwd"
+archive_db_hash = "8db8c2ddddbead44a61cc4b5e373ca0a397c3ce211ba47bdfb01e4c5e7aae56a"
 archive_db_version = "20221206"
 
 [fullscan]
@@ -86,68 +86,68 @@ filter = [
 ]
 
 [[scan.dir]]
-    fpath = "/root"
-    max_depth = 3
+fpath = "/root"
+max_depth = 3
 [[scan.dir]]
-    fpath = "/home"
-    max_depth = 3
+fpath = "/home"
+max_depth = 3
 [[scan.dir]]
-    fpath = "/bin"
-    max_depth = 2
+fpath = "/bin"
+max_depth = 2
 [[scan.dir]]
-    fpath = "/sbin"
-    max_depth = 2
+fpath = "/sbin"
+max_depth = 2
 [[scan.dir]]
-    fpath = "/usr/bin"
-    max_depth = 2
+fpath = "/usr/bin"
+max_depth = 2
 [[scan.dir]]
-    fpath = "/usr/sbin"
-    max_depth = 2
+fpath = "/usr/sbin"
+max_depth = 2
 [[scan.dir]]
-    fpath = "/usr/local"
-    max_depth = 3
+fpath = "/usr/local"
+max_depth = 3
 [[scan.dir]]
-    fpath = "/lib/systemd/system"
-    max_depth = 1
+fpath = "/lib/systemd/system"
+max_depth = 1
 [[scan.dir]]
-    fpath = "/etc"
-    max_depth = 2
+fpath = "/etc"
+max_depth = 2
 [[scan.dir]]
-    fpath = "/var/www/"
-    max_depth = 12
+fpath = "/var/www/"
+max_depth = 12
 
 
 ### fanotify file monitor config
 [[file_monitor]]
-    path = "/bin"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
+path = "/bin"
+watch_mode = 0
+follow_link = false
+sp_child = ""
 [[file_monitor]]
-    path = "/sbin"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
+path = "/sbin"
+watch_mode = 0
+follow_link = false
+sp_child = ""
 [[file_monitor]]
-    path = "/usr/bin"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
+path = "/usr/bin"
+watch_mode = 0
+follow_link = false
+sp_child = ""
 [[file_monitor]]
-    path = "/usr/sbin"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
+path = "/usr/sbin"
+watch_mode = 0
+follow_link = false
+sp_child = ""
 [[file_monitor]]
-    path = "/usr/local/bin"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
+path = "/usr/local/bin"
+watch_mode = 0
+follow_link = false
+sp_child = ""
 [[file_monitor]]
-    path = "/usr/local/sbin"
-    watch_mode = 0
-    follow_link = false
-    sp_child = ""
+path = "/usr/local/sbin"
+watch_mode = 0
+follow_link = false
+sp_child = ""
 
 
 [file_monitor_filter]
@@ -164,6 +164,4 @@ file_monitor_exe_whitelist = [
     "/lib/systemd/systemd-journald",
 ]
 
-file_monitor_argv_whitelist = [
-    "yum repolist",
-]
+file_monitor_argv_whitelist = ["yum repolist"]

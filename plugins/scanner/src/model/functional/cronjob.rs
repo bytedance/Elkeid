@@ -14,8 +14,15 @@ use walkdir::WalkDir;
 
 use crate::data_type::{ScanTaskProcExe, ScanTaskStaticFile, DETECT_TASK};
 use crate::{
-    config::CLAMAV_MAX_FILESIZE, filter::Filter, get_file_btime, is_filetype_filter_skipped,
+    config::CLAMAV_MAX_FILESIZE, filter::Filter, get_file_btime, get_file_xhash,
+    is_filetype_filter_skipped,
 };
+
+use sysinfo::{
+    Gid, Pid, PidExt, Process, ProcessExt, ProcessRefreshKind, RefreshKind, System, SystemExt, Uid,
+};
+
+use lru_cache::LruCache;
 
 lazy_static! {
     static ref CPU_TICKS: f32 = procfs::ticks_per_second().unwrap() as f32;
@@ -45,6 +52,7 @@ impl Cronjob {
         let filter_dir = Filter::new(100);
         let sender_proc = sender.clone();
         let s_locker_proc = s_locker.clone();
+        let s_locker_dir = s_locker.clone();
         let job_dir = thread::spawn(move || {
             let mut init_flag = false;
             loop {
@@ -107,14 +115,14 @@ impl Cronjob {
                                 size: fsize,
                                 btime: btime,
                             };
-                            while sender_proc.len() > 2 {
+                            while sender.len() > 2 {
                                 std::thread::sleep(Duration::from_secs(8));
                             }
-                            match sender_proc.send(DETECT_TASK::TASK_6051_STATIC_FILE(task)) {
+                            match sender.send(DETECT_TASK::TASK_6051_STATIC_FILE(task)) {
                                 Ok(_) => {}
                                 Err(e) => {
                                     warn!("internal task send err {:?}", e);
-                                    s_locker_proc.send(()).unwrap();
+                                    s_locker_dir.send(()).unwrap();
                                 }
                             };
                         }
@@ -136,41 +144,27 @@ impl Cronjob {
             }
         });
 
-        let mut scan_cache: HashMap<(i32, String), bool> = HashMap::new();
-
+        let mut proc_last_started = Clock::now_since_epoch().as_secs();
+        let mut proc_first_run = true;
+        let mut sys = System::new_with_specifics(
+            RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
+        );
+        let mut scaned_cache = LruCache::new(20480);
         let job_proc = thread::spawn(move || loop {
             let start_timestamp = Clock::now_since_epoch().as_secs();
             info!("[CronjobProc] Scan started at : {}", start_timestamp);
-            let dir_p = fs::read_dir("/proc").unwrap();
-
-            let mut scan_cache_tmp: HashMap<(i32, String), bool> = HashMap::new();
-
-            for each in dir_p {
-                let each_en = match each {
-                    Ok(en) => en,
-                    Err(_) => continue,
-                };
-
-                let pid = match each_en.file_name().to_string_lossy().parse::<i32>() {
-                    Ok(opid) => opid,
-                    Err(_) => continue,
-                };
-
-                let pstr: &str = &format!("/proc/{}/exe", pid);
-                let fp = Path::new(pstr);
-                let (mut fsize, mut btime) = (0, (0, 0));
-                let exe_real = match fs::read_link(fp) {
-                    Ok(pf) => pf.to_string_lossy().to_string(),
-                    Err(_) => "-3".to_string(),
-                };
-
-                if filter_proc.catch(Path::new(&exe_real)) != 0 {
+            sys.refresh_all();
+            let proc_length = sys.processes().len();
+            for (pid, process) in sys.processes() {
+                if !proc_first_run && (process.start_time() < proc_last_started) {
                     continue;
                 }
-
-                let pfstr = format!("/proc/{}/root{}", pid, &exe_real);
-
-                (fsize, btime) = match Path::new(&pfstr).metadata() {
+                let target_path = process.exe();
+                if filter_proc.catch(target_path) != 0 {
+                    continue;
+                }
+                let (mut fsize, mut btime) = (0, (0, 0));
+                (fsize, btime) = match target_path.metadata() {
                     Ok(p) => {
                         let fsize = p.len() as usize;
                         let btime = get_file_btime(&p);
@@ -182,50 +176,31 @@ impl Cronjob {
                 if fsize <= 8 || fsize > *CLAMAV_MAX_FILESIZE {
                     continue;
                 }
-
-                if let Some(_) = scan_cache.get(&(pid, exe_real.to_string())) {
-                    scan_cache_tmp.insert((pid, exe_real.to_string()), true);
+                let exe_hash = get_file_xhash(&format!("/proc/{}/exe", process.pid().as_u32()));
+                if let Some(_) = scaned_cache.get_mut(&exe_hash) {
                     continue;
                 }
-
                 // send to scan
                 let task = ScanTaskProcExe {
-                    pid: pid,
-                    pid_exe: pstr.to_string(),
-                    scan_path: exe_real.to_string(),
+                    pid: pid.as_u32() as _,
+                    pid_exe: process.exe().display().to_string(),
+                    scan_path: process.exe().display().to_string(),
                     size: fsize,
                     btime,
                 };
-
-                while sender.len() > 8 {
-                    std::thread::sleep(Duration::from_secs(8));
+                while sender_proc.len() > 512 {
+                    std::thread::sleep(Duration::from_secs(4));
                 }
-
-                match sender.send(DETECT_TASK::TASK_6052_PROC_EXE(task)) {
+                match sender_proc.send(DETECT_TASK::TASK_6052_PROC_EXE(task)) {
                     Ok(_) => {}
                     Err(e) => {
                         warn!("internal task send err {:?}", e);
-                        s_locker.send(()).unwrap();
+                        s_locker_proc.send(()).unwrap();
                     }
                 };
-                scan_cache_tmp.insert((pid, exe_real.to_string()), true);
-                std::thread::sleep(Duration::from_secs(8));
+                scaned_cache.insert(exe_hash, true);
             }
-
-            scan_cache.clear();
-            for ((ipid, iexe), v) in scan_cache_tmp.into_iter() {
-                scan_cache.insert((ipid, iexe.to_string()), v);
-            }
-
-            // sleep cron_interval
-            let end_timestamp = Clock::now_since_epoch().as_secs();
-            let timecost = end_timestamp - start_timestamp;
-            let left_sleep = 3600 - (timecost % 3600);
-            info!(
-                "[CronjobProc]Scan end at {}, start at {}, cost {}, will sleep {}.",
-                end_timestamp, start_timestamp, timecost, left_sleep
-            );
-            thread::sleep(Duration::from_secs(left_sleep));
+            proc_first_run = false;
         });
         return Self { job_dir, job_proc };
     }

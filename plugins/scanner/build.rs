@@ -34,6 +34,8 @@ mod bindings {
             "CL_INIT_DEFAULT",
             "CL_SCAN_GENERAL_YARAHIT",
             "CL_SCAN_PARSE_ELF",
+            "CL_SCAN_PARSE_PE",
+            "CL_SCAN_PARSE_ARCHIVE",
             "CL_DB_DIRECTORY",
             "cl_error_t_CL_SUCCESS",
             "cl_error_t_CL_CLEAN",
