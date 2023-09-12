@@ -18,10 +18,6 @@ use crate::{
     is_filetype_filter_skipped,
 };
 
-use sysinfo::{
-    Gid, Pid, PidExt, Process, ProcessExt, ProcessRefreshKind, RefreshKind, System, SystemExt, Uid,
-};
-
 use lru_cache::LruCache;
 
 lazy_static! {
@@ -144,27 +140,41 @@ impl Cronjob {
             }
         });
 
-        let mut proc_last_started = Clock::now_since_epoch().as_secs();
-        let mut proc_first_run = true;
-        let mut sys = System::new_with_specifics(
-            RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
-        );
+        let mut last_scaned_timestamp = 0;
+        let mut proc_crobjob_is_first_run = true;
         let mut scaned_cache = LruCache::new(20480);
         let job_proc = thread::spawn(move || loop {
             let start_timestamp = Clock::now_since_epoch().as_secs();
             info!("[CronjobProc] Scan started at : {}", start_timestamp);
-            sys.refresh_all();
-            let proc_length = sys.processes().len();
-            for (pid, process) in sys.processes() {
-                if !proc_first_run && (process.start_time() < proc_last_started) {
-                    continue;
-                }
-                let target_path = process.exe();
-                if filter_proc.catch(target_path) != 0 {
-                    continue;
-                }
+
+            let dir_p = fs::read_dir("/proc").unwrap();
+
+            for each in dir_p {
+                let each_en = match each {
+                    Ok(en) => en,
+                    Err(_) => continue,
+                };
+
+                let pid = match each_en.file_name().to_string_lossy().parse::<i32>() {
+                    Ok(opid) => opid,
+                    Err(_) => continue,
+                };
+
+                let pstr: &str = &format!("/proc/{}/exe", pid);
+                let fp = Path::new(pstr);
                 let (mut fsize, mut btime) = (0, (0, 0));
-                (fsize, btime) = match target_path.metadata() {
+                let exe_real = match fs::read_link(fp) {
+                    Ok(pf) => pf.to_string_lossy().to_string(),
+                    Err(_) => "-3".to_string(),
+                };
+
+                if filter_proc.catch(Path::new(&exe_real)) != 0 {
+                    continue;
+                }
+
+                let pfstr = format!("/proc/{}/root{}", pid, &exe_real);
+
+                (fsize, btime) = match Path::new(&pfstr).metadata() {
                     Ok(p) => {
                         let fsize = p.len() as usize;
                         let btime = get_file_btime(&p);
@@ -176,15 +186,39 @@ impl Cronjob {
                 if fsize <= 8 || fsize > *CLAMAV_MAX_FILESIZE {
                     continue;
                 }
-                let exe_hash = get_file_xhash(&format!("/proc/{}/exe", process.pid().as_u32()));
-                if let Some(_) = scaned_cache.get_mut(&exe_hash) {
-                    continue;
+                if !proc_crobjob_is_first_run {
+                    let process = match procfs::process::Process::new(pid) {
+                        Ok(p) => p,
+                        Err(_) => continue,
+                    };
+                    let process_stat = match process.stat() {
+                        Ok(st) => st,
+                        Err(_) => continue,
+                    };
+                    let process_starttime = match process_stat.starttime() {
+                        Ok(st) => st.timestamp() as u64,
+                        Err(_) => continue,
+                    };
+                    if process_starttime < last_scaned_timestamp {
+                        continue;
+                    }
                 }
+
+                let exe_hash = get_file_xhash(&format!("/proc/{}/exe", pid));
+
+                if !proc_crobjob_is_first_run {
+                    if let Some(_) = scaned_cache.get_mut(&exe_hash) {
+                        if &exe_hash != "-3" {
+                            continue;
+                        }
+                    }
+                }
+                scaned_cache.insert(exe_hash, true);
                 // send to scan
                 let task = ScanTaskProcExe {
-                    pid: pid.as_u32() as _,
-                    pid_exe: process.exe().display().to_string(),
-                    scan_path: process.exe().display().to_string(),
+                    pid: pid,
+                    pid_exe: pstr.to_string(),
+                    scan_path: exe_real.to_string(),
                     size: fsize,
                     btime,
                 };
@@ -198,9 +232,10 @@ impl Cronjob {
                         s_locker_proc.send(()).unwrap();
                     }
                 };
-                scaned_cache.insert(exe_hash, true);
             }
-            proc_first_run = false;
+            last_scaned_timestamp = Clock::now_since_epoch().as_secs();
+            std::thread::sleep(Duration::from_secs(30));
+            proc_crobjob_is_first_run = false;
         });
         return Self { job_dir, job_proc };
     }

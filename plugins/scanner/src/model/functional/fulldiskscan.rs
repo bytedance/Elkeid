@@ -127,7 +127,7 @@ impl SuperDetector {
                         },
                         DETECT_TASK::TASK_6052_PROC_EXE(t) =>{
                             debug!("scan pid {:?}",t.pid);
-                            match self.scanner.scan_fast(&t.scan_path){
+                            match self.scanner.scan_fast(&format!("/proc/{}/exe",t.pid)){
                                 Ok((ftype,fclass,fname,xhash,md5sum,matched_data)) => {
                                     let event = DetectProcEvent::new(
                                             t.pid,
@@ -145,7 +145,7 @@ impl SuperDetector {
 
                                     if &ftype != "not_detected"{
                                         info!("[FullScan]filepath:{} filesize:{} md5sum:{} create_at:{} motidy_at:{} types:{} class:{}name:{}",
-                                            &t.scan_path,
+                                            &format!("/proc/{}/exe",t.pid),
                                             &t.size,
                                             &md5sum,
                                             &t.btime.0,
