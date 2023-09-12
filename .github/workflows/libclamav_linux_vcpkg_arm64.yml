@@ -30,7 +30,7 @@ jobs:
 
     - name: Extract libclamav
       id: extract-libclamav
-      uses: shrink/actions-docker-extract@v1
+      uses: shrink/actions-docker-extract@v2
       with:
         image: elkeid/libclamav_aarch64:latest
         path: /Elkeid/plugins/scanner/output/.
@@ -39,5 +39,5 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: libclamav_linux_vcpkg_arm64
-        path: ${{ steps.extract-scanner.outputs.destination }}/*
+        path: ${{ steps.extract-libclamav.outputs.destination }}/*
         

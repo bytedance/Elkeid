@@ -3,12 +3,12 @@ FROM debian:bullseye
 SHELL ["/bin/bash", "-c"]
 
 RUN apt update
-RUN apt-get install -y apt-utils gnutls-bin rsync
+RUN apt-get install -y apt-utils gnutls-bin rsync 
 RUN apt-get install -y apt-transport-https ca-certificates debian-archive-keyring
-RUN apt-get install -y bison autoconf gettext curl unzip git wget curl
+RUN apt-get install -y bison autoconf gettext curl unzip git wget curl zip tar 
 RUN apt-get install -y python3.9 python3-pip python3.9-dev libc-dev
 RUN apt-get install -y clang llvm flex ninja-build lsb-release
-RUN apt-get install -y libstdc++-10-dev cmake make libpcre2-dev gcc g++
+RUN apt-get install -y libstdc++-10-dev cmake make libpcre2-dev gcc g++ 
 
 ARG DEBIAN_FRONTEND=noninteractive
 ENV PATH=/root/.cargo/bin:$PATH
