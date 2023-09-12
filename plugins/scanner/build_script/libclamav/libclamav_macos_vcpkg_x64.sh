@@ -1,6 +1,7 @@
 export VCPKG_DEFAULT_TRIPLET="x64-osx-static"
 export RUSTC_TARGET="x86_64-apple-darwin"
 export TARGET_ARCH="x64"
+export VCPKG_FORCE_SYSTEM_BINARIES=0
 
 rustup target add $RUSTC_TARGET
 
