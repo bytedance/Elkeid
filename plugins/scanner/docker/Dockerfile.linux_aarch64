@@ -22,8 +22,13 @@ RUN echo 'export RUSTUP_HOME=/opt/rust' >> /etc/profile
 RUN echo 'export PATH=/opt/rust/bin:$PATH' >> /root/.bashrc
 RUN echo 'export RUSTUP_HOME=/opt/rust' >> /root/.bashrc
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |  bash -s -- -y
 RUN source /opt/rust/env
+RUN source ~/.bashrc
+
+
+ENV PATH="/opt/rust/bin:${PATH}"
+
 RUN rustup update
 RUN rustup target add aarch64-unknown-linux-gnu
 
