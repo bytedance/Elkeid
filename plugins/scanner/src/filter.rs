@@ -11,8 +11,11 @@ impl Filter {
         let mut set = HashSet::with_capacity(capacity);
         // add agent_path
         if let Ok(self_exe_path) = std::env::current_dir() {
-            if let Some(agent_path) = self_exe_path.parent() {
-                set.insert(agent_path.to_string_lossy().to_string());
+            if let Some(scanner_path) = self_exe_path.parent() {
+                set.insert(scanner_path.to_string_lossy().to_string());
+                if let Some(agent_path) = scanner_path.parent() {
+                    set.insert(agent_path.to_string_lossy().to_string());
+                }
             }
         }
         for each in &*SCAN_DIR_FILTER {
