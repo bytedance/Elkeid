@@ -1,14 +1,12 @@
 #!/bin/bash
 
-# CWD=elkeid/plugins/scanner
+cd /Elkeid/plugins/scanner
 rm -rf clamav clamav-mussels-cookbook lib include
 
 mv /LibClamavDocker/clamav .
 mv /LibClamavDocker/clamav-mussels-cookbook .
 mv /LibClamavDocker/lib .
 mv /LibClamavDocker/include .
-rm rust-toolchain
-rustup update
 rustup target add x86_64-unknown-linux-musl
 
 CC="x86_64-linux-musl-gcc" CXX="x86_64-linux-musl-c++" RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --bin scanner_plugin --target x86_64-unknown-linux-musl
