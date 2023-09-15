@@ -40,7 +40,7 @@ jobs:
       uses: shrink/actions-docker-extract@v3
       with:
         image: elkeid/scanner_aarch64:latest
-        path: /Elkeid/plugins/scanner/output/.
+        path: /scanner-aarch64.tar.gz
 
     - name: Upload Scanner
       uses: actions/upload-artifact@v3
@@ -69,7 +69,7 @@ jobs:
       uses: shrink/actions-docker-extract@v3
       with:
         image: scanner_x86_64:latest
-        path: /Elkeid/plugins/scanner/output/.
+        path: /scanner-x86_64.tar.gz
 
     - name: Upload Scanner
       uses: actions/upload-artifact@v3

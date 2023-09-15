@@ -24,4 +24,7 @@ RUN mv archive_db_default_20221206.zip ./tmp
 RUN strip scanner
 RUN tar zcvf scanner-x86_64.tar.gz scanner tmp elkeid_targets settings.toml
 RUN rm -rf tmp scanner elkeid_targets settings.toml
-
+RUN rm -rf /opt/*
+RUN mv scanner-x86_64.tar.gz /scanner-x86_64.tar.gz
+WORKDIR /
+RUN rm -rf /Elkeid
