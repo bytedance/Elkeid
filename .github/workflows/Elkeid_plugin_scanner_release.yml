@@ -27,7 +27,7 @@ jobs:
 
     - name: Build Scanner
       run: |
-        docker run --rm -it --pull=always -v $(pwd):/Elkeid kulukami/libclamav_icm_aarch64 \
+        docker run --rm  --pull=always -v $(pwd):/Elkeid kulukami/libclamav_icm_aarch64 \
         bash /Elkeid/plugins/scanner/docker/build_linux_aarch64.sh
 
     - name: Upload Scanner
@@ -46,7 +46,7 @@ jobs:
 
     - name: Build Scanner
       run: |
-        docker run --rm -it --pull=always -v $(pwd):/Elkeid kulukami/libclamav_icm_x86_64 \
+        docker run --rm  --pull=always -v $(pwd):/Elkeid kulukami/libclamav_icm_x86_64 \
         bash /Elkeid/plugins/scanner/docker/build_linux_x86_64.sh
 
     - name: Upload Scanner
