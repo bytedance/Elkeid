@@ -60,16 +60,15 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         file: plugins/scanner/docker/Dockerfile.x86_64
-        context: .
+        repository: scanner_x86_64
+        tags: latest
         push: false
         load: true
-        tags: elkeid/scanner_x86_64:latest
-
     - name: Extract Scanner
       id: extract-scanner
       uses: shrink/actions-docker-extract@v3
       with:
-        image: elkeid/scanner_x86_64:latest
+        image: scanner_x86_64:latest
         path: /Elkeid/plugins/scanner/output/.
 
     - name: Upload Scanner
