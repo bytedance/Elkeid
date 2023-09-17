@@ -32,6 +32,7 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 		mqMsg.DataType = req.GetData()[k].DataType
 		mqMsg.AgentTime = req.GetData()[k].Timestamp
 		mqMsg.Body = req.GetData()[k].Body
+		mqMsg.AppendedBody = req.GetData()[k].AppendedBody
 		mqMsg.AgentID = req.AgentID
 		mqMsg.IntranetIPv4 = inIpv4
 		mqMsg.ExtranetIPv4 = exIpv4

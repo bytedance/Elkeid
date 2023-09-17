@@ -20,27 +20,38 @@ message Record{
   int32 DataType = 1;
   int64 Timestamp = 2;
   bytes Body = 3;
+  bytes AppendedBody = 4;
 }
 
 message Item{
   map<string,string> Fields = 1;
 }
 
+message Field {
+  string key = 1;
+  string value = 2;
+}
+
+message ItemArray {
+  repeated Field fields = 1;
+}
+
+
 //server --> agent
 message Command {
-  int32 AgentCtrl = 1; // Agent control command
-  PluginTask Task = 2; // Agent task
-  repeated ConfigItem Config = 3; // Plugin/Agent-host config
+  int32 AgentCtrl = 1; // 控制指令
+  PluginTask Task = 2; // 功能模块指令
+  repeated ConfigItem Config = 3;
 }
 
 message PluginTask{
-  //DataType which used to uniquely identify different  format of Data
+  //新增DataType对Data进行控制
   int32 DataType = 1;
-  // Plugin name, which used to uniquely identify different plugins
+  // 插件名字
   string Name = 2;
-  // Data transparently transmitted to the plugin
+  // JSON
   string Data = 3;
-  // The token is used for reconciliation
+  // 对账
   string Token = 4;
 }
 
@@ -70,12 +81,15 @@ message MQData{
   string Version = 10;
   string Product = 11;
 
-  //Fields completed on the server
+  //server端补全字段
   int64  SvrTime = 12;
-  string PSMName = 13;    //Used to identify business
-  string PSMPath = 14;    //Used to identify business
-  string Tag = 15;        //Used to identify agent group
-  string Enhanced = 16;   //Used to identify protection level
+  string PSMName = 13;
+  string PSMPath = 14;
+  string Tag = 15;
+  string Enhanced = 16;
+  string IsHoneypot = 17;
+
+  bytes AppendedBody = 18;
 }
 
 //bmq --> Rule engine
@@ -93,11 +107,16 @@ message MQRawData{
   string Version = 10;
   string Product = 11;
 
-  //Fields completed on the server
+  //server端补全字段
   int64  SvrTime = 12;
-  string PSMName = 13;    //Used to identify business
-  string PSMPath = 14;    //Used to identify business
-  string Tags = 15;        //Used to identify agent group
+  string PSMName = 13;
+  string PSMPath = 14;
+  string Tag = 15;
+  string Enhanced = 16;
+  string IsHoneypot = 17;
+
+  //agent appended字段
+  ItemArray AppendedBody = 18;
 }
 
 service Transfer {
@@ -130,4 +149,57 @@ message DownloadResponse {
 service FileExt {
   rpc Upload(stream UploadRequest) returns (UploadResponse);
   rpc Download(DownloadRequest) returns (stream DownloadResponse);
+}
+
+//pb for config refresh
+message ConfigRefreshRequest{
+  string AgentID = 1;
+  string PluginName = 2;
+  repeated ConfigFingerPrint Fingerprint  = 3;
+}
+
+message ConfigFingerPrint{
+  string Path = 1;
+  string Hash = 2;
+  enum StatusCode {
+    Exist = 0;
+    Nonexistent = 1;
+  }
+  StatusCode Status = 3;
+}
+
+message ConfigRefreshResponse{
+  string PluginName = 1;
+  string SecretKey = 2; //预留字段，默认使用default_key加解密
+  string Version = 3;
+  string Release = 4;
+  enum StatusCode {
+    SUCCESS = 0;
+    FAILED = 1;
+  }
+  StatusCode Status = 5;
+  repeated ConfigDetail Config  = 6;
+}
+
+message ConfigDetail {
+  string Path = 1;
+  enum StatusCode {
+    SUCCESS = 0;
+    FAILED = 1;
+  }
+  StatusCode Status = 2;
+  string Data = 3; // type = config/file 的时候使用
+  enum TypeCode {
+    File = 0;
+    Config = 1;
+    Remove = 2;
+  }
+  TypeCode Type = 4;
+  string Hash = 5;    //文件hash，type = config 的时候使用
+  string Detail = 6;
+}
+
+
+service ConfigExt {
+  rpc CheckConfig(ConfigRefreshRequest) returns (ConfigRefreshResponse);
 }
