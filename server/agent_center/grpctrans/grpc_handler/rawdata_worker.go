@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/bytedance/Elkeid/server/agent_center/common"
-	"github.com/bytedance/Elkeid/server/agent_center/common/kafka"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/pool"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
@@ -28,7 +27,8 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 		ylog.Debugf("handleRawData", "Num:%d Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
 
 		//Loading from the object pool, which can improve performance
-		mqMsg := kafka.MQMsgPool.Get().(*pb.MQData)
+		//mqMsg := kafka.MQMsgPool.Get().(*pb.MQData)
+		mqMsg := &pb.MQData{}
 		mqMsg.DataType = req.GetData()[k].DataType
 		mqMsg.AgentTime = req.GetData()[k].Timestamp
 		mqMsg.Body = req.GetData()[k].Body
