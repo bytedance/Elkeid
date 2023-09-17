@@ -9,20 +9,6 @@ import (
 	"github.com/Shopify/sarama"
 )
 
-//var (
-//MQMsgPool = &sync.Pool{
-//	New: func() interface{} {
-//		return &pb.MQData{}
-//	},
-//}
-
-//	mqProducerMessagePool = &sync.Pool{
-//		New: func() interface{} {
-//			return &sarama.ProducerMessage{}
-//		},
-//	}
-//)
-
 var json = jsoniter.Config{
 	EscapeHTML:             false, //不进行html转义
 	SortMapKeys:            false,
@@ -110,8 +96,6 @@ func newProducerWithConfig(addrs []string, topic string, config *sarama.Config) 
 		for {
 			select {
 			case succ := <-producer.Successes():
-				//Put back to sync.pool
-				//mqProducerMessagePool.Put(succ)
 				ylog.Debugf("KAFKA", "send msg succ, topic:%s, patition:%d, offset:%d", succ.Topic, succ.Partition, succ.Offset)
 
 			case err := <-producer.Errors():
@@ -125,9 +109,6 @@ func newProducerWithConfig(addrs []string, topic string, config *sarama.Config) 
 
 // Send 发送
 func (p *Producer) SendPBWithKey(key string, msg proto.Message) {
-	//defer func() {
-	//	MQMsgPool.Put(msg)
-	//}()
 	b, err := PBSerialize(msg)
 	if err != nil {
 		ylog.Errorf("KAFKA", "SendPBWithKey Error %s", err.Error())

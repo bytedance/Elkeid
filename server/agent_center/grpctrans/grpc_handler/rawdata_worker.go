@@ -26,29 +26,11 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 	for k, v := range req.GetData() {
 		ylog.Debugf("handleRawData", "Num:%d Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
 
-		//Loading from the object pool, which can improve performance
-		//mqMsg := kafka.MQMsgPool.Get().(*pb.MQData)
 		mqMsg := &pb.MQData{}
 		mqMsg.DataType = req.GetData()[k].DataType
 		mqMsg.AgentTime = req.GetData()[k].Timestamp
 		mqMsg.Body = req.GetData()[k].Body
 		mqMsg.AppendedBody = req.GetData()[k].AppendedBody
-		//add test
-		tmp := &pb.ItemArray{}
-		tmpErr := proto.Unmarshal(mqMsg.AppendedBody, tmp)
-		if tmpErr != nil {
-			ylog.Errorf("handleRawData", "Unmarshal Error %s, Num:%d Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", tmpErr.Error(), k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
-			ylog.Errorf("handleRawData", "%v", mqMsg.AppendedBody)
-
-			rcBy, tmpErr := proto.Marshal(req.GetData()[k])
-			if tmpErr != nil {
-				ylog.Errorf("handleRawData_ALL_Byte", "err %s", tmpErr.Error())
-			} else {
-				ylog.Errorf("handleRawData_ALL_Byte", "%v", rcBy)
-			}
-			continue
-		}
-		//
 		mqMsg.AgentID = req.AgentID
 		mqMsg.IntranetIPv4 = inIpv4
 		mqMsg.ExtranetIPv4 = exIpv4
