@@ -33,6 +33,14 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 		mqMsg.AgentTime = req.GetData()[k].Timestamp
 		mqMsg.Body = req.GetData()[k].Body
 		mqMsg.AppendedBody = req.GetData()[k].AppendedBody
+		//add test
+		tmp := &pb.ItemArray{}
+		tmpErr := proto.Unmarshal(mqMsg.AppendedBody, tmp)
+		if tmpErr != nil {
+			ylog.Errorf("handleRawData", "Unmarshal Error %s, Num:%d Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", tmpErr.Error(), k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
+			continue
+		}
+		//
 		mqMsg.AgentID = req.AgentID
 		mqMsg.IntranetIPv4 = inIpv4
 		mqMsg.ExtranetIPv4 = exIpv4
