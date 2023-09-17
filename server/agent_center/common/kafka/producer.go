@@ -2,28 +2,26 @@ package kafka
 
 import (
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
-	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/gogo/protobuf/proto"
 	jsoniter "github.com/json-iterator/go"
-	"sync"
 	"time"
 
 	"github.com/Shopify/sarama"
 )
 
-var (
-	MQMsgPool = &sync.Pool{
-		New: func() interface{} {
-			return &pb.MQData{}
-		},
-	}
+//var (
+//MQMsgPool = &sync.Pool{
+//	New: func() interface{} {
+//		return &pb.MQData{}
+//	},
+//}
 
-	mqProducerMessagePool = &sync.Pool{
-		New: func() interface{} {
-			return &sarama.ProducerMessage{}
-		},
-	}
-)
+//	mqProducerMessagePool = &sync.Pool{
+//		New: func() interface{} {
+//			return &sarama.ProducerMessage{}
+//		},
+//	}
+//)
 
 var json = jsoniter.Config{
 	EscapeHTML:             false, //不进行html转义
@@ -47,7 +45,7 @@ type Producer struct {
 	Topic    string
 }
 
-//NewProducer creates kafka async producer
+// NewProducer creates kafka async producer
 func NewProducerWithLog(addrs []string, topic, clientID, logPath, userName, passWord string, enableAuth bool) (*Producer, error) {
 	logger := ylog.NewYLog(
 		ylog.WithLogFile(logPath),
@@ -78,7 +76,7 @@ func NewProducerWithLog(addrs []string, topic, clientID, logPath, userName, pass
 	return newProducerWithConfig(addrs, topic, config)
 }
 
-//NewProducer creates kafka async producer
+// NewProducer creates kafka async producer
 func NewProducer(addrs []string, topic string, clientID string) (*Producer, error) {
 	//initial config and log
 	config := sarama.NewConfig()
@@ -93,7 +91,7 @@ func NewProducer(addrs []string, topic string, clientID string) (*Producer, erro
 	return newProducerWithConfig(addrs, topic, config)
 }
 
-//newProducerWithConfig creates kafka async producer
+// newProducerWithConfig creates kafka async producer
 func newProducerWithConfig(addrs []string, topic string, config *sarama.Config) (*Producer, error) {
 	//create async producer
 	client, err := sarama.NewClient(addrs, config)
@@ -113,7 +111,7 @@ func newProducerWithConfig(addrs []string, topic string, config *sarama.Config) 
 			select {
 			case succ := <-producer.Successes():
 				//Put back to sync.pool
-				mqProducerMessagePool.Put(succ)
+				//mqProducerMessagePool.Put(succ)
 				ylog.Debugf("KAFKA", "send msg succ, topic:%s, patition:%d, offset:%d", succ.Topic, succ.Partition, succ.Offset)
 
 			case err := <-producer.Errors():
@@ -127,16 +125,16 @@ func newProducerWithConfig(addrs []string, topic string, config *sarama.Config) 
 
 // Send 发送
 func (p *Producer) SendPBWithKey(key string, msg proto.Message) {
-	defer func() {
-		MQMsgPool.Put(msg)
-	}()
+	//defer func() {
+	//	MQMsgPool.Put(msg)
+	//}()
 	b, err := PBSerialize(msg)
 	if err != nil {
 		ylog.Errorf("KAFKA", "SendPBWithKey Error %s", err.Error())
 		return
 	}
 
-	proMsg := mqProducerMessagePool.Get().(*sarama.ProducerMessage)
+	proMsg := &sarama.ProducerMessage{}
 	proMsg.Topic = p.Topic
 	proMsg.Value = sarama.ByteEncoder(b)
 	proMsg.Key = sarama.StringEncoder(key)
@@ -152,7 +150,7 @@ func (p *Producer) SendJsonWithKey(key string, msg interface{}) {
 		return
 	}
 
-	proMsg := mqProducerMessagePool.Get().(*sarama.ProducerMessage)
+	proMsg := &sarama.ProducerMessage{}
 	proMsg.Topic = p.Topic
 	proMsg.Value = sarama.ByteEncoder(b)
 	proMsg.Key = sarama.StringEncoder(key)
