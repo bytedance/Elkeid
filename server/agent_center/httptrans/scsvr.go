@@ -47,6 +47,8 @@ func runAPIServer(port int, enableSSL, enableAuth bool, certFile, keyFile string
 		apiGroup.POST("/command/", http_handler.PostCommand) //Post commands to the agent
 
 		apiGroup.GET("/kube/cluster/list", http_handler.ClusterList)
+
+		apiGroup.POST("/config/update", http_handler.UpdateAgentConfig)
 	}
 
 	var err error

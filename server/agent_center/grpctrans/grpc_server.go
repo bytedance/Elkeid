@@ -110,6 +110,11 @@ func runServer(enableCA bool, port int, crtFile, keyFile, caFile string) {
 	fileHandler := &grpc_handler.FileExtHandler{FileBaseDir: common.FileDir}
 	fileHandler.Init()
 	pb.RegisterFileExtServer(server, fileHandler)
+
+	configHandler := &grpc_handler.ConfigExtHandler{}
+	configHandler.Init()
+	configHandler.SetGlobal()
+	pb.RegisterConfigExtServer(server, configHandler)
 	reflection.Register(server)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))

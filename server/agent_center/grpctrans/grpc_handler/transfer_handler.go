@@ -77,6 +77,12 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 	defer func() {
 		ylog.Infof("Transfer", "now delete %s ", agentID)
 		GlobalGRPCPool.Delete(agentID)
+
+		//删除配置
+		if GlobalConfigHandler != nil {
+			GlobalConfigHandler.Delete(agentID)
+		}
+
 		releaseAgentHeartbeatMetrics(agentID)
 
 		client.HBWriter.Evict(client.HeartBeatEvictModel{
