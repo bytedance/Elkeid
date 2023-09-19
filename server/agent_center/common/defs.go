@@ -45,18 +45,23 @@ var (
 )
 
 type ConfigReleaseInfo struct {
-	AgentID string                              `json:"agent_id"`
-	Plugin  string                              `json:"plugin"`
-	Status  pb.ConfigRefreshResponse_StatusCode `json:"status"`
-	Release string                              `json:"release"`
+	AgentID string              `json:"agent_id"`
+	Plugin  string              `json:"plugin"`
+	Status  pb.ConfigStatusCode `json:"status"`
+	Release uint64              `json:"release"`
 }
 
 type ConfigRefreshResponse struct {
-	AgentID    string                              `json:"agent_id"`
-	PluginName string                              `json:"plugin,omitempty"`
-	SecretKey  string                              `json:"secret_key,omitempty"`
-	Version    string                              `json:"version,omitempty"`
-	Release    string                              `json:"release,omitempty"`
-	Status     pb.ConfigRefreshResponse_StatusCode `json:"status,omitempty"`
-	Config     []*pb.ConfigDetail                  `json:"configs,omitempty"`
+	AgentID    string              `json:"agent_id"`
+	PluginName string              `json:"plugin,omitempty"`
+	SecretKey  string              `json:"secret_key,omitempty"`
+	Version    string              `json:"version,omitempty"`
+	Release    uint64              `json:"release,omitempty"`
+	Status     pb.ConfigStatusCode `json:"status,omitempty"`
+	Config     []*pb.ConfigDetail  `json:"configs,omitempty"`
+}
+
+type Response struct {
+	Code    int    `json:"code"`
+	Message string `json:"msg"`
 }

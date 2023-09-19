@@ -152,6 +152,22 @@ service FileExt {
 }
 
 //pb for config refresh
+enum ConfigStatusCode {
+  SUCCESS = 0;
+  FAILED = 1;
+}
+
+enum ConfigTypeCode {
+  File = 0;
+  Config = 1;
+  Remove = 2;
+}
+
+enum ConfigFPStatusCode {
+  Exist = 0;
+  Nonexistent = 1;
+}
+
 message ConfigRefreshRequest{
   string AgentID = 1;
   string PluginName = 2;
@@ -161,40 +177,23 @@ message ConfigRefreshRequest{
 message ConfigFingerPrint{
   string Path = 1;
   string Hash = 2;
-  enum StatusCode {
-    Exist = 0;
-    Nonexistent = 1;
-  }
-  StatusCode Status = 3;
+  ConfigFPStatusCode Status = 3;
 }
 
 message ConfigRefreshResponse{
   string PluginName = 1;
   string SecretKey = 2; //预留字段，默认使用default_key加解密
   string Version = 3;
-  string Release = 4;
-  enum StatusCode {
-    SUCCESS = 0;
-    FAILED = 1;
-  }
-  StatusCode Status = 5;
+  uint64 Release = 4;
+  ConfigStatusCode Status = 5;
   repeated ConfigDetail Config  = 6;
 }
 
 message ConfigDetail {
   string Path = 1;
-  enum StatusCode {
-    SUCCESS = 0;
-    FAILED = 1;
-  }
-  StatusCode Status = 2;
-  string Data = 3; // type = config/file 的时候使用
-  enum TypeCode {
-    File = 0;
-    Config = 1;
-    Remove = 2;
-  }
-  TypeCode Type = 4;
+  ConfigStatusCode Status = 2;
+  string Data = 3;    // type = config/file 的时候使用
+  ConfigTypeCode Type = 4;
   string Hash = 5;    //文件hash，type = config 的时候使用
   string Detail = 6;
 }

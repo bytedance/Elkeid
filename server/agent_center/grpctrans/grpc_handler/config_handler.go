@@ -2,6 +2,7 @@ package grpc_handler
 
 import (
 	"context"
+	"fmt"
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
@@ -24,7 +25,7 @@ type FingerPrint struct {
 	AgentID    string
 	PluginName string
 	SecretKey  string
-	Release    string
+	Release    uint64
 	Version    string
 	Items      map[string]*pb.ConfigFingerPrint //path:ConfigFingerPrint
 }
@@ -98,6 +99,7 @@ func (c *ConfigExtHandler) VerifyAndUpdateRelease(ri []*common.ConfigReleaseInfo
 func (c *ConfigExtHandler) GetFingerPrint(agentID, plugin string) *FingerPrint {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
+	fmt.Println("GetFingerPrint cache", agentID, plugin, len(c.cache), c.cache[agentID+plugin])
 	if cache, ok := c.cache[agentID+plugin]; ok {
 		return cache
 	}
@@ -122,13 +124,22 @@ func (c *ConfigExtHandler) writeCache(cr *common.ConfigRefreshResponse) {
 		SecretKey:  cr.SecretKey,
 		Release:    cr.Release,
 		Version:    cr.Version,
-		Items:      nil,
+		Items:      map[string]*pb.ConfigFingerPrint{},
 	}
 	for _, v := range cr.Config {
+		//跳过无关文件
+		if v.Status == pb.ConfigStatusCode_FAILED && len(v.Data) == 0 {
+			continue
+		}
+
+		status := pb.ConfigFPStatusCode_Exist
+		if v.Type == pb.ConfigTypeCode_Remove {
+			status = pb.ConfigFPStatusCode_Nonexistent
+		}
 		tmp.Items[v.Path] = &pb.ConfigFingerPrint{
 			Path:   v.Path,
 			Hash:   v.Hash,
-			Status: pb.ConfigFingerPrint_StatusCode(v.Status),
+			Status: status,
 		}
 	}
 
@@ -140,15 +151,19 @@ func (c *ConfigExtHandler) writeCache(cr *common.ConfigRefreshResponse) {
 func (c *ConfigExtHandler) CheckConfig(ctx context.Context, request *pb.ConfigRefreshRequest) (*pb.ConfigRefreshResponse, error) {
 	localFP := c.GetFingerPrint(request.AgentID, request.PluginName)
 	checkSuccess := true
+	hitCount := 0
+
 	if localFP != nil {
 		for _, v := range request.GetFingerprint() {
 			item, ok := localFP.Items[v.Path]
 			if ok && item.Hash == v.Hash && item.Status == v.Status {
-				continue
+				//命中
+				hitCount++
 			}
-			//插件配置与localCache不匹配，去远端校验
+		}
+
+		if hitCount < len(localFP.Items) {
 			checkSuccess = false
-			break
 		}
 	} else {
 		checkSuccess = false
@@ -156,7 +171,7 @@ func (c *ConfigExtHandler) CheckConfig(ctx context.Context, request *pb.ConfigRe
 
 	res := &pb.ConfigRefreshResponse{
 		PluginName: request.PluginName,
-		Status:     pb.ConfigRefreshResponse_SUCCESS,
+		Status:     pb.ConfigStatusCode_SUCCESS,
 		Config:     make([]*pb.ConfigDetail, 0),
 	}
 
@@ -172,12 +187,7 @@ func (c *ConfigExtHandler) CheckConfig(ctx context.Context, request *pb.ConfigRe
 	freshRequest := &pb.ConfigRefreshRequest{
 		AgentID:     request.AgentID,
 		PluginName:  request.PluginName,
-		Fingerprint: make([]*pb.ConfigFingerPrint, 0),
-	}
-	if localFP != nil {
-		for k, _ := range localFP.Items {
-			freshRequest.Fingerprint = append(freshRequest.Fingerprint, localFP.Items[k])
-		}
+		Fingerprint: request.GetFingerprint(),
 	}
 	freshResponse, err := client.CheckCommonConfig(freshRequest)
 	if err != nil {
@@ -187,7 +197,18 @@ func (c *ConfigExtHandler) CheckConfig(ctx context.Context, request *pb.ConfigRe
 
 	//将结果刷新到本地缓存
 	c.writeCache(freshResponse)
+
+	//将结果封装返回远端
+	status := pb.ConfigStatusCode_SUCCESS
 	for _, v := range freshResponse.Config {
+		//跳过无关文件
+		if v.Status == pb.ConfigStatusCode_FAILED && len(v.Data) == 0 {
+			continue
+		}
+
+		if v.Status == pb.ConfigStatusCode_FAILED {
+			status = pb.ConfigStatusCode_FAILED
+		}
 		res.Config = append(res.Config, &pb.ConfigDetail{
 			Path:   v.Path,
 			Status: v.Status,
@@ -198,5 +219,6 @@ func (c *ConfigExtHandler) CheckConfig(ctx context.Context, request *pb.ConfigRe
 		})
 
 	}
+	res.Status = status
 	return res, nil
 }

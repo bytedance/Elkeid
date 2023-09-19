@@ -120,6 +120,8 @@ type ResCheckCommonConfig struct {
 }
 
 func CheckCommonConfig(fp *pb.ConfigRefreshRequest) (*common.ConfigRefreshResponse, error) {
+	tmp, _ := json.Marshal(fp)
+	fmt.Println("CheckCommonConfig:", string(tmp))
 	rOption := &grequests.RequestOptions{
 		JSON: fp,
 	}
@@ -133,7 +135,8 @@ func CheckCommonConfig(fp *pb.ConfigRefreshRequest) (*common.ConfigRefreshRespon
 		ylog.Errorf("CheckCommonConfig", "response code is not 200, AgentID: %s, StatusCode: %d,String: %s", fp.AgentID, resp.StatusCode, resp.String())
 		return nil, errors.New("status code is not ok")
 	}
-	var res = &ResCheckCommonConfig{}
+
+	var res = &common.Response{}
 	err = json.Unmarshal(resp.Bytes(), res)
 	if err != nil {
 		ylog.Errorf("CheckCommonConfig", "agentID: %s, error: %s, resp:%s", fp.AgentID, err.Error(), resp.String())
@@ -143,7 +146,15 @@ func CheckCommonConfig(fp *pb.ConfigRefreshRequest) (*common.ConfigRefreshRespon
 		ylog.Errorf("CheckCommonConfig", "response code is not 0, agentID: %s, resp: %s", fp.AgentID, resp.String())
 		return nil, errors.New("response code is not 0")
 	}
-	return res.Data, nil
+
+	var resConfig = &ResCheckCommonConfig{}
+	err = json.Unmarshal(resp.Bytes(), resConfig)
+	if err != nil {
+		ylog.Errorf("CheckCommonConfig", "agentID: %s, error: %s, resp:%s", fp.AgentID, err.Error(), resp.String())
+		return nil, err
+	}
+	fmt.Println("CheckCommonConfig:", string(resp.Bytes()))
+	return resConfig.Data, nil
 }
 
 type ResVerifyCommonConfig struct {
@@ -153,6 +164,9 @@ type ResVerifyCommonConfig struct {
 }
 
 func VerifyCommonConfigRelease(ri []*common.ConfigReleaseInfo) ([]*common.ConfigReleaseInfo, error) {
+	tmp, _ := json.Marshal(ri)
+	fmt.Println("VerifyCommonConfigRelease:", string(tmp))
+
 	rOption := &grequests.RequestOptions{
 		JSON: ri,
 	}
@@ -166,7 +180,8 @@ func VerifyCommonConfigRelease(ri []*common.ConfigReleaseInfo) ([]*common.Config
 		ylog.Errorf("VerifyCommonConfigRelease", "response code is not 200, StatusCode: %d,String: %s", resp.StatusCode, resp.String())
 		return nil, errors.New("status code is not ok")
 	}
-	var res = &ResVerifyCommonConfig{}
+
+	var res = &common.Response{}
 	err = json.Unmarshal(resp.Bytes(), res)
 	if err != nil {
 		ylog.Errorf("VerifyCommonConfigRelease", "error: %s, resp:%s", err.Error(), resp.String())
@@ -176,5 +191,14 @@ func VerifyCommonConfigRelease(ri []*common.ConfigReleaseInfo) ([]*common.Config
 		ylog.Errorf("VerifyCommonConfigRelease", "response code is not 0, resp: %s", resp.String())
 		return nil, errors.New("response code is not 0")
 	}
-	return res.Data, nil
+
+	var resConfig = &ResVerifyCommonConfig{}
+	err = json.Unmarshal(resp.Bytes(), resConfig)
+	if err != nil {
+		ylog.Errorf("VerifyCommonConfigRelease", "error: %s, resp:%s", err.Error(), resp.String())
+		return nil, err
+	}
+
+	fmt.Println("VerifyCommonConfigRelease:", string(resp.Bytes()))
+	return resConfig.Data, nil
 }
