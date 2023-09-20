@@ -2,7 +2,6 @@ package grpc_handler
 
 import (
 	"context"
-	"fmt"
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
@@ -99,7 +98,6 @@ func (c *ConfigExtHandler) VerifyAndUpdateRelease(ri []*common.ConfigReleaseInfo
 func (c *ConfigExtHandler) GetFingerPrint(agentID, plugin string) *FingerPrint {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	fmt.Println("GetFingerPrint cache", agentID, plugin, len(c.cache), c.cache[agentID+plugin])
 	if cache, ok := c.cache[agentID+plugin]; ok {
 		return cache
 	}
@@ -128,7 +126,7 @@ func (c *ConfigExtHandler) writeCache(cr *common.ConfigRefreshResponse) {
 	}
 	for _, v := range cr.Config {
 		//跳过无关文件
-		if v.Status == pb.ConfigStatusCode_FAILED && len(v.Data) == 0 {
+		if v.Type != pb.ConfigTypeCode_Remove && v.Data == "" && v.Hash == "" {
 			continue
 		}
 
@@ -180,6 +178,7 @@ func (c *ConfigExtHandler) CheckConfig(ctx context.Context, request *pb.ConfigRe
 		res.SecretKey = localFP.SecretKey
 		res.Version = localFP.Version
 		res.Release = localFP.Release
+		ylog.Infof("CheckConfig_handler", "local check ok,request %s, response %s", request.String(), res.String())
 		return res, nil
 	}
 
@@ -191,8 +190,9 @@ func (c *ConfigExtHandler) CheckConfig(ctx context.Context, request *pb.ConfigRe
 	}
 	freshResponse, err := client.CheckCommonConfig(freshRequest)
 	if err != nil {
-		ylog.Errorf("CheckConfig", "CheckCommonConfig error %s", err.Error())
-		return nil, err
+		ylog.Errorf("CheckConfig", "client.CheckCommonConfig, return success to agent, error %s", err.Error())
+		ylog.Infof("CheckConfig_handler", "local check failed, remote check failed, request %s, response %s", request.String(), res.String())
+		return res, nil
 	}
 
 	//将结果刷新到本地缓存
@@ -202,7 +202,7 @@ func (c *ConfigExtHandler) CheckConfig(ctx context.Context, request *pb.ConfigRe
 	status := pb.ConfigStatusCode_SUCCESS
 	for _, v := range freshResponse.Config {
 		//跳过无关文件
-		if v.Status == pb.ConfigStatusCode_FAILED && len(v.Data) == 0 {
+		if v.Type != pb.ConfigTypeCode_Remove && v.Data == "" && v.Hash == "" {
 			continue
 		}
 
@@ -220,5 +220,6 @@ func (c *ConfigExtHandler) CheckConfig(ctx context.Context, request *pb.ConfigRe
 
 	}
 	res.Status = status
+	ylog.Infof("CheckConfig_handler", "remote check, request %s, response %s", request.String(), res.String())
 	return res, nil
 }

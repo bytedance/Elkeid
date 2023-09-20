@@ -63,7 +63,7 @@ func CheckConfig(conn *grpc.ClientConn, agentID, pluginName string) {
 
 	in := &pb.ConfigRefreshRequest{
 		AgentID:     "i-ycbkd9kpuw7grazw5c4a",
-		PluginName:  "driver",
+		PluginName:  "driver1",
 		Fingerprint: make([]*pb.ConfigFingerPrint, 0, 0),
 	}
 	out, err := c.CheckConfig(context.Background(), in)

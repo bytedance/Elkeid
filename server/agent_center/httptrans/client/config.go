@@ -120,8 +120,6 @@ type ResCheckCommonConfig struct {
 }
 
 func CheckCommonConfig(fp *pb.ConfigRefreshRequest) (*common.ConfigRefreshResponse, error) {
-	tmp, _ := json.Marshal(fp)
-	fmt.Println("CheckCommonConfig:", string(tmp))
 	rOption := &grequests.RequestOptions{
 		JSON: fp,
 	}
@@ -142,9 +140,20 @@ func CheckCommonConfig(fp *pb.ConfigRefreshRequest) (*common.ConfigRefreshRespon
 		ylog.Errorf("CheckCommonConfig", "agentID: %s, error: %s, resp:%s", fp.AgentID, err.Error(), resp.String())
 		return nil, err
 	}
+
 	if res.Code != 0 {
 		ylog.Errorf("CheckCommonConfig", "response code is not 0, agentID: %s, resp: %s", fp.AgentID, resp.String())
-		return nil, errors.New("response code is not 0")
+
+		//返回空值
+		return &common.ConfigRefreshResponse{
+			AgentID:    fp.AgentID,
+			PluginName: fp.PluginName,
+			SecretKey:  "",
+			Version:    "",
+			Release:    0,
+			Status:     0,
+			Config:     make([]*pb.ConfigDetail, 0),
+		}, nil
 	}
 
 	var resConfig = &ResCheckCommonConfig{}
@@ -153,7 +162,6 @@ func CheckCommonConfig(fp *pb.ConfigRefreshRequest) (*common.ConfigRefreshRespon
 		ylog.Errorf("CheckCommonConfig", "agentID: %s, error: %s, resp:%s", fp.AgentID, err.Error(), resp.String())
 		return nil, err
 	}
-	fmt.Println("CheckCommonConfig:", string(resp.Bytes()))
 	return resConfig.Data, nil
 }
 
@@ -164,9 +172,6 @@ type ResVerifyCommonConfig struct {
 }
 
 func VerifyCommonConfigRelease(ri []*common.ConfigReleaseInfo) ([]*common.ConfigReleaseInfo, error) {
-	tmp, _ := json.Marshal(ri)
-	fmt.Println("VerifyCommonConfigRelease:", string(tmp))
-
 	rOption := &grequests.RequestOptions{
 		JSON: ri,
 	}
@@ -198,7 +203,5 @@ func VerifyCommonConfigRelease(ri []*common.ConfigReleaseInfo) ([]*common.Config
 		ylog.Errorf("VerifyCommonConfigRelease", "error: %s, resp:%s", err.Error(), resp.String())
 		return nil, err
 	}
-
-	fmt.Println("VerifyCommonConfigRelease:", string(resp.Bytes()))
 	return resConfig.Data, nil
 }
