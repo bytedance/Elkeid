@@ -142,7 +142,7 @@ func CheckCommonConfig(fp *pb.ConfigRefreshRequest) (*common.ConfigRefreshRespon
 	}
 
 	if res.Code != 0 {
-		ylog.Errorf("CheckCommonConfig", "response code is not 0, agentID: %s, resp: %s", fp.AgentID, resp.String())
+		ylog.Debugf("CheckCommonConfig", "response code is not 0, agentID: %s, resp: %s", fp.AgentID, resp.String())
 
 		//返回空值
 		return &common.ConfigRefreshResponse{
