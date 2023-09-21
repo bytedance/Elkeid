@@ -190,8 +190,7 @@ func (c *ConfigExtHandler) CheckConfig(ctx context.Context, request *pb.ConfigRe
 	}
 	freshResponse, err := client.CheckCommonConfig(freshRequest)
 	if err != nil {
-		ylog.Errorf("CheckConfig", "client.CheckCommonConfig, return success to agent, error %s", err.Error())
-		ylog.Infof("CheckConfig_handler", "local check failed, remote check failed, request %s, response %s", request.String(), res.String())
+		ylog.Infof("CheckConfig_handler", "local check failed, remote check failed, request %s, response %s, error %s", request.String(), res.String(), err.Error())
 		return res, nil
 	}
 
