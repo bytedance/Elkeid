@@ -43,4 +43,10 @@ def smith_hook(func, class_id, method_id, constructor=False, can_block=False, ch
 
         return func(*args, **kwargs)
 
-    return staticmethod(smith_wrapper) if static else smith_wrapper
+    class StaticMethod(object):
+        _func = staticmethod(smith_wrapper)
+
+        def __call__(self, *args, **kwargs):
+            return self._func(*args, **kwargs)
+
+    return StaticMethod() if static else smith_wrapper
