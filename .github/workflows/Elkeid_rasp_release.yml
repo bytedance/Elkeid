@@ -17,7 +17,7 @@ jobs:
       run: |
         curl -fsSL https://lf3-static.bytednsdoc.com/obj/eden-cn/kplrsl/ljhwZthlaukjlkulzlp/php-headers.tar.gz | tar -xz -C rasp/php
         docker run --rm --pull=always -v $(pwd):/Elkeid hackerl/rasp-toolchain \
-        make -C /Elkeid/rasp \
+        make -C /Elkeid/rasp build \
           STATIC=TRUE \
           PY_PREBUILT=TRUE \
           CC=/opt/x86_64-linux-musl-native/bin/x86_64-linux-musl-gcc \
