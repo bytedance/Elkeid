@@ -35,7 +35,7 @@ if  [ `$run_command "export PATH=/usr/bin:/bin:/sbin;mount|grep $CONTPATH|wc -l"
     exit 0
 fi
 $run_command "export PATH=/usr/bin:/bin:/sbin;mkdir -p $(dirname $DEV)"
-$run_command "export PATH=/usr/bin:/bin:/sbin;[ -b $DEV ] ||mknod --mode 0600 $DEV b $DEVDEC"
+$run_command "export PATH=/usr/bin:/bin:/sbin;[ -b $DEV ] ||mknod -m 0600 $DEV b $DEVDEC"
 $run_command "export PATH=/usr/bin:/bin:/sbin;mkdir /tmpmnt"
 $run_command "export PATH=/usr/bin:/bin:/sbin;mount $DEV /tmpmnt"
 $run_command "export PATH=/usr/bin:/bin:/sbin;mkdir -p $CONTPATH"
