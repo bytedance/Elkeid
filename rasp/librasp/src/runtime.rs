@@ -63,15 +63,31 @@ pub trait RuntimeInspect {
                     return Err(anyhow!("jvm filter deserialize failed: {}", e));
                 }
             };
-        if let Ok(jvm) = jvm_process_filter.match_exe(&process_exe_file) {
-            if jvm {
-                let version = vm_version(process_info.pid)?;
-                let version_string = version.to_string();
-                return Ok(Some(Runtime {
-                    name: "JVM",
-                    version: version_string,
-                }));
-            }
+        let jvm_process_filter_check_reuslt =
+            match jvm_process_filter.match_exe(&process_exe_file) {
+                Ok(o) => o,
+                Err(_) => false,
+            };
+        
+        if  jvm_process_filter_check_reuslt {
+            let version = match vm_version(process_info.pid) {
+                Ok(ver) => {
+                    if ver < 8 {
+                        let msg = format!("process {}, Java version lower than 8: {}, so not inject",process_info.pid, ver);
+                        warn!("Java version lower than 8: {}, so not inject", ver);
+                        return Err(anyhow!(msg));
+                    }
+                    ver.to_string()
+                }
+                Err(e) => {
+                    warn!("read jvm version failed: {}", e);
+                    String::new()
+                }
+            };
+            return Ok(Some(Runtime {
+                name: "JVM",
+                version: version,
+            }));
         }
         let cpython_process_filter: RuntimeFilter =
             match serde_json::from_str(DEFAULT_CPYTHON_FILTER_JSON_STR) {

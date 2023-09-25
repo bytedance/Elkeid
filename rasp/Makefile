@@ -422,7 +422,7 @@ else
 	cp util-linux/nsenter $(OUTPUT)/nsenter
 endif
 
-	cp NSMount/bin/NSMount $(LIB_OUTPUT)/NSMount
+	cp NSMount/bin/NSMount $(OUTPUT)/NSMount
 	cp pangolin/bin/pangolin $(LIB_OUTPUT)/pangolin
 
 	cp jvm/JVMProbe/output/SmithAgent.jar $(LIB_OUTPUT)/java/SmithAgent.jar
