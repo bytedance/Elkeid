@@ -206,13 +206,12 @@ impl Cronjob {
 
                 let exe_hash = get_file_xhash(&format!("/proc/{}/exe", pid));
 
-                if !proc_crobjob_is_first_run {
-                    if let Some(_) = scaned_cache.get_mut(&exe_hash) {
-                        if &exe_hash != "-3" {
-                            continue;
-                        }
+                if let Some(_) = scaned_cache.get_mut(&exe_hash) {
+                    if &exe_hash != "-3" {
+                        continue;
                     }
                 }
+
                 scaned_cache.insert(exe_hash, true);
                 // send to scan
                 let task = ScanTaskProcExe {

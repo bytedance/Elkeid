@@ -232,8 +232,9 @@ impl ScanEngine for Clamav {
                         clamav::cl_yr_hit_cb_ctx_free(nil_ctx);
 
                         // 0.104.3 bug fixes
+
                         let mut hits_offset = Vec::new();
-                        for each_match_item in hitstring {
+                        for each_match_item in &hitstring {
                             let tmp_v: Vec<&str> = each_match_item.splitn(3, ",").collect();
                             if tmp_v.len() == 3 {
                                 let file_offset: u64 = tmp_v[1].parse::<u64>().unwrap();
@@ -244,6 +245,7 @@ impl ScanEngine for Clamav {
                         if checksum == 0 && hits_offset.len() > 1 {
                             return Ok(("OK".to_string(), None));
                         }
+                        /*
                         let mut hit_data: Option<Vec<String>> = None;
                         if let Ok(mut f) = File::open(fpath) {
                             if let Ok(fmeta) = f.metadata() {
@@ -260,9 +262,10 @@ impl ScanEngine for Clamav {
                                 hit_data = Some(new_matched_data);
                             }
                         }
-                        // fix 0 offset matches
-
                         return Ok((target_virust_name, hit_data));
+                        */
+                        // fix 0 offset matches
+                        return Ok((target_virust_name, Some(hitstring)));
                     }
                     clamav::cl_yr_hit_cb_ctx_free(nil_ctx);
                     return Ok((target_virust_name, None));

@@ -478,9 +478,23 @@ impl Detector {
                                     continue;
                                 }
                                 let task = ScanTaskUserTask {
-                                    token: t.token,
-                                    scan_path: target_path,
+                                    token: t.token.to_string(),
+                                    scan_path: target_path.to_string(),
                                     add_ons: Some(task_map),
+                                    finished: None,
+                                };
+
+                                if let Err(e) =
+                                    task_sender.send(DETECT_TASK::TASK_6053_USER_TASK(task))
+                                {
+                                    warn!("internal send task err : {:?}", e);
+                                    continue;
+                                }
+
+                                let task = ScanTaskUserTask {
+                                    token: t.token.to_string(),
+                                    scan_path: "".to_string(),
+                                    add_ons: None,
                                     finished: Some(ScanFinished {
                                         data: "succeed".to_string(),
                                         error: "".to_string(),
