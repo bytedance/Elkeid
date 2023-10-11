@@ -78,7 +78,7 @@ const blockSchema = {
                         }
                     }
                 },
-                required: ['policy_id', 'class_id', 'method_id', 'rules', 'stack_frame']
+                required: ['class_id', 'method_id', 'rules']
             }
         }
     },

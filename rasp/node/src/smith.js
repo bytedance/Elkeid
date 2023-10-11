@@ -142,7 +142,7 @@ function smithHook(func, classID, methodID, canBlock = false, processors = {}) {
                 if (policy.rules.length > 0 && !policy.rules.some(pred))
                     return false;
 
-                if (policy.stack_frame === null) {
+                if (!policy.stack_frame) {
                     smithTrace.blocked = true;
                     smithTrace.policy_id = policy.policy_id;
                     return true;
