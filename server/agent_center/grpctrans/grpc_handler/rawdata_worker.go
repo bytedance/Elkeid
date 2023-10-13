@@ -83,7 +83,8 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 			}
 
 			switch mqMsg.DataType {
-			case 1021, 1022:
+			case 1021, 1022, 1101:
+				//不包含token的数据
 				item["data_type"] = fmt.Sprintf("%d", mqMsg.DataType)
 				item["agent_id"] = mqMsg.AgentID
 				item["time"] = fmt.Sprintf("%d", mqMsg.AgentTime)
