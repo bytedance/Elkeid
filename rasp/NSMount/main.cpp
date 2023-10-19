@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
 
     if (std::filesystem::exists(dst, ec)) {
         LOG_WARNING("directory %s already exists", dst.u8string().c_str());
-        return -1;
+        return 0;
     }
 
     LOG_INFO("bind %s -> %s", src.u8string().c_str(), dst.u8string().c_str());
