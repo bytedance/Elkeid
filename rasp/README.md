@@ -55,7 +55,7 @@ docker run --rm -v $(pwd):/Elkeid \
     -v /tmp/cache/librasp:/Elkeid/rasp/librasp/target \
     -v /tmp/cache/rasp_server:/Elkeid/rasp/rasp_server/target \
     -v /tmp/cache/plugin:/Elkeid/rasp/plugin/target \
-    -e MAKEFLAGS="-j$(nproc)" hackerl/rasp-toolchain \
+    -e MAKEFLAGS="-j$(nproc)" yoloyyh/rasp-toolchain:v1.0 \
     make -C /Elkeid/rasp build \
     STATIC=TRUE \
     PY_PREBUILT=TRUE \
