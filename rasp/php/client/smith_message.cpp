@@ -153,7 +153,8 @@ void from_json(const nlohmann::json &j, StackFrame &stackFrame) {
 void from_json(const nlohmann::json &j, Block &block) {
     j.at("class_id").get_to(block.classID);
     j.at("method_id").get_to(block.methodID);
-    j.at("policy_id").get_to(block.policyID);
+    if (j.contains("policy_id") && !j.at("policy_id").is_null())
+        j.at("policy_id").get_to(block.policyID);
     j.at("rules").get_to(block.rules);
 
     if (j.contains("stack_frame") && !j.at("stack_frame").is_null())
