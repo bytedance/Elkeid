@@ -42,8 +42,17 @@ transfer(
 
                         uint32_t length = htonl(msg.length());
 
-                        buffer->submit({(const std::byte *) &length, sizeof(uint32_t)});
-                        buffer->submit({(const std::byte *) msg.data(), msg.size()});
+                        auto result = buffer->submit({(const std::byte *) &length, sizeof(uint32_t)});
+
+                        if (!result) {
+                            LOG_WARNING("submit data failed");
+                            return zero::async::promise::reject<void>({-1, "submit data failed"});
+                        }
+                        result =  buffer->submit({(const std::byte *) msg.data(), msg.size()});
+                        if (!result) {
+                            LOG_WARNING("submit data failed");
+                            return zero::async::promise::reject<void>({-1, "submit data failed"});
+                        }
 
                         if (buffer->pending() > 1024 * 1024)
                             return buffer->drain();
