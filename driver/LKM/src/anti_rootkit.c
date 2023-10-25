@@ -210,8 +210,10 @@ static void analyze_fops(void)
 		filp_close(fp, NULL);
 		return;
 	}
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
+#if defined(SMITH_FS_OP_ITERATE)
 	addr = (unsigned long)fp->f_op->iterate;
+#elif defined(SMITH_FS_OP_ITERATE_SHARED)
+	addr = (unsigned long)fp->f_op->iterate_shared;
 #else
 	addr = (unsigned long)fp->f_op->readdir;
 #endif
