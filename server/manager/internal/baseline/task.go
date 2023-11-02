@@ -95,6 +95,7 @@ func SendBaselineTask(agentIdList []string, user string, taskMsg def.AgentTaskMs
 		ylog.Errorf("SendBaselineTask", err.Error())
 		return
 	}
+	time.Sleep(5 * time.Second)
 
 	return
 }
