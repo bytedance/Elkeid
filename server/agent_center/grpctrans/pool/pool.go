@@ -95,10 +95,12 @@ func (c *Connection) SetAgentDetail(detail map[string]interface{}) {
 		a1, o1 := c.agentDetail["state"].(string)
 		a2, o2 := c.agentDetail["state_detail"].(string)
 		a3, o3 := c.agentDetail["version"].(string)
+		a4, o4 := c.agentDetail["pid"].(float64)
 		s1, ok1 := detail["state"].(string)
 		s2, ok2 := detail["state_detail"].(string)
 		s3, ok3 := detail["version"].(string)
-		if ok1 != o1 || a1 != s1 || ok2 != o2 || s2 != a2 || o3 != ok3 || a3 != s3 {
+		s4, ok4 := c.agentDetail["version"].(float64)
+		if ok1 != o1 || a1 != s1 || ok2 != o2 || s2 != a2 || o3 != ok3 || a3 != s3 || o4 != ok4 || a4 != s4 {
 			updated = true
 		}
 
@@ -141,7 +143,11 @@ func (c *Connection) SetPluginDetail(name string, detail map[string]interface{})
 		//插件版本更新
 		p1, ok1 := p["pversion"].(string)
 		p2, ok2 := detail["pversion"].(string)
-		if ok1 != ok2 || p1 != p2 {
+
+		//插件pid更新
+		pid1, ok3 := p["pid"].(float64)
+		pid2, ok4 := detail["pid"].(float64)
+		if ok1 != ok2 || p1 != p2 || ok3 != ok4 || pid1 != pid2 {
 			c.updateConnStat()
 		}
 	}
