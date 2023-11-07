@@ -37,6 +37,7 @@ target_link_libraries(
         PRIVATE
         aio::aio
         runtime::c_runtime
+        regex::tiny-regex-c
         $<$<BOOL:${STATIC_BUILD}>:-static-libgcc>
         $<$<BOOL:${STATIC_BUILD}>:-static-libstdc++>
         -Wl,--exclude-libs,ALL
