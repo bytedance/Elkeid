@@ -27,8 +27,9 @@ func UploadFile(filePath string, hash string) (string, error) {
 	}
 	resp, err := grequests.Post(fmt.Sprintf(UploadFileUrl, common.GetRandomManageAddr()),
 		&grequests.RequestOptions{
-			Files: fd,
-			Data:  map[string]string{"hash": hash},
+			Files:   fd,
+			Data:    map[string]string{"hash": hash},
+			Headers: map[string]string{"token": GetToken()},
 		})
 	if err != nil {
 		return "", err
@@ -54,7 +55,11 @@ func UploadFile(filePath string, hash string) (string, error) {
 func GetFileFromRemote(token string) ([]byte, error) {
 	resp, err := grequests.Post(
 		fmt.Sprintf(DownLoadFileUrl, common.GetRandomManageAddr()),
-		&grequests.RequestOptions{JSON: map[string]interface{}{"token": token}})
+		&grequests.RequestOptions{
+			JSON:    map[string]interface{}{"token": token},
+			Headers: map[string]string{"token": GetToken()},
+		},
+	)
 	if err != nil {
 		ylog.Errorf("GetFileFromRemote", "Post Error, %s", err.Error())
 		return nil, err

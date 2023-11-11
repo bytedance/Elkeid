@@ -3,6 +3,8 @@
 manage:
   addrs:
     - 127.0.0.1:6701
+  username:
+  password:
 
 ############################# Service Discovery Settings #############################
 # addrs: addr list of service discovery.

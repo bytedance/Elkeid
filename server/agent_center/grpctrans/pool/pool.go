@@ -36,6 +36,10 @@ type GRPCPool struct {
 
 	dynamicLimit        int32
 	dynamicLimitEndTime int64
+
+	//iaas info
+	iaasInfoMap  map[string]string
+	iaasInfoLock sync.RWMutex
 }
 
 // Connection Info
@@ -214,6 +218,7 @@ func NewGRPCPool(config *Config) *GRPCPool {
 		taskList:            make([]map[string]string, 0, config.ChanLen),
 		extraInfoChan:       make(chan string, config.ChanLen),
 		extraInfoCache:      make(map[string]client.AgentExtraInfo),
+		iaasInfoMap:         make(map[string]string, 0),
 		conf:                config,
 		dynamicLimit:        -1,
 		dynamicLimitEndTime: 0,
@@ -481,4 +486,25 @@ func (g *GRPCPool) GetDynamicLimit() (val int32, lastSecond int64) {
 		return -1, 0
 	}
 	return val, atomic.LoadInt64(&g.dynamicLimitEndTime) - time.Now().Unix()
+}
+
+func (g *GRPCPool) GetIaasInfo(agentID string, ipv4 []string, ipv6 []string) string {
+	g.iaasInfoLock.RLock()
+	tmp, ok := g.iaasInfoMap[agentID]
+	g.iaasInfoLock.RUnlock()
+	if ok {
+		return tmp
+	}
+
+	//load from manager
+	//TODO 增加重试逻辑
+	info, err := client.GetIaasInfoFromRemote(ipv4, ipv6)
+	if err != nil {
+		ylog.Errorf("GetIaasInfo", "%s %s %s error %s", agentID, ipv4, ipv6, err.Error())
+	}
+
+	g.iaasInfoLock.Lock()
+	g.iaasInfoMap[agentID] = info
+	g.iaasInfoLock.Unlock()
+	return info
 }

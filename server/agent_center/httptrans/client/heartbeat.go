@@ -121,6 +121,7 @@ func PostHBJoin(hb []ConnStat) {
 	resp, err := grequests.Post(url, &grequests.RequestOptions{
 		JSON:           hb,
 		RequestTimeout: 60 * time.Second,
+		Headers:        map[string]string{"token": GetToken()},
 	})
 	if err != nil {
 		ylog.Errorf("PostHBJoin", "failed: %s", err.Error())
@@ -147,6 +148,7 @@ func PostHBEvict(hb []HeartBeatEvictModel) {
 	resp, err := grequests.Post(fmt.Sprintf(HBEvictUrl, common.GetRandomManageAddr()), &grequests.RequestOptions{
 		JSON:           hb,
 		RequestTimeout: 60 * time.Second,
+		Headers:        map[string]string{"token": GetToken()},
 	})
 	if err != nil {
 		ylog.Errorf("PostHBEvict", "failed: %v", err.Error())

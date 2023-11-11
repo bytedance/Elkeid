@@ -42,6 +42,9 @@ var (
 	PProfPort   int //pprof
 
 	RawDataPort int
+
+	UserName string
+	Password string
 )
 
 type ConfigReleaseInfo struct {
