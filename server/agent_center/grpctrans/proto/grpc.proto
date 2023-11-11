@@ -117,6 +117,7 @@ message MQRawData{
 
   //agent appended字段
   ItemArray AppendedBody = 18;
+  string AccountID = 19;
 }
 
 service Transfer {
