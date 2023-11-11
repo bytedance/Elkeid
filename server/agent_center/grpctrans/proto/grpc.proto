@@ -90,6 +90,7 @@ message MQData{
   string IsHoneypot = 17;
 
   bytes AppendedBody = 18;
+  string AccountID = 19;
 }
 
 //bmq --> Rule engine
