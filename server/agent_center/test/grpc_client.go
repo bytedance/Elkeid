@@ -15,16 +15,6 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-var (
-	defaultCAFile1        = "../conf/ca.crt"
-	defaultClientKeyFile1 = "../conf/client.key"
-	defaultClientCrtFile1 = "../conf/client.crt"
-
-	tlsServerName1 = "elkeid.com"
-	ServerPort     = "10.63.84.5:30751"
-	AgentCount     = 1
-)
-
 func main() {
 	port := ServerPort
 	certificate, err := tls.LoadX509KeyPair(defaultClientCrtFile1, defaultClientKeyFile1)

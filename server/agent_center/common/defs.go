@@ -2,6 +2,7 @@ package common
 
 import (
 	"github.com/bytedance/Elkeid/server/agent_center/common/kafka"
+	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/spf13/viper"
 	"os"
 )
@@ -42,3 +43,25 @@ var (
 
 	RawDataPort int
 )
+
+type ConfigReleaseInfo struct {
+	AgentID string              `json:"agent_id"`
+	Plugin  string              `json:"plugin"`
+	Status  pb.ConfigStatusCode `json:"status"`
+	Release uint64              `json:"release"`
+}
+
+type ConfigRefreshResponse struct {
+	AgentID    string              `json:"agent_id"`
+	PluginName string              `json:"plugin,omitempty"`
+	SecretKey  string              `json:"secret_key,omitempty"`
+	Version    string              `json:"version,omitempty"`
+	Release    uint64              `json:"release,omitempty"`
+	Status     pb.ConfigStatusCode `json:"status,omitempty"`
+	Config     []*pb.ConfigDetail  `json:"configs,omitempty"`
+}
+
+type Response struct {
+	Code    int    `json:"code"`
+	Message string `json:"msg"`
+}

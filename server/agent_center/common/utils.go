@@ -41,6 +41,7 @@ func init() {
 }
 
 func GetRandomManageAddr() string {
+	//return "106.120.188.251:8082"
 	tmpList := make([]string, len(ManageAddrs))
 
 	//return random reachable one
