@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 public class ClassFilter {
     private String class_name;
     private String class_path;
+    private String super_class;
     private String class_loader_name;
     private String base_class_name;
     private String base_class_loader_name;
@@ -29,6 +30,14 @@ public class ClassFilter {
 
     public void setClassPath(String class_path) {
         this.class_path = class_path;
+    }
+
+    public String getSuperClass() {
+        return super_class;
+    }
+
+    public void setSuperClass(String super_class) {
+        this.super_class = super_class;
     }
 
     public String getClassLoaderName() {

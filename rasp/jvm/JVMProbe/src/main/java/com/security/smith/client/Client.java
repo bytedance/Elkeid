@@ -209,10 +209,11 @@ public class Client implements EventHandler {
 
                 break;
             }
-            // TODO 起线程调用全量扫描
             case CLASSFILTEREND: {
-                SmithLogger.logger.info("class filter config receive finish, start to scan all class: ");
-                messageHandler.onScanAllClass();
+                SmithLogger.logger.info("class filter config receive finish, start to scan all class");
+                Thread scanAllClassThread = new Thread(messageHandler::onScanAllClass);
+                scanAllClassThread.setDaemon(true);
+                scanAllClassThread.start();
             }
         }
     }
