@@ -545,7 +545,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     Class<?> superClass = clazz.getSuperclass();
                     // 获取父类名和父类加载器
                     String superClassName = superClass != null ? superClass.getName() : "N/A";
-                    classFilter.setSuperClass(superClassName);
+                    classFilter.setBaseClassName(superClassName);
                     SmithLogger.logger.info("Super Class Name: " + superClassName);
             
                     if (loader != null) {
