@@ -262,27 +262,42 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
         try {
             String className_std = className.replace("/", ".");
-            if (className != null && !className.startsWith("/com/security/smith")) {
+            if (className != null && !className.startsWith("com/security/smith")) {
                 SmithLogger.logger.info("Class Name: " + className_std);
  
-                // 获取类加载器
-                if (loader != null)
-                    SmithLogger.logger.info("Class Loader: " + loader.toString());
-
                 CtClass ctClass = null;
                 try {
-                    //默认的类搜索路径
-                    ClassPool pool = ClassPool.getDefault();
-                    //获取一个ctClass对象
-                    ctClass = pool.makeClass(className);
+                    ClassFilter classFilter = new ClassFilter();
+                    classFilter.setClassName(className_std);
 
+                     // 获取类加载器
+                    if (loader != null) {
+                        SmithLogger.logger.info("Class Loader: " + loader.toString());
+                        classFilter.setClassLoaderName(loader.toString());
+                    }
+
+                    ClassPool pool = ClassPool.getDefault();
+  
+                    ctClass = pool.makeClass(className);
+                    String classFilePath = null;
                     if (ctClass != null) {
                         // 获取 CtClass 对象的类文件路径
-                        String classFilePath = ctClass.getURL().getPath();
-
-                        // 获取 ClassLoader 对象中类文件的路径
-                        SmithLogger.logger.info("Class Path: " + classFilePath);
-     
+                        try {
+                            URL classFileUrl = ctClass.getURL();
+                            if (classFileUrl != null) {
+                                classFilePath = classFileUrl.getPath();
+                                if (classFilePath != null && classFilePath.startsWith("file:")) {
+                                    classFilePath = classFilePath.substring(5);
+                                    if (classFilePath.contains("jar!")) {
+                                    classFilePath =  classFilePath.substring(0, classFilePath.indexOf("jar!") + 3);
+                                    }
+                                }
+                            }
+                            SmithLogger.logger.info("Class Path: " + classFilePath);
+                        } catch (Exception e) {
+                            SmithLogger.exception(e);
+                        }
+                        
                         CtClass superClass = ctClass.getSuperclass();
                         // 获取父类名和父类加载器
                         String superClassName = superClass != null ? superClass.getName() : "N/A";
@@ -504,28 +519,44 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             Class<?>[] loadedClasses = inst.getAllLoadedClasses();
 
             for (Class<?> clazz : loadedClasses) {
-                SmithLogger.logger.info("class name " + clazz.getName());
-                String className = clazz.getCanonicalName();
-                SmithLogger.logger.info("class name " + className);
-                URL classPath_url = clazz.getResource("/");
-                String classPath = null;
-                if (classPath_url != null) 
-                    classPath = classPath_url.getPath();
-                SmithLogger.logger.info("class path " + classPath);
-                ClassLoader loader = clazz.getClassLoader();
-                // 获取类加载器
-                if (loader != null)
-                    SmithLogger.logger.info("Class Loader: " + loader.toString());
-                
-                Class<?> superClass = clazz.getSuperclass();
-                // 获取父类名和父类加载器
-                String superClassName = superClass != null ? superClass.getName() : "N/A";
-                SmithLogger.logger.info("Super Class Name: " + superClassName);
-        
-                if (loader != null) {
-                    ClassLoader parentClassLoader = loader.getParent();
-                    String parentClassLoaderName = parentClassLoader != null ? parentClassLoader.toString() : "N/A";
-                    SmithLogger.logger.info("Parent Class Loader: " + parentClassLoaderName);
+                try {
+                    ClassFilter classFilter = new ClassFilter();
+                    String className = clazz.getName();
+                    classFilter.setClassName(className);
+                    SmithLogger.logger.info("class name " + className);
+                    String path = null;
+                    
+                    try {
+                       path = clazz.getProtectionDomain().getCodeSource().getLocation().getPath();
+                    } catch (Exception e) {
+                        SmithLogger.exception(e);
+                    }
+                    if (path != null) {
+                        classFilter.setClassPath(path);
+                    }
+                    SmithLogger.logger.info("class path " + path);
+                    
+                    ClassLoader loader = clazz.getClassLoader();
+                    // 获取类加载器
+                    if (loader != null) {
+                        classFilter.setClassLoaderName(loader.toString());
+                    }
+                    
+                    Class<?> superClass = clazz.getSuperclass();
+                    // 获取父类名和父类加载器
+                    String superClassName = superClass != null ? superClass.getName() : "N/A";
+                    classFilter.setSuperClass(superClassName);
+                    SmithLogger.logger.info("Super Class Name: " + superClassName);
+            
+                    if (loader != null) {
+                        ClassLoader parentClassLoader = loader.getParent();
+                        String parentClassLoaderName = parentClassLoader != null ? parentClassLoader.toString() : "N/A";
+                        SmithLogger.logger.info("Parent Class Loader: " + parentClassLoaderName);
+                        classFilter.setBaseClassLoaderName(parentClassLoaderName);
+                    }
+                    
+                } catch(Exception e) {
+                    SmithLogger.exception(e);
                 }
             }
         } catch(Exception e) {
