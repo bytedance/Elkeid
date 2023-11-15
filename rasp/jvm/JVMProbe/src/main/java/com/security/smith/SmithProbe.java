@@ -11,6 +11,7 @@ import com.lmax.disruptor.util.DaemonThreadFactory;
 import com.security.smith.asm.SmithClassVisitor;
 import com.security.smith.asm.SmithClassWriter;
 import com.security.smith.client.Operate;
+import com.security.smith.client.ClassUploadTransformer;
 import com.security.smith.client.Client;
 import com.security.smith.client.MessageHandler;
 import com.security.smith.client.message.*;
@@ -28,11 +29,16 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.objectweb.asm.*;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.lang.instrument.UnmodifiableClassException;
+import java.lang.management.ClassLoadingMXBean;
+import java.lang.management.ManagementFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -258,7 +264,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         }
     }
 
-    private void checkClassFilter(ClassLoader loader, String className) {
+    private void checkClassFilter(ClassLoader loader, String className, byte[] classfileBuffer) {
 
         try {
             String className_std = className.replace("/", ".");
@@ -295,7 +301,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                             }
                             SmithLogger.logger.info("Class Path: " + classFilePath);
                         } catch (Exception e) {
-                            SmithLogger.exception(e);
+                            //SmithLogger.exception(e);
                         }
                         
                         CtClass superClass = ctClass.getSuperclass();
@@ -308,6 +314,8 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                             String parentClassLoaderName = parentClassLoader != null ? parentClassLoader.toString() : "N/A";
                             SmithLogger.logger.info("Parent Class Loader: " + parentClassLoaderName);
                         }
+                        // TODO 规则匹配后，发送class文件
+                        // sendByte(classfileBuffer, classFilter);
                         
                     }
                 } catch (Exception e) {
@@ -325,7 +333,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         if (disable)
             return null;
 
-        checkClassFilter(loader, className);
+        checkClassFilter(loader, className, classfileBuffer);
   
         Type classType = Type.getObjectType(className);
         SmithClass smithClass = smithClasses.get(classType.getClassName());
@@ -515,7 +523,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     @Override
     public void onScanAllClass() {
         try {
-            inst.getAllLoadedClasses();
             Class<?>[] loadedClasses = inst.getAllLoadedClasses();
 
             for (Class<?> clazz : loadedClasses) {
@@ -529,32 +536,37 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     try {
                        path = clazz.getProtectionDomain().getCodeSource().getLocation().getPath();
                     } catch (Exception e) {
-                        SmithLogger.exception(e);
+                        //SmithLogger.exception(e);
                     }
                     if (path != null) {
                         classFilter.setClassPath(path);
                     }
-                    SmithLogger.logger.info("class path " + path);
                     
                     ClassLoader loader = clazz.getClassLoader();
                     // 获取类加载器
                     if (loader != null) {
                         classFilter.setClassLoaderName(loader.toString());
                     }
+
                     
                     Class<?> superClass = clazz.getSuperclass();
                     // 获取父类名和父类加载器
-                    String superClassName = superClass != null ? superClass.getName() : "N/A";
-                    classFilter.setBaseClassName(superClassName);
-                    SmithLogger.logger.info("Super Class Name: " + superClassName);
-            
+                    if (superClass != null) {
+                        String superClassName = superClass.getName();
+                        classFilter.setBaseClassName(superClassName);
+                        SmithLogger.logger.info("Super Class Name: " + superClassName);
+                    }
+
                     if (loader != null) {
                         ClassLoader parentClassLoader = loader.getParent();
-                        String parentClassLoaderName = parentClassLoader != null ? parentClassLoader.toString() : "N/A";
-                        SmithLogger.logger.info("Parent Class Loader: " + parentClassLoaderName);
-                        classFilter.setBaseClassLoaderName(parentClassLoaderName);
+                        if (parentClassLoader != null) {
+                            String parentClassLoaderName = parentClassLoader.toString();
+                            SmithLogger.logger.info("Parent Class Loader: " + parentClassLoaderName);
+                            classFilter.setBaseClassLoaderName(parentClassLoaderName);
+                        }
                     }
-                    
+                    // TODO 规则匹配
+                    sendClass(clazz, classFilter);
                 } catch(Exception e) {
                     SmithLogger.exception(e);
                 }
@@ -562,5 +574,63 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         } catch(Exception e) {
             SmithLogger.exception(e);
         }
+    }
+
+    /*
+     * send class file
+     */
+    private void sendClass(Class<?> clazz, ClassFilter classFilter) {
+        if (clazz == null || classFilter == null) {
+            return;
+        }
+        try {
+            ClassUploadTransformer transformer = new ClassUploadTransformer(clazz, client, classFilter);
+            try {
+                inst.addTransformer(transformer, true);
+
+                if (inst.isModifiableClass(clazz) && !clazz.getName().startsWith("java.lang.invoke.LambdaForm")) {
+                    try {
+                        inst.retransformClasses(clazz);
+                    } catch (Exception e) {
+                        SmithLogger.exception(e);
+                    }
+                }
+            } finally {
+                if (transformer != null) {
+                    inst.removeTransformer(transformer);
+                }
+            }
+         
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+    }
+
+    /*
+     * send CtClass file 
+     */
+    private void sendByte(byte[] data, ClassFilter classFilter) {
+        if (data == null) {
+            return;
+        }
+        int length = data.length;
+        ClassUpload classUpload = new ClassUpload();
+        classUpload.setTransId();
+        classUpload.setMetadata(classFilter);
+        // TODO 第一版先不分包，看下性能
+        // client.write(Operate.CLASSDUMP, classUpload);
+        // 发送文件内容分包给服务器
+        // int packetSize = 1024; // 每个包的大小
+        // int totalPackets = (data.length + packetSize - 1) / packetSize; // 总包数
+        //for (int i = 0; i < totalPackets; i++) {
+            //int offset = i * packetSize;
+            classUpload.setByteTotalLength(length);
+            //classUpload.setByteOffset(offset);
+            classUpload.setByteLength(length);
+            //int send_length = Math.min(packetSize, data.length - offset);
+            classUpload.setClassData(data);
+
+            client.write(Operate.CLASSUPLOAD, classUpload);
+        //}
     }
 }
