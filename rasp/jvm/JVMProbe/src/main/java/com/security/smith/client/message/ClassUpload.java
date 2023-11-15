@@ -1,6 +1,7 @@
 package com.security.smith.client.message;
 
 import java.util.Arrays;
+import java.util.UUID;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.util.StdConverter;
@@ -12,7 +13,6 @@ public class ClassUpload {
     private int byte_offset;
     private int byte_length;
     
-    @JsonSerialize(converter = ClassFilterConverter.class)
     private ClassFilter metadata;
     private byte[] class_data;
 
@@ -20,8 +20,9 @@ public class ClassUpload {
         return trans_id;
     }
 
-    public void setTransId(String trans_id) {
-        this.trans_id = trans_id;
+    public void setTransId() {
+        UUID uniqueId = UUID.randomUUID();
+        trans_id = uniqueId.toString().replace("-", "");
     }
 
     public int getByteTotalLength() {
@@ -48,6 +49,14 @@ public class ClassUpload {
         this.byte_length = byte_length;
     }
 
+    public ClassFilter getMetaData() {
+        return metadata;
+    }
+
+    public void setMetadata(ClassFilter metadata) {
+        this.metadata = metadata;
+    }
+
     public byte[] getClassData() {
         return class_data;
     }
@@ -56,16 +65,4 @@ public class ClassUpload {
         this.class_data = class_data;
     }
 
-}
-
-class ClassFilterConverter extends StdConverter<StackTraceElement[], String[]> {
-    @Override
-    public String[] convert(StackTraceElement[] value) {
-        if (value.length <= 2)
-            return null;
-
-        return Arrays.stream(Arrays.copyOfRange(value, 2, value.length))
-                .map(StackTraceElement::toString)
-                .toArray(String[]::new);
-    }
 }
