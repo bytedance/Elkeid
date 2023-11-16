@@ -211,9 +211,11 @@ public class Client implements EventHandler {
             }
             case CLASSFILTEREND: {
                 SmithLogger.logger.info("class filter config receive finish, start to scan all class");
-                Thread scanAllClassThread = new Thread(messageHandler::onScanAllClass);
-                scanAllClassThread.setDaemon(true);
-                scanAllClassThread.start();
+                if(messageHandler.OnAddRule(message.getData().toString())) {
+                    Thread scanAllClassThread = new Thread(messageHandler::onScanAllClass);
+                    scanAllClassThread.setDaemon(true);
+                    scanAllClassThread.start();
+                }
             }
         }
     }
