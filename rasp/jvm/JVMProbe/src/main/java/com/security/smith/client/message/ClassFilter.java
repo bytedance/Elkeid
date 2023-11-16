@@ -8,9 +8,10 @@ public class ClassFilter {
     private String class_name;
     private String class_path;
     private String class_loader_name;
+    private String class_interface_name;
     private String base_class_name;
     private String base_class_loader_name;
-    private int rule_id;
+    private long rule_id;
 
     @JsonSerialize(converter = StackTraceConverter.class)
     private StackTraceElement[] stack_trace;
@@ -39,6 +40,14 @@ public class ClassFilter {
         this.class_loader_name = class_loader_name;
     }
 
+    public String getClassInterfaceName() {
+        return class_interface_name;
+    }
+
+    public void setClassInterfaceName(String class_interface_name) {
+        this.class_interface_name = class_interface_name;
+    }
+
     public String getBaseClassName() {
         return base_class_name;
     }
@@ -55,11 +64,11 @@ public class ClassFilter {
         this.base_class_loader_name = base_class_loader_name;
     }
 
-    public int getRuleId() {
+    public long getRuleId() {
         return rule_id;
     }
 
-    public void setRuleId(int rule_id) {
+    public void setRuleId(long rule_id) {
         this.rule_id = rule_id;
     }
 
