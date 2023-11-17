@@ -67,7 +67,7 @@ public class Rule_Scanner {
                 weight += 1;
             }
 
-            String interfaceName = data.getClassInterfaceName();
+            String interfaceName = data.getInterfacesName();
             if(interfaceName == null ||
             interfaceName.isEmpty() ||
             interfaceName.contains(m_interfaceName)) {
@@ -81,7 +81,7 @@ public class Rule_Scanner {
                 weight += 1;
             }
 
-            String parentClassName = data.getBaseClassName();
+            String parentClassName = data.getParentClassName();
             if(parentClassName == null ||
                 parentClassName.isEmpty() ||
                 parentClassName.contains(m_parentClassName)) {
