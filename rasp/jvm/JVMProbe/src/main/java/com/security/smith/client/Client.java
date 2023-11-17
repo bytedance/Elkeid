@@ -209,13 +209,51 @@ public class Client implements EventHandler {
 
                 break;
             }
+            case CLASSUPLOADSTART: {
+                 SmithLogger.logger.info("rule upload start: " + message.getData().toString());
+
+                ObjectMapper objectMapper = new ObjectMapper()
+                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+                        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+                try {
+                    messageHandler.setRuleVersion(
+                            objectMapper.treeToValue(
+                                    message.getData(),
+                                    Rule_Version.class
+                            )
+                    );
+                } catch (JsonProcessingException e) {
+                    SmithLogger.exception(e);
+                }
+
+                break;
+            }
+            case CLASSUPLOAD: {
+                 SmithLogger.logger.info("rule upload: " + message.getData().toString());
+
+                ObjectMapper objectMapper = new ObjectMapper()
+                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+                        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+                try {
+                    messageHandler.OnAddRule(
+                            objectMapper.treeToValue(
+                                    message.getData(),
+                                    Rule_Data.class
+                            )
+                    );
+                } catch (JsonProcessingException e) {
+                    SmithLogger.exception(e);
+                }
+
+                break;
+            }
             case CLASSFILTEREND: {
                 SmithLogger.logger.info("class filter config receive finish, start to scan all class");
-                if(messageHandler.OnAddRule(message.getData().toString())) {
-                    Thread scanAllClassThread = new Thread(messageHandler::onScanAllClass);
-                    scanAllClassThread.setDaemon(true);
-                    scanAllClassThread.start();
-                }
+                Thread scanAllClassThread = new Thread(messageHandler::onScanAllClass);
+                scanAllClassThread.setDaemon(true);
+                scanAllClassThread.start();
             }
         }
     }
