@@ -8,8 +8,17 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Rule_Mgr {
+    private static int m_rule_version;
     final private static ArrayList<Rule_Scanner>     m_ruleList = new ArrayList<Rule_Scanner>();
     final private static ReadWriteLock m_ruleLock = new ReentrantReadWriteLock();
+
+    public static void setVersion(int rule_version) {
+        m_rule_version = rule_version;
+    }
+
+    public static int getVersion() {
+        return m_rule_version;
+    }
 
     public static boolean addRule(
             Rule_Scanner rule) {
