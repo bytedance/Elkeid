@@ -28,6 +28,48 @@ public class Rule_Config {
         m_Rule_Mgr = RuleMgr;
     }
 
+    public static boolean setVersion(int rule_version) {
+        if(m_Rule_Mgr == null) {
+            return false;
+        }
+
+        m_Rule_Mgr.delRule_all();
+        m_Rule_Mgr.setVersion(rule_version);
+
+        return true;
+    }
+
+    public static boolean addRuleData(Rule_Data ruleData) {
+        boolean bresult = false;
+
+        if(m_Rule_Mgr == null) {
+            return false;
+        }
+
+        try {
+                Rule_Item[] rule = ruleData.getRule();
+
+                for (int i = 0;i < rule.length;i++) {
+                    Rule_Item RuleItem = rule[i];
+                    Rule_Scanner RuleScanner = new Rule_Scanner(RuleItem);
+                    if(RuleScanner == null) {
+                        continue;
+                    }
+
+                    RuleScanner.setVersion(m_Rule_Mgr.getVersion());
+
+                    m_Rule_Mgr.addRule(RuleScanner);
+
+                    bresult = true;
+                }
+        }
+        catch(Exception e) {
+            SmithLogger.exception(e);
+        }
+
+        return bresult;
+    }
+
     public static boolean setRuleConfig(String JsonRule) {
         boolean bresult = false;
 
