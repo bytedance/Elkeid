@@ -20,7 +20,7 @@ type UploadResp struct {
 	Data    string `json:"data"`
 }
 
-func UploadFile(filePath string, hash string) (string, error) {
+func UploadFile(filePath string, hash string, token string) (string, error) {
 	fd, err := grequests.FileUploadFromDisk(filePath)
 	if err != nil {
 		return "", err
@@ -28,7 +28,7 @@ func UploadFile(filePath string, hash string) (string, error) {
 	resp, err := grequests.Post(fmt.Sprintf(UploadFileUrl, common.GetRandomManageAddr()),
 		&grequests.RequestOptions{
 			Files:   fd,
-			Data:    map[string]string{"hash": hash},
+			Data:    map[string]string{"hash": hash, "token": token},
 			Headers: map[string]string{"token": GetToken()},
 		})
 	if err != nil {

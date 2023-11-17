@@ -193,7 +193,7 @@ func handlerFile(token, filePath string) {
 		return
 	}
 
-	newPath, err := client.UploadFile(zipPath, hash)
+	newPath, err := client.UploadFile(zipPath, hash, token)
 	if err != nil {
 		item["status"] = TaskStatusFail
 		item["msg"] = fmt.Sprintf("handlerFile, UploadFile error %s, path %s.", err.Error(), filePath)
