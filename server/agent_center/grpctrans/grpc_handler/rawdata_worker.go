@@ -76,17 +76,17 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 			//5101: 组件版本验证
 			//8010: 基线扫描
 			//1021,1022: 插件启动后首次心跳，插件退出日志
-			//
+			//1031: 文件主动上传
 			//需要发送给manager的数据
 			item, err := parseRecord(req.GetData()[k])
 			if err != nil {
 				continue
 			}
 
+			item["data_type"] = fmt.Sprintf("%d", mqMsg.DataType)
 			switch mqMsg.DataType {
 			case 1021, 1022, 1101, 1031:
 				//不包含token的数据
-				item["data_type"] = fmt.Sprintf("%d", mqMsg.DataType)
 				item["agent_id"] = mqMsg.AgentID
 				item["time"] = fmt.Sprintf("%d", mqMsg.AgentTime)
 				item["time_pkg"] = fmt.Sprintf("%d", SvrTime)
@@ -99,7 +99,6 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 				item["product"] = mqMsg.Product
 				item["token"] = "token" //适配格式
 			default:
-				item["data_type"] = fmt.Sprintf("%d", mqMsg.DataType)
 			}
 
 			err = GlobalGRPCPool.PushTask2Manager(item)

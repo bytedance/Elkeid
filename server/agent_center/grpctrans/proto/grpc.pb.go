@@ -1282,9 +1282,9 @@ func (m *DownloadResponse) GetData() []byte {
 }
 
 type ConfigRefreshRequest struct {
-	AgentID              string               `protobuf:"bytes,1,opt,name=AgentID,proto3" json:"AgentID,omitempty"`
-	PluginName           string               `protobuf:"bytes,2,opt,name=PluginName,proto3" json:"PluginName,omitempty"`
-	Fingerprint          []*ConfigFingerPrint `protobuf:"bytes,3,rep,name=Fingerprint,proto3" json:"Fingerprint,omitempty"`
+	AgentID              string               `protobuf:"bytes,1,opt,name=AgentID,proto3" json:"agent_id,omitempty"`
+	PluginName           string               `protobuf:"bytes,2,opt,name=PluginName,proto3" json:"plugin,omitempty"`
+	Fingerprint          []*ConfigFingerPrint `protobuf:"bytes,3,rep,name=Fingerprint,proto3" json:"configs,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
 	XXX_sizecache        int32                `json:"-"`
@@ -1345,9 +1345,9 @@ func (m *ConfigRefreshRequest) GetFingerprint() []*ConfigFingerPrint {
 }
 
 type ConfigFingerPrint struct {
-	Path                 string             `protobuf:"bytes,1,opt,name=Path,proto3" json:"Path,omitempty"`
-	Hash                 string             `protobuf:"bytes,2,opt,name=Hash,proto3" json:"Hash,omitempty"`
-	Status               ConfigFPStatusCode `protobuf:"varint,3,opt,name=Status,proto3,enum=grpc.ConfigFPStatusCode" json:"Status,omitempty"`
+	Path                 string             `protobuf:"bytes,1,opt,name=Path,proto3" json:"path,omitempty"`
+	Hash                 string             `protobuf:"bytes,2,opt,name=Hash,proto3" json:"hash,omitempty"`
+	Status               ConfigFPStatusCode `protobuf:"varint,3,opt,name=Status,proto3,enum=grpc.ConfigFPStatusCode" json:"status,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
 	XXX_unrecognized     []byte             `json:"-"`
 	XXX_sizecache        int32              `json:"-"`

@@ -178,7 +178,7 @@ func (c *ConfigExtHandler) CheckConfig(ctx context.Context, request *pb.ConfigRe
 		res.SecretKey = localFP.SecretKey
 		res.Version = localFP.Version
 		res.Release = localFP.Release
-		ylog.Infof("CheckConfig_handler", "local check ok,request %s, response %s", request.String(), res.String())
+		ylog.Debugf("CheckConfig_handler", "local check ok,request %s, response %s", request.String(), res.String())
 		return res, nil
 	}
 
@@ -219,6 +219,6 @@ func (c *ConfigExtHandler) CheckConfig(ctx context.Context, request *pb.ConfigRe
 
 	}
 	res.Status = status
-	ylog.Infof("CheckConfig_handler", "remote check, request %s, response %s", request.String(), res.String())
+	//ylog.Infof("CheckConfig_handler", "remote check, request %s, response %s", request.String(), res.String())
 	return res, nil
 }
