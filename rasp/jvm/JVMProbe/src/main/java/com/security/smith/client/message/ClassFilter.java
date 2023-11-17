@@ -1,83 +1,94 @@
 package com.security.smith.client.message;
 
 
+import java.util.UUID;
+
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 
 public class ClassFilter {
-    private String class_name;
-    private String class_path;
-    private String class_loader_name;
-    private String class_interface_name;
-    private String base_class_name;
-    private String base_class_loader_name;
-    private long rule_id;
-
+    private String transId = null;
+    private String className = "";
+    private String classPath = "";
+    private String interfacesName = "";
+    private String classLoaderName = "";
+    private String parentClassName = "";
+    private String parentClassLoaderName = "";
+    private long ruleId;
     @JsonSerialize(converter = StackTraceConverter.class)
-    private StackTraceElement[] stack_trace;
+    private StackTraceElement[] stackTrace = {};
 
-    public String getClassName() {
-        return class_name;
+    public String getTransId() {
+        return transId;
     }
 
-    public void setClassName(String class_name) {
-        this.class_name = class_name;
+    public void setTransId() {
+        UUID uniqueId = UUID.randomUUID();
+        transId = uniqueId.toString().replace("-", "");
+    }
+    
+    public String getClassName() {
+        return className;
+    }
+
+    public void setClassName(String className) {
+        this.className = className;
     }
 
     public String getClassPath() {
-        return class_path;
+        return classPath;
     }
 
-    public void setClassPath(String class_path) {
-        this.class_path = class_path;
+    public void setClassPath(String classPath) {
+        this.classPath = classPath;
     }
 
+    public String getInterfacesName() {
+        return interfacesName;
+    }
+
+    public void setInterfacesName(String interfacesName) {
+        this.interfacesName = interfacesName;
+    }
     public String getClassLoaderName() {
-        return class_loader_name;
+        return classLoaderName;
     }
 
-    public void setClassLoaderName(String class_loader_name) {
-        this.class_loader_name = class_loader_name;
+    public void setClassLoaderName(String classLoaderName) {
+        this.classLoaderName = classLoaderName;
     }
 
-    public String getClassInterfaceName() {
-        return class_interface_name;
+
+    public String getParentClassName() {
+        return parentClassName;
     }
 
-    public void setClassInterfaceName(String class_interface_name) {
-        this.class_interface_name = class_interface_name;
+    public void setParentClassName(String parentClassName) {
+        this.parentClassName = parentClassName;
     }
 
-    public String getBaseClassName() {
-        return base_class_name;
+    public String getParentClassLoaderName() {
+        return parentClassLoaderName;
     }
 
-    public void setBaseClassName(String base_class_name) {
-        this.base_class_name = base_class_name;
-    }
-
-    public String getBaseClassLoaderName() {
-        return base_class_loader_name;
-    }
-
-    public void setBaseClassLoaderName(String base_class_loader_name) {
-        this.base_class_loader_name = base_class_loader_name;
+    public void setParentClassLoaderName(String parentClassLoaderName) {
+        this.parentClassLoaderName = parentClassLoaderName;
     }
 
     public long getRuleId() {
-        return rule_id;
+        return ruleId;
     }
 
-    public void setRuleId(long rule_id) {
-        this.rule_id = rule_id;
+    public void setRuleId(long ruleId) {
+        this.ruleId = ruleId;
     }
 
     public StackTraceElement[] getStackTrace() {
-        return stack_trace;
+        return stackTrace;
     }
 
     public void setStackTrace(StackTraceElement[] stackTrace) {
-        this.stack_trace = stackTrace;
+        this.stackTrace = stackTrace;
     }
 
 }

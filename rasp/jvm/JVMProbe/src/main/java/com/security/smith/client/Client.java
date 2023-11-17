@@ -209,7 +209,7 @@ public class Client implements EventHandler {
 
                 break;
             }
-            case CLASSUPLOADSTART: {
+            case CLASSFILTERSTART: {
                  SmithLogger.logger.info("rule upload start: " + message.getData().toString());
 
                 ObjectMapper objectMapper = new ObjectMapper()
@@ -229,7 +229,7 @@ public class Client implements EventHandler {
 
                 break;
             }
-            case CLASSUPLOAD: {
+            case CLASSFILTER: {
                  SmithLogger.logger.info("rule upload: " + message.getData().toString());
 
                 ObjectMapper objectMapper = new ObjectMapper()

@@ -4,12 +4,15 @@ import java.lang.instrument.ClassFileTransformer;
 import java.lang.Class;
 
 import java.security.ProtectionDomain;
+import java.time.Instant;
 
 import com.security.smith.client.message.ClassFilter;
 import com.security.smith.client.message.ClassUpload;
+import com.security.smith.common.ProcessHelper;
 import com.security.smith.log.SmithLogger;
 
 import java.lang.instrument.IllegalClassFormatException;
+import java.lang.management.ManagementFactory;
 
 public class ClassUploadTransformer implements ClassFileTransformer {
     // 暂定最大10m
@@ -28,13 +31,13 @@ public class ClassUploadTransformer implements ClassFileTransformer {
     /*
      * class information 
      */
-    private ClassFilter classFilter = null;
+    private String transId = null;
 
 
-    public ClassUploadTransformer(Class<?> classToUpload, Client client, ClassFilter classFilter) {
+    public ClassUploadTransformer(Class<?> classToUpload, Client client, String transId) {
         this.clazzToUpload = classToUpload;
         this.client = client;
-        this.classFilter = classFilter;
+        this.transId = transId;
     }
 
     @Override
@@ -63,15 +66,13 @@ public class ClassUploadTransformer implements ClassFileTransformer {
 
                 int length = data.length;
                 ClassUpload classUpload = new ClassUpload();
-                classUpload.setTransId();
+                classUpload.setTransId(transId);
 
                 // TODO 第一版先不分包，看下性能
                 classUpload.setByteTotalLength(length);
                 classUpload.setByteLength(length);
                 classUpload.setClassData(data);
-                if (classFilter != null) {
-                    classUpload.setMetadata(classFilter);
-                }
+
                 if (client != null) {
                     client.write(Operate.CLASSUPLOAD, classUpload);
                 }
