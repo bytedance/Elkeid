@@ -18,6 +18,7 @@ import com.security.smith.client.message.*;
 import com.security.smith.log.SmithLogger;
 import com.security.smith.module.Patcher;
 import com.security.smith.type.*;
+import com.security.smith.client.*;
 
 import javassist.ClassClassPath;
 import javassist.ClassPool;
@@ -61,6 +62,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     private static final int DEFAULT_QUOTA = 12000;
 
     private Boolean disable;
+    private Boolean scanswitch;
     private Instrumentation inst;
     private final Client client;
     private final Heartbeat heartbeat;
@@ -71,6 +73,8 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     private final Map<Pair<Integer, Integer>, Block> blocks;
     private final Map<Pair<Integer, Integer>, Integer> limits;
     private final AtomicIntegerArray[] quotas;
+    private final Rule_Mgr    rulemgr;
+    private final Rule_Config ruleconfig;
 
     enum Action {
         STOP,
@@ -94,6 +98,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         client = new Client(this);
         disruptor = new Disruptor<>(Trace::new, TRACE_BUFFER_SIZE, DaemonThreadFactory.INSTANCE);
         quotas = Stream.generate(() -> new AtomicIntegerArray(METHOD_MAX_ID)).limit(CLASS_MAX_ID).toArray(AtomicIntegerArray[]::new);
+
+        rulemgr = new Rule_Mgr();
+        ruleconfig = new Rule_Config(rulemgr);
+        scanswitch = false;
     }
 
     public void setInst(Instrumentation inst) {
@@ -105,6 +113,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         InputStream inputStream = this.getClass().getResourceAsStream("/class.yaml");
 
         try {
+
             for (SmithClass smithClass : objectMapper.readValue(inputStream, SmithClass[].class))
                 smithClasses.put(smithClass.getName(), smithClass);
         } catch (IOException e) {
@@ -314,9 +323,22 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                             String parentClassLoaderName = parentClassLoader != null ? parentClassLoader.toString() : "N/A";
                             SmithLogger.logger.info("Parent Class Loader: " + parentClassLoaderName);
                         }
-                        // TODO 规则匹配后，发送class文件
-                        // sendByte(classfileBuffer, classFilter);
                         
+                        long rule_id = rulemgr.matchRule(classFilter);
+                        if(rule_id != -1) {
+                        /*
+
+                         report event
+                         
+                         */
+
+                         classFilter.setRuleId(rule_id);
+                         classFilter.setStackTrace(Thread.currentThread().getStackTrace());
+
+                             // TODO 规则匹配
+						sendClass(ctClass.	toClass​(loader), classFilter);
+                    }
+                    
                     }
                 } catch (Exception e) {
                     SmithLogger.exception(e);
@@ -333,7 +355,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         if (disable)
             return null;
 
-        checkClassFilter(loader, className, classfileBuffer);
+        if(scanswitch) {
+            checkClassFilter(loader, className,classfileBuffer);
+        }
   
         Type classType = Type.getObjectType(className);
         SmithClass smithClass = smithClasses.get(classType.getClassName());
@@ -519,9 +543,52 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         heartbeat.setPatch(config.getUUID());
     }
 
+    @Override
+    public boolean setRuleVersion(Rule_Version ruleVersion) {
+        boolean bresult = false;
+
+        try {
+            bresult = ruleconfig.setVersion(ruleVersion.getRule_version());
+        }
+        catch(Exception e) {
+            SmithLogger.exception(e);
+        }
+
+        return bresult;
+    }
+
+    @Override
+    public boolean OnAddRule(Rule_Data ruleData) {
+        boolean bresult = false;
+
+        try {
+            bresult = ruleconfig.addRuleData(ruleData);
+        }
+        catch(Exception e) {
+            SmithLogger.exception(e);
+        }
+
+        return bresult;
+    }
+
+    @Override
+    public boolean OnAddRule(String rulejson) {
+        boolean bresult = false;
+
+        try {
+            bresult = ruleconfig.setRuleConfig(rulejson);
+        }
+        catch(Exception e) {
+            SmithLogger.exception(e);
+        }
+
+        return bresult;
+    }
+
     /* 全量扫描 */
     @Override
     public void onScanAllClass() {
+        scanswitch = false;
         try {
             Class<?>[] loadedClasses = inst.getAllLoadedClasses();
 
@@ -565,8 +632,21 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                             classFilter.setBaseClassLoaderName(parentClassLoaderName);
                         }
                     }
-                    // TODO 规则匹配
-                    sendClass(clazz, classFilter);
+
+                    long rule_id = rulemgr.matchRule(classFilter);
+                    if(rule_id != -1) {
+                        /*
+
+                         report event
+                         
+                         */
+
+                        classFilter.setRuleId(rule_id);
+
+                          // TODO 规则匹配
+						sendClass(clazz, classFilter);
+                    }
+                    
                 } catch(Exception e) {
                     SmithLogger.exception(e);
                 }
@@ -574,6 +654,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         } catch(Exception e) {
             SmithLogger.exception(e);
         }
+        scanswitch = true;
     }
 
     /*
