@@ -16,7 +16,7 @@ const (
 	TagsUrl               = `http://%s/api/v1/agent/queryInfo`
 	CheckCommonConfigUrl  = `http://%s/api/v6/investigate/auto_defense/CheckAgentConfig`
 	VerifyCommonConfigUrl = `http://%s/api/v6/investigate/auto_defense/VerifyAgentConfigRelease`
-	IaasInfoUrl           = `http://%s/api/v1/asset/getVolcInstance`
+	IaasInfoUrl           = `http://%s/api/v1/agent/getAssetGroup`
 )
 
 type ResAgentConf struct {
