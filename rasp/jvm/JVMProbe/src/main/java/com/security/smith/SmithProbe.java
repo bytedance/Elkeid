@@ -306,7 +306,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
         try {
             String className_std = className.replace("/", ".");
-            if (className != null && !className.startsWith("com/security/smith")) {
+            if (className != null && !className.startsWith("com/security/smith") && !className.startsWith("rasp/")) {
                 SmithLogger.logger.info("Class Name: " + className_std);
  
                 CtClass ctClass = null;
@@ -612,13 +612,20 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     /* 全量扫描 */
     @Override
     public void onScanAllClass() {
+        scanswitch = false;
         try {
             Class<?>[] loadedClasses = inst.getAllLoadedClasses();
 
             for (Class<?> clazz : loadedClasses) {
                 try {
-                    ClassFilter classFilter = new ClassFilter();
+                    
                     String className = clazz.getName();
+                    if (className.startsWith("rasp.") || className.startsWith("com.security.smith") || className.startsWith("java.lang.invoke.LambdaForm")) {
+                        continue;
+                    }
+
+                    ClassFilter classFilter = new ClassFilter();
+                    
                     classFilter.setTransId();
                     classFilter.setClassName(className);
                     classFilter.setInterfacesName(getInterfaces(clazz));
@@ -665,6 +672,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         } catch(Exception e) {
             SmithLogger.exception(e);
         }
+        scanswitch = true;
     }
 
     /*
