@@ -401,6 +401,8 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 SmithLogger.exception(e);
             }
 
+            /*
+
             try {
                 if(className == null) {
                     printClassfilter(classFilter);
@@ -408,9 +410,11 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             }
             catch(Exception e) {
             }
+*/
 
             long rule_id = rulemgr.matchRule(classFilter);
             if(rule_id != -1) {
+                System.out.println("Hit---------------------RuleId:" + rule_id);
 
                 classFilter.setRuleId(rule_id);
                 classFilter.setStackTrace(Thread.currentThread().getStackTrace());
@@ -685,6 +689,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     /* 全量扫描 */
     @Override
     public void onScanAllClass() {
+        scanswitch = false;
         try {
             Class<?>[] loadedClasses = inst.getAllLoadedClasses();
 
@@ -728,13 +733,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     } catch (Exception e) {
 
                     }
-
-                            try {
-            printClassfilter(classFilter);
-        }
-        catch(Exception e) {
-
-        }
                     
                     long rule_id = rulemgr.matchRule(classFilter);
                     if(rule_id != -1) {
@@ -751,6 +749,8 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         } catch(Exception e) {
             SmithLogger.exception(e);
         }
+
+        scanswitch = true;
     }
 
     /*
