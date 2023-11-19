@@ -40,14 +40,14 @@ public class Rule_Config {
     }
 
     public static void printRule(Rule_Scanner RuleScanner) {
-        SmithLogger.logger.info("Add RuleItem:" + RuleScanner);
-        SmithLogger.logger.info("ruleId:" + RuleScanner.m_ruleId);
-        SmithLogger.logger.info("virusName:" + RuleScanner.m_virusName);
-        SmithLogger.logger.info("className:" + RuleScanner.m_className);
-        SmithLogger.logger.info("classPath:" + RuleScanner.m_classPath);
-        SmithLogger.logger.info("interfaceName:" + RuleScanner.m_interfaceName);
-        SmithLogger.logger.info("classLoaderName:" + RuleScanner.m_classLoaderName);
-        SmithLogger.logger.info("parentClassName:" + RuleScanner.m_parentClassName);
+        System.out.println("Add RuleItem:" + RuleScanner);
+        System.out.println("ruleId:" + RuleScanner.m_ruleId);
+        System.out.println("virusName:" + RuleScanner.m_virusName);
+        System.out.println("className:" + RuleScanner.m_className);
+        System.out.println("classPath:" + RuleScanner.m_classPath);
+        System.out.println("interfaceName:" + RuleScanner.m_interfaceName);
+        System.out.println("classLoaderName:" + RuleScanner.m_classLoaderName);
+        System.out.println("parentClassName:" + RuleScanner.m_parentClassName);
     }
 
     public static boolean addRuleData(Rule_Data ruleData) {

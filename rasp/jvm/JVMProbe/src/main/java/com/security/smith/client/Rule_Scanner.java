@@ -49,6 +49,39 @@ public class Rule_Scanner {
         this.m_version = version;
     }
 
+    public void printRule() {
+        System.out.println("--------------------Hit RuleItem:" + this);
+        System.out.println("ruleId:" + m_ruleId);
+        System.out.println("virusName:" + m_virusName);
+        System.out.println("className:" + m_className);
+        System.out.println("classPath:" + m_classPath);
+        System.out.println("interfaceName:" + m_interfaceName);
+        System.out.println("classLoaderName:" + m_classLoaderName);
+        System.out.println("parentClassName:" + m_parentClassName);
+        System.out.println("--------------------------------------------------------");
+    }
+
+    public void printClassfilter(ClassFilter data) {
+    System.out.println("--------Hit ClassFilter----------------");
+    System.out.println("className:" + data.getClassName());
+    System.out.println("classPath:" + data.getClassPath());
+    System.out.println("interfaceName:" + data.getInterfacesName());
+    System.out.println("classLoaderName:" + data.getClassLoaderName());
+    System.out.println("parentClassName:" + data.getParentClassName());
+
+     // 步骤1：获取当前线程
+    Thread currentThread = Thread.currentThread();
+
+    // 步骤2：获取当前线程的堆栈跟踪
+    StackTraceElement[] stackTrace = currentThread.getStackTrace();
+
+    // 步骤3：打印堆栈跟踪信息
+    for (StackTraceElement element : stackTrace) {
+        System.out.println(element);
+    }
+     System.out.println("-------------------Hit ClassFilter------------------------");
+}
+
     public long matchRule(ClassFilter data) {
         long rule_id = -1;
         int weight = 0;
@@ -60,6 +93,9 @@ public class Rule_Scanner {
                 if(className != null && className.matches(m_className)){
                     weight += 1;
                 }
+                else {
+                    return -1;
+                }
             }
             else {
                 weight += 1;
@@ -69,6 +105,9 @@ public class Rule_Scanner {
             if(!m_classPath.isEmpty()) {
                 if(classPath != null && classPath.matches(m_classPath)) {
                     weight += 1;
+                }
+                else {
+                    return -1;
                 }
             }
             else {
@@ -81,6 +120,9 @@ public class Rule_Scanner {
                 if(interfaceName != null && !interfaceName.isEmpty() &&  m_interfaceName.contains(interfaceName)) {
                     weight += 1;
                 }
+                else {
+                    return -1;
+                }
             }
             else {
                 weight += 1;
@@ -92,6 +134,9 @@ public class Rule_Scanner {
                 if(classLoaderName != null && classLoaderName.matches(m_classLoaderName)) {
                     weight += 1;
                 }
+                else {
+                    return -1;
+                }
             }
             else {
                 weight += 1;
@@ -102,12 +147,17 @@ public class Rule_Scanner {
                 if(parentClassName != null && parentClassName.matches(m_parentClassName)) {
                     weight += 1;
                 }
+                else {
+                    return -1;
+                }
             }
             else {
                 weight += 1;
             }
            
             if(weight == 5) {
+                printClassfilter(data);
+                printRule();
                 rule_id = m_ruleId;
             }
         }
