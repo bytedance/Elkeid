@@ -212,17 +212,12 @@ public class Client implements EventHandler {
             case CLASSFILTERSTART: {
                  SmithLogger.logger.info("rule upload start: " + message.getData().toString());
 
-                ObjectMapper objectMapper = new ObjectMapper()
-                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+                 ObjectMapper objectMapper = new ObjectMapper();
+                objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,false);
 
                 try {
-                    messageHandler.setRuleVersion(
-                            objectMapper.treeToValue(
-                                    message.getData(),
-                                    Rule_Version.class
-                            )
-                    );
+                    Rule_Version ruleVersion = objectMapper.readValue(message.getData().toString(), Rule_Version.class);
+                    messageHandler.setRuleVersion(ruleVersion);
                 } catch (JsonProcessingException e) {
                     SmithLogger.exception(e);
                 }
@@ -232,17 +227,12 @@ public class Client implements EventHandler {
             case CLASSFILTER: {
                  SmithLogger.logger.info("rule upload: " + message.getData().toString());
 
-                ObjectMapper objectMapper = new ObjectMapper()
-                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+                ObjectMapper objectMapper = new ObjectMapper();
+                objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,false);
 
                 try {
-                    messageHandler.OnAddRule(
-                            objectMapper.treeToValue(
-                                    message.getData(),
-                                    Rule_Data.class
-                            )
-                    );
+                    Rule_Data ruleData = objectMapper.readValue(message.getData().toString(), Rule_Data.class);
+                    messageHandler.OnAddRule(ruleData);
                 } catch (JsonProcessingException e) {
                     SmithLogger.exception(e);
                 }

@@ -39,6 +39,17 @@ public class Rule_Config {
         return true;
     }
 
+    public static void printRule(Rule_Scanner RuleScanner) {
+        SmithLogger.logger.info("Add RuleItem:" + RuleScanner);
+        SmithLogger.logger.info("ruleId:" + RuleScanner.m_ruleId);
+        SmithLogger.logger.info("virusName:" + RuleScanner.m_virusName);
+        SmithLogger.logger.info("className:" + RuleScanner.m_className);
+        SmithLogger.logger.info("classPath:" + RuleScanner.m_classPath);
+        SmithLogger.logger.info("interfaceName:" + RuleScanner.m_interfaceName);
+        SmithLogger.logger.info("classLoaderName:" + RuleScanner.m_classLoaderName);
+        SmithLogger.logger.info("parentClassName:" + RuleScanner.m_parentClassName);
+    }
+
     public static boolean addRuleData(Rule_Data ruleData) {
         boolean bresult = false;
 
@@ -47,6 +58,7 @@ public class Rule_Config {
         }
 
         try {
+                SmithLogger.logger.info("ruleconfig.AddRuleData Entry---------------------------");
                 Rule_Item[] rule = ruleData.getRule();
 
                 for (int i = 0;i < rule.length;i++) {
@@ -58,10 +70,13 @@ public class Rule_Config {
 
                     RuleScanner.setVersion(m_Rule_Mgr.getVersion());
 
+                    printRule(RuleScanner);
+
                     m_Rule_Mgr.addRule(RuleScanner);
 
                     bresult = true;
                 }
+                SmithLogger.logger.info("ruleconfig.AddRuleData Leave ---------------------------");
         }
         catch(Exception e) {
             SmithLogger.exception(e);

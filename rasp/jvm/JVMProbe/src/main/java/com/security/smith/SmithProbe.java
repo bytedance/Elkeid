@@ -23,7 +23,7 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.objectweb.asm.*;
 
-
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.instrument.ClassFileTransformer;
@@ -78,6 +78,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
     public SmithProbe() {
         disable = false;
+        scanswitch = false;
 
         smithClasses = new ConcurrentHashMap<>();
         patchers = new ConcurrentHashMap<>();
@@ -92,7 +93,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
         rulemgr = new Rule_Mgr();
         ruleconfig = new Rule_Config(rulemgr);
-        scanswitch = false;
     }
 
     public void setInst(Instrumentation inst) {
@@ -302,57 +302,130 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         return path;
     }
 
+    public void printClassfilter(ClassFilter data) {
+            /* 
+        SmithLogger.logger.info("className:" + data.getClassName());
+        SmithLogger.logger.info("classPath:" + data.getClassPath());
+        SmithLogger.logger.info("interfaceName:" + data.getInterfacesName());
+        SmithLogger.logger.info("classLoaderName:" + data.getClassLoaderName());
+        SmithLogger.logger.info("parentClassName:" + data.getParentClassName());
+        */
+
+        System.out.println("className:" + data.getClassName());
+        System.out.println("classPath:" + data.getClassPath());
+        System.out.println("interfaceName:" + data.getInterfacesName());
+        System.out.println("classLoaderName:" + data.getClassLoaderName());
+        System.out.println("parentClassName:" + data.getParentClassName());
+
+         // 步骤1：获取当前线程
+        Thread currentThread = Thread.currentThread();
+
+        // 步骤2：获取当前线程的堆栈跟踪
+        StackTraceElement[] stackTrace = currentThread.getStackTrace();
+
+        // 步骤3：打印堆栈跟踪信息
+        for (StackTraceElement element : stackTrace) {
+            System.out.println(element);
+        }
+    }
+
+    public InputStream byteArrayToInputStream(byte[] bytes) throws IOException {
+    if(bytes == null) {
+        return null;
+    }
+
+    ByteArrayInputStream inputStream = new ByteArrayInputStream(bytes);
+    
+    return inputStream;
+    }
+
     private void checkClassFilter(ClassLoader loader, String className, byte[] classfileBuffer) {
+        CtClass ctClass = null;
 
         try {
-            String className_std = className.replace("/", ".");
-            if (className != null && !className.startsWith("com/security/smith") && !className.startsWith("rasp/")) {
-                SmithLogger.logger.info("Class Name: " + className_std);
- 
-                CtClass ctClass = null;
-                ClassFilter classFilter = new ClassFilter();
-                classFilter.setClassName(className_std);
-                classFilter.setTransId();
+            if(className == null && classfileBuffer == null) {
+                SmithLogger.logger.info("nononono className == null && classfileBuffer == null");
+                return ;
+            }
 
-                if (loader != null) {
-                    classFilter.setClassLoaderName(loader.getClass().getName());
+            String className_std;
+         
+            ClassPool pool = ClassPool.getDefault();
+            
+            if(className != null) {
+                className_std = className.replace("/", ".");
+                if(className.startsWith("com/security/smith")) {
+                    return ;
                 }
-                try {
-                    ClassPool pool = ClassPool.getDefault();
-  
-                    ctClass = pool.makeClass(className);
-                    if (ctClass != null) {     
-                        if (!ctClass.isInterface()) {
-                            classFilter.setInterfacesName(getInterfaces(ctClass));
-                        }    
-                        classFilter.setClassPath(getCtClassPath(ctClass));
-                        CtClass superClass = ctClass.getSuperclass();
-                        // 获取父类名和父类加载器
-                        String superClassName = superClass != null ? superClass.getName() : "";
-                        classFilter.setParentClassName(superClassName);
-                
-                        if (superClass != null) {
-                            ClassLoader parentClassLoader = superClass.getClassPool().getClassLoader();
-                            String parentClassLoaderName = parentClassLoader != null ? parentClassLoader.getClass().getName() : "";
-                            classFilter.setParentClassLoaderName(parentClassLoaderName);
-                        }
-                    }
-                } catch (Exception e) {
-                    SmithLogger.exception(e);
-                }
-                long rule_id = rulemgr.matchRule(classFilter);
-                if(rule_id != -1) {
 
-                    classFilter.setRuleId(rule_id);
-                    classFilter.setStackTrace(Thread.currentThread().getStackTrace());
+                ctClass = pool.makeClass(className);
+            }
+            else {
+                className_std = "";
 
-                    client.write(Operate.SCANCLASS, classFilter);
-                    sendByte(classfileBuffer, classFilter.getTransId());
-                
+                InputStream inputS = byteArrayToInputStream(classfileBuffer);
+
+                ctClass = pool.makeClass(inputS);
+            }
+
+            if(ctClass == null) {
+                return ;
+            }
+
+            SmithLogger.logger.info("Class Name: " + className_std);
+
+            ClassFilter classFilter = new ClassFilter();
+            if (loader != null) {
+                classFilter.setClassLoaderName(loader.getClass().getName());
+            }
+            
+            classFilter.setClassName(className_std);
+            classFilter.setTransId();
+
+            try {
+                if (!ctClass.isInterface()) {
+                    classFilter.setInterfacesName(getInterfaces(ctClass));
+                }    
+                classFilter.setClassPath(getCtClassPath(ctClass));
+                CtClass superClass = ctClass.getSuperclass();
+                // 获取父类名和父类加载器
+                String superClassName = superClass != null ? superClass.getName() : "";
+                classFilter.setParentClassName(superClassName);
+        
+                if (superClass != null) {
+                    ClassLoader parentClassLoader = superClass.getClassPool().getClassLoader();
+                    String parentClassLoaderName = parentClassLoader != null ? parentClassLoader.getClass().getName() : "";
+                    classFilter.setParentClassLoaderName(parentClassLoaderName);
                 }
+            } catch (Exception e) {
+                SmithLogger.exception(e);
+            }
+
+            try {
+                if(className == null) {
+                    printClassfilter(classFilter);
+                }
+            }
+            catch(Exception e) {
+            }
+
+            long rule_id = rulemgr.matchRule(classFilter);
+            if(rule_id != -1) {
+
+                classFilter.setRuleId(rule_id);
+                classFilter.setStackTrace(Thread.currentThread().getStackTrace());
+
+                client.write(Operate.SCANCLASS, classFilter);
+                sendByte(classfileBuffer, classFilter.getTransId());
+            
             }
         } catch(Exception e) {
             SmithLogger.exception(e);
+        }
+        finally {
+            if(ctClass != null) {
+                ctClass.detach();
+            }
         }
         
     }
@@ -612,7 +685,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     /* 全量扫描 */
     @Override
     public void onScanAllClass() {
-        scanswitch = false;
         try {
             Class<?>[] loadedClasses = inst.getAllLoadedClasses();
 
@@ -656,6 +728,13 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     } catch (Exception e) {
 
                     }
+
+                            try {
+            printClassfilter(classFilter);
+        }
+        catch(Exception e) {
+
+        }
                     
                     long rule_id = rulemgr.matchRule(classFilter);
                     if(rule_id != -1) {
@@ -672,7 +751,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         } catch(Exception e) {
             SmithLogger.exception(e);
         }
-        scanswitch = true;
     }
 
     /*
