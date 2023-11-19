@@ -7,7 +7,7 @@ public class Rule_Item {
     private String virusName;
     private long flags;
 
-    private long rule_id;
+    private long ruleId;
 
     private String className;
 
@@ -28,7 +28,7 @@ public class Rule_Item {
     public Rule_Item(Rule_Item RuleItem) {
         this.virusName = RuleItem.getVirusName();;
         this.flags = RuleItem.getFlags();
-        this.rule_id = RuleItem.getRule_id();
+        this.ruleId = RuleItem.getRuleId();
         this.className = RuleItem.getClassName();
         this.classPath = RuleItem.getClassPath();
         this.interfacesName = RuleItem.getInterfacesName();
@@ -40,7 +40,7 @@ public class Rule_Item {
     public Rule_Item(
             String virusName,
             long flags,
-            long rule_id,
+            long ruleId,
             String className,
             String classPath,
             String interfacesName,
@@ -49,7 +49,7 @@ public class Rule_Item {
             String virusSignature) {
         this.virusName = virusName;;
         this.flags = flags;
-        this.rule_id = rule_id;
+        this.ruleId = ruleId;
         this.className = className;
         this.classPath = classPath;
         this.interfacesName = interfacesName;
@@ -74,12 +74,12 @@ public class Rule_Item {
         this.flags = flags;
     }
 
-    public long getRule_id() {
-        return rule_id;
+    public long getRuleId() {
+        return ruleId;
     }
 
-    public void setRule_id(long rule_id) {
-        this.rule_id = rule_id;
+    public void setRuleId(long ruleId) {
+        this.ruleId = ruleId;
     }
 
     public String getClassName() {

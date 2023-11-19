@@ -3,13 +3,14 @@ package com.security.smith.client;
 import java.util.Arrays;
 import java.util.Base64;
 import com.security.smith.client.message.*;
+import com.security.smith.log.SmithLogger;
 
 public class Rule_Scanner {
     public int m_version;
     public String m_virusName;
     public long m_flags;
 
-    public long m_rule_id;
+    public long m_ruleId;
 
     public String m_className;
 
@@ -29,7 +30,7 @@ public class Rule_Scanner {
     public Rule_Scanner(Rule_Item RuleItem) {
         this.m_virusName = RuleItem.getVirusName();
         this.m_flags = RuleItem.getFlags();
-        this.m_rule_id = RuleItem.getRule_id();
+        this.m_ruleId = RuleItem.getRuleId();
         this.m_className = RuleItem.getClassName();
         this.m_classPath = RuleItem.getClassPath();
         this.m_interfaceName = RuleItem.getInterfacesName();
@@ -52,44 +53,62 @@ public class Rule_Scanner {
         long rule_id = -1;
         int weight = 0;
 
+
         if(m_version == 1) {
             String className = data.getClassName();
-            if(className == null ||
-                className.isEmpty() ||
-                className.contains(m_className)){
+            if(!m_className.isEmpty()) {
+                if(className != null && className.matches(m_className)){
+                    weight += 1;
+                }
+            }
+            else {
                 weight += 1;
             }
 
             String classPath = data.getClassPath();
-            if(classPath == null ||
-               classPath.isEmpty() ||
-               classPath.contains(m_classPath)) {
+            if(!m_classPath.isEmpty()) {
+                if(classPath != null && classPath.matches(m_classPath)) {
+                    weight += 1;
+                }
+            }
+            else {
                 weight += 1;
             }
+          
 
             String interfaceName = data.getInterfacesName();
-            if(interfaceName == null ||
-            interfaceName.isEmpty() ||
-            interfaceName.contains(m_interfaceName)) {
+            if(!m_interfaceName.isEmpty()) {
+                if(interfaceName != null && !interfaceName.isEmpty() &&  m_interfaceName.contains(interfaceName)) {
+                    weight += 1;
+                }
+            }
+            else {
                 weight += 1;
             }
+           
 
             String classLoaderName = data.getClassLoaderName();
-            if(classLoaderName == null ||
-            classLoaderName.isEmpty() ||
-            classLoaderName.contains(m_classLoaderName)) {
+            if(!m_classLoaderName.isEmpty()) {
+                if(classLoaderName != null && classLoaderName.matches(m_classLoaderName)) {
+                    weight += 1;
+                }
+            }
+            else {
                 weight += 1;
             }
-
+           
             String parentClassName = data.getParentClassName();
-            if(parentClassName == null ||
-                parentClassName.isEmpty() ||
-                parentClassName.contains(m_parentClassName)) {
+            if(!m_parentClassName.isEmpty()) {
+                if(parentClassName != null && parentClassName.matches(m_parentClassName)) {
+                    weight += 1;
+                }
+            }
+            else {
                 weight += 1;
             }
-
+           
             if(weight == 5) {
-                rule_id = m_rule_id;
+                rule_id = m_ruleId;
             }
         }
 
