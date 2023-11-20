@@ -18,36 +18,42 @@
 
 #define EXIT_PROTECT 0
 #define SANDBOX 0
-
 #define SMITH_MAX_ARG_STRINGS (16)
 
-// Hook on-off
-int CONNECT_HOOK = 1;
-int BIND_HOOK = 1;
-int EXECVE_HOOK = 1;
-int CREATE_FILE_HOOK = 1;
-int FILE_PERMISSION_HOOK = 0;
-int PTRACE_HOOK = 1;
-int DO_INIT_MODULE_HOOK = 1;
-int UPDATE_CRED_HOOK = 1;
-int RENAME_HOOK = 1;
-int LINK_HOOK = 1;
-int SETSID_HOOK = 1;
-int PRCTL_HOOK = 1;
-int MEMFD_CREATE_HOOK = 1;
-int MOUNT_HOOK = 1;
-int DNS_HOOK = 1;
-int CALL_USERMODEHELPER = 1;
-int UDEV_NOTIFIER = 1;
+/*
+ * Hookpoint switch defintions
+ */
 
-int WRITE_HOOK = 0;
-int ACCEPT_HOOK = 0;
-int OPEN_HOOK = 0;
-int MPROTECT_HOOK = 0;
-int NANOSLEEP_HOOK = 0;
-int KILL_HOOK = 0;
-int RM_HOOK = 0;
-int EXIT_HOOK = 0;
+#define SMITH_HOOK(name, on)                    \
+    static int name##_HOOK = (on);              \
+    module_param(name##_HOOK, int, 0400)
+
+SMITH_HOOK(CONNECT, 1);
+SMITH_HOOK(BIND, 1);
+SMITH_HOOK(EXECVE, 1);
+SMITH_HOOK(CREATE_FILE, 1);
+SMITH_HOOK(PTRACE, 1);
+SMITH_HOOK(MODULE_LOAD, 1);
+SMITH_HOOK(UPDATE_CRED, 1);
+SMITH_HOOK(RENAME, 1);
+SMITH_HOOK(LINK, 1);
+SMITH_HOOK(SETSID, 1);
+SMITH_HOOK(PRCTL, 1);
+SMITH_HOOK(MEMFD_CREATE, 1);
+SMITH_HOOK(MOUNT, 1);
+SMITH_HOOK(DNS, 1);
+SMITH_HOOK(USERMODEHELPER, 1);
+SMITH_HOOK(UDEV, 1);
+SMITH_HOOK(CHMOD, 1);
+
+SMITH_HOOK(WRITE, 0);
+SMITH_HOOK(ACCEPT, 0);
+SMITH_HOOK(OPEN, 0);
+SMITH_HOOK(MPROTECT, 0);
+SMITH_HOOK(NANOSLEEP, 0);
+SMITH_HOOK(KILL, 0);
+SMITH_HOOK(RM, 0);
+SMITH_HOOK(EXIT, 0);
 
 int FAKE_SLEEP = 0;
 int FAKE_RM = 0;
@@ -90,7 +96,6 @@ char exit_group_kprobe_state = 0x0;
 char security_path_rmdir_kprobe_state = 0x0;
 char security_path_unlink_kprobe_state = 0x0;
 char call_usermodehelper_exec_kprobe_state = 0x0;
-char file_permission_kprobe_state = 0x0;
 char inode_permission_kprobe_state = 0x0;
 char write_kprobe_state = 0x0;
 
@@ -3215,167 +3220,6 @@ int openat_pre_handler(struct kprobe *p, struct pt_regs *regs)
     return 0;
 }
 
-int file_permission_handler(struct kprobe *p, struct pt_regs *regs)
-{
-    int mask = 0;
-    char *pname_buf = NULL;
-    char *buffer = NULL;
-    char *file_path = DEFAULT_RET_STR;
-    char *exe_path = DEFAULT_RET_STR;
-    struct file *file = NULL;
-    struct dentry *parent = NULL;
-    struct dentry *self = NULL;
-
-    if (!current->mm || irq_count())
-        return 0;
-
-    file = (struct file *)p_regs_get_arg1(regs);
-    if (IS_ERR_OR_NULL(file))
-        return 0;
-
-    if (S_ISDIR(file_inode(file)->i_mode))
-        return 0;
-
-    mask = (int)p_regs_get_arg2(regs);
-    if(mask == WRITE || mask == MAY_WRITE)
-        mask = 2;
-    else if (mask == READ || mask == MAY_READ)
-        mask = 4;
-    else
-        return 0;
-
-    self = file->f_path.dentry;
-    if(IS_ERR_OR_NULL(self) || IS_ERR_OR_NULL(self->d_sb))
-        return 0;
-
-    parent = self->d_parent;
-    if(!parent)
-        return 0;
-
-    if (file_notify_check(smith_query_sb_uuid(self->d_sb), parent->d_inode->i_ino, "*", 1, mask) || 
-        file_notify_check(smith_query_sb_uuid(self->d_sb), parent->d_inode->i_ino, self->d_name.name, self->d_name.len, mask)) {
-        buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-        exe_path = smith_get_exe_file(buffer, PATH_MAX);
-
-        pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-        file_path = smith_d_path(&(file)->f_path, pname_buf, PATH_MAX);
-
-        if (mask == 2)
-            file_permission_write_print(exe_path, file_path, self->d_sb->s_id);
-        else
-            file_permission_read_print(exe_path, file_path, self->d_sb->s_id);
-    }
-
-    if (buffer)
-        smith_kfree(buffer);
-
-    if (pname_buf)
-        smith_kfree(pname_buf);
-
-    return 0;
-}
-
-//int inode_permission_handler(struct kprobe *p, struct pt_regs *regs)
-//{
-//    int mask;
-//    char *pname_buf = NULL;
-//    char *buffer = NULL;
-//    char *file_path = DEFAULT_RET_STR;
-//    char *exe_path = DEFAULT_RET_STR;
-//    struct dentry* tmp_dentry = NULL;
-//    struct inode *inode = NULL;
-//    struct dentry *parent = NULL;
-//
-//    if (!current->mm || irq_count())
-//        return 0;
-//
-//    inode = (struct inode *)p_regs_get_arg1(regs);
-//    if (IS_ERR_OR_NULL(inode))
-//        return 0;
-//
-//    if (S_ISDIR(inode->i_mode))
-//        return 0;
-//
-//    mask = (int)p_regs_get_arg2(regs);
-//    if(mask & WRITE || mask & MAY_WRITE)
-//        mask = 2;
-//    else if (mask & READ || mask & MAY_READ)
-//        mask = 4;
-//    else
-//        return 0;
-//
-///*
-// * d_alias could be a member of dentry or dentry.d_u after v3.2
-// * existing kernels are always updated to latest, so here we're
-// * using dentry.d_u.d_alias instead of dentry.d_alias
-// *
-// * possible option (assuming hardlinks are rare things):
-// *     don't enum all entries, just grab one with d_find_alias
-// */
-//
-//#ifdef CENTOS_CHECK
-//#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
-//    if (!hlist_empty(&inode->i_dentry)) {
-//        hlist_for_each_entry(tmp_dentry, &inode->i_dentry, d_u.d_alias)
-//#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-//    if (!hlist_empty(&inode->i_dentry)) {
-//        hlist_for_each_entry(tmp_dentry, &inode->i_dentry, d_alias)
-//#else
-//    if (!list_empty(&inode->i_dentry)) {
-//        list_for_each_entry(tmp_dentry, &inode->i_dentry, d_alias)
-//#endif
-//#else
-//#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)
-//    if (!hlist_empty(&inode->i_dentry)) {
-//        hlist_for_each_entry(tmp_dentry, &inode->i_dentry, d_u.d_alias)
-//#else
-//    if (!list_empty(&inode->i_dentry)) {
-//# if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 66)
-//        list_for_each_entry(tmp_dentry, &inode->i_dentry, d_u.d_alias)
-//# else
-//        list_for_each_entry(tmp_dentry, &inode->i_dentry, d_alias)
-//# endif
-//#endif
-//#endif
-//        {
-//            parent = tmp_dentry->d_parent;
-//            if(!parent)
-//                continue;
-//
-//            if (file_notify_check(smith_query_sb_uuid(tmp_dentry->d_sb), parent->d_inode->i_ino, "*", 1, mask) ||
-//                file_notify_check(smith_query_sb_uuid(tmp_dentry->d_sb), parent->d_inode->i_ino, tmp_dentry->d_name.name, tmp_dentry->d_name.len, mask)) {
-//                buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-//                exe_path = smith_get_exe_file(buffer, PATH_MAX);
-//
-//                pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-//                if(pname_buf) {
-//#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
-//                    file_path = dentry_path_raw(tmp_dentry, pname_buf, PATH_MAX);
-//#else
-//                    file_path = __dentry_path(tmp_dentry, pname_buf, PATH_MAX);
-//#endif
-//                }
-//
-//                if(IS_ERR(file_path))
-//                    file_path = DEFAULT_RET_STR;
-//
-//                if (mask == 2)
-//                    file_permission_write_print(exe_path, file_path, inode->i_sb->s_id);
-//                else
-//                    file_permission_read_print(exe_path, file_path, inode->i_sb->s_id);
-//            }
-//        }
-//    }
-//
-//    if (buffer)
-//        smith_kfree(buffer);
-//
-//    if (pname_buf)
-//        smith_kfree(pname_buf);
-//
-//    return 0;
-//}
-
 int mount_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     unsigned long flags = 0;
@@ -3986,16 +3830,6 @@ struct kprobe openat_kprobe = {
         .pre_handler = openat_pre_handler,
 };
 
-struct kprobe file_permission_kprobe = {
-        .symbol_name = "security_file_permission",
-        .pre_handler = file_permission_handler,
-};
-
-//struct kprobe inode_permission_kprobe = {
-//        .symbol_name = "security_inode_permission",
-//        .pre_handler = inode_permission_handler,
-//};
-
 struct kprobe kill_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(kill),
         .pre_handler = kill_pre_handler,
@@ -4085,7 +3919,7 @@ int register_call_usermodehelper_exec_kprobe(void)
     ret = register_kprobe(&call_usermodehelper_exec_kprobe);
 
     if (ret == 0)
-        call_usermodehelper_exec_kprobe_state = 0x1;
+       call_usermodehelper_exec_kprobe_state= 0x1;
 
     return ret;
 }
@@ -4547,36 +4381,6 @@ void unregister_openat_kprobe(void)
     unregister_kprobe(&openat_kprobe);
 }
 
-int register_file_permission_kprobe(void)
-{
-    int ret;
-    ret = register_kprobe(&file_permission_kprobe);
-    if (ret == 0)
-        file_permission_kprobe_state = 0x1;
-
-    return ret;
-}
-
-void unregister_file_permission_kprobe(void)
-{
-    unregister_kprobe(&file_permission_kprobe);
-}
-
-//int register_inode_permission_kprobe(void)
-//{
-//    int ret;
-//    ret = register_kprobe(&inode_permission_kprobe);
-//    if (ret == 0)
-//        inode_permission_kprobe_state = 0x1;
-//
-//    return ret;
-//}
-//
-//void unregister_inode_permission_kprobe(void)
-//{
-//    unregister_kprobe(&inode_permission_kprobe);
-//}
-
 int register_nanosleep_kprobe(void)
 {
     int ret;
@@ -4669,7 +4473,7 @@ void unregister_write_kprobe(void)
 
 void uninstall_kprobe(void)
 {
-    if (UDEV_NOTIFIER == 1) {
+    if (UDEV_HOOK == 1) {
         static void (*smith_usb_unregister_notify) (struct notifier_block * nb);
         smith_usb_unregister_notify = (void *)__symbol_get("usb_unregister_notify");
         if (smith_usb_unregister_notify) {
@@ -4755,12 +4559,6 @@ void uninstall_kprobe(void)
     if (openat_kprobe_state == 0x1)
         unregister_openat_kprobe();
 
-    if (file_permission_kprobe_state == 0x1)
-        unregister_file_permission_kprobe();
-
-//    if (inode_permission_kprobe_state == 0x1)
-//        unregister_inode_permission_kprobe();
-
     if (nanosleep_kprobe_state == 0x1)
         unregister_nanosleep_kprobe();
 
@@ -4807,7 +4605,7 @@ void install_kprobe(void)
 
     if (SANDBOX == 1) {
         DNS_HOOK = 1;
-        CALL_USERMODEHELPER = 1;
+        USERMODEHELPER_HOOK = 1;
         //MPROTECT_HOOK = 1;
         ACCEPT_HOOK = 1;
         OPEN_HOOK = 1;
@@ -4827,7 +4625,7 @@ void install_kprobe(void)
         FAKE_RM = 1;
     }
 
-    if (UDEV_NOTIFIER == 1) {
+    if (UDEV_HOOK == 1) {
         static void (*smith_usb_register_notify) (struct notifier_block * nb);
         smith_usb_register_notify = __symbol_get("usb_register_notify");
         if (smith_usb_register_notify && __symbol_get("usb_unregister_notify")) {
@@ -4866,16 +4664,6 @@ void install_kprobe(void)
         ret = register_openat_kprobe();
         if (ret < 0)
             printk(KERN_INFO "[ELKEID] openat register_kprobe failed, returned %d\n", ret);
-    }
-
-    if (FILE_PERMISSION_HOOK == 1) {
-        ret = register_file_permission_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] file_permission register_kprobe failed, returned %d\n", ret);
-
-//        ret = register_inode_permission_kprobe();
-//        if (ret < 0)
-//            printk(KERN_INFO "[ELKEID] inode_permission register_kprobe failed, returned %d\n", ret);
     }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
@@ -5014,7 +4802,7 @@ void install_kprobe(void)
 #endif
     }
 
-    if (CALL_USERMODEHELPER == 1) {
+    if (USERMODEHELPER_HOOK == 1) {
         ret = register_call_usermodehelper_exec_kprobe();
         if (ret < 0)
             printk(KERN_INFO "[ELKEID] call_usermodehelper_exec register_kprobe failed, returned %d\n", ret);
@@ -5026,7 +4814,7 @@ void install_kprobe(void)
             printk(KERN_INFO "[ELKEID] ptrace register_kprobe failed, returned %d\n", ret);
     }
 
-    if (DO_INIT_MODULE_HOOK == 1) {
+    if (MODULE_LOAD_HOOK == 1) {
         ret = register_do_init_module_kprobe();
         if (ret < 0)
             printk(KERN_INFO "[ELKEID] do_init_module register_kprobe failed, returned %d\n", ret);
@@ -5066,19 +4854,16 @@ static int __init kprobe_hook_init(void)
     install_kprobe();
     smith_nf_init();
 
-    printk(KERN_INFO "[ELKEID] SANDBOX: %d\n", SANDBOX);
-    printk(KERN_INFO
-    "[ELKEID] register_kprobe success: connect_hook: %d,load_module_hook:"
-    " %d,execve_hook: %d,call_usermodehekoer_hook: %d,bind_hook: %d,create_file_hook: %d,file_permission_hook: %d, ptrace_hook: %d, update_cred_hook:"
-    " %d, dns_hook: %d, accept_hook:%d, mprotect_hook: %d, mount_hook: %d, link_hook: %d, memfd_create: %d, rename_hook: %d,"
-    "setsid_hook:%d, prctl_hook:%d, open_hook:%d, udev_notifier:%d, nanosleep_hook:%d, kill_hook: %d, rm_hook: %d, "
-    " exit_hook: %d, write_hook: %d, EXIT_PROTECT: %d\n",
-            CONNECT_HOOK, DO_INIT_MODULE_HOOK, EXECVE_HOOK, CALL_USERMODEHELPER, BIND_HOOK,
-            CREATE_FILE_HOOK, FILE_PERMISSION_HOOK, PTRACE_HOOK, UPDATE_CRED_HOOK, DNS_HOOK,
-            ACCEPT_HOOK, MPROTECT_HOOK, MOUNT_HOOK, LINK_HOOK, MEMFD_CREATE_HOOK, RENAME_HOOK, SETSID_HOOK,
-            PRCTL_HOOK, OPEN_HOOK, UDEV_NOTIFIER, NANOSLEEP_HOOK, KILL_HOOK, RM_HOOK, EXIT_HOOK, WRITE_HOOK,
+    printk( KERN_INFO "[ELKEID] SANDBOX: %d\n", SANDBOX);
+    printk( KERN_INFO "[ELKEID] register_kprobe success: connect_hook: %d, load_module_hook:  %d, execve_hook: %d, "
+            "call_usermodehekoer_hook: %d, bind_hook: %d, create_file_hook: %d, ptrace_hook: %d, update_cred_hook: %d, "
+            "dns_hook: %d, accept_hook:%d, mprotect_hook: %d, mount_hook: %d, link_hook: %d, memfd_create: %d, "
+            "rename_hook: %d, setsid_hook:%d, prctl_hook:%d, open_hook:%d, udev_hook:%d, nanosleep_hook:%d, kill_hook: %d, "
+            "rm_hook: %d, exit_hook: %d, write_hook: %d, EXIT_PROTECT: %d\n",
+            CONNECT_HOOK, MODULE_LOAD_HOOK, EXECVE_HOOK, USERMODEHELPER_HOOK, BIND_HOOK, CREATE_FILE_HOOK, PTRACE_HOOK,
+            UPDATE_CRED_HOOK, DNS_HOOK, ACCEPT_HOOK, MPROTECT_HOOK, MOUNT_HOOK, LINK_HOOK, MEMFD_CREATE_HOOK, RENAME_HOOK,
+            SETSID_HOOK, PRCTL_HOOK, OPEN_HOOK, UDEV_HOOK, NANOSLEEP_HOOK, KILL_HOOK, RM_HOOK, EXIT_HOOK, WRITE_HOOK,
             EXIT_PROTECT);
-
     return 0;
 }
 
