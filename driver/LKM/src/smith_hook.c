@@ -388,30 +388,22 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
 
 #else
 
-    int it = 0, socket_check = 0;
+    struct task_struct *task = current;
+    int it = 0;
 
-    char fd_buff[24];
-    const char *d_name;
-
-    void *tmp_socket = NULL;
-    struct task_struct *task;
-    struct sock *sk;
-    struct inet_sock *inet;
-    struct socket *socket;
-
-    task = current;
     get_task_struct(task);
-
     while (task && task->pid != 1 && it++ < EXECVE_GET_SOCK_PID_LIMIT) {
+        struct task_struct *old_task;
         struct files_struct *files;
-        unsigned int i;
+        int i, socket_check = 0;
 
         files = smith_get_files_struct(task);
         if (!files)
             goto next_task;
 
         for (i = 0; i < EXECVE_GET_SOCK_FD_LIMIT; i++) {
-            struct file *file;
+            struct socket *socket;
+            int err = 0;
 
             rcu_read_lock();
             /* move to next if exceeding current task's max_fds,
@@ -420,34 +412,18 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
                 rcu_read_unlock();
                 break;
             }
-            file = smith_lookup_fd(files, i);
-            if (!file || !get_file_rcu(file)) {
-                rcu_read_unlock();
-                continue;
-            }
+            socket = sockfd_lookup(i, &err);
             rcu_read_unlock();
 
-            d_name = smith_d_path(&file->f_path, fd_buff, 24);
-            if (strlen(d_name) < 8)
-                goto next_file;
+            if (!IS_ERR_OR_NULL(socket)) {
+                struct sock *sk = socket->sk;
 
-            //find socket fd
-            if (strncmp("socket:[", d_name, 8) == 0) {
-                if (IS_ERR_OR_NULL(file->private_data))
-                    goto next_file;
-
-                tmp_socket = file->private_data;
-                socket = (struct socket *)tmp_socket;
                 /* only process known states: SS_CONNECTING/SS_CONNECTED/SS_DISCONNECTING,
                    SS_FREE/SS_UNCONNECTED or any possible new states are to be skipped */
-                if (socket && (socket->state == SS_CONNECTING ||
-                               socket->state == SS_CONNECTED ||
-                               socket->state == SS_DISCONNECTING)) {
-                    sk = socket->sk;
-                    if (!socket->sk)
-                        goto next_file;
-
-                    inet = (struct inet_sock *)sk;
+                if ((socket->state == SS_CONNECTING ||
+                     socket->state == SS_CONNECTED ||
+                     socket->state == SS_DISCONNECTING) && sk) {
+                    struct inet_sock *inet = (struct inet_sock *)sk;
                     switch (sk->sk_family) {
                         case AF_INET:
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
@@ -488,9 +464,8 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
 #endif
                     }
                 }
+                sockfd_put(socket);
             }
-next_file:
-            fput(file);
         }
         smith_put_files_struct(files);
 
@@ -498,21 +473,18 @@ next_file:
             *socket_pid = task->pid;
             smith_put_task_struct(task);
             return;
-        } else {
-            struct task_struct *old_task;
+        }
 
 next_task:
-            old_task = task;
-            rcu_read_lock();
-            task = smith_get_task_struct(rcu_dereference(task->real_parent));
-            rcu_read_unlock();
-            smith_put_task_struct(old_task);
-        }
+        old_task = task;
+        rcu_read_lock();
+        task = smith_get_task_struct(rcu_dereference(task->real_parent));
+        rcu_read_unlock();
+        smith_put_task_struct(old_task);
     }
 
     if (task)
         smith_put_task_struct(task);
-
 #endif
 
     return;
