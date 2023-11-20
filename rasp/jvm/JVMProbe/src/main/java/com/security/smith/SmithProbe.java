@@ -357,7 +357,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             
             if(className != null) {
                 className_std = className.replace("/", ".");
-                if(className.startsWith("com/security/smith")) {
+                if(className.startsWith("com/security/smith") || className.startsWith("rasp/")) {
                     return ;
                 }
 
@@ -373,17 +373,17 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
             if(ctClass == null) {
                 return ;
+            } else {
+                className_std = ctClass.getName();
             }
-
-            SmithLogger.logger.info("Class Name: " + className_std);
+            
 
             ClassFilter classFilter = new ClassFilter();
             if (loader != null) {
                 classFilter.setClassLoaderName(loader.getClass().getName());
             }
-            
             classFilter.setClassName(className_std);
-            classFilter.setTransId();
+            
 
             try {
                 if (!ctClass.isInterface()) {
@@ -420,6 +420,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 System.out.println("Hit---------------------RuleId:" + rule_id);
 
                 classFilter.setRuleId(rule_id);
+                classFilter.setTransId();
                 classFilter.setStackTrace(Thread.currentThread().getStackTrace());
 
                 client.write(Operate.SCANCLASS, classFilter);
@@ -705,7 +706,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
                     ClassFilter classFilter = new ClassFilter();
                     
-                    classFilter.setTransId();
                     classFilter.setClassName(className);
                     classFilter.setInterfacesName(getInterfaces(clazz));
 
@@ -738,7 +738,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     
                     long rule_id = rulemgr.matchRule(classFilter);
                     if(rule_id != -1) {
+                        classFilter.setTransId();
                         classFilter.setRuleId(rule_id);
+                        classFilter.setStackTrace(Thread.currentThread().getStackTrace());
 
                         client.write(Operate.SCANALLCLASS, classFilter);
                         sendClass(clazz, classFilter.getTransId());
