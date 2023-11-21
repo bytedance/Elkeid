@@ -69,8 +69,6 @@ char bind_kprobe_state = 0x0;
 char compat_execve_kretprobe_state = 0x0;
 char create_file_kprobe_state = 0x0;
 char ptrace_kprobe_state = 0x0;
-int  udp_recvmsg_kprobe_state = 0x0;
-int  udpv6_recvmsg_kprobe_state = 0x0;
 char do_init_module_kprobe_state = 0x0;
 char update_cred_kprobe_state = 0x0;
 char ip4_datagram_connect_kprobe_state = 0x0;
@@ -103,9 +101,6 @@ char write_kprobe_state = 0x0;
 char execveat_kretprobe_state = 0x0;
 char compat_execveat_kretprobe_state = 0x0;
 #endif
-
-module_param(udp_recvmsg_kprobe_state, int, S_IRUSR|S_IRGRP|S_IROTH);
-module_param(udpv6_recvmsg_kprobe_state, int, S_IRUSR|S_IRGRP|S_IROTH);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)
 struct user_arg_ptr {
@@ -509,22 +504,6 @@ struct accept_data {
         struct sockaddr_in6 si6;
         struct __kernel_sockaddr_storage kss; /* to avoid overflow access of kernel_getsockname */
     };
-};
-
-struct udp_recvmsg_data {
-    int sport;
-    int dport;
-    int sa_family;
-
-    __be32 dip4;
-    __be32 sip4;
-
-    struct in6_addr *dip6;
-    struct in6_addr *sip6;
-    struct msghdr *msg;
-
-    void __user *iov_base;
-    __kernel_size_t iov_len;
 };
 
 struct bind_data {
@@ -1637,9 +1616,198 @@ int ptrace_pre_handler(struct kprobe *p, struct pt_regs *regs)
 
     return 0;
 }
+/*
+ * ip address manipulation routines
+ */
 
-void dns_data_transport(char *query, __be32 dip, __be32 sip, int dport,
-                        int sport, int opcode, int rcode)
+struct smith_ip_addr {
+
+    int sa_family;
+    int sport;
+    int dport;
+
+    union {
+        struct {
+            __be32 dip4;
+            __be32 sip4;
+        };
+        struct {
+            struct in6_addr dip6;
+            struct in6_addr sip6;
+        };
+    };
+};
+
+/*
+ * Our own implementation of kernel_getsockname and kernel_getpeername,
+ * resuing codes logic of kernel inet_getname and inet6_getname.
+ *
+ * From 5.15.3 inet_getname and inet6_getname will call lock_sock for
+ * lock acquisition, and then lock_sock would lead possible reschedule,
+ * which violates the requirement of atomic context for kprobe/ketprobe.
+ *
+ * Interfaces of kernel_getsockname and kernel_getpeername are changed
+ * after 4.17.0, then we'll use our own routines to keep things simple.
+ */
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
+
+static int smith_get_sock_v4(struct socket *sock, struct sockaddr *sa)
+{
+    struct sock *sk	= sock->sk;
+    struct inet_sock *inet = inet_sk(sk);
+    DECLARE_SOCKADDR(struct sockaddr_in *, sin, sa);
+    __be32 addr;
+
+    sin->sin_family = AF_INET;
+    addr = inet->inet_rcv_saddr;
+    if (!addr)
+        addr = inet->inet_saddr;
+    sin->sin_port = inet->inet_sport;
+    sin->sin_addr.s_addr = addr;
+    return sizeof(*sin);
+}
+
+static int smith_get_peer_v4(struct socket *sock, struct sockaddr *sa)
+{
+    struct sock *sk	= sock->sk;
+    struct inet_sock *inet = inet_sk(sk);
+    DECLARE_SOCKADDR(struct sockaddr_in *, sin, sa);
+
+    sin->sin_family = AF_INET;
+    if (!inet->inet_dport ||
+        (((1 << sk->sk_state) & (TCPF_CLOSE | TCPF_SYN_SENT))))
+        return -ENOTCONN;
+    sin->sin_port = inet->inet_dport;
+    sin->sin_addr.s_addr = inet->inet_daddr;
+    return sizeof(*sin);
+}
+
+#if IS_ENABLED(CONFIG_IPV6)
+static int smith_get_sock_v6(struct socket *sock, struct sockaddr *sa)
+{
+    struct sockaddr_in6 *sin = (struct sockaddr_in6 *)sa;
+    struct sock *sk = sock->sk;
+    struct inet_sock *inet = inet_sk(sk);
+    struct ipv6_pinfo *np = inet6_sk(sk);
+
+    sin->sin6_family = AF_INET6;
+    if (ipv6_addr_any(&sk->sk_v6_rcv_saddr))
+        sin->sin6_addr = np->saddr;
+    else
+        sin->sin6_addr = sk->sk_v6_rcv_saddr;
+    sin->sin6_port = inet->inet_sport;
+    return sizeof(*sin);
+}
+
+static int smith_get_peer_v6(struct socket *sock, struct sockaddr *sa)
+{
+    struct sockaddr_in6 *sin = (struct sockaddr_in6 *)sa;
+    struct sock *sk = sock->sk;
+    struct inet_sock *inet = inet_sk(sk);
+
+    sin->sin6_family = AF_INET6;
+    if (!inet->inet_dport)
+        return -ENOTCONN;
+    if ((1 << sk->sk_state) & (TCPF_CLOSE | TCPF_SYN_SENT))
+        return -ENOTCONN;
+    sin->sin6_port = inet->inet_dport;
+    sin->sin6_addr = sk->sk_v6_daddr;
+    return sizeof(*sin);
+}
+#endif
+
+#else /* < 4.17.0 */
+
+static int smith_get_sock_v4(struct socket *sock, struct sockaddr *sa)
+{
+    int len = 0;
+    return kernel_getsockname(sock, sa, &len);
+}
+static int smith_get_peer_v4(struct socket *sock, struct sockaddr *sa)
+{
+    int len = 0;
+    return kernel_getpeername(sock, sa, &len);
+}
+
+#if IS_ENABLED(CONFIG_IPV6)
+static int smith_get_sock_v6(struct socket *sock, struct sockaddr *sa)
+{
+    int len = 0;
+    return kernel_getsockname(sock, sa, &len);
+}
+static int smith_get_peer_v6(struct socket *sock, struct sockaddr *sa)
+{
+    int len = 0;
+    return kernel_getpeername(sock, sa, &len);
+}
+#endif
+
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0) */
+
+static int smith_query_ip_addr(struct socket *sock, struct smith_ip_addr *addr)
+{
+    union {
+        struct sockaddr    sa;
+        struct sockaddr_in si4;
+        struct sockaddr_in6 si6;
+        /* to avoid overflow access of kernel_getsockname */
+        struct __kernel_sockaddr_storage kss;
+    } sa;
+
+    if (AF_INET == sock->sk->sk_family) {
+        addr->sa_family = AF_INET;
+        if (smith_get_sock_v4(sock, &sa.sa) >= 0) {
+            addr->sport = ntohs(sa.si4.sin_port);
+            addr->sip4 = sa.si4.sin_addr.s_addr;
+        } else {
+            addr->sport = 0;
+            addr->sip4 = 0;
+        }
+        if (smith_get_peer_v4(sock, &sa.sa) >= 0) {
+            addr->dport = ntohs(sa.si4.sin_port);
+            addr->dip4 = sa.si4.sin_addr.s_addr;
+        } else {
+            addr->dport = 0;
+            addr->dip4 = 0;
+        }
+#if IS_ENABLED(CONFIG_IPV6)
+    } else if (AF_INET6 == sock->sk->sk_family) {
+        addr->sa_family = AF_INET6;
+        if (smith_get_sock_v6(sock, &sa.sa) >= 0) {
+            addr->sport = ntohs(sa.si6.sin6_port);
+            memcpy(&addr->sip6, &sa.si6.sin6_addr, sizeof(struct in6_addr));
+        } else {
+            addr->sport = 0;
+            memset(&addr->sip6, 0, sizeof(struct in6_addr));
+        }
+        if (smith_get_peer_v6(sock, &sa.sa) >= 0) {
+            addr->dport = ntohs(sa.si6.sin6_port);
+            memcpy(&addr->dip6, &sa.si6.sin6_addr, sizeof(struct in6_addr));
+        } else {
+            addr->dport = 0;
+            memset(&addr->dip6, 0, sizeof(struct in6_addr));
+        }
+#endif
+    } else {
+        addr->sa_family = 0;
+    }
+
+    return addr->sa_family;
+}
+
+/*
+ * DNS query hooking
+ */
+
+/* whether socket connection is udp (dgram) ? */
+static int smith_socket_is_udp(struct socket *sock)
+{
+    return (sock && sock->sk && sock->sk->sk_protocol == IPPROTO_UDP);
+}
+
+static void dns_data_transport(char *query, __be32 dip, __be32 sip, int dport,
+                               int sport, int opcode, int rcode, int type)
 {
     char *exe_path = DEFAULT_RET_STR;
     char *buffer = NULL;
@@ -1659,9 +1827,9 @@ out:
 }
 
 #if IS_ENABLED(CONFIG_IPV6)
-void dns6_data_transport(char *query, struct in6_addr *dip,
-			 struct in6_addr *sip, int dport, int sport,
-			 int opcode, int rcode)
+static void dns6_data_transport(char *query, struct in6_addr *dip,
+                                struct in6_addr *sip, int dport, int sport,
+                                int opcode, int rcode, int type)
 {
 	char *exe_path = DEFAULT_RET_STR;
 	char *buffer = NULL;
@@ -1681,28 +1849,6 @@ out:
 }
 #endif
 
-void udp_msg_parser(struct msghdr *msg, struct udp_recvmsg_data *data) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-    if (msg->msg_iter.iov) {
-            if (msg->msg_iter.iov->iov_len > 0) {
-                data->iov_len = msg->msg_iter.iov->iov_len;
-                data->iov_base = msg->msg_iter.iov->iov_base;
-            }
-        } else if (msg->msg_iter.kvec) {
-            if (msg->msg_iter.kvec->iov_len > 0) {
-                data->iov_len = msg->msg_iter.kvec->iov_len;
-                data->iov_base = msg->msg_iter.kvec->iov_base;
-            }
-        }
-#else
-    if (msg->msg_iov->iov_len > 0) {
-        data->iov_base = msg->msg_iov->iov_base;
-        data->iov_len = msg->msg_iov->iov_len;
-    }
-#endif
-    return;
-}
-
 static void *get_dns_query(unsigned char *data, int query_len, char *res, int *type) {
     int i;
     int flag = -1;
@@ -1714,7 +1860,10 @@ static void *get_dns_query(unsigned char *data, int query_len, char *res, int *t
             flag = (data + 12)[i];
             res[i - 1] = 46;
         } else {
-            res[i - 1] = (data + 12)[i];
+            if (isprint((data + 12)[i]))
+                res[i - 1] = (data + 12)[i];
+            else
+                res[i - 1] = '#';
             flag = flag - 1;
         }
     }
@@ -1724,8 +1873,9 @@ static void *get_dns_query(unsigned char *data, int query_len, char *res, int *t
     return 0;
 }
 
-static int udp_process_dns(struct udp_recvmsg_data *data, unsigned char *recv_data, int iov_len)
+static int smith_process_dns(struct smith_ip_addr *addr, unsigned char *recv_data, int iov_len)
 {
+    // types of queries in the DNS system: https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml
     int qr, opcode = 0, rcode = 0, type = 0;
     int query_len = 0;
 
@@ -1748,674 +1898,515 @@ static int udp_process_dns(struct udp_recvmsg_data *data, unsigned char *recv_da
         }
 
         get_dns_query(recv_data, query_len, query, &type);
-        if (data && data->sa_family == AF_INET)
-            dns_data_transport(query, data->dip4,
-                               data->sip4, data->dport,
-                               data->sport, opcode,
-                               rcode);
+        if (addr->sa_family == AF_INET)
+            dns_data_transport(query, addr->dip4,
+                               addr->sip4, addr->dport,
+                               addr->sport, opcode,
+                               rcode, type);
 #if IS_ENABLED(CONFIG_IPV6)
-        else if (data && data->sa_family == AF_INET6)
-			dns6_data_transport(query, data->dip6,
-					            data->sip6, data->dport,
-					            data->sport, opcode,
-					            rcode);
+        else if (addr->sa_family == AF_INET6)
+			dns6_data_transport(query, &addr->dip6,
+					            &addr->sip6, addr->dport,
+					            addr->sport, opcode,
+					            rcode, type);
 #endif
         smith_kfree(query);
     }
+
     return 0;
 }
-
-static int udp_recvmsg_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
-{
-    unsigned char *recv_data = NULL;
-    int iov_len = 512;
-
-    struct udp_recvmsg_data *data;
-    struct sockaddr_in *sin;
-    struct sockaddr_in6 *sin6;
-
-    /* skip if we don't have enough data or get failures in recving */
-    if (regs_return_value(regs) < 20)
-        return 0;
-
-    data = (struct udp_recvmsg_data *)ri->data;
-    if (data->dport == 0) {
-        if (IS_ERR_OR_NULL(data->msg) || IS_ERR_OR_NULL(data->msg->msg_name))
-            return 0;
-
-        if (data->sa_family == AF_INET) {
-            sin = (struct sockaddr_in *) data->msg->msg_name;
-            if (sin->sin_port == 13568 || sin->sin_port == 59668) {
-                data->dport = sin->sin_port;
-                data->dip4 = sin->sin_addr.s_addr;
-                udp_msg_parser(data->msg, data);
-            } else {
-                return 0;
-            }
-#if IS_ENABLED(CONFIG_IPV6)
-        } else if (data->sa_family == AF_INET6) {
-            sin6 = (struct sockaddr_in6 *)data->msg->msg_name;
-            if (sin6->sin6_port == 13568 || sin6->sin6_port == 59668) {
-                data->dport = sin6->sin6_port;
-                data->dip6 = &(sin6->sin6_addr);
-                udp_msg_parser(data->msg, data);
-            } else {
-                return 0;
-            }
-#endif
-        }
-    }
-
-    if (data->iov_len < 20)
-        return 0;
-    if (data->iov_len < 512)
-        iov_len = data->iov_len;
-
-    recv_data = smith_kmalloc((iov_len + 1) * sizeof(char), GFP_ATOMIC);
-    if (!recv_data)
-        return 0;
-
-    if (smith_copy_from_user(recv_data, data->iov_base, iov_len)) {
-        smith_kfree(recv_data);
-        return 0;
-    }
-    recv_data[iov_len] = '\0';
-
-    udp_process_dns(data, recv_data, iov_len);
-
-    smith_kfree(recv_data);
-    return 0;
-}
-
-static void smith_count_dnsv4_kretprobe(void);
-#if IS_ENABLED(CONFIG_IPV6)
-static void smith_count_dnsv6_kretprobe(void);
-#endif
 
 /*
- * Workaround for kretprobe BUG (fixed in 3.2.6):
- *
- * kretprobe instance memory leaking if entry_handler returns failure codes.
+ * dns threshold control for high udp traffic
  */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 6)
 
-static int udp_recvmsg_entry_handler(struct kretprobe_instance *ri,
-                                     struct pt_regs *regs) {
-    int flags;
-    void *tmp_msg;
-    void *tmp_sk;
+#define SMITH_DNS_THRESHOLD    (10)     /* threshold: 2^10 = 1024 ops/s */
+#define SMITH_DNS_INTERVALS    (60)     /* 60 seconds */
 
-    struct sock *sk;
-    struct inet_sock *inet;
-    struct msghdr *msg;
-    struct udp_recvmsg_data *data;
-
-    data = (struct udp_recvmsg_data *) ri->data;
-
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 9)
-    flags = (int)p_regs_get_arg5(regs);
-#else
-    flags = (int)p_regs_get_arg6(regs);
-#endif
-    if (flags & MSG_ERRQUEUE)
-        return -EINVAL;
-
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 9)
-    tmp_sk = (void *)p_regs_get_arg1(regs);
-#else
-    tmp_sk = (void *)p_regs_get_arg2(regs);
-#endif
-    if (IS_ERR_OR_NULL(tmp_sk))
-        return -EINVAL;
-
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 9)
-    tmp_msg = (void *)p_regs_get_arg2(regs);
-#else
-    tmp_msg = (void *)p_regs_get_arg3(regs);
-#endif
-    if (IS_ERR_OR_NULL(tmp_msg))
-        return -EINVAL;
-
-    msg = (struct msghdr *) tmp_msg;
-    sk = (struct sock *) tmp_sk;
-    inet = (struct inet_sock *) sk;
-    data->sa_family = AF_INET;
-
-    //only port == 53 or 5353 UDP data
-    if (inet->inet_dport == 13568 || inet->inet_dport == 59668) {
-        data->dip4 = inet->inet_daddr;
-        data->sip4 = inet->inet_saddr;
-        data->sport = ntohs(inet->inet_sport);
-        data->dport = ntohs(inet->inet_dport);
-        udp_msg_parser(msg, data);
-        if (data->iov_len >= 20)
-            goto do_kretprobe;
-    } else if (inet->inet_dport == 0) {
-        data->msg = msg;
-        data->dport = 0;
-        data->sip4 = inet->inet_saddr;
-        data->sport = ntohs(inet->inet_sport);
-        goto do_kretprobe;
-    }
-
-    return -EINVAL;
-
-do_kretprobe:
-
-    /* counting dns requests */
-    smith_count_dnsv4_kretprobe();
-
-    return 0;
-}
-
-#if IS_ENABLED(CONFIG_IPV6)
-static void smith_count_dnsv6_kretprobe(void);
-static int udpv6_recvmsg_entry_handler(
-                struct kretprobe_instance *ri,
-                struct pt_regs *regs)
-{
-	struct sock *sk;
-	struct inet_sock *inet;
-	struct msghdr *msg;
-	struct udp_recvmsg_data *data;
-	void *tmp_msg;
-	void *tmp_sk;
-	int flags;
-
-	data = (struct udp_recvmsg_data *)ri->data;
-
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 9)
-	flags = (int)p_regs_get_arg5(regs);
-#else
-	flags = (int)p_regs_get_arg6(regs);
-#endif
-	if (flags & MSG_ERRQUEUE)
-		return -EINVAL;
-
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 9)
-	tmp_sk = (void *)p_regs_get_arg1(regs);
-#else
-	tmp_sk = (void *)p_regs_get_arg2(regs);
-#endif
-
-	if (IS_ERR_OR_NULL(tmp_sk))
-		return -EINVAL;
-
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 9)
-    tmp_msg = (void *)p_regs_get_arg2(regs);
-#else
-    tmp_msg = (void *)p_regs_get_arg3(regs);
-#endif
-    if (IS_ERR_OR_NULL(tmp_msg))
-        return -EINVAL;
-
-    msg = (struct msghdr *)tmp_msg;
-    sk = (struct sock *)tmp_sk;
-	if (IS_ERR_OR_NULL(sk))
-		return -EINVAL;
-
-	inet = (struct inet_sock *)sk;
-	if (IS_ERR_OR_NULL(inet))
-		return -EINVAL;
-
-	sk = (struct sock *)tmp_sk;
-	inet = (struct inet_sock *)sk;
-
-	data->sa_family = AF_INET6;
-	//only get port == 53 or 5353 UDP data
-	if (inet->inet_dport == 13568 || inet->inet_dport == 59668)
-	{
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(IPV6_SUPPORT)
-		data->dip6 = &(sk->sk_v6_daddr);
-		data->sip6 = &(sk->sk_v6_rcv_saddr);
-		data->sport = ntohs(inet->inet_sport);
-		data->dport = ntohs(inet->inet_dport);
-#else
-		data->dip6 = &(inet->pinet6->daddr);
-		data->sip6 = &(inet->pinet6->saddr);
-		data->sport = ntohs(inet->inet_sport);
-		data->dport = ntohs(inet->inet_dport);
-#endif
-        udp_msg_parser(msg, data);
-		if (data->iov_len >= 20)
-			goto do_kretprobe;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0)
-	} else if (inet->inet_dport == 0) {
-        data->msg = msg;
-	    data->dport = 0;
-		data->sip6 = &(sk->sk_v6_rcv_saddr);
-		data->sport = ntohs(inet->inet_sport);
-        goto do_kretprobe;
-#else
-	} else if (inet->inet_dport == 0) {
-        data->msg = msg;
-        data->dport = 0;
-        data->sip6 = &(inet->pinet6->saddr);
-        data->sport = ntohs(inet->inet_sport);
-        goto do_kretprobe;
-#endif
-    }
-
-	return -EINVAL;
-
-do_kretprobe:
-
-    /* counting dns requests */
-    smith_count_dnsv6_kretprobe();
-
-    return 0;
-}
-#endif
-
-#else /* < 3.2.6 */
-
-static int udp_recvmsg_entry_handler(struct kretprobe_instance *ri,
-                                     struct pt_regs *regs) {
-    int flags;
-    void *tmp_msg;
-    void *tmp_sk;
-
-    struct sock *sk;
-    struct inet_sock *inet;
-    struct msghdr *msg;
-    struct udp_recvmsg_data *data;
-
-    data = (struct udp_recvmsg_data *) ri->data;
-    memset(data, 0, sizeof(struct udp_recvmsg_data));
-
-    flags = (int)p_regs_get_arg6(regs);
-    if (flags & MSG_ERRQUEUE)
-        goto do_kretprobe;
-
-    tmp_sk = (void *)p_regs_get_arg2(regs);
-    if (IS_ERR_OR_NULL(tmp_sk))
-        goto do_kretprobe;
-
-    tmp_msg = (void *)p_regs_get_arg3(regs);
-    if (IS_ERR_OR_NULL(tmp_msg))
-        goto do_kretprobe;
-
-    msg = (struct msghdr *) tmp_msg;
-    sk = (struct sock *) tmp_sk;
-    inet = (struct inet_sock *) sk;
-    data->sa_family = AF_INET;
-
-    //only port == 53 or 5353 UDP data
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
-    if (inet->inet_dport == 13568 || inet->inet_dport == 59668) {
-        data->dip4 = inet->inet_daddr;
-        data->sip4 = inet->inet_saddr;
-        data->sport = ntohs(inet->inet_sport);
-        data->dport = ntohs(inet->inet_dport);
-        udp_msg_parser(msg, data);
-    } else if (inet->inet_dport == 0) {
-        data->msg = msg;
-        data->dport = 0;
-        data->sip4 = inet->inet_saddr;
-        data->sport = ntohs(inet->inet_sport);
-    }
-#else
-    if (inet->dport == 13568 || inet->dport == 59668) {
-        data->dip4 = inet->daddr;
-        data->sip4 = inet->saddr;
-        data->sport = ntohs(inet->sport);
-        data->dport = ntohs(inet->dport);
-        udp_msg_parser(msg, data);
-    } else if (inet->dport == 0) {
-        data->msg = msg;
-        data->dport = 0;
-        data->sip4 = inet->saddr;
-        data->sport = ntohs(inet->sport);
-    }
-#endif
-
-do_kretprobe:
-
-    /* counting dns requests */
-    smith_count_dnsv4_kretprobe();
-
-    return 0;
-}
-
-#if IS_ENABLED(CONFIG_IPV6)
-static void smith_count_dnsv6_kretprobe(void);
-static int udpv6_recvmsg_entry_handler(
-                struct kretprobe_instance *ri,
-                struct pt_regs *regs)
-{
-	struct sock *sk;
-	struct inet_sock *inet;
-	struct msghdr *msg;
-	struct udp_recvmsg_data *data;
-	void *tmp_msg;
-	void *tmp_sk;
-	int flags;
-
-	data = (struct udp_recvmsg_data *)ri->data;
-    memset(data, 0, sizeof(struct udp_recvmsg_data));
-
-	flags = (int)p_regs_get_arg6(regs);
-	if (flags & MSG_ERRQUEUE)
-		goto do_kretprobe;
-
-	tmp_sk = (void *)p_regs_get_arg2(regs);
-	if (IS_ERR_OR_NULL(tmp_sk))
-		goto do_kretprobe;
-
-    tmp_msg = (void *)p_regs_get_arg3(regs);
-    if (IS_ERR_OR_NULL(tmp_msg))
-        goto do_kretprobe;
-
-    msg = (struct msghdr *)tmp_msg;
-    sk = (struct sock *)tmp_sk;
-	if (IS_ERR_OR_NULL(sk))
-		goto do_kretprobe;
-
-	inet = (struct inet_sock *)sk;
-	if (IS_ERR_OR_NULL(inet))
-		goto do_kretprobe;
-
-	sk = (struct sock *)tmp_sk;
-	inet = (struct inet_sock *)sk;
-	data->sa_family = AF_INET6;
-
-	//only get port == 53 or 5353 UDP data
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 32)
-	if (inet->inet_dport == 13568 || inet->inet_dport == 59668)
-
-#else
-	if (inet->dport == 13568 || inet->dport == 59668)
-#endif
-	{
-#if defined(IPV6_SUPPORT)
-		data->dip6 = &(sk->sk_v6_daddr);
-		data->sip6 = &(sk->sk_v6_rcv_saddr);
-		data->sport = ntohs(inet->inet_sport);
-		data->dport = ntohs(inet->inet_dport);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
-		data->dip6 = &(inet->pinet6->daddr);
-		data->sip6 = &(inet->pinet6->saddr);
-		data->sport = ntohs(inet->inet_sport);
-		data->dport = ntohs(inet->inet_dport);
-#else
-		data->dip6 = &(inet->pinet6->daddr);
-		data->sip6 = &(inet->pinet6->saddr);
-		data->sport = ntohs(inet->sport);
-		data->dport = ntohs(inet->dport);
-#endif
-        udp_msg_parser(msg, data);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
-	} else if (inet->inet_dport == 0) {
-        data->msg = msg;
-        data->dport = 0;
-        data->sip6 = &(inet->pinet6->saddr);
-        data->sport = ntohs(inet->inet_sport);
-#else
-	} else if (inet->dport == 0) {
-        data->msg = msg;
-        data->dport = 0;
-    	data->sip6 = &(inet->pinet6->saddr);
-		data->sport = ntohs(inet->sport);
-#endif
-    }
-
-do_kretprobe:
-
-    /* counting dns requests */
-    smith_count_dnsv6_kretprobe();
-
-    return 0;
-}
-#endif /* CONFIG_IPV6 */
-
-#endif /* >= 3.2.6 */
-
-int register_udp_recvmsg_kprobe(void);
-void unregister_udp_recvmsg_kprobe(void);
-int register_udpv6_recvmsg_kprobe(void);
-void unregister_udpv6_recvmsg_kprobe(void);
-
-#define SMITH_DNS_THRESHOLD      (800) /* DNS threshold: ops/s */
-#define SMITH_UDP_THRESHOLD      (80000) /* UDP threshold: ops/s */
-#define SMITH_DNS_KRP_INTERVAL   (10) /* 10 seconds */
-#define SMITH_DNS_NET_INTERVAL   (20) /* 20 seconds, WARNING: atomic_t may overflow */
-
-struct smith_dns_switch {
-    atomic_t armed ____cacheline_aligned_in_smp;  /* kretprobe registration status */
-    atomic_t krp ____cacheline_aligned_in_smp;    /* udp_recvmsg kretprobe handling count */
-    atomic_t ops ____cacheline_aligned_in_smp;    /* udp in traffic count */
+struct smith_dns_threshold {
+    atomic_t armed ____cacheline_aligned_in_smp;  /* dns process enabled */
+    atomic_t ops ____cacheline_aligned_in_smp;    /* udp traffic count */
     uint64_t start ____cacheline_aligned_in_smp;  /* start time stamp of counting */
-    int     *regs;                                /* kretprobe registration result */
-    int (*enable)(void);
-    void (*disable)(void);
-} g_dns_v4_switch = { .regs = &udp_recvmsg_kprobe_state,
-                      .enable = register_udp_recvmsg_kprobe,
-                      .disable = unregister_udp_recvmsg_kprobe };
+} g_dns_threshold;
 
-static void smith_count_dnsv4_kretprobe(void)
+/* global settings as module parameters */
+static long dns_threshold = SMITH_DNS_THRESHOLD;
+static long dns_intervals = SMITH_DNS_INTERVALS;
+static long dns_minwindow = 5;
+
+module_param(dns_threshold, long, S_IRUSR|S_IRGRP|S_IROTH);
+module_param(dns_intervals, long, S_IRUSR|S_IRGRP|S_IROTH);
+
+static void smith_check_dns_params(void)
 {
-    atomic_inc(&g_dns_v4_switch.krp);
+    if (dns_threshold < 1) /* 1 << 1 = 2 */
+        dns_threshold = 1;
+    else if (dns_threshold > 24) /* 16M */
+        dns_threshold = 24;
+
+    if (dns_intervals < 12) /* min: 12 seconds */
+        dns_intervals = 12;
+    else if (dns_intervals > 600) /* max: 10 minutes */
+        dns_intervals = 600;
+
+    if (dns_minwindow < dns_intervals / 12)
+        dns_minwindow = dns_intervals / 12;
+    if (dns_minwindow > 60)
+        dns_minwindow = 60;
 }
 
-/* turn off kretprobe if dns requests exceed thredhold */
-static void smith_dns_kretprobe(struct smith_dns_switch *ds)
+static int smith_is_dns_armed(struct smith_dns_threshold *sdt)
 {
-    uint64_t now = smith_get_seconds(), delta;
+    uint64_t now = smith_get_seconds(), delta = now - sdt->start;
 
-    delta = now - ds->start;
-    if (delta > SMITH_DNS_KRP_INTERVAL) {
-        if (atomic_read(&ds->krp) > delta * SMITH_DNS_THRESHOLD ||
-            atomic_read(&ds->ops) > delta * SMITH_UDP_THRESHOLD ){
-            /* trying to avoid concurrent issue */
-            if (atomic_cmpxchg(&ds->armed, 1, 0) == 1)
-                ds->disable();
+    if (delta >= dns_intervals) {
+
+        if (!atomic_read(&sdt->armed)) {
+            /* turn on dns process if udp traffic goes low */
+            if (atomic_read(&sdt->ops) < (delta << dns_threshold))
+                atomic_set(&sdt->armed, 1);
         }
-        atomic_set(&ds->krp, 0);
-        atomic_set(&ds->ops, 0);
-        ds->start = smith_get_seconds();
-    }
-}
+        /* reset timestamp for a refresh counting */
+        atomic_set(&sdt->ops, 0);
+        WRITE_ONCE(sdt->start, smith_get_seconds());
 
-/* try to trun on kretprobe for udp_recvmsg */
-static void smith_dns_try_switch(struct smith_dns_switch *ds)
-{
-    uint64_t now = smith_get_seconds(), delta;
+    } else {
 
-    if (0 == DNS_HOOK || atomic_read(&ds->armed) || *(ds->regs))
-        return;
+        /* increment traffic count */
+        atomic_inc(&sdt->ops);
 
-    delta = now - ds->start;
-    if (delta > SMITH_DNS_NET_INTERVAL) {
-        if (atomic_read(&ds->ops) < delta * SMITH_UDP_THRESHOLD) {
-            /* trying to avoid concurrent issue */
-            if (atomic_cmpxchg(&ds->armed, 0, 1) == 0) {
-                if (ds->enable())
-                    atomic_set(&ds->armed, 0);
-            }
+        /* trun off dns process if udp traffic goes high */
+        if (atomic_read(&sdt->armed) && delta >= dns_minwindow) {
+            if (atomic_read(&sdt->ops) > (delta << dns_threshold))
+                atomic_set(&sdt->armed, 0);
         }
-        atomic_set(&ds->krp, 0);
-        atomic_set(&ds->ops, 0);
-        ds->start = smith_get_seconds();
     }
+
+    return atomic_read(&sdt->armed);
 }
 
-static unsigned int smith_nf_udp_v4_handler(
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
-                    void *priv,
-                    struct sk_buff *skb,
-                    const struct nf_hook_state *state
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0)
-                    const struct nf_hook_ops *ops,
-                    struct sk_buff *skb,
-                    const struct nf_hook_state *state
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0)
-                    const struct nf_hook_ops *ops,
-                    struct sk_buff *skb,
-                    const struct net_device *in,
-                    const struct net_device *out,
-                    int (*okfn)(struct sk_buff *)
-#else
-                    unsigned int hooknum,
-                    struct sk_buff *skb,
-                    const struct net_device *in,
-                    const struct net_device *out,
-                    int (*okfn)(struct sk_buff *)
-#endif
-    )
+static void smith_trace_sysret_recvdat(long sockfd, unsigned long userp, long len)
 {
-    struct iphdr *iph = ip_hdr(skb);
+    struct socket *sock = NULL;
+    unsigned char *data = NULL;
+    struct smith_ip_addr addr;
+    int err;
 
-    /* only counting udp packets */
-    if (iph->protocol == IPPROTO_UDP)
-        atomic_inc(&g_dns_v4_switch.ops);
-    return NF_ACCEPT;
-}
-
-#if IS_ENABLED(CONFIG_IPV6)
-struct smith_dns_switch g_dns_v6_switch = { .regs = &udpv6_recvmsg_kprobe_state,
-                                            .enable = register_udpv6_recvmsg_kprobe,
-                                            .disable = unregister_udpv6_recvmsg_kprobe };
-
-static void smith_count_dnsv6_kretprobe(void)
-{
-    atomic_inc(&g_dns_v6_switch.krp);
-}
-
-static unsigned int smith_nf_udp_v6_handler(
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
-                    void *priv,
-                    struct sk_buff *skb,
-                    const struct nf_hook_state *state
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0)
-                    const struct nf_hook_ops *ops,
-                    struct sk_buff *skb,
-                    const struct nf_hook_state *state
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0)
-                    const struct nf_hook_ops *ops,
-                    struct sk_buff *skb,
-                    const struct net_device *in,
-                    const struct net_device *out,
-                    int (*okfn)(struct sk_buff *)
-#else
-                    unsigned int hooknum,
-                    struct sk_buff *skb,
-                    const struct net_device *in,
-                    const struct net_device *out,
-                    int (*okfn)(struct sk_buff *)
-#endif
-    )
-{
-    const struct ipv6hdr *iph = ipv6_hdr(skb);
-
-    if (iph->version != 6)
+    sock = sockfd_lookup(sockfd, &err);
+    if (IS_ERR_OR_NULL(sock))
         goto out;
 
-    /* only counting udp packets */
-    if (iph->nexthdr == 17 /* NEXTHDR_UDP */)
-        atomic_inc(&g_dns_v6_switch.ops);
+    /* skip tcp connections */
+    if (!smith_socket_is_udp(sock))
+        goto out;
+
+    /* query ip addresses */
+    if (!smith_query_ip_addr(sock, &addr))
+        goto out;
+
+    /* we only care IP v4 or v6 and port 53 or 5353 */
+    if (addr.sa_family != AF_INET && addr.sa_family != AF_INET6)
+        goto out;
+    if (addr.sport != 53 && addr.sport != 5353 &&
+        addr.dport != 53 && addr.dport != 5353)
+        goto out;
+
+    /* whether udp traffic of our interest goes high */
+    if (!smith_is_dns_armed(&g_dns_threshold))
+        goto out;
+
+    /* now prepare payload from user memory space */
+    if (len > 511)
+        len = 511;
+    data = smith_kmalloc(len + 1, GFP_ATOMIC);
+    if (!data)
+        goto out;
+    if (smith_copy_from_user(data, (void *)userp, len))
+        goto out;
+    data[len] = '\0';
+
+    /* now parse dns record */
+    smith_process_dns(&addr, data, len);
 
 out:
-    return NF_ACCEPT;
+    if (!IS_ERR_OR_NULL(sock))
+        sockfd_put(sock);
+    if (data)
+        smith_kfree(data);
 }
+
+#ifdef USER_MSGHDR_SUPPORT
+#define user_msghdr msghdr
 #endif
 
-static struct nf_hook_ops g_smith_nf_udp[] = {
-	{
-		.hook =		smith_nf_udp_v4_handler,
-		.pf =		NFPROTO_IPV4,
-		.hooknum =	NF_INET_PRE_ROUTING,
-		.priority =	NF_IP_PRI_FIRST,
-	},
-#if IS_ENABLED(CONFIG_IPV6)
-	{
-		.hook =		smith_nf_udp_v6_handler,
-		.pf =		NFPROTO_IPV6,
-		.hooknum =	NF_INET_PRE_ROUTING,
-		.priority =	NF_IP_PRI_FIRST,
-	},
-#endif
-};
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 3, 0)
-
-static int smith_nf_udp_reg(struct net *net)
+static void smith_trace_sysret_recvmsg(long sockfd, unsigned long umsg, long len)
 {
-    return nf_register_net_hooks(net, g_smith_nf_udp, ARRAY_SIZE(g_smith_nf_udp));
+    struct socket *sock = NULL;
+    unsigned char *data = NULL;
+    struct smith_ip_addr addr;
+    struct user_msghdr msg;
+    struct iovec iov = {0};
+    int err;
+
+    sock = sockfd_lookup(sockfd, &err);
+    if (IS_ERR_OR_NULL(sock))
+        goto out;
+
+    /* skip tcp connections */
+    if (!smith_socket_is_udp(sock))
+        goto out;
+
+    /* query ip addresses */
+    if (!smith_query_ip_addr(sock, &addr))
+        goto out;
+
+    /* we only care IP v4 or v6 and port 53 or 5353 */
+    if (addr.sa_family != AF_INET && addr.sa_family != AF_INET6)
+        goto out;
+    if (addr.sport != 53 && addr.sport != 5353 &&
+        addr.dport != 53 && addr.dport != 5353)
+        goto out;
+
+    /* whether udp traffic of our interest goes high */
+    if (!smith_is_dns_armed(&g_dns_threshold))
+        goto out;
+
+    /* copy msghdr from user memory space */
+    if (smith_copy_from_user(&msg, (void *)umsg, sizeof(msg)))
+        goto out;
+    if (msg.msg_iovlen <= 0)
+        goto out;
+    if (smith_copy_from_user(&iov, msg.msg_iov, sizeof(iov)))
+        goto out;
+
+    /* now prepare payload from user memory space */
+    len = iov.iov_len;
+    if (len < 20)
+        goto out;
+    if (len > 511)
+        len = 511;
+    data = smith_kmalloc(len + 1, GFP_ATOMIC);
+    if (!data)
+        goto out;
+    if (smith_copy_from_user(data, iov.iov_base, len))
+        goto out;
+    data[len] = '\0';
+
+    /* now parse dns record */
+    smith_process_dns(&addr, data, len);
+
+out:
+    if (!IS_ERR_OR_NULL(sock))
+        sockfd_put(sock);
+    if (data)
+        smith_kfree(data);
 }
 
-static void smith_nf_udp_unreg(struct net *net)
-{
-    nf_unregister_net_hooks(net, g_smith_nf_udp, ARRAY_SIZE(g_smith_nf_udp));
-}
+#include <linux/tracepoint.h>
+#include <linux/thread_info.h>
+#include <asm/syscall.h> /* syscall_get_nr() */
+#include <asm/unistd.h> /* __NR_syscall defintions */
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 35))
+    #define TRACEPOINT_PROBE_REGISTER(p1, p2) tracepoint_probe_register(p1, p2)
+    #define TRACEPOINT_PROBE_UNREGISTER(p1, p2) tracepoint_probe_unregister(p1, p2)
+    #define TRACEPOINT_PROBE(probe, args...) static void probe(args)
 #else
+    #define TRACEPOINT_PROBE_REGISTER(p1, p2) tracepoint_probe_register(p1, p2, NULL)
+    #define TRACEPOINT_PROBE_UNREGISTER(p1, p2) tracepoint_probe_unregister(p1, p2, NULL)
+    #define TRACEPOINT_PROBE(probe, args...) static void probe(void *__data, args)
+#endif
 
-static atomic_t g_nf_udp_regged = ATOMIC_INIT(0);
+#if IS_ENABLED(CONFIG_X86) || IS_ENABLED(CONFIG_IA32_EMULATION)
 
-static int smith_nf_udp_reg(struct net *net)
+/* only for x86 systems */
+static void smith_trace_sysexit_x86(struct pt_regs *regs, long id, long ret)
 {
-    int rc = 0;
+    switch (id) {
 
+        /*
+         * socket related
+         */
+
+        case 102 /* __NR_ia32_socketcall */:
+            if (CONNECT_HOOK && SYS_CONNECT == regs->bx) {
+            } else if (DNS_HOOK && ret >= 20 && (SYS_RECV == regs->bx ||
+                                                 SYS_RECVFROM == regs->bx ||
+                                                 SYS_RECVMSG == regs->bx)) {
+                int32_t ua[2];
+                if (copy_from_user(ua, (void *)regs->cx, sizeof(ua)))
+                    break;
+                if (SYS_RECVMSG == regs->bx)
+                    smith_trace_sysret_recvmsg((long)ua[0], (long)ua[1], ret);
+                else
+                    smith_trace_sysret_recvdat((long)ua[0], (long)ua[1], ret);
+            } else if (DNS_HOOK && SYS_RECVMMSG == regs->bx) {
+            } else if (BIND_HOOK && SYS_BIND == regs->bx) {
+            } else if (ACCEPT_HOOK && (SYS_ACCEPT == regs->bx ||
+                                       SYS_ACCEPT4 == regs->bx)) {
+            }
+            break;
+
+        case 371 /* __NR_ia32_recvfrom */:
+            if (DNS_HOOK && ret >= 20)
+                smith_trace_sysret_recvdat(regs->bx, regs->cx, ret);
+            break;
+        case 372 /* __NR_ia32_recvmsg */:
+            if (DNS_HOOK && ret >= 20)
+                smith_trace_sysret_recvmsg(regs->bx, regs->cx, ret);
+            break;
+    }
+}
+
+#elif defined(CONFIG_ARM64) && defined(CONFIG_COMPAT)
+
+/* only for ARM64 system */
+static void smith_trace_sysexit_arm32(struct pt_regs *regs, long id, long ret)
+{
+    switch (id) {
+
+        /*
+         * socket related
+         */
+#if 0   /* socketcall not implemented for ARM64 */
+        case 102: /* socketcall */
+            if (CONNECT_HOOK && SYS_CONNECT == regs->orig_x0) {
+                int32_t ua[2];
+                if (copy_from_user(ua, (void *)regs->regs[1], sizeof(ua)))
+                    break;
+                smith_trace_sysret_connect(ua[0], ua[1], ret);
+            } else if (DNS_HOOK && ret >= 20 && (SYS_RECV == regs->orig_x0 ||
+                                                 SYS_RECVFROM == regs->orig_x0 ||
+                                                 SYS_RECVMSG == regs->orig_x0)) {
+                int32_t ua[2];
+                if (copy_from_user(ua, (void *)regs->regs[1], sizeof(ua)))
+                    break;
+                if (SYS_RECVMSG == regs->orig_x0)
+                    smith_trace_sysret_recvmsg((long)ua[0], (long)ua[1], ret);
+                else
+                    smith_trace_sysret_recvdat((long)ua[0], (long)ua[1], ret);
+            } else if (DNS_HOOK && SYS_RECVMMSG == regs->orig_x0) {
+            } else if (BIND_HOOK && SYS_BIND == regs->orig_x0) {
+                int32_t sockfd;
+                if (copy_from_user(&sockfd, (void *)regs->regs[1], sizeof(sockfd)))
+                    break;
+                smith_trace_sysret_bind(sockfd, ret);
+            } else if (ACCEPT_HOOK && (SYS_ACCEPT == regs->orig_x0 ||
+                                       SYS_ACCEPT4 == regs->orig_x0)) {
+                smith_trace_sysret_accept(ret);
+            }
+            break;
+#endif
+
+        case 291: /* recv */
+        case 292: /* recvfrom */
+            if (DNS_HOOK && ret >= 20)
+                smith_trace_sysret_recvdat(regs->orig_x0, regs->regs[1], ret);
+            break;
+        case 297: /* recvmsg */
+            if (DNS_HOOK && ret >= 20)
+                smith_trace_sysret_recvmsg(regs->orig_x0, regs->regs[1], ret);
+            break;
+        case 365: /* recvmmsg */
+            break;
+    }
+}
+#endif
+
+TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
+{
+    long id = syscall_get_nr(current, regs);
+
+    /* ignore all kernel threads */
+    if (current->flags & PF_KTHREAD)
+        return;
+
+#if BITS_PER_LONG == 32
+
+#if IS_ENABLED(CONFIG_X86)
+    /* 32bit OS - x86 / i386 */
+    smith_trace_sysexit_x86(regs, id, ret);
+    return;
+#endif
+
+#elif BITS_PER_LONG == 64
+
+#if IS_ENABLED(CONFIG_IA32_EMULATION)
     /*
-     * only do register for the 1st time. We need control the callings of
-     * nf_register_hooks if we keep register_pernet_subsys for kernels < 4.3
+     * Parameters passing for x86-32 syscall:
+     * 1) %eax for syscall_number
+     * 2) %ebx, %ecx, %edx, %esi, %edi, %ebp are used for passing 6 parameters
+     * 3) if there are more than 6 arguments (very unlikely), %ebx must contain
+     *    the user memory location where the list of arguments is stored
      */
-    if (1 == atomic_inc_return(&g_nf_udp_regged))
-        rc = nf_register_hooks(g_smith_nf_udp, ARRAY_SIZE(g_smith_nf_udp));
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+    /* in_ia32_syscall(): introduced after 4.7.0 */
+    if (unlikely(in_ia32_syscall())) {
+#else
+    if (unlikely(current_thread_info()->status & TS_COMPAT)) {
+#endif
+        smith_trace_sysexit_x86(regs, id, ret);
+        return;
+    }
+#endif
 
+#if defined(CONFIG_ARM64) && defined(CONFIG_COMPAT)
+    if (ESR_ELx_EC_SVC32 == ESR_ELx_EC(read_sysreg(esr_el1))) {
+        smith_trace_sysexit_arm32(regs, id, ret);
+        return;
+    }
+#endif
+
+    /* 64-bit native mode: HIDS doesn't support 32bit OS */
+    switch (id) {
+
+        /*
+         * socket related
+         */
+
+#ifdef       __NR_socketcall
+        case __NR_socketcall:
+            if (CONNECT_HOOK && SYS_CONNECT == p_regs_get_arg1_of_syscall(regs)) {
+            } else if (DNS_HOOK && SYS_RECV == p_regs_get_arg1_of_syscall(regs)) {
+            } else if (DNS_HOOK && SYS_RECVFROM == p_regs_get_arg1_of_syscall(regs)) {
+            } else if (DNS_HOOK && SYS_RECVMSG == p_regs_get_arg1_of_syscall(regs)) {
+            } else if (DNS_HOOK && SYS_RECVMMSG == p_regs_get_arg1_of_syscall(regs)) {
+            } else if (BIND_HOOK && SYS_BIND == p_regs_get_arg1_of_syscall(regs)) {
+            } else if (ACCEPT_HOOK && (SYS_ACCEPT == p_regs_get_arg1_of_syscall(regs) ||
+                                       SYS_ACCEPT4 == p_regs_get_arg1_syscall(regs))) {
+            }
+            break;
+#endif
+
+#ifdef       __NR_recv
+        case __NR_recv:
+#endif
+        case __NR_recvfrom:
+            if (DNS_HOOK && ret >= 20)
+                smith_trace_sysret_recvdat(p_regs_get_arg1_of_syscall(regs),
+                                           p_regs_get_arg2_syscall(regs), ret);
+            break;
+        case __NR_recvmsg:
+            if (DNS_HOOK && ret >= 20)
+                smith_trace_sysret_recvmsg(p_regs_get_arg1_of_syscall(regs),
+                                           p_regs_get_arg2_syscall(regs), ret);
+            break;
+
+        default:
+            break;
+    }
+#endif /* BITS_PER_LONG == 64 */
+}
+
+struct smith_tracepoint {
+    const char *name;
+    void *handler;
+    void *data;
+    struct tracepoint *control;
+} g_smith_tracepoints[] = {
+    /*
+     * only hook sys_exit tracepoint, since sys_enter or sys_exit will
+     * affect all syscalls, and could lead performance drop of about 3
+     * - 5%, even with noop-processing in the hookpoint callback
+     */
+    {.name = "sys_exit", .handler = smith_trace_sys_exit}
+};
+#define NUM_TRACE_POINTS (sizeof(g_smith_tracepoints) / sizeof(struct smith_tracepoint))
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0)
+static void smith_query_tracepoints(struct tracepoint *tp, void *ignore)
+{
+    int i;
+    for (i = 0; i < NUM_TRACE_POINTS; i++) {
+        if (strcmp(g_smith_tracepoints[i].name, tp->name) == 0)
+            g_smith_tracepoints[i].control = tp;
+    }
+}
+static int smith_assert_tracepoints(void)
+{
+    int i;
+
+    for_each_kernel_tracepoint(smith_query_tracepoints, NULL);
+    for (i = 0; i < NUM_TRACE_POINTS; i++) {
+        if (!g_smith_tracepoints[i].control)
+            return -ENOENT;
+    }
+
+    return 0;
+}
+static int smith_register_tracepoint(struct smith_tracepoint *tp)
+{
+    return tracepoint_probe_register(tp->control, tp->handler, tp->data);
+}
+static int smith_unregister_tracepoint(struct smith_tracepoint *tp)
+{
+    return tracepoint_probe_unregister(tp->control, tp->handler, tp->data);
+}
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35)
+static int smith_assert_tracepoints(void)
+{
+    return 0;
+}
+static int smith_register_tracepoint(struct smith_tracepoint *tp)
+{
+    return tracepoint_probe_register(tp->name, tp->handler, tp->data);
+}
+static int smith_unregister_tracepoint(struct smith_tracepoint *tp)
+{
+    return tracepoint_probe_unregister(tp->name, tp->handler, tp->data);
+}
+#else
+static int smith_assert_tracepoints(void)
+{
+    return 0;
+}
+static int smith_register_tracepoint(struct smith_tracepoint *tp)
+{
+    return tracepoint_probe_register(tp->name, tp->handler);
+}
+static int smith_unregister_tracepoint(struct smith_tracepoint *tp)
+{
+    return tracepoint_probe_unregister(tp->name, tp->handler);
+}
+#endif
+
+static int __init smith_sysret_init(void)
+{
+    int i, rc;
+
+    /* check the tracepoints of our interest */
+    rc = smith_assert_tracepoints();
+    if (rc) {
+        printk(KERN_INFO "[ELKEID] failed to register tracepoints: %d\n", rc);
+        goto errorout;
+    }
+
+    /* check dns parameters */
+    smith_check_dns_params();
+
+    /* register callbacks for the tracepoints of our interest */
+    for (i = 0; i < NUM_TRACE_POINTS; i++) {
+        rc = smith_register_tracepoint(&g_smith_tracepoints[i]);
+        if (rc)
+            goto cleanup;
+    }
+
+errorout:
+    return rc;
+
+cleanup:
+    while (--i >= 0)
+        smith_unregister_tracepoint(&g_smith_tracepoints[i]);
     return rc;
 }
 
-static void smith_nf_udp_unreg(struct net *net)
+static void smith_sysret_fini(void)
 {
-    /* do cleanup for the last instance of net namespace */
-    if (0 == atomic_dec_return(&g_nf_udp_regged))
-        nf_unregister_hooks(g_smith_nf_udp, ARRAY_SIZE(g_smith_nf_udp));
-}
+    int i;
 
-#endif /* >= 4.3.0 */
-
-
-static struct pernet_operations smith_net_ops = {
-	.init = smith_nf_udp_reg,
-	.exit = smith_nf_udp_unreg,
-};
-
-static struct task_struct *g_dns_worker;
-static int smith_dns_work_handler(void *argu)
-{
-    unsigned long timeout = msecs_to_jiffies(1000);
-
-    /* reset start timestamp */
-    g_dns_v4_switch.start = smith_get_seconds();
-#if IS_ENABLED(CONFIG_IPV6)
-    g_dns_v6_switch.start = smith_get_seconds();
-#endif
-
-    do {
-        /* do checking once per second */
-        if (schedule_timeout_interruptible(timeout)) {
-            /* being waked up by kthread_stop */
-            continue;
-        }
-
-        if (atomic_read(&g_dns_v4_switch.armed) && *g_dns_v4_switch.regs) {
-            smith_dns_kretprobe(&g_dns_v4_switch);
-        } else {
-            smith_dns_try_switch(&g_dns_v4_switch);
-        }
-
-#if IS_ENABLED(CONFIG_IPV6)
-        if (atomic_read(&g_dns_v6_switch.armed) && *g_dns_v6_switch.regs) {
-            smith_dns_kretprobe(&g_dns_v6_switch);
-        } else {
-            smith_dns_try_switch(&g_dns_v6_switch);
-        }
-#endif
-    } while (!kthread_should_stop());
-
-    /* kernen thread entry aka kernel() will finally call do_exit */
-    return 0;
+    /* register callbacks for the tracepoints of our interest */
+    for (i = NUM_TRACE_POINTS; i > 0; i--)
+        smith_unregister_tracepoint(&g_smith_tracepoints[i - 1]);
 }
 
 /*
@@ -2636,44 +2627,6 @@ module_param_call(psad_switch, smith_set_nf_psad_switch, param_get_bool, &g_nf_p
 # warning "moudle_param_cb or module_param_call are not supported by target kernel"
 #endif
 MODULE_PARM_DESC(psad_switch, "Set to 1 to enable detection of port-scanning, 0 otherwise");
-
-static int smith_nf_init(void)
-{
-    struct task_struct *worker;
-    int rc;
-
-    worker = kthread_create(smith_dns_work_handler, 0, "elkeid - DNS kretprobe");
-    if (IS_ERR(worker)) {
-        printk("smith_nf_init: failed to create dns worker with %ld\n", PTR_ERR(worker));
-        return PTR_ERR(worker);
-    }
-
-    rc = register_pernet_subsys(&smith_net_ops);
-    if (rc) {
-        kthread_stop(worker);
-        return rc;
-    }
-
-    /* now wake up dns worker thread */
-    g_dns_worker = worker;
-    wake_up_process(g_dns_worker);
-    return rc;
-}
-
-static void smith_nf_fini(void)
-{
-    /* kthread_stop will wait until worker thread exits */
-    if (!IS_ERR_OR_NULL(g_dns_worker)) {
-        unregister_pernet_subsys(&smith_net_ops);
-        kthread_stop(g_dns_worker);
-    }
-
-    /* clean nf_hooks of psad if hooked */
-    mutex_lock(&g_nf_psad_lock);
-    if (g_nf_psad_status)
-        unregister_pernet_subsys(&smith_psad_net_ops);
-    mutex_unlock(&g_nf_psad_lock);
-}
 
 int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
@@ -3681,21 +3634,7 @@ struct kprobe ptrace_kprobe = {
         .pre_handler = ptrace_pre_handler,
 };
 
-struct kretprobe udp_recvmsg_kretprobe = {
-        .kp.symbol_name = "udp_recvmsg",
-        .data_size = sizeof(struct udp_recvmsg_data),
-        .handler = udp_recvmsg_handler,
-        .entry_handler = udp_recvmsg_entry_handler,
-};
-
 #if IS_ENABLED(CONFIG_IPV6)
-struct kretprobe udpv6_recvmsg_kretprobe = {
-	    .kp.symbol_name = "udpv6_recvmsg",
-	    .data_size = sizeof(struct udp_recvmsg_data),
-	    .handler = udp_recvmsg_handler,
-	    .entry_handler = udpv6_recvmsg_entry_handler,
-};
-
 struct kretprobe ip6_datagram_connect_kretprobe = {
 	    .kp.symbol_name = "ip6_datagram_connect",
 	    .data_size = sizeof(struct connect_data),
@@ -4049,41 +3988,7 @@ void unregister_ptrace_kprobe(void)
     unregister_kprobe(&ptrace_kprobe);
 }
 
-int register_udp_recvmsg_kprobe(void)
-{
-    int ret;
-    ret = smith_register_kretprobe(&udp_recvmsg_kretprobe);
-
-    if (ret == 0)
-        udp_recvmsg_kprobe_state = 0x1;
-
-    return ret;
-}
-
-void unregister_udp_recvmsg_kprobe(void)
-{
-    smith_unregister_kretprobe(&udp_recvmsg_kretprobe);
-    udp_recvmsg_kprobe_state = 0;
-}
-
 #if IS_ENABLED(CONFIG_IPV6)
-int register_udpv6_recvmsg_kprobe(void)
-{
-	int ret;
-	ret = smith_register_kretprobe(&udpv6_recvmsg_kretprobe);
-
-	if (ret == 0)
-		udpv6_recvmsg_kprobe_state = 0x1;
-
-	return ret;
-}
-
-void unregister_udpv6_recvmsg_kprobe(void)
-{
-	smith_unregister_kretprobe(&udpv6_recvmsg_kretprobe);
-    udpv6_recvmsg_kprobe_state = 0;
-}
-
 int register_ip6_datagram_connect_kprobe(void)
 {
 	int ret;
@@ -4443,7 +4348,7 @@ void unregister_write_kprobe(void)
     unregister_kprobe(&write_kprobe);
 }
 
-void uninstall_kprobe(void)
+static void uninstall_kprobe(void)
 {
     if (UDEV_HOOK == 1) {
         static void (*smith_usb_unregister_notify) (struct notifier_block * nb);
@@ -4474,12 +4379,6 @@ void uninstall_kprobe(void)
 
     if (create_file_kprobe_state == 0x1)
         unregister_create_file_kprobe();
-
-    if (udp_recvmsg_kprobe_state == 0x1)
-        unregister_udp_recvmsg_kprobe();
-
-    if (udpv6_recvmsg_kprobe_state == 0x1)
-        unregister_udpv6_recvmsg_kprobe();
 
     if (do_init_module_kprobe_state == 0x1)
         unregister_do_init_module_kprobe();
@@ -4568,10 +4467,9 @@ void uninstall_kprobe(void)
 	    unregister_compat_execveat_kprobe();
 #endif
 #endif
-
 }
 
-void install_kprobe(void)
+static void __init install_kprobe(void)
 {
     int ret;
 
@@ -4823,8 +4721,16 @@ static int __init kprobe_hook_init(void)
 #endif
 
     __init_root_pid_ns_inum();
+
+    /* register tracepoints for dns query */
+    ret = smith_sysret_init();
+    if (ret) {
+        filter_cleanup();
+        return ret;
+    }
+
+    /* install kprobe/kretprobe hookproints */
     install_kprobe();
-    smith_nf_init();
 
     printk( KERN_INFO "[ELKEID] SANDBOX: %d\n", SANDBOX);
     printk( KERN_INFO "[ELKEID] register_kprobe success: connect_hook: %d, load_module_hook:  %d, execve_hook: %d, "
@@ -4841,11 +4747,15 @@ static int __init kprobe_hook_init(void)
 
 static void kprobe_hook_exit(void)
 {
-    /* should be done before kprobe cleanup */
-    smith_nf_fini();
+    /* clean nf_hooks of psad if hooked */
+    mutex_lock(&g_nf_psad_lock);
+    if (g_nf_psad_status)
+        unregister_pernet_subsys(&smith_psad_net_ops);
+    mutex_unlock(&g_nf_psad_lock);
 
     /* cleaning up kprobe hook points */
     uninstall_kprobe();
+    smith_sysret_fini();
     filter_cleanup();
 
     printk(KERN_INFO "[ELKEID] uninstall_kprobe success\n");
