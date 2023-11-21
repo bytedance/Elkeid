@@ -631,6 +631,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
         try {
             bresult = ruleconfig.setVersion(ruleVersion.getRule_version());
+            heartbeat.setClassFilterVersion(ruleVersion.getClass_filter_version());
         }
         catch(Exception e) {
             SmithLogger.exception(e);
