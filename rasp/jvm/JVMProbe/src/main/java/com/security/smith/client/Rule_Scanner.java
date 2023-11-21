@@ -156,7 +156,7 @@ public class Rule_Scanner {
             }
            
             if(weight == 5) {
-                printClassfilter(data);
+                //printClassfilter(data);
                 printRule();
                 rule_id = m_ruleId;
             }

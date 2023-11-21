@@ -311,6 +311,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         SmithLogger.logger.info("parentClassName:" + data.getParentClassName());
         */
 
+        System.out.println("------------------------------------------------------------------------");
         System.out.println("className:" + data.getClassName());
         System.out.println("classPath:" + data.getClassPath());
         System.out.println("interfaceName:" + data.getInterfacesName());
@@ -330,13 +331,13 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
 
     public InputStream byteArrayToInputStream(byte[] bytes) throws IOException {
-    if(bytes == null) {
-        return null;
-    }
+        if(bytes == null) {
+            return null;
+        }
 
-    ByteArrayInputStream inputStream = new ByteArrayInputStream(bytes);
-    
-    return inputStream;
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(bytes);
+        
+        return inputStream;
     }
 
     private void checkClassFilter(ClassLoader loader, String className, byte[] classfileBuffer) {
@@ -354,7 +355,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             
             if(className != null) {
                 className_std = className.replace("/", ".");
-                if(className.startsWith("com/security/smith") || className.startsWith("rasp/")) {
+                if (className.startsWith("com/security/smith") || className.startsWith("rasp/")) {
                     return ;
                 }
 
@@ -400,21 +401,16 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             } catch (Exception e) {
                 SmithLogger.exception(e);
             }
-
-            /*
-
+           /* 
             try {
-                if(className == null) {
-                    printClassfilter(classFilter);
-                }
+                printClassfilter(classFilter);
             }
             catch(Exception e) {
             }
 */
-
             long rule_id = rulemgr.matchRule(classFilter);
             if(rule_id != -1) {
-                System.out.println("Hit---------------------RuleId:" + rule_id);
+               // System.out.println("Hit---------------------RuleId:" + rule_id);
 
                 classFilter.setRuleId(rule_id);
                 classFilter.setTransId();
@@ -422,7 +418,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
                 client.write(Operate.SCANCLASS, classFilter);
                 sendByte(classfileBuffer, classFilter.getTransId());
-            
             }
         } catch(Exception e) {
             SmithLogger.exception(e);
@@ -432,7 +427,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 ctClass.detach();
             }
         }
-        
     }
 
     @Override
@@ -691,6 +685,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     @Override
     public void onScanAllClass() {
         scanswitch = false;
+
         try {
             Class<?>[] loadedClasses = inst.getAllLoadedClasses();
 
@@ -751,8 +746,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         } catch(Exception e) {
             SmithLogger.exception(e);
         }
-
-        scanswitch = true;
+        finally {
+            scanswitch = true;
+        }
     }
 
     /*
