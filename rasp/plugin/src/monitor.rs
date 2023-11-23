@@ -412,13 +412,15 @@ fn internal_main(
             match operator.op(&mut process, state.clone(), probe_message.clone()) {
                 Ok(_) => {
                     info!("operation success: {:?}", operation_message);
-                    let report = make_report(&process.clone(), format!("{}_success", state.clone()).as_str(), String::new());
-                    let mut record = hashmap_to_record(report);
-                    record.data_type = report_action_data_type.clone() as i32;
-                    record.timestamp = time();
-                    let _ = operation_reporter.send(
-                        record
-                    );
+                    if state != "ATTACHED" {
+                        let report = make_report(&process.clone(), format!("{}_success", state.clone()).as_str(), String::new());
+                        let mut record = hashmap_to_record(report);
+                        record.data_type = report_action_data_type.clone() as i32;
+                            record.timestamp = time();
+                            let _ = operation_reporter.send(
+                         record
+                        );
+                    }
                 }
                 Err(e) => {
                     warn!("operation failed: {:?} {}", operation_message, e);
