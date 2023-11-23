@@ -204,7 +204,7 @@ impl RASPManager {
             serde_json::from_str(message)?;
         let mut valid_messages: Vec<libraspserver::proto::PidMissingProbeConfig> = Vec::new();
         if messages.len() <= 0 {
-            for message_type in [6, 7, 8, 9] {
+            for message_type in [6, 7, 8, 9, 12, 13, 14] {
                 messages.push(PidMissingProbeConfig {
                     message_type,
                     data: ProbeConfigData::empty(message_type)?,
@@ -212,12 +212,24 @@ impl RASPManager {
             }
         }
         for m in messages.iter() {
-            if m.data.uuid == "" {
-                valid_messages.push(PidMissingProbeConfig {
-                    message_type: m.message_type,
-                    data: ProbeConfigData::empty(m.message_type)?,
-                });
-            } else {
+            if let Some(uuid) = &m.data.uuid {
+                if uuid == "" {
+                    valid_messages.push(PidMissingProbeConfig {
+                        message_type: m.message_type,
+                        data: ProbeConfigData::empty(m.message_type)?,
+                    });
+                } else {
+                    let _ = match serde_json::to_string(&m) {
+                        Ok(s) => s,
+                        Err(e) => {
+                            warn!("failed to convert json to string: {:?} {}", m, e);
+                            continue;
+                        }
+                    };
+                    valid_messages.push(m.clone());
+                }
+            }
+            else {
                 let _ = match serde_json::to_string(&m) {
                     Ok(s) => s,
                     Err(e) => {

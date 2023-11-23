@@ -391,7 +391,12 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     classFilter.setInterfacesName(getInterfaces(ctClass));
                 }    
                 classFilter.setClassPath(getCtClassPath(ctClass));
-                CtClass superClass = ctClass.getSuperclass();
+                CtClass superClass = null;
+                try {
+                    superClass = ctClass.getSuperclass();
+                } catch(Exception e) {
+                    // SmithLogger.exception(e);
+                }
                 // 获取父类名和父类加载器
                 String superClassName = superClass != null ? superClass.getName() : "";
                 classFilter.setParentClassName(superClassName);
