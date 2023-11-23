@@ -756,6 +756,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         }
         finally {
             scanswitch = true;
+            SmithLogger.logger.info("scan all class finished");
         }
     }
 
