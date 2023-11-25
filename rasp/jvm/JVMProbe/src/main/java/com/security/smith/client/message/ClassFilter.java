@@ -1,6 +1,7 @@
 package com.security.smith.client.message;
 
 
+import java.time.Instant;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -89,6 +90,20 @@ public class ClassFilter {
 
     public void setStackTrace(StackTraceElement[] stackTrace) {
         this.stackTrace = stackTrace;
+    }
+    @Override
+    public String toString() {
+        return "{" +
+                "transId: '" + transId + '\'' +
+                ", className: '" + className + '\'' +
+                ", classPath: '" + classPath + '\'' +
+                ", interfacesName: '" + interfacesName + '\'' +
+                ", classLoaderName: '" + classLoaderName + '\'' +
+                ", parentClassName: '" + parentClassName + '\'' +
+                ", parentClassLoaderName: '" + parentClassLoaderName + '\'' +
+                ", ruleId: " + ruleId +
+                ", timestamp: " + Instant.now().getEpochSecond() +
+                '}';
     }
 
 }

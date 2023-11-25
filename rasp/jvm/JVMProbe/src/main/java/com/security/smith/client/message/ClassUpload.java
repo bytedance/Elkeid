@@ -1,5 +1,7 @@
 package com.security.smith.client.message;
 
+import java.time.Instant;
+import java.util.Arrays;
 
 public class ClassUpload {
 
@@ -49,4 +51,14 @@ public class ClassUpload {
         this.classData = class_data;
     }
 
+    @Override
+    public String toString() {
+        return "{" +
+                "transId: '" + transId + '\'' +
+                ", byteTotalLength: " + byteTotalLength +
+                ", byteOffset: " + byteOffset +
+                ", byteLength: " + byteLength +
+                ", timestamp: " + Instant.now().getEpochSecond() +
+                '}';
+    }
 }

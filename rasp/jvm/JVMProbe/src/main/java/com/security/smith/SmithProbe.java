@@ -425,6 +425,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 classFilter.setStackTrace(Thread.currentThread().getStackTrace());
 
                 client.write(Operate.SCANCLASS, classFilter);
+                SmithLogger.logger.info("send metadata: " + classFilter.toString());
                 sendByte(classfileBuffer, classFilter.getTransId());
             }
         } catch(Exception e) {
@@ -744,6 +745,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                         classFilter.setStackTrace(Thread.currentThread().getStackTrace());
 
                         client.write(Operate.SCANCLASS, classFilter);
+                        SmithLogger.logger.info("send metadata: " + classFilter.toString());
                         sendClass(clazz, classFilter.getTransId());
                     }
    
@@ -813,6 +815,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             classUpload.setClassData(data);
 
             client.write(Operate.CLASSUPLOAD, classUpload);
+            SmithLogger.logger.info("send classdata: " + classUpload.toString());
         //}
     }
 
