@@ -311,23 +311,14 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         SmithLogger.logger.info("parentClassName:" + data.getParentClassName());
         */
 
-        System.out.println("------------------------------------------------------------------------");
-        System.out.println("className:" + data.getClassName());
-        System.out.println("classPath:" + data.getClassPath());
-        System.out.println("interfaceName:" + data.getInterfacesName());
-        System.out.println("classLoaderName:" + data.getClassLoaderName());
-        System.out.println("parentClassName:" + data.getParentClassName());
+        SmithLogger.logger.info("------------------------------------------------------------------------");
+        SmithLogger.logger.info("className:" + data.getClassName());
+        SmithLogger.logger.info("classPath:" + data.getClassPath());
+        SmithLogger.logger.info("interfaceName:" + data.getInterfacesName());
+        SmithLogger.logger.info("classLoaderName:" + data.getClassLoaderName());
+        SmithLogger.logger.info("parentClassName:" + data.getParentClassName());
+        SmithLogger.logger.info("parentClassLoaderName:" + data.getParentClassLoaderName());
 
-         // 步骤1：获取当前线程
-        Thread currentThread = Thread.currentThread();
-
-        // 步骤2：获取当前线程的堆栈跟踪
-        StackTraceElement[] stackTrace = currentThread.getStackTrace();
-
-        // 步骤3：打印堆栈跟踪信息
-        for (StackTraceElement element : stackTrace) {
-            System.out.println(element);
-        }
     }
 
     public InputStream byteArrayToInputStream(byte[] bytes) throws IOException {
@@ -344,17 +335,17 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         CtClass ctClass = null;
 
         try {
-            if(className == null && classfileBuffer == null) {
+            if (className == null && classfileBuffer == null) {
                 SmithLogger.logger.info("nononono className == null && classfileBuffer == null");
                 return ;
             }
 
-            String className_std;
+            String className_std = "";
          
             ClassPool pool = ClassPool.getDefault();
             
-            if(className != null) {
-                className_std = className.replace("/", ".");
+            if (className != null) {
+                className_std = className;
                 if (className.startsWith("com/security/smith") || className.startsWith("rasp/")) {
                     return ;
                 }
@@ -369,12 +360,15 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 ctClass = pool.makeClass(inputS);
             }
 
-            if(ctClass == null) {
+            if (ctClass == null) {
                 return ;
             } else {
                 className_std = ctClass.getName();
             }
             
+            if (className_std != "") {
+                className_std = className_std.replace("/", ".");
+            }
 
             ClassFilter classFilter = new ClassFilter();
             if (loader != null) {
@@ -437,7 +431,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
     @Override
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) {
-        if (disable)
+         if (disable)
             return null;
 
         if(scanswitch) {
