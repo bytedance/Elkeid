@@ -8,6 +8,7 @@ import (
 	"github.com/bytedance/Elkeid/server/agent_center/httptrans/client"
 	"github.com/patrickmn/go-cache"
 	"math/rand"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -64,6 +65,18 @@ type Connection struct {
 	connStatNeedSync   bool //是否需要把状态更新至manager端
 }
 
+var (
+	//Agent心跳如下字段一更新则马上同步到后端
+	agentUpdateKeys = []string{"state", "state_detail", "version",
+		"pid", "limit_cpu", "limit_memory", "limit_memory_usage_in_bytes",
+		"monitor_enable", "monitor_cpu_last_minute", "monitor_cpu_percent",
+		"monitor_memory_last_minute", "monitor_memory_percent", "monitor_operate",
+		"plugin_status", "plugin_stopped_reason"}
+
+	//插件心跳如下字段一更新则马上同步到后端
+	pluginsUpdateKeys = []string{"pversion", "pid"}
+)
+
 // Init 初始化同步状态
 func (c *Connection) Init() {
 	c.connStatNeedSync = false
@@ -96,15 +109,7 @@ func (c *Connection) SetAgentDetail(detail map[string]interface{}) {
 		updated = true
 	} else {
 		//check Agent状态是否有变化
-		a1, o1 := c.agentDetail["state"].(string)
-		a2, o2 := c.agentDetail["state_detail"].(string)
-		a3, o3 := c.agentDetail["version"].(string)
-		a4, o4 := c.agentDetail["pid"].(float64)
-		s1, ok1 := detail["state"].(string)
-		s2, ok2 := detail["state_detail"].(string)
-		s3, ok3 := detail["version"].(string)
-		s4, ok4 := c.agentDetail["version"].(float64)
-		if ok1 != o1 || a1 != s1 || ok2 != o2 || s2 != a2 || o3 != ok3 || a3 != s3 || o4 != ok4 || a4 != s4 {
+		if !areAllEqual(c.agentDetail, detail, agentUpdateKeys) {
 			updated = true
 		}
 
@@ -144,14 +149,8 @@ func (c *Connection) SetPluginDetail(name string, detail map[string]interface{})
 	if p, ok := c.pluginDetail[name]; !ok {
 		c.updateConnStat()
 	} else {
-		//插件版本更新
-		p1, ok1 := p["pversion"].(string)
-		p2, ok2 := detail["pversion"].(string)
-
-		//插件pid更新
-		pid1, ok3 := p["pid"].(float64)
-		pid2, ok4 := detail["pid"].(float64)
-		if ok1 != ok2 || p1 != p2 || ok3 != ok4 || pid1 != pid2 {
+		//插件状态更新
+		if !areAllEqual(p, detail, pluginsUpdateKeys) {
 			c.updateConnStat()
 		}
 	}
@@ -507,4 +506,34 @@ func (g *GRPCPool) GetIaasInfo(agentID string, ipv4 []string, ipv6 []string) str
 	g.iaasInfoMap[agentID] = info
 	g.iaasInfoLock.Unlock()
 	return info
+}
+
+func areAllEqual(local map[string]interface{}, remote map[string]interface{}, keys []string) bool {
+	for _, key := range keys {
+		if !areInterfacesEqual(local[key], remote[key]) {
+			return false
+		}
+	}
+	return true
+}
+
+func areInterfacesEqual(a, b interface{}) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+
+	// 使用反射获取接口的值和类型信息
+	valA := reflect.ValueOf(a)
+	valB := reflect.ValueOf(b)
+
+	// 如果类型不同，直接返回 false
+	if valA.Type() != valB.Type() {
+		return false
+	}
+
+	// 比较接口的具体值
+	return reflect.DeepEqual(valA.Interface(), valB.Interface())
 }

@@ -69,7 +69,7 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 					metricsAgentHeartBeat(req.AgentID, name, detail)
 				}
 			}
-		case 2001, 2003, 6000, 5100, 5101, 8010, 1021, 1022, 1101, 1031:
+		case 2001, 2003, 6000, 5100, 5101, 8010, 1021, 1022, 1023, 1024, 1025, 1101, 1031:
 			// Asynchronously pushed to the remote end for reconciliation.
 
 			//5100: 主动触发资产数据扫描
@@ -77,6 +77,7 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 			//8010: 基线扫描
 			//1021,1022: 插件启动后首次心跳，插件退出日志
 			//1031: 文件主动上传
+			//1021-1025: Agent/Plugins status
 			//需要发送给manager的数据
 			item, err := parseRecord(req.GetData()[k])
 			if err != nil {
@@ -85,7 +86,7 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 
 			item["data_type"] = fmt.Sprintf("%d", mqMsg.DataType)
 			switch mqMsg.DataType {
-			case 1021, 1022, 1101, 1031:
+			case 1021, 1022, 1023, 1024, 1025, 1101, 1031:
 				//不包含token的数据
 				item["agent_id"] = mqMsg.AgentID
 				item["time"] = fmt.Sprintf("%d", mqMsg.AgentTime)
