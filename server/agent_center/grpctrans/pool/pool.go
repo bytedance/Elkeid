@@ -52,9 +52,13 @@ type Connection struct {
 	//otherwise, send the command to the agent.
 	CommandChan chan *Command `json:"-"`
 
-	AgentID    string `json:"agent_id"`
-	SourceAddr string `json:"addr"`
-	CreateAt   int64  `json:"create_at"`
+	AgentID      string   `json:"agent_id"`
+	IntranetIPv4 []string `json:"intranet_ipv4,omitempty"`
+	ExtranetIPv4 []string `json:"extranet_ipv4,omitempty"`
+	IntranetIPv6 []string `json:"intranet_ipv6,omitempty"`
+	ExtranetIPv6 []string `json:"extranet_ipv6,omitempty"`
+	SourceAddr   string   `json:"addr"`
+	CreateAt     int64    `json:"create_at"`
 
 	agentDetailLock  sync.RWMutex
 	agentDetail      map[string]interface{}
@@ -233,6 +237,9 @@ func NewGRPCPool(config *Config) *GRPCPool {
 	//Tags
 	go g.loadExtraInfoWorker()
 	go g.refreshExtraInfo(config.Interval)
+
+	//定期刷新iaas信息
+	go g.refreshIaasInfo(config.Interval)
 	return g
 }
 
@@ -487,6 +494,30 @@ func (g *GRPCPool) GetDynamicLimit() (val int32, lastSecond int64) {
 	return val, atomic.LoadInt64(&g.dynamicLimitEndTime) - time.Now().Unix()
 }
 
+func (g *GRPCPool) refreshIaasInfo(interval time.Duration) {
+	for {
+		time.Sleep(interval + time.Duration(rand.Intn(30))*time.Second)
+
+		iaasInfos := make(map[string]string, len(g.iaasInfoMap))
+		connMap := g.connPool.Items()
+		for id := range connMap {
+			if conn, ok := connMap[id].Object.(*Connection); ok {
+				//load from manager
+				info, err := client.GetIaasInfoFromRemote(conn.IntranetIPv4, conn.IntranetIPv6)
+				if err != nil {
+					ylog.Errorf("refreshIaasInfo", "%s %s %s error %s", id, conn.IntranetIPv4, conn.IntranetIPv6, err.Error())
+				} else {
+					iaasInfos[id] = info
+				}
+			}
+		}
+
+		g.iaasInfoLock.Lock()
+		g.iaasInfoMap = iaasInfos
+		g.iaasInfoLock.Unlock()
+	}
+}
+
 func (g *GRPCPool) GetIaasInfo(agentID string, ipv4 []string, ipv6 []string) string {
 	g.iaasInfoLock.RLock()
 	tmp, ok := g.iaasInfoMap[agentID]
@@ -496,7 +527,6 @@ func (g *GRPCPool) GetIaasInfo(agentID string, ipv4 []string, ipv6 []string) str
 	}
 
 	//load from manager
-	//TODO 增加重试逻辑
 	info, err := client.GetIaasInfoFromRemote(ipv4, ipv6)
 	if err != nil {
 		ylog.Errorf("GetIaasInfo", "%s %s %s error %s", agentID, ipv4, ipv6, err.Error())

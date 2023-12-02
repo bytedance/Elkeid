@@ -60,12 +60,16 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 	ctx, cancelButton := context.WithCancel(context.Background())
 	createAt := time.Now().UnixNano() / (1000 * 1000 * 1000)
 	connection := pool.Connection{
-		AgentID:     agentID,
-		SourceAddr:  addr,
-		CreateAt:    createAt,
-		CommandChan: make(chan *pool.Command),
-		Ctx:         ctx,
-		CancelFuc:   cancelButton,
+		AgentID:      agentID,
+		IntranetIPv4: data.IntranetIPv4,
+		IntranetIPv6: data.IntranetIPv6,
+		ExtranetIPv4: data.ExtranetIPv4,
+		ExtranetIPv6: data.ExtranetIPv6,
+		SourceAddr:   addr,
+		CreateAt:     createAt,
+		CommandChan:  make(chan *pool.Command),
+		Ctx:          ctx,
+		CancelFuc:    cancelButton,
 	}
 	connection.Init()
 	ylog.Infof("Transfer", ">>>>now set %s %v", agentID, connection)
