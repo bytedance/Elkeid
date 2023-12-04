@@ -60,7 +60,7 @@ int FAKE_RM = 0;
 
 int PID_TREE_LIMIT = 12;
 int PID_TREE_LIMIT_LOW = 8;
-int EXECVE_GET_SOCK_PID_LIMIT = 4;
+int EXECVE_GET_SOCK_PID_LIMIT = 1;  /* put_files_struct() could reschedule */
 int EXECVE_GET_SOCK_FD_LIMIT = 12;  /* maximum fd numbers to be queried */
 
 char connect_syscall_kprobe_state = 0x0;
