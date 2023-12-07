@@ -36,3 +36,8 @@ output
 *.local.yml
 target
 Cargo.lock
+*.js
+*.json
+*CMakeFiles*
+*vcpkg_installed
+*node_modules

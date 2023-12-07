@@ -14,6 +14,13 @@
     - id: 3
       name: getErrorStream
       desc: ()Ljava/io/InputStream;
+    - id: 4
+      name: <init>
+      desc: ([B[BI[BI[B[IZZ)V
+    - id: 5
+      name: <init>
+      desc: (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;[JZ)V
+
 - id: 1
   name: java.io.FileInputStream
   methods:
