@@ -12,11 +12,10 @@
 #if ANTI_ROOTKIT_CHECK
 
 #include <linux/kthread.h>
+#include "../include/util.h"
 #include "../include/trace.h"
-#include "../include/struct_wrap.h"
 #include "../include/kprobe.h"
 #include "../include/anti_rootkit.h"
-#include "../include/util.h"
 
 #define CREATE_PRINT_EVENT
 #include "../include/anti_rootkit_print.h"

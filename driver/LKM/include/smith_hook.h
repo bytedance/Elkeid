@@ -14,6 +14,7 @@
 #include "kprobe.h"
 #include "util.h"
 #include "filter.h"
+#include "memcache.h"
 #include "struct_wrap.h"
 
 #include <linux/usb.h>

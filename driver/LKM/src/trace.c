@@ -9,9 +9,10 @@
 #include <linux/proc_fs.h>
 #include <linux/slab.h>
 #include <linux/version.h>
+
+#include "../include/util.h"
 #include "../include/trace.h"
 #include "../include/kprobe.h"
-#include "../include/util.h"
 
 #define PROC_ENDPOINT	"elkeid-endpoint"
 
