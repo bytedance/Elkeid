@@ -14,6 +14,14 @@
     - id: 3
       name: getErrorStream
       desc: ()Ljava/io/InputStream;
+    - id: 4
+      name: <init>
+      desc: ([B[BI[BI[B[IZZ)V
+    - id: 5
+      name: <init>
+      desc: (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;[JZ)V
+
+
 - id: 1
   name: java.io.FileInputStream
   methods:
@@ -164,3 +172,26 @@
     - id: 1
       name: move
       desc: (Ljava/nio/file/Path;Ljava/nio/file/Path;[Ljava/nio/file/CopyOption;)Ljava/nio/file/Path;
+- id: 14
+  name: org.apache.catalina.core.ContainerBase
+  methods:
+     - id: 0
+       name: addValve
+       desc: (Lorg/apache/catalina/Valve;)V
+- id: 15
+  name: org.apache.catalina.core.StandardContext
+  methods:
+     - id: 0
+       name: addServletMapping
+       desc: (Ljava/lang/String;Ljava/lang/String;Z)V
+     - id: 1
+       name: addApplicationEventListener
+       desc: (Ljava/lang/Object;)V
+     - id: 2
+       name: addFilterDef
+       desc: (Lorg/apache/tomcat/util/descriptor/web/FilterDef;)V
+     - id: 3
+       name: addServletMappingDecoded
+       desc: (Ljava/lang/String;Ljava/lang/String;Z)V
+       preHook: aaaa
+       postHook: bbbb

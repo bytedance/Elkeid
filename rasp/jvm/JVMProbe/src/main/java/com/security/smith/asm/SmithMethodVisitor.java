@@ -26,6 +26,8 @@ public class SmithMethodVisitor extends AdviceAdapter {
     private final Label start;
     private final Label end;
     private final Label handler;
+    private String preHook;
+    private String postHook;
 
     private static final Map<String, Class<?>> smithProcessors = new HashMap<String, Class<?>>() {{
         put("byte[]", ByteArrayProcessor.class);
@@ -42,13 +44,15 @@ public class SmithMethodVisitor extends AdviceAdapter {
         put("java.net.InetAddress[]", ObjectArrayProcessor.class);
     }};
 
-    protected SmithMethodVisitor(int api, Type classType, int classID, int methodID, boolean canBlock, MethodVisitor methodVisitor, int access, String name, String descriptor) {
+    protected SmithMethodVisitor(int api, Type classType, int classID, int methodID, boolean canBlock, MethodVisitor methodVisitor, int access, String name, String descriptor, String pre_hook, String post_hook) {
         super(api, methodVisitor, access, name, descriptor);
 
         this.classType = classType;
         this.classID = classID;
         this.methodID = methodID;
         this.canBlock = canBlock;
+        this.preHook = pre_hook;
+        this.postHook = post_hook;
 
         start = new Label();
         end = new Label();
@@ -101,8 +105,13 @@ public class SmithMethodVisitor extends AdviceAdapter {
 
         mark(start);
 
-        if (!canBlock)
-            return;
+        if (preHook == null || preHook == "") {
+            if (!canBlock) {
+                return;
+            } else {
+                preHook = "detect";
+            }
+        }
 
         invokeStatic(
                 Type.getType(SmithProbe.class),
@@ -120,7 +129,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
         invokeVirtual(
                 Type.getType(SmithProbe.class),
                 new Method(
-                        "detect",
+                        preHook,
                         Type.VOID_TYPE,
                         new Type[]{
                                 Type.INT_TYPE,
@@ -177,10 +186,14 @@ public class SmithMethodVisitor extends AdviceAdapter {
         loadLocal(returnVariable);
         push(false);
 
+        if (postHook == null || postHook == "") {
+            postHook = "trace";
+        }
+
         invokeVirtual(
                 Type.getType(SmithProbe.class),
                 new Method(
-                        "trace",
+                        postHook,
                         Type.VOID_TYPE,
                         new Type[]{
                                 Type.INT_TYPE,

@@ -70,7 +70,7 @@ public class Rule_Config {
 
                     RuleScanner.setVersion(m_Rule_Mgr.getVersion());
 
-                    printRule(RuleScanner);
+                    //printRule(RuleScanner);
 
                     m_Rule_Mgr.addRule(RuleScanner);
 
