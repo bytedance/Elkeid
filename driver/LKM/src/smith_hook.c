@@ -366,7 +366,7 @@ static struct files_struct *smith_get_files_struct(struct task_struct *task)
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
-#define smith_lookup_fd          files_lookup_fd_rcu
+#define smith_lookup_fd          files_lookup_fd_raw
 #else
 #define smith_lookup_fd          fcheck_files
 #endif
