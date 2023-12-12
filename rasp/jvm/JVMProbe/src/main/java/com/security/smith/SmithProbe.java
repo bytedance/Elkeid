@@ -185,6 +185,14 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         }
     }
 
+    public void aaaa(int classID, int methodID, Object[] args) {
+        SmithLogger.logger.info("aaaa pre_hook clall success");
+    }
+
+    public void bbbb(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        SmithLogger.logger.info("bbbb post_hook clall success");
+    }
+
     public void trace(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
         if (classID >= CLASS_MAX_ID || methodID >= METHOD_MAX_ID)
             return;
