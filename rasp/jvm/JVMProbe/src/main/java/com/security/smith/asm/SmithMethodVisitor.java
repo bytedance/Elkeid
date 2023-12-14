@@ -1,6 +1,7 @@
 package com.security.smith.asm;
 
 import com.security.smith.SmithProbe;
+import com.security.smith.common.SmithHandler;
 import com.security.smith.processor.*;
 import org.apache.commons.lang3.ArrayUtils;
 import org.objectweb.asm.Label;
@@ -171,6 +172,10 @@ public class SmithMethodVisitor extends AdviceAdapter {
 
         storeLocal(returnVariable);
 
+        if (postHook == null || postHook == "") {
+            postHook = "trace";
+        }
+
         invokeStatic(
                 Type.getType(SmithProbe.class),
                 new Method(
@@ -186,9 +191,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
         loadLocal(returnVariable);
         push(false);
 
-        if (postHook == null || postHook == "") {
-            postHook = "trace";
-        }
+        
 
         invokeVirtual(
                 Type.getType(SmithProbe.class),

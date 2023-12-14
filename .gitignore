@@ -36,3 +36,7 @@ output
 *.local.yml
 target
 Cargo.lock
+node_modules
+vcpkg_installed
+CMakeFiles
+.output

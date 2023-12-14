@@ -173,25 +173,28 @@
       name: move
       desc: (Ljava/nio/file/Path;Ljava/nio/file/Path;[Ljava/nio/file/CopyOption;)Ljava/nio/file/Path;
 - id: 14
-  name: org.apache.catalina.core.ContainerBase
+  name: org.apache.catalina.core.StandardPipeline
   methods:
      - id: 0
        name: addValve
        desc: (Lorg/apache/catalina/Valve;)V
+       preHook: checkAddValvePre
 - id: 15
   name: org.apache.catalina.core.StandardContext
   methods:
      - id: 0
        name: addServletMapping
        desc: (Ljava/lang/String;Ljava/lang/String;Z)V
+       preHook: checkAddServletPre
      - id: 1
        name: addApplicationEventListener
        desc: (Ljava/lang/Object;)V
+       preHook: checkAddListenerPre
      - id: 2
        name: addFilterDef
        desc: (Lorg/apache/tomcat/util/descriptor/web/FilterDef;)V
+       preHook: checkAddFilterPre
      - id: 3
        name: addServletMappingDecoded
        desc: (Ljava/lang/String;Ljava/lang/String;Z)V
-       preHook: aaaa
-       postHook: bbbb
+       preHook: checkAddServletPre
