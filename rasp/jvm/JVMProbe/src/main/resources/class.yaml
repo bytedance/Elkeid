@@ -180,6 +180,7 @@
      - id: 0
        name: addValve
        desc: (Lorg/apache/catalina/Valve;)V
+       preHook: checkAddValvePre
 - id: 15
   name: org.apache.catalina.core.StandardContext
   methods:

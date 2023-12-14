@@ -44,15 +44,15 @@ public class SmithMethod {
         return preHook;
     }
 
-    public void setPreHook(String pre_hook) {
-        this.preHook = pre_hook;
+    public void setPreHook(String preHook) {
+        this.preHook = preHook;
     }
 
     public String getPostHook() {
         return postHook;
     }
 
-    public void setPostHook(String post_hook) {
-        this.postHook = post_hook;
+    public void setPostHook(String postHook) {
+        this.postHook = postHook;
     }
 }
