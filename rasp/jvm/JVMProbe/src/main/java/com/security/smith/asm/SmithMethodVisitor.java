@@ -1,7 +1,6 @@
 package com.security.smith.asm;
 
-import com.security.smith.SmithProbe;
-import com.security.smith.common.SmithHandler;
+import com.security.smith.SmithProbeProxy;
 import com.security.smith.processor.*;
 import org.apache.commons.lang3.ArrayUtils;
 import org.objectweb.asm.Label;
@@ -115,10 +114,10 @@ public class SmithMethodVisitor extends AdviceAdapter {
         }
 
         invokeStatic(
-                Type.getType(SmithProbe.class),
+                Type.getType(SmithProbeProxy.class),
                 new Method(
                         "getInstance",
-                        Type.getType(SmithProbe.class),
+                        Type.getType(SmithProbeProxy.class),
                         new Type[]{}
                 )
         );
@@ -128,7 +127,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
         loadLocal(argumentsVariable);
 
         invokeVirtual(
-                Type.getType(SmithProbe.class),
+                Type.getType(SmithProbeProxy.class),
                 new Method(
                         preHook,
                         Type.VOID_TYPE,
@@ -177,10 +176,10 @@ public class SmithMethodVisitor extends AdviceAdapter {
         }
 
         invokeStatic(
-                Type.getType(SmithProbe.class),
+                Type.getType(SmithProbeProxy.class),
                 new Method(
                         "getInstance",
-                        Type.getType(SmithProbe.class),
+                        Type.getType(SmithProbeProxy.class),
                         new Type[]{}
                 )
         );
@@ -194,7 +193,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
         
 
         invokeVirtual(
-                Type.getType(SmithProbe.class),
+                Type.getType(SmithProbeProxy.class),
                 new Method(
                         postHook,
                         Type.VOID_TYPE,
@@ -253,10 +252,10 @@ public class SmithMethodVisitor extends AdviceAdapter {
         storeLocal(returnVariable + 1, Type.getType(Exception.class));
 
         invokeStatic(
-                Type.getType(SmithProbe.class),
+                Type.getType(SmithProbeProxy.class),
                 new Method(
                         "getInstance",
-                        Type.getType(SmithProbe.class),
+                        Type.getType(SmithProbeProxy.class),
                         new Type[]{}
                 )
         );
@@ -274,7 +273,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
         }
 
         invokeVirtual(
-                Type.getType(SmithProbe.class),
+                Type.getType(SmithProbeProxy.class),
                 new Method(
                         "trace",
                         Type.VOID_TYPE,
