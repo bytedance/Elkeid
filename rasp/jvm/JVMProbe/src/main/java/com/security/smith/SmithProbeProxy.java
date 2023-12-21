@@ -46,6 +46,13 @@ public class SmithProbeProxy {
         }
     };
 
+    public static InheritableThreadLocal<Object> needFoundfilterDef = new InheritableThreadLocal<Object>() {
+        @Override
+        protected Object initialValue() {
+            return null;
+        }
+    };
+
     public SmithProbeProxy() {
          quotas = Stream.generate(() -> new AtomicIntegerArray(METHOD_MAX_ID)).limit(CLASS_MAX_ID).toArray(AtomicIntegerArray[]::new);
     }
@@ -183,6 +190,9 @@ public class SmithProbeProxy {
 
     public void checkAddFilterPre(int classID, int methodID, Object[] args) {
         SmithLogger.logger.info("checkAddFilter pre_hook call success");
+        if (args.length < 2) {
+            return;
+        }
         try {
             Object filterdef = args[1];
             Object filter = null;
@@ -222,6 +232,8 @@ public class SmithProbeProxy {
                             SmithProbe.getInstance().sendClass(filter.getClass(), classFilter.getTransId());
                         }
                     }
+                } else {
+                    needFoundfilterDef.set(filterdef);
                 }
             }
         } catch (Exception e) {
@@ -236,10 +248,29 @@ public class SmithProbeProxy {
         try {
             localfilterConfig.set(ret);
             localfilterDef.set(args[1]);
+
+            // shiro filter check
+            if (needFoundfilterDef != null && needFoundfilterDef.get() == args[1]) {
+                Object filter = getFilterFromConfig(ret);
+                if (filter != null) {
+                    ClassFilter classFilter = new ClassFilter();
+                        SmithHandler.queryClassFilter(filter.getClass(), classFilter);
+                    
+                        classFilter.setTransId();
+        
+                        classFilter.setRuleId(-1);
+                        classFilter.setStackTrace(Thread.currentThread().getStackTrace());
+                        if (client != null) {
+                            client.write(Operate.SCANCLASS, classFilter);
+                            SmithLogger.logger.info("send metadata: " + classFilter.toString());
+                            
+                            SmithProbe.getInstance().sendClass(filter.getClass(), classFilter.getTransId());
+                        }
+                }  
+            }
         } catch(Exception e) {
             SmithLogger.exception(e);
         }
-        
     }
 
     public void checkAddValvePre(int classID, int methodID, Object[] args) {
