@@ -53,6 +53,13 @@ pub fn make_report(
 	}
     );
     report.insert(
+        "runtime_size",
+        match &process.runtime {
+            Some(rt) => rt.size.to_string(),
+            None => String::new(),
+        }
+        );
+    report.insert(
         "attach_start_time",
         process
             .attach_start_time
