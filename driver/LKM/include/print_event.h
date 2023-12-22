@@ -181,7 +181,7 @@
 		__entry = tb_event_data(event);		\
 		__entry->head.id = __class->id;				\
 		{ assign; }						\
-		tb_unlock_commit(__class->trace, event);	\
+		tb_unlock_commit(__class->trace);	\
 	}								\
 									\
 	static notrace void name##_print(proto)				\

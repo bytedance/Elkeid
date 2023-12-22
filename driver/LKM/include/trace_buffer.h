@@ -31,12 +31,15 @@
 #define raw_spin_lock_init(x) ((x)->slock = 0)
 #define raw_spin_lock_irq __raw_spin_lock
 #define raw_spin_unlock_irq __raw_spin_unlock
+/*
+ * Safe here to ignore irq flags since we only write ringbuffer in
+ * kprobe/tracepoint callbacks
+ */
 #define raw_spin_lock_irqsave(l, f) do {(f) = 0; __raw_spin_lock(l);} while(0)
 #define raw_spin_unlock_irqrestore(l, f) do {__raw_spin_unlock(l);} while(0)
 #endif
 
 struct tb_ring;
-struct tb_iter;
 
 /*
  * Don't refer to this struct directly, use functions below.
@@ -111,6 +114,7 @@ __tb_alloc(unsigned long size, unsigned flags, struct lock_class_key *key);
 	__tb_alloc((size), (flags), &__key);	\
 })
 
+void tb_wake_up(struct tb_ring *ring);
 int tb_wait(struct tb_ring *ring, int cpu, int full);
 void tb_free(struct tb_ring *ring);
 
@@ -129,8 +133,7 @@ u64 tb_event_timestamp(struct tb_ring *ring,
 
 struct tb_event *tb_lock_reserve(struct tb_ring *ring,
 						   unsigned long length);
-int tb_unlock_commit(struct tb_ring *ring,
-			      struct tb_event *event);
+int tb_unlock_commit(struct tb_ring *ring);
 int tb_write(struct tb_ring *ring,
 		      unsigned long length, void *data);
 
@@ -146,7 +149,7 @@ int tb_write(struct tb_ring *ring,
  *  if (some_condition)
  *    tb_discard_commit(buffer, event);
  *  else
- *    tb_unlock_commit(buffer, event);
+ *    tb_unlock_commit(buffer);
  */
 void tb_discard_commit(struct tb_ring *ring,
 				struct tb_event *event);
@@ -179,12 +182,6 @@ size_t tb_nr_pages(struct tb_ring *ring, int cpu);
 size_t tb_nr_dirty_pages(struct tb_ring *ring, int cpu);
 
 void tb_change_overwrite(struct tb_ring *ring, int val);
-
-struct tb_iter *
-tb_read_prepare(struct tb_ring *ring, int cpu, gfp_t flags);
-void tb_read_prepare_sync(void);
-void tb_read_start(struct tb_iter *iter);
-void tb_read_finish(struct tb_iter *iter);
 
 u64 tb_time_stamp(struct tb_ring *ring);
 void tb_set_time_stamp_abs(struct tb_ring *ring, bool abs);
