@@ -25,11 +25,12 @@ impl RuntimeInspect for ProcessInfo {}
 pub struct Runtime {
     pub name: &'static str,
     pub version: String,
+    pub size: u64,
 }
 
 impl Display for Runtime {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{} {}", self.name, self.version)
+        write!(f, "{} {} {}", self.name, self.version, self.size)
     }
 }
 
@@ -87,6 +88,7 @@ pub trait RuntimeInspect {
             return Ok(Some(Runtime {
                 name: "JVM",
                 version: version,
+                size: 0,
             }));
         }
         let cpython_process_filter: RuntimeFilter =
@@ -106,6 +108,7 @@ pub trait RuntimeInspect {
             return Ok(Some(Runtime {
                 name: "CPython",
                 version: String::new(),
+                size: 0,
             }));
         }
         let nodejs_process_filter: RuntimeFilter =
@@ -144,6 +147,7 @@ pub trait RuntimeInspect {
             return Ok(Some(Runtime {
                 name: "NodeJS",
                 version,
+                size: 0,
             }));
         }
         let pid = process_info.pid.clone();
@@ -163,10 +167,11 @@ pub trait RuntimeInspect {
         }
         match golang_bin_inspect(path) {
             Ok(res) => {
-                if res {
+                if res > 0 {
                     return Ok(Some(Runtime {
                         name: "Golang",
                         version: String::new(),
+                        size: res,
                     }));
                 }
             }
@@ -183,11 +188,13 @@ pub trait RuntimeInspect {
                                 return Ok(Some(Runtime {
                                     name: "PHP",
                                     version: format!("{}.zts", version),
+                                    size: 0,
                                 }));
                             } else {
                                 return Ok(Some(Runtime {
                                     name: "PHP",
                                     version: version,
+                                    size: 0,
                                 }));
                             }
                         }
@@ -206,6 +213,7 @@ pub trait RuntimeInspect {
                 return Ok(Some(Runtime {
                     name: "CPython",
                     version,
+                    size: 0,
                 }))
             }
             None => {}

@@ -123,7 +123,7 @@ pub fn golang_attach(pid: i32) -> Result<bool> {
     };
 }
 
-pub fn golang_bin_inspect(bin_file: PathBuf) -> Result<bool> {
+pub fn golang_bin_inspect(bin_file: PathBuf) -> Result<u64> {
     let metadata = match fs::metadata(bin_file.clone()) {
         Ok(md) => md,
         Err(e) => {
@@ -131,9 +131,10 @@ pub fn golang_bin_inspect(bin_file: PathBuf) -> Result<bool> {
         }
     };
     let size = metadata.len();
-    if size >= (500 * 1024 * 1024) {
-        return Err(anyhow!("bin file oversize"));
-    }
+    // if size >= (500 * 1024 * 1024) {
+    //     return Err(anyhow!("bin file oversize"));
+    // }
+
     let file = File::open(bin_file)?;
     let bin = unsafe { MmapOptions::new().map(&file)? };
     let elf = Elf::parse(&bin)?;
@@ -142,9 +143,9 @@ pub fn golang_bin_inspect(bin_file: PathBuf) -> Result<bool> {
         let offset = section.sh_name;
         if let Some(name) = shstrtab.get(offset) {
             if name.unwrap() == ".gopclntab" {
-                return Ok(true);
+                return Ok(size);
             }
         }
     }
-    return Ok(false);
+    return Ok(0);
 }

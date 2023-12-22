@@ -33,10 +33,12 @@ pub fn generate_heartbeat(watched_process: &ProcessInfo) -> HashMap<&'static str
     let runtime = watched_process.runtime.clone().unwrap_or(Runtime {
         name: "unknown",
         version: "unknown".to_string(),
+        size: 0,
     });
 
     message.insert("runtime", runtime.name.to_string());
     message.insert("runtime_version", runtime.version);
+    message.insert("runtime_size", runtime.size.to_string());
     message.insert("attach_start_time", watched_process.attach_start_time.clone().unwrap_or("".to_string()));
     message.insert("attach_end_time", watched_process.attach_end_time.clone().unwrap_or("".to_string()));
     message.insert("failed_time", watched_process.failed_time.clone().unwrap_or("".to_string()));
