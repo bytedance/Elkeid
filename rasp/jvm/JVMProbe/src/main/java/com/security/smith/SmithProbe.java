@@ -331,9 +331,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
          if (disable)
             return null;
 
-        if(scanswitch) {
-            checkClassFilter(loader, className,classfileBuffer);
-        }
+        // if(scanswitch) {
+        //     checkClassFilter(loader, className,classfileBuffer);
+        // }
   
         Type classType = Type.getObjectType(className);
         SmithClass smithClass = smithClasses.get(classType.getClassName());
