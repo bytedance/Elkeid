@@ -1,12 +1,11 @@
 MODULE_NAME		:= hids_driver
 KERNEL_HEAD		:= $(if $(KVERSION),$(KVERSION),$(shell uname -r))
-
-$(MODULE_NAME)-objs	:= src/init.o src/trace.o src/trace_buffer.o src/smith_hook.o src/anti_rootkit.o src/filter.o src/util.o
-
 ifneq ($(KERNELRELEASE),)
 
+obj-m += $(MODULE_NAME).o
+$(MODULE_NAME)-objs := src/init.o src/trace.o src/trace_buffer.o src/smith_hook.o src/anti_rootkit.o src/filter.o src/util.o
+
 MODULE_DIR		:= $(KBUILD_EXTMOD)
-obj-m			+= $(MODULE_NAME).o
 ccflags-y		+= -I$(MODULE_DIR)/include -I$(MODULE_DIR)
 
 K_I_PATH		:= .
@@ -61,17 +60,6 @@ ifneq ($(UACCESS_SUPPORT),)
 ccflags-y += -D UACCESS_TYPE_SUPPORT
 endif
 
-TRACE_EVENTS_HEADERS	:= $(shell find -L $(K_I_PATH) -path \*/linux/trace_events.h)
-ifneq ($(TRACE_EVENTS_HEADERS),)
-ccflags-y += -D SMITH_TRACE_EVENTS
-endif
-
-TRACE_SEQ_FILES := $(shell find -L $(K_I_PATH) -path \*/linux/trace_seq.h) /dev/null
-TRACE_SEQ_SEQ := $(shell sh -c "grep -s trace_seq_used $(TRACE_SEQ_FILES)")
-ifneq ($(TRACE_SEQ_SEQ),)
-ccflags-y += -D SMITH_TRACE_SEQ
-endif
-
 FS_H_FILES := $(shell find -L $(K_I_PATH) -path "*/linux/fs.h") /dev/null
 FS_OP_ITERATE := $(shell sh -c "grep -s \(\*iterate\) $(FS_H_FILES)")
 FS_OP_ITERATE_SHARED := $(shell sh -c "grep -s \(\*iterate_shared\) $(FS_H_FILES)")
@@ -83,16 +71,6 @@ ccflags-y += -D SMITH_FS_OP_ITERATE_SHARED
 endif
 
 PROCFS_H_FILES := $(shell find -L $(K_I_PATH) -path "*/linux/proc_fs.h") /dev/null
-PROCFS_PDE_DATA := $(shell sh -c "grep -s PDE_DATA $(PROCFS_H_FILES)")
-ifneq ($(PROCFS_PDE_DATA),)
-ccflags-y += -D SMITH_PROCFS_PDE_DATA
-else
-PROCFS_pde_data := $(shell sh -c "grep -s pde_data $(PROCFS_H_FILES)")
-ifneq ($(PROCFS_pde_data),)
-ccflags-y += -D SMITH_PROCFS_pde_data
-endif
-endif
-
 PROCNS_H_FILES := $(shell find -L $(K_I_PATH) -path "*/linux/proc_ns.h") /dev/null
 MNTNS_OPS_PROCFS := $(shell sh -c "grep -s mntns_operations $(PROCFS_H_FILES)")
 MNTNS_OPS_PROCNS := $(shell sh -c "grep -s mntns_operations $(PROCNS_H_FILES)")
@@ -113,7 +91,6 @@ USER_MSGHDR_STRUT := $(shell sh -c "grep -sE struct[[:space:]]\+user_msghdr[[:sp
 ifeq ($(USER_MSGHDR_STRUT),)
 ccflags-y += -D USER_MSGHDR_SUPPORT
 endif
-
 else
 
 MODULE_DIR		:= $(shell pwd)
@@ -125,11 +102,13 @@ all:
 	@echo "|-----------------------------------|"
 	$(MAKE) -C $(KERNEL_DIR) M=$(MODULE_DIR) modules
 ifneq ($(BATCH), true)
+	$(MAKE) -C zua
 	$(MAKE) -C test
 endif
 
 clean:
 	$(MAKE) -C $(KERNEL_DIR) M=$(MODULE_DIR) clean
+	$(MAKE) -C zua clean
 	$(MAKE) -C test clean
 
 insmod:
@@ -139,6 +118,10 @@ rmmod:
 	sudo rmmod $(MODULE_NAME)
 
 test:
+	$(MAKE) -C zua
 	$(MAKE) -C test
+
+zua:
+	$(MAKE) -C zua
 
 endif

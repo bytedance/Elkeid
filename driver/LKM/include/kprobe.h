@@ -11,16 +11,24 @@
 #include <linux/module.h>
 #include <linux/kprobes.h>
 
-struct kprobe_initcall {
-	int (*init)(void);
-	void (*exit)(void);
+struct kprobe_initcall
+{
+    int (*init)(void);
+    void (*exit)(void);
 };
 
 #define KPROBE_CALL(mod) smith_##mod##_init_body
-#define KPROBE_INITCALL(mod, init_func, exit_func)	\
-	const struct kprobe_initcall KPROBE_CALL(mod) = {		\
-		.init	= init_func,	\
-		.exit	= exit_func,	\
-	};							\
+#define KPROBE_INITCALL(mod, init_func, exit_func)    \
+    const struct kprobe_initcall KPROBE_CALL(mod) = { \
+        .init = init_func,                            \
+        .exit = exit_func,                            \
+    };
+
+extern const struct kprobe_initcall KPROBE_CALL(trace);
+extern const struct kprobe_initcall KPROBE_CALL(filter);
+extern const struct kprobe_initcall KPROBE_CALL(anti_rootkit);
+extern const struct kprobe_initcall KPROBE_CALL(kprobe_hook);
+
+#define SMITH_VERSION "1.9.0.2"
 
 #endif /* __KPROBE_TEMPLATE_H */

@@ -24,9 +24,6 @@
 
 #define DEFAULT_RET_STR "-2"
 #define NAME_TOO_LONG "-4"
-#define PID_TREE_MATEDATA_LEN  32
-
-static unsigned int ROOT_PID_NS_INUM;
 
 /*
  * macro definitions for legacy kernels
@@ -55,13 +52,11 @@ static unsigned int ROOT_PID_NS_INUM;
  */
 extern unsigned long smith_kallsyms_lookup_name(const char *);
 
-extern char *__dentry_path(struct dentry *dentry, char *buf, int buflen);
-
 extern u8 *smith_query_sb_uuid(struct super_block *sb);
 
 extern uint64_t hash_murmur_OAAT64(char *s, int len);
 
-static struct task_struct *smith_get_task_struct(struct task_struct *tsk)
+static inline struct task_struct *smith_get_task_struct(struct task_struct *tsk)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
     if (tsk && refcount_inc_not_zero(&tsk->usage))
@@ -83,9 +78,15 @@ static inline void smith_put_task_struct(struct task_struct *t)
 #define smith_put_task_struct(tsk)  put_task_struct(tsk)
 #endif
 
-#if defined(KGID_STRUCT_CHECK) && (!defined(KGID_CONFIG_CHECK) || \
-    (defined(KGID_CONFIG_CHECK) && defined(CONFIG_UIDGID_STRICT_TYPE_CHECKS)))
-/* vanilla kernels >= 3.5.0, but ubuntu backported for 3.4 */
+/*
+ * CONFIG_UIDGID_STRICT_TYPE_CHECKS introducted frmo 3.5.0 and
+ * removed after 3.14.0
+ * New gid/uid supported by vanilla kernels >= 3.5.0, but ubuntu
+ * has it backported for 3.4
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0) || \
+    defined(CONFIG_UIDGID_STRICT_TYPE_CHECKS) || \
+    (defined(KGID_STRUCT_CHECK) && !defined(KGID_CONFIG_CHECK))
 # define _XID_VALUE(x)  (x).val
 #else
 # ifndef GLOBAL_ROOT_UID
@@ -154,28 +155,26 @@ static inline int __get_current_euid(void) {
     return _XID_VALUE(current->real_cred->euid);
 }
 
-/*
- * WARNING:
- *     s must be null-terminated
- */
-static inline char *smith_strim(char *s)
+static inline char *smith_strim(char *s, int size)
 {
-    size_t size = strlen(s);
     char *end, *first = s;
 
-    if (!size)
+    if (!s || size <= 0)
         return s;
 
     end = s + size - 1;
-    while (end >= s && isspace(*end))
+    while (end >= s && isspace(*end)) {
+        *end = 0;
         end--;
-    *(++end) = '\0';
+    }
 
-    while (isspace(*first))
+    while (first < end && isspace(*first))
         first++;
 
-    if (first > s)
-        memmove(s, first, end + 1 - first);
+    if (first > s && end > first) {
+        memmove(s, first, end - first);
+        s[(int)(end - first)] = 0;
+    }
 
     return s;
 }
@@ -284,133 +283,6 @@ static __always_inline unsigned long __must_check smith_copy_from_user(void *to,
     __ret;                                                      \
 })
 
-static __always_inline char *smith_d_path(const struct path *path, char *buf, int buflen)
-{
-    char *name = DEFAULT_RET_STR;
-    if (buf) {
-        name = d_path(path, buf, buflen);
-        if (IS_ERR(name))
-            name = NAME_TOO_LONG;
-    }
-    return name;
-}
-
-/*
- * query task's executable image file, with mmap lock avoided, just because
- * mmput() could lead resched() (since it's calling might_sleep() interally)
- *
- * there could be races on mm->exe_file, but we could assure we can always
- * get a valid filp or NULL
- */
-static inline struct file *smith_get_task_exe_file(struct task_struct *task)
-{
-    struct file *exe = NULL;
-
-    /*
-     * get_task_mm/mmput must be avoided here
-     *
-     * mmput would put current task to sleep, which violates kprobe. or
-     * use mmput_async instead, but it's only available for after 4.7.0
-     * (and CONFIG_MMU is enabled)
-     */
-    task_lock(task);
-    if (task->mm && task->mm->exe_file) {
-        exe = task->mm->exe_file;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0)
-        if (!get_file_rcu(exe))
-            exe = NULL;
-#else
-        /* only inc f_count when it's not 0 to avoid races upon exe_file */
-        if (!atomic_long_inc_not_zero(&exe->f_count))
-            exe = NULL;
-#endif
-    }
-    task_unlock(task);
-
-    return exe;
-}
-
-// get full path of current task's executable image
-static __always_inline char *smith_get_exe_file(char *buffer, int size)
-{
-    char *exe_file_str = DEFAULT_RET_STR;
-    struct file *exe;
-
-    if (!buffer || !current->mm)
-        return exe_file_str;
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0)
-    /*
-     * 1) performance improvement for kernels >=4.1: use get_mm_exe_file instead
-     *    get_mm_exe_file internally uses rcu lock (with semaphore locks killed)
-     * 2) it's safe to directly access current->mm under current's own context
-     * 3) get_mm_exe_file() is no longer exported after kernel 5.15
-     */
-    exe = get_mm_exe_file(current->mm);
-#else
-    exe = smith_get_task_exe_file(current);
-#endif
-    if (exe) {
-        exe_file_str = smith_d_path(&exe->f_path, buffer, size);
-        fput(exe);
-    }
-
-    return exe_file_str;
-}
-
-static inline unsigned int __get_sessionid(void) {
-    unsigned int sessionid = 0;
-#ifdef CONFIG_AUDITSYSCALL
-    sessionid = current->sessionid;
-#endif
-    return sessionid;
-}
-
-static inline void __init_root_pid_ns_inum(void) {
-    struct pid *pid_struct;
-    struct task_struct *task;
-
-    pid_struct = find_get_pid(1);
-    task = pid_task(pid_struct,PIDTYPE_PID);
-
-    smith_get_task_struct(task);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-    ROOT_PID_NS_INUM = task->nsproxy->pid_ns_for_children->ns.inum;
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
-    ROOT_PID_NS_INUM = task->nsproxy->pid_ns_for_children->proc_inum;
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
-    ROOT_PID_NS_INUM = task->nsproxy->pid_ns->proc_inum;
-#else
-    /*
-     * For kernels < 3.8.0, id for pid namespaces isn't defined.
-     * So here we are using fixed values, no emulating any more,
-     * previously we were using image file's inode number.
-     */
-    ROOT_PID_NS_INUM = 0xEFFFFFFCU /* PROC_PID_INIT_INO */;
-#endif
-    smith_put_task_struct(task);
-    put_pid(pid_struct);
-}
-
-static inline unsigned int __get_pid_ns_inum(void) {
-    unsigned int inum;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-    inum = current->nsproxy->pid_ns_for_children->ns.inum;
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
-    inum = current->nsproxy->pid_ns_for_children->proc_inum;
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
-    inum = current->nsproxy->pid_ns->proc_inum;
-#else
-    /*
-     * For kernels < 3.8.0, id for pid namespaces isn't defined.
-     * So here we are using fixed values, no emulating any more,
-     * previously we were using image file's inode number.
-     */
-    inum = 0xEFFFFFFCU /* PROC_PID_INIT_INO */;
-#endif
-    return inum;
-}
-
 static inline int __get_pgid(void) {
     return task_pgrp_nr_ns(current, &init_pid_ns);
 }
@@ -418,5 +290,143 @@ static inline int __get_pgid(void) {
 static inline int __get_sid(void) {
     return task_session_nr_ns(current, &init_pid_ns);
 }
+
+#define CLASSERT(cond) do {switch('x') {case ((cond)): case 0: break;}} while (0)
+size_t smith_strnlen (const char *str, size_t maxlen);
+
+/*
+ * lru + rbtree implementation with object pool
+ */
+
+#include "../include/memcache.h"
+
+struct tt_node {
+    struct memcache_node cache;
+    struct rb_node  node;
+    atomic_t        refs;
+    union {
+        uint32_t    flags;
+        struct {
+          uint32_t  flag_pool:1;
+          uint32_t  flag_newsid:1;
+          uint32_t  flag_usr1:1;
+          uint32_t  flag_usr2:1;
+          uint32_t  flag_usr3:1;
+          uint32_t  flag_usr4:1;
+          uint32_t  flag_usr5:1;
+          uint32_t  flag_usr6:1;
+        };
+    };
+};
+
+static inline void tt_memcpy(void *t, void *p, int s)
+{
+    memcpy(t + sizeof(struct tt_node),
+           p + sizeof(struct tt_node),
+           s - sizeof(struct tt_node));
+}
+
+struct tt_rb {
+    struct rb_root  root;
+    rwlock_t        lock;
+    void           *data;
+    int             node;
+    gfp_t           gfp;
+    atomic_t        count;
+    struct memcache_head cache;
+    struct tt_node * (*init)(struct tt_rb *, void *);
+    int (*cmp)(struct tt_rb *, struct tt_node *, void *);
+    void (*release)(struct tt_rb *, struct tt_node *);
+};
+
+int tt_rb_init(struct tt_rb *rb, void *data, int ns, int sz,
+               gfp_t gfp_node, gfp_t gfp_cache,
+               struct tt_node *(*init)(struct tt_rb *, void *),
+               int (*cmp)(struct tt_rb *, struct tt_node *, void *),
+               void (*release)(struct tt_rb *, struct tt_node *));
+void tt_rb_fini(struct tt_rb *rb);
+struct tt_node *tt_rb_alloc_node(struct tt_rb *rb);
+void tt_rb_free_node(struct tt_rb *rb, struct tt_node *node);
+
+int tt_rb_remove_node_nolock(struct tt_rb *rb, struct tt_node *node);
+int tt_rb_remove_node(struct tt_rb *rb, struct tt_node *node);
+struct tt_node *tt_rb_lookup_nolock(struct tt_rb *rb, void *key);
+int tt_rb_remove_key(struct tt_rb *rb, void *key);
+int tt_rb_deref_key(struct tt_rb *rb, void *key);
+int tt_rb_deref_node(struct tt_rb *rb, struct tt_node *node);
+struct tt_node *tt_rb_insert_key_nolock(struct tt_rb *rb, void *key);
+int tt_rb_insert_key(struct tt_rb *rb, void *key);
+struct tt_node *tt_rb_lookup_key(struct tt_rb *rb, void *key);
+int tt_rb_query_key(struct tt_rb *rb, void *key);
+struct tt_node *tt_rb_find_key(struct tt_rb *rb, void *key);
+void tt_rb_enum(struct tt_rb *rb, void (*cb)(struct tt_node *));
+
+/*
+ * hash list implementation with rcu lock
+ */
+
+struct hlist_hnod {
+    struct memcache_node cache;
+    struct list_head    link;
+    struct rcu_head	    rcu;
+    struct hlist_root  *hash;
+    atomic_t            refs;
+    union {
+        uint32_t        flags;
+        struct {
+          uint32_t      flag_pool:1;
+          uint32_t      flag_newsid:1;
+          uint32_t      flag_rcu:1;
+        };
+    };
+};
+
+static inline void hlist_memcpy(void *t, void *p, int s)
+{
+    memcpy(t + sizeof(struct hlist_hnod),
+           p + sizeof(struct hlist_hnod),
+           s - sizeof(struct hlist_hnod));
+}
+
+struct hlist_root {
+    spinlock_t      lock;
+    void           *data;
+    uint16_t        node;
+    uint16_t        nlists;
+    gfp_t           gfp;
+    atomic_t        count;
+    atomic_t        allocs;
+    struct list_head  *lists;
+    struct memcache_head cache;
+    struct hlist_hnod * (*init)(struct hlist_root *, void *);
+    int (*hash)(struct hlist_root *, void *);
+    int (*cmp)(struct hlist_root *, struct hlist_hnod *, void *);
+    void (*release)(struct hlist_root *, struct hlist_hnod *);
+};
+
+int hlist_init(struct hlist_root *hr, void *data, int ns, int sz,
+               gfp_t gfp_node, gfp_t gfp_cache,
+               struct hlist_hnod *(*init)(struct hlist_root *, void *),
+               int (*hash)(struct hlist_root *, void *),
+               int (*cmp)(struct hlist_root *, struct hlist_hnod *, void *),
+               void (*release)(struct hlist_root *, struct hlist_hnod *));
+void hlist_fini(struct hlist_root *hr);
+struct hlist_hnod *hlist_alloc_node(struct hlist_root *hr);
+void hlist_free_node(struct hlist_root *hr, struct hlist_hnod *node);
+
+void hlist_lock(struct hlist_root *hr);
+void hlist_unlock(struct hlist_root *hr);
+int hlist_remove_node(struct hlist_root *hr, struct hlist_hnod *node);
+int hlist_remove_key(struct hlist_root *hr, void *key);
+int hlist_deref_key(struct hlist_root *hr, void *key);
+int hlist_deref_node(struct hlist_root *hr, struct hlist_hnod *node);
+struct hlist_hnod *hlist_insert_key_nolock(struct hlist_root *hr, void *key);
+struct hlist_hnod *hlist_insert_key(struct hlist_root *hr, void *key);
+struct hlist_hnod *hlist_lookup_key(struct hlist_root *hr, void *key);
+int hlist_query_key(struct hlist_root *hr, void *key, void *node);
+void hlist_enum(struct hlist_root *hr, void (*cb)(struct hlist_hnod *));
+
+char *smith_strstr(char *s, int sl, char *t);
+int smith_is_trusted_agent(char *agents[]);
 
 #endif /* UTIL_H */
