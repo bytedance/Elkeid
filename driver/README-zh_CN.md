@@ -26,13 +26,13 @@ make clean && make
 sh ./centos_build_ko.sh
 
 # load and test (should run as root)
-insmod hids_driver.ko
+insmod elkeid.ko
 dmesg | tail -n 20
 test/rst -q
 < "CTRL + C" to quit >
 
 # unload
-rmmod hids_driver
+rmmod elkeid
 ```
 
 ## 我们提供部分预编译好的 Ko 文件
@@ -46,7 +46,7 @@ rmmod hids_driver
 如果所有链接都获取失败，则说明 [预编译的 Ko](./ko_list.md) 中，不包含当前系统的内核版本所需的 Ko 文件，需要自行编译。
 
 ```bash
-wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.10_$(uname -r)_amd64.ko"
+wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/elkeid_1.9.0.1_$(uname -r)_amd64.ko"
 ```
 
 ### 内核模块的测试方法
@@ -546,7 +546,7 @@ Elkeid 驱动程序支持白名单以过滤出不需要的数据。我们提供�
 **'exe'** 白名单作用于 **execve/create file/dns query/connect hook**，而 **'argv'** 白名单仅作用于 **execve hook**。
 出于性能和稳定性方面的考虑，'exe' 和 'argv' 白名单容量为 64。
 
-白名单的字符串驱动位于: `/dev/hids_driver_allowlist`
+白名单的字符串驱动位于: `/dev/elkeid_allowlist`
 
 | Operations                    | Flag   | Example                                              |
 | ----------------------------- | ------ | ---------------------------------------------------- |
@@ -629,8 +629,8 @@ Testing Load:
 
 可以使用 DKMS 或者提前编译好 ko 文件然后进行下发
 
-* install driver: `insmod hids_driver.ko`
-* remove driver: first you need kill userspace agent and `rmmod hids_driver.ko`
+* install driver: `insmod elkeid.ko`
+* remove driver: first you need kill userspace agent and `rmmod elkeid.ko`
 
 
 

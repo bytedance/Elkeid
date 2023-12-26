@@ -164,7 +164,7 @@ extern struct tb_ring *g_trace_ring;
  * core routines for user mode consuming of trace-buffer
  */
 
-#define RING_KMOD (0x5254004B)  /* kmod: smith/hids_driver/ash */
+#define RING_KMOD (0x5254004B)  /* kmod: elkeid/smith/hids_driver/ash */
 #define RING_EBPF (0x52540045)  /* ebpf version */
 int tb_init_ring(int type, char *control);
 

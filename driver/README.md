@@ -28,13 +28,13 @@ make clean && make
 sh ./centos_build_ko.sh
 
 # load and test (should run as root)
-insmod hids_driver.ko
+insmod elkeid.ko
 dmesg | tail -n 20
 test/rst -q
 < "CTRL + C" to quit >
 
 # unload
-rmmod hids_driver
+rmmod elkeid
 ```
 
 ## Pre-build Ko
@@ -44,7 +44,7 @@ rmmod hids_driver
 If all urls failed, please build elkeid kernel module yourself.
 
 ```bash
-wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/hids_driver_1.7.0.10_$(uname -r)_amd64.ko"
+wget "http://lf26-elkeid.bytetos.com/obj/elkeid-download/ko/elkeid_1.9.0.1_$(uname -r)_amd64.ko"
 ```
 
 
@@ -531,7 +531,7 @@ Elkeid driver supports allowlist to filter out unwanted data. We provide two typ
 **'exe'** allowlist acts on ***execve/create file/dns query/connect*** hooks, while **'argv'** allowlist only acts on ***execve*** hook. 
 For performance and stability concerns, both 'exe' and 'argv' allowlist only supports 64-elements-wide capacity.
 
-allowlist driver is in: `/dev/hids_driver_allowlist`
+allowlist driver is in: `/dev/elkeid_allowlist`
 
 | Operations                    | Flag   | Example                                              |
 | ----------------------------- | ------ | ---------------------------------------------------- |
@@ -615,8 +615,8 @@ Original Testing Data: [Benchmark Data](./benchmark_data/handler)
 
 You can use DKMS or Pre-packaged ko file
 
-* install driver: `insmod hids_driver.ko`
-* remove driver: first you need kill userspace agent and `rmmod hids_driver.ko`
+* install driver: `insmod elkeid.ko`
+* remove driver: first you need kill userspace agent and `rmmod elkeid.ko`
 
 
 

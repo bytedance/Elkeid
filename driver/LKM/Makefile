@@ -1,4 +1,4 @@
-MODULE_NAME		:= hids_driver
+MODULE_NAME		:= elkeid
 KERNEL_HEAD		:= $(if $(KVERSION),$(KVERSION),$(shell uname -r))
 ifneq ($(KERNELRELEASE),)
 

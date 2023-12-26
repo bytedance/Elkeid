@@ -201,7 +201,7 @@ static void psad_clear_ip6(void)
 
 static void help(char *arg)
 {
-    printf("Usage: %s [-d hids_driver] [-q] [-i 10] [-a cmd+path]\n", arg);
+    printf("Usage: %s [-d elkeid] [-q] [-i 10] [-a cmd+path]\n", arg);
 
     printf("Examples: dump messages (CTRL+C to break):\n");
     printf("       rst -i 10\n");
@@ -241,13 +241,13 @@ static void help(char *arg)
     printf("       rst -an\n");
     printf("\n");
     printf("Examples: set allowlist and then dump messages:\n");
-    printf("       rst -i 10 -d smith -aF/usr/bin/top -aF\"/home/any body/any dir/any executable\" -aF/usr/bin/ls -a* -q -C\n");
+    printf("       rst -i 10 -d elkeid -aF/usr/bin/top -aF\"/home/any body/any dir/any executable\" -aF/usr/bin/ls -a* -q -C\n");
     exit(1);
 }
 
 #define BUF_SZ  (65536)
 #define LKM_PATH "/sys/module/%s/parameters/control_trace"
-char g_control[512] = "/sys/module/smith/parameters/control_trace";
+char g_control[512] = "/sys/module/elkeid/parameters/control_trace";
 
 int main(int argc, char *argv[])
 {

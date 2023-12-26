@@ -362,21 +362,21 @@ impl SmithControl {
 
     pub fn psad_enable(&self) -> Result<()> {
         return control_flag(
-            "/sys/module/hids_driver/parameters/psad_switch",
+            "/sys/module/elkeid/parameters/psad_switch",
             ENABLE_PSAD_SWITHER,
         );
     }
 
     pub fn psad_disable(&self) -> Result<()> {
         return control_flag(
-            "/sys/module/hids_driver/parameters/psad_switch",
+            "/sys/module/elkeid/parameters/psad_switch",
             DISABLE_PSAD_SWITHER,
         );
     }
     pub fn psad_set_flag(&self, flags: &Vec<usize>) -> Result<()> {
         let setstring: String = gen_psad_flag(flags);
         return control_flag(
-            "/sys/module/hids_driver/parameters/psad_flags",
+            "/sys/module/elkeid/parameters/psad_flags",
             &setstring.as_bytes(),
         );
     }

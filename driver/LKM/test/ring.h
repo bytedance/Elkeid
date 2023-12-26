@@ -4,14 +4,14 @@
  * HIDS device types
  */
 
-#define RING_KMOD (0x5254004B)  /* kmod: smith/hids_driver/ash */
+#define RING_KMOD (0x5254004B)  /* kmod: elkeid/smith/hids_driver/ash */
 #define RING_EBPF (0x52540045)  /* ebpf version */
 
 /*
  * ring buffer consuming routines
  */
 
-/* control: "/sys/module/smith/parameters/control_trace" */
+/* control: "/sys/module/elkeid/parameters/control_trace" */
 int tb_init_ring(int dev, char *control);
 void tb_fini_ring(void);
 int tb_pre_unload(void);

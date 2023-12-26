@@ -1,5 +1,5 @@
 pub fn main() {
-    let control_path = "/sys/module/hids_driver/parameters/control_trace";
+    let control_path = "/sys/module/elkeid/parameters/control_trace";
 
     let (mut rs, cancel) = ringslot::RingSlot::new(control_path).unwrap();
 
