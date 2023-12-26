@@ -181,7 +181,6 @@ func TokenAuth() gin.HandlerFunc {
 			userName = currentUser.(string)
 		}
 
-		c.Header("user", userName)
 		c.Set("user", userName)
 		c.Next()
 		return
