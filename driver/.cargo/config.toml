@@ -1,0 +1,8 @@
+[net]
+git-fetch-with-cli = true
+
+[target.aarch64-unknown-linux-musl]
+linker = "/opt/aarch64-linux-musl/bin/aarch64-linux-musl-gcc"
+
+[target.x86_64-unknown-linux-musl]
+linker = "/opt/x86_64-linux-musl/bin/x86_64-linux-musl-gcc"
