@@ -239,7 +239,7 @@ func NewGRPCPool(config *Config) *GRPCPool {
 	go g.refreshExtraInfo(config.Interval)
 
 	//定期刷新iaas信息
-	go g.refreshIaasInfo(config.Interval)
+	//go g.refreshIaasInfo(config.Interval)
 	return g
 }
 
@@ -497,13 +497,12 @@ func (g *GRPCPool) GetDynamicLimit() (val int32, lastSecond int64) {
 func (g *GRPCPool) refreshIaasInfo(interval time.Duration) {
 	for {
 		time.Sleep(interval + time.Duration(rand.Intn(30))*time.Second)
-
 		iaasInfos := make(map[string]string, len(g.iaasInfoMap))
 		connMap := g.connPool.Items()
 		for id := range connMap {
 			if conn, ok := connMap[id].Object.(*Connection); ok {
 				//load from manager
-				info, err := client.GetIaasInfoFromRemote(conn.IntranetIPv4, conn.IntranetIPv6)
+				info, err := client.GetIaasInfoFromRemote(conn.AgentID)
 				if err != nil {
 					ylog.Errorf("refreshIaasInfo", "%s %s %s error %s", id, conn.IntranetIPv4, conn.IntranetIPv6, err.Error())
 				} else {
@@ -518,7 +517,7 @@ func (g *GRPCPool) refreshIaasInfo(interval time.Duration) {
 	}
 }
 
-func (g *GRPCPool) GetIaasInfo(agentID string, ipv4 []string, ipv6 []string) string {
+func (g *GRPCPool) GetIaasInfo(agentID string) string {
 	g.iaasInfoLock.RLock()
 	tmp, ok := g.iaasInfoMap[agentID]
 	g.iaasInfoLock.RUnlock()
@@ -527,9 +526,10 @@ func (g *GRPCPool) GetIaasInfo(agentID string, ipv4 []string, ipv6 []string) str
 	}
 
 	//load from manager
-	info, err := client.GetIaasInfoFromRemote(ipv4, ipv6)
+	info, err := client.GetIaasInfoFromRemote(agentID)
 	if err != nil {
-		ylog.Errorf("GetIaasInfo", "%s %s %s error %s", agentID, ipv4, ipv6, err.Error())
+		//TODO 增加重试
+		ylog.Errorf("GetIaasInfo", "%s error %s", agentID, err.Error())
 	}
 
 	g.iaasInfoLock.Lock()

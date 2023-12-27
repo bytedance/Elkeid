@@ -16,7 +16,7 @@ const (
 	TagsUrl               = `http://%s/api/v1/agent/queryInfo`
 	CheckCommonConfigUrl  = `http://%s/api/v6/investigate/auto_defense/CheckAgentConfig`
 	VerifyCommonConfigUrl = `http://%s/api/v6/investigate/auto_defense/VerifyAgentConfigRelease`
-	IaasInfoUrl           = `http://%s/api/v1/agent/getAssetGroup`
+	IaasInfoUrl           = `http://%s/api/v1/asset/getVolcInstance`
 )
 
 type ResAgentConf struct {
@@ -215,27 +215,31 @@ func VerifyCommonConfigRelease(ri []*common.ConfigReleaseInfo) ([]*common.Config
 }
 
 type IaasInfoReq struct {
-	Ipv4 []string `json:"ipv4"`
-	Ipv6 []string `json:"Ipv6"`
+	AgentID []string `json:"agent_id"`
+	Region  string   `json:"region"`
 }
 
 type IaasInfoResp struct {
 	Code int    `json:"code"`
 	Msg  string `json:"msg"`
-	Data string `json:"data"`
+	Data struct {
+		InstanceList []struct {
+			AgentID   string `json:"agent_id"`
+			AccountID string `json:"account_id"`
+		} `json:"instance_list"`
+		MissingIds []string `json:"missing_ids"`
+	} `json:"data"`
 }
 
-func GetIaasInfoFromRemote(ipv4 []string, ipv6 []string) (res string, err error) {
+func GetIaasInfoFromRemote(id string) (res string, err error) {
 	req := IaasInfoReq{
-		ipv4,
-		ipv6,
+		AgentID: []string{id},
 	}
 	resp, err := grequests.Post(fmt.Sprintf(IaasInfoUrl, common.GetRandomManageAddr()),
 		&grequests.RequestOptions{
-			JSON:    req,
 			Headers: map[string]string{"token": GetToken()},
-		},
-	)
+			JSON:    req,
+		})
 	if err != nil {
 		ylog.Errorf("GetIaasInfoFromRemote", "Post Error, %s", err.Error())
 		return res, err
@@ -255,5 +259,10 @@ func GetIaasInfoFromRemote(ipv4 []string, ipv6 []string) (res string, err error)
 		ylog.Errorf("GetIaasInfoFromRemote", "response code is not 0, %s %s", resp.String())
 		return res, errors.New("response code is not 0")
 	}
-	return response.Data, nil
+	for _, v := range response.Data.InstanceList {
+		if v.AgentID == id {
+			return v.AccountID, nil
+		}
+	}
+	return res, nil
 }
