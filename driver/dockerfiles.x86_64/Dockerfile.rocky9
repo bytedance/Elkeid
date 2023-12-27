@@ -9,16 +9,18 @@ WORKDIR /root/headers
 RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky/9/BaseOS/x86_64/os/Packages/k/' || true ;
 RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky/9/AppStream/x86_64/os/Packages/k/' || true ;
 RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky/9/devel/x86_64/os/Packages/k/' || true ;
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky/9.1/BaseOS/x86_64/os/Packages/k/' || true ;
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky/9.1/AppStream/x86_64/os/Packages/k/' || true ;
-RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky/9.1/devel/x86_64/os/Packages/k/' || true ;
 RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky/9.2/BaseOS/x86_64/os/Packages/k/' || true ;
 RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky/9.2/AppStream/x86_64/os/Packages/k/' || true ;
 RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky/9.2/devel/x86_64/os/Packages/k/' || true ;
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky/9.3/BaseOS/x86_64/os/Packages/k/' || true ;
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky/9.3/AppStream/x86_64/os/Packages/k/' || true ;
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky/9.3/devel/x86_64/os/Packages/k/' || true ;
 RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky-vault/9.0/devel/x86_64/os/Packages/k/' || true ;
 RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky-vault/9.0/AppStream/x86_64/os/Packages/k/' || true ;
 RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky-vault/9.1/devel/x86_64/os/Packages/k/' || true ;
 RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky-vault/9.1/AppStream/x86_64/os/Packages/k/' || true ;
+RUN wget -q -k -e robots=off -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.nju.edu.cn/rocky-vault/9.1/BaseOS/x86_64/os/Packages/k/' || true ;
+
 RUN rm -f /root/headers/kernel-devel-matched*
 RUN rpm --force -i /root/headers/*.rpm || true
 
