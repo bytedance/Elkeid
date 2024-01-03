@@ -197,7 +197,9 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 
 	os, ok1 := detail["os"].(string)
 	info, ok2 := detail["plugins_brief_info"].(string)
+	fmt.Printf("parseAgentHeartBeat detail %#v", detail)
 	if !ok1 || !ok2 {
+		fmt.Printf("parseAgentHeartBeat detail plugins_brief_info/os is not exists")
 		ylog.Errorf("parseAgentHeartBeat", "plugins_brief_info/os is not exists")
 	} else {
 		oldInfo, _ := conn.GetAgentDetail()["plugins_brief_info"].(string)
