@@ -68,6 +68,8 @@ func initDefault() {
 	UserName = UserConfig.GetString("manage.username")
 	Password = UserConfig.GetString("manage.password")
 
+	WindowsPluginsList = make(map[string]bool, 0)
+	LinuxPluginsList = make(map[string]bool, 0)
 	for _, v := range UserConfig.GetStringSlice("plugins.windows") {
 		WindowsPluginsList[v] = true
 	}

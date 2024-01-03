@@ -25,8 +25,7 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 	var accountID = GlobalGRPCPool.GetIaasInfo(req.AgentID)
 
 	for k, v := range req.GetData() {
-		fmt.Printf("handleRawData Num:%d Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
-		ylog.Infof("handleRawData", "Num:%d Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
+		ylog.Debugf("handleRawData", "Num:%d Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
 
 		mqMsg := &pb.MQData{}
 		mqMsg.DataType = req.GetData()[k].DataType
@@ -198,13 +197,10 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 
 	os, ok1 := detail["os"].(string)
 	info, ok2 := detail["plugins_brief_info"].(string)
-	fmt.Printf("parseAgentHeartBeat detail %#v", detail)
 	if !ok1 || !ok2 {
-		fmt.Printf("parseAgentHeartBeat detail plugins_brief_info/os is not exists")
 		ylog.Errorf("parseAgentHeartBeat", "plugins_brief_info/os is not exists")
 	} else {
 		oldInfo, _ := conn.GetAgentDetail()["plugins_brief_info"].(string)
-		ylog.Infof("parseAgentHeartBeat", "oldInfo info %s %s", oldInfo, info)
 		if info != oldInfo {
 			//如果插件信息不一致则重新生成字段
 			status, list, err := parseBriefPluginsInfo(info, os)
@@ -216,7 +212,6 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 			}
 		}
 	}
-	ylog.Infof("parseAgentHeartBeat", "detail %#v", detail)
 
 	if len(conn.GetAgentDetail()) == 0 {
 		conn.SetAgentDetail(detail)
