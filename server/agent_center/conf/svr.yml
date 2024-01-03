@@ -84,3 +84,15 @@ server:
 
   rawdata:
     port: 6754
+
+plugins:
+  windows:
+    - collector
+    - events
+    - scanner
+  linux:
+    - collector
+    - driver
+    - file_monitor
+    - journal_watcher
+    - scanner

@@ -195,6 +195,23 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 	detail["source_ipv6"] = ""
 	detail["source_port"] = common.HttpPort
 
+	os, ok1 := detail["os"].(string)
+	info, ok2 := detail["plugins_brief_info"].(string)
+	if !ok1 || !ok2 {
+		ylog.Errorf("parseAgentHeartBeat", "plugins_brief_info/os is not exists")
+	} else {
+		if info != conn.GetAgentDetail()["plugins_brief_info"] {
+			//如果插件信息不一致则重新生成字段
+			status, list, err := parseBriefPluginsInfo(info, os)
+			if err != nil {
+				ylog.Errorf("parseAgentHeartBeat", "parseBriefPluginsInfo error %s", err.Error())
+			} else {
+				detail["plugins_status"] = status
+				detail["abnormal_plugins_list"] = list
+			}
+		}
+	}
+
 	if len(conn.GetAgentDetail()) == 0 {
 		conn.SetAgentDetail(detail)
 
@@ -209,6 +226,69 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 	}
 
 	return detail
+}
+
+func parseBriefPluginsInfo(briefInfo string, os string) (status, abnormalInfo string, err error) {
+	info := make([]common.PluginsInfo, 0, 5)
+	tmp := make(map[string]bool, 5)
+	abnormalList := make([]string, 0, 5)
+
+	err = json.Unmarshal([]byte(briefInfo), &info)
+	if err != nil {
+		return "", "", err
+	}
+
+	if os == "linux" {
+		for _, v := range info {
+			if v.Status != "running" {
+				continue
+			}
+			if _, ok := common.LinuxPluginsList[v.Name]; ok {
+				tmp[v.Name] = true
+			}
+		}
+		if len(tmp) >= len(common.LinuxPluginsList) {
+			return common.PluginsStatusAllOnline, "", nil
+		} else if len(tmp) == 0 {
+			for k := range common.LinuxPluginsList {
+				abnormalList = append(abnormalList, k)
+			}
+			return common.PluginsStatusAllOffline, strings.Join(abnormalList, ","), nil
+		} else {
+			//找到未开启插件
+			for k := range common.LinuxPluginsList {
+				if _, ok := tmp[k]; !ok {
+					abnormalList = append(abnormalList, k)
+				}
+			}
+			return common.PluginsStatusAllSomeOnline, strings.Join(abnormalList, ","), nil
+		}
+	} else {
+		for _, v := range info {
+			if v.Status != "running" {
+				continue
+			}
+			if _, ok := common.WindowsPluginsList[v.Name]; ok {
+				tmp[v.Name] = true
+			}
+		}
+		if len(tmp) >= len(common.WindowsPluginsList) {
+			return common.PluginsStatusAllOnline, "", nil
+		} else if len(tmp) == 0 {
+			for k := range common.WindowsPluginsList {
+				abnormalList = append(abnormalList, k)
+			}
+			return common.PluginsStatusAllOffline, strings.Join(abnormalList, ","), nil
+		} else {
+			//找到未开启插件
+			for k := range common.WindowsPluginsList {
+				if _, ok := tmp[k]; !ok {
+					abnormalList = append(abnormalList, k)
+				}
+			}
+			return common.PluginsStatusAllSomeOnline, strings.Join(abnormalList, ","), nil
+		}
+	}
 }
 
 func parsePluginHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connection) map[string]interface{} {

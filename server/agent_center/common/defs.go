@@ -7,6 +7,12 @@ import (
 	"os"
 )
 
+const (
+	PluginsStatusAllOnline     = "all_online"
+	PluginsStatusAllOffline    = "all_offline"
+	PluginsStatusAllSomeOnline = "some_online"
+)
+
 var (
 	Sig = make(chan os.Signal, 1)
 
@@ -45,6 +51,9 @@ var (
 
 	UserName string
 	Password string
+
+	LinuxPluginsList   map[string]bool
+	WindowsPluginsList map[string]bool
 )
 
 type ConfigReleaseInfo struct {
@@ -67,4 +76,10 @@ type ConfigRefreshResponse struct {
 type Response struct {
 	Code    int    `json:"code"`
 	Message string `json:"msg"`
+}
+
+type PluginsInfo struct {
+	Name     string `json:"name"`
+	Pversion string `json:"pversion"`
+	Status   string `json:"status"`
 }

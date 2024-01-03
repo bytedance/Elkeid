@@ -75,7 +75,7 @@ var (
 		"pid", "limit_cpu", "limit_memory", "limit_memory_usage_in_bytes",
 		"monitor_enable", "monitor_cpu_last_minute", "monitor_cpu_percent",
 		"monitor_memory_last_minute", "monitor_memory_percent", "monitor_operate",
-		"plugin_status", "plugin_stopped_reason"}
+		"plugins_status", "abnormal_plugins_list"}
 
 	//插件心跳如下字段一更新则马上同步到后端
 	pluginsUpdateKeys = []string{"pversion", "pid"}
