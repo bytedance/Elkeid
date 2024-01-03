@@ -200,7 +200,9 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 	if !ok1 || !ok2 {
 		ylog.Errorf("parseAgentHeartBeat", "plugins_brief_info/os is not exists")
 	} else {
-		if info != conn.GetAgentDetail()["plugins_brief_info"] {
+		oldInfo, _ := conn.GetAgentDetail()["plugins_brief_info"].(string)
+		ylog.Infof("parseAgentHeartBeat", "oldInfo info %s %s", oldInfo, info)
+		if info != oldInfo {
 			//如果插件信息不一致则重新生成字段
 			status, list, err := parseBriefPluginsInfo(info, os)
 			if err != nil {
@@ -211,6 +213,7 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 			}
 		}
 	}
+	ylog.Infof("parseAgentHeartBeat", "detail %#v", detail)
 
 	if len(conn.GetAgentDetail()) == 0 {
 		conn.SetAgentDetail(detail)
