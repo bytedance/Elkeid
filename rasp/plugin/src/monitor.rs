@@ -457,7 +457,7 @@ fn internal_main(
                 _ => {}
             }
             drop(opp);
-            sleep(Duration::from_millis(500));
+            // sleep(Duration::from_millis(500));
         })?;
 
     loop {
