@@ -25,7 +25,8 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 	var accountID = GlobalGRPCPool.GetIaasInfo(req.AgentID)
 
 	for k, v := range req.GetData() {
-		ylog.Debugf("handleRawData", "Num:%d Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
+		fmt.Printf("handleRawData Num:%d Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
+		ylog.Infof("handleRawData", "Num:%d Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
 
 		mqMsg := &pb.MQData{}
 		mqMsg.DataType = req.GetData()[k].DataType
