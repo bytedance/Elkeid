@@ -83,7 +83,6 @@ func updateToken() error {
 
 func GetToken() string {
 	tokenMutex.RLock()
-	ylog.Infof("GetToken", "token %s", token)
 	defer tokenMutex.RUnlock()
 	return token
 }
