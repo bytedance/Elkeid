@@ -7,12 +7,16 @@ import (
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	"github.com/levigross/grequests"
 	"math/rand"
+	"sync"
 	"time"
 )
 
 const loginUrl = `http://%s/api/v1/user/login`
 
-var token = ""
+var (
+	tokenMutex sync.RWMutex
+	token      = ""
+)
 
 type tokenResp struct {
 	Code int    `json:"code" bson:"code"`
@@ -70,11 +74,16 @@ func updateToken() error {
 		ylog.Errorf("[tokenRefresh]", "resp code!=0 resp: "+resp.String())
 		return fmt.Errorf("resp code!=0 resp: " + resp.String())
 	}
+	tokenMutex.Lock()
 	token = tResp.Data.Token
+	tokenMutex.Unlock()
 	ylog.Errorf("[tokenRefresh]", "success")
 	return nil
 }
 
 func GetToken() string {
+	tokenMutex.RLock()
+	ylog.Infof("GetToken", "token %s", token)
+	defer tokenMutex.RUnlock()
 	return token
 }
