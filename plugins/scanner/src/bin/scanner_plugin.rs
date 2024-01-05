@@ -160,5 +160,5 @@ fn main() {
     // wait childs
     let _: () = r_lock.recv().unwrap();
 
-    info!("[Main exit] bye ~");
+    info!("[Main exit] bye bye ~");
 }
