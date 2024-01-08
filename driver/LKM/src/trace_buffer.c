@@ -866,9 +866,14 @@ static __always_inline bool full_hit(struct tb_ring *buffer, int cpu, int full)
 	if (!nr_pages || !full)
 		return true;
 
-	dirty = tb_nr_dirty_pages(buffer, cpu);
-
-	return (dirty * 100) > (full * nr_pages);
+       /*
+        * Add one as dirty will never equal nr_pages, as the sub-buffer
+        * that the writer is on is not counted as dirty.
+        * This is needed if "buffer_percent" is set to 100.
+        */
+       dirty = tb_nr_dirty_pages(buffer, cpu) + 1;
+ 
+       return (dirty * 100) >= (full * nr_pages);
 }
 
 /*
