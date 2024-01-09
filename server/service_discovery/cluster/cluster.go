@@ -9,7 +9,6 @@ import (
 )
 
 const (
-	defaultClusterName  = "FindYou"
 	defaultPingInterval = 5
 	pingUrl             = "http://%s/endpoint/ping"
 	defaultPingTimeout  = 1
@@ -43,7 +42,7 @@ func (bc *BaseCluster) ping() {
 	for {
 		select {
 		case <-t.C:
-			hosts := bc.Members.HKeys(defaultClusterName)
+			hosts := bc.Members.HKeys(clusterName)
 			for _, host := range hosts {
 				if host == bc.Host {
 					continue
@@ -70,7 +69,7 @@ func (bc *BaseCluster) GetHost() string {
 
 func (bc *BaseCluster) GetHosts() []string {
 	hosts := make([]string, 0)
-	for _, host := range bc.Members.HKeys(defaultClusterName) {
+	for _, host := range bc.Members.HKeys(clusterName) {
 		hosts = append(hosts, host)
 	}
 	return hosts
@@ -78,7 +77,7 @@ func (bc *BaseCluster) GetHosts() []string {
 
 func (bc *BaseCluster) GetOtherHosts() []string {
 	hosts := make([]string, 0)
-	for _, host := range bc.Members.HKeys(defaultClusterName) {
+	for _, host := range bc.Members.HKeys(clusterName) {
 		if host != bc.Host {
 			hosts = append(hosts, host)
 		}

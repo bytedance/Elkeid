@@ -30,7 +30,7 @@ func NewConfigCluster(host string, mode string) Cluster {
 	cc := &ConfigCluster{BaseCluster{
 		Mode:    configMode,
 		Host:    host,
-		Members: safemap.NewSafeMap(defaultClusterName),
+		Members: safemap.NewSafeMap(clusterName),
 		Done:    make(chan bool),
 	}}
 
@@ -46,6 +46,7 @@ func NewConfigCluster(host string, mode string) Cluster {
 }
 
 func (cc *ConfigCluster) registry() {
+	ylog.Infof("ConfigCluster", "registry!")
 	//create ts
 	ts := time.Now().Unix()
 	//set redis and mem
@@ -63,7 +64,7 @@ func (cc *ConfigCluster) registry() {
 		ts, _ = strconv.ParseInt(item, 10, 64)
 		cc.Members.HSet(clusterName, host, ts)
 	}
-
+	ylog.Infof("ConfigCluster", "registry end!")
 }
 
 func (cc *ConfigCluster) redisRefresh() {
@@ -120,9 +121,9 @@ func (cc *ConfigCluster) refresh() {
 		case changed := <-common.ConfigChangeNotify:
 			if changed {
 				members := common.V.GetStringSlice("Cluster.Members")
-				cc.Members.Del(defaultClusterName)
+				cc.Members.Del(clusterName)
 				for _, host := range members {
-					cc.Members.HSet(defaultClusterName, host, "ok")
+					cc.Members.HSet(clusterName, host, "ok")
 				}
 			}
 		case <-t.C:
