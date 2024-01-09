@@ -13,8 +13,6 @@ var (
 )
 
 func init() {
-	if common.RunMode == "config" {
-		CI = cluster.NewConfigCluster(fmt.Sprintf("%s:%d", common.SrvIp, common.SrvPort))
-		EI = endpoint.NewEndpoint(CI)
-	}
+	CI = cluster.NewConfigCluster(fmt.Sprintf("%s:%d", common.SrvIp, common.SrvPort), common.RunMode)
+	EI = endpoint.NewEndpoint(CI)
 }

@@ -9,8 +9,14 @@ Server:
 #Mode: "config"
 #Members: server ip:port list
 Cluster:
-  Mode: "config"
+  Mode: "redis"
+  Key: "sd_01"
   Members: ["127.0.0.1:8088"]
+
+Redis:
+  Addrs: ["127.0.0.1:6379"]
+  Passwd:
+  MasterName:
 
 ############################# Log Settings #############################
 # log.path: where to write logging data.
