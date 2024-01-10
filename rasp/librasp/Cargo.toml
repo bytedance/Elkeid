@@ -8,7 +8,7 @@ version = "1.0.1"
 log = "0.4.0"
 env_logger = "0.7.1"
 crossbeam = "0.8.0"
-procfs = { git = "https://github.com/AlkenePan/procfs.git" }
+procfs = { git = "https://github.com/yoloyyh/procfs.git", tag = "v1.0"}
 fs_extra = "1.2.0"
 clap = "2.33.3"
 serde = {version = "1.0", features = ["derive"]}

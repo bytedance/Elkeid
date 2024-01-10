@@ -20,7 +20,7 @@ serde_json = "1.0.59"
 #signal-hook = "0.3.9"
 fs_extra = "1.2.0"
 # process
-procfs = { git = "https://github.com/AlkenePan/procfs.git" }
+procfs = { git = "https://github.com/yoloyyh/procfs.git", tag = "v1.0"}
 # static config
 config = "0.11"
 lazy_static = "1.4.0"
