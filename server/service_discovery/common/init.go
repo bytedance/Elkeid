@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"github.com/bytedance/Elkeid/server/service_discovery/common/redis"
+	"github.com/bytedance/Elkeid/server/service_discovery/common/utils"
 	"github.com/bytedance/Elkeid/server/service_discovery/common/ylog"
 	"github.com/fsnotify/fsnotify"
 	rds "github.com/go-redis/redis/v8"
@@ -62,7 +63,12 @@ func init() {
 	//get config
 	RunMode = V.GetString("Cluster.Mode")
 	Clusterkey = V.GetString("Cluster.Key")
-	SrvIp = V.GetString("Server.Ip")
+	//SrvIp = V.GetString("Server.Ip")
+	SrvIp, err = utils.GetOutboundIP()
+	if err != nil {
+		fmt.Printf("GetOutboundIP error: %s\n", err.Error())
+		os.Exit(1)
+	}
 	SrvPort = V.GetInt("Server.Port")
 
 	AuthEnable = V.GetBool("Auth.Enable")
