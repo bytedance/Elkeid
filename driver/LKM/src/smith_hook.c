@@ -5690,7 +5690,6 @@ static void smith_tid_fini(void)
     hlist_fini(&g_hlist_tid);
     tt_rb_fini(&g_rb_img);
 #if SMITH_FILE_CREATION_TRACK
-    smith_enum_ent();
     tt_rb_fini(&g_rb_ent);
 #endif
 }
