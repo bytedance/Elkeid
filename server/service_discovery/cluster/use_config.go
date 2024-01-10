@@ -12,12 +12,12 @@ import (
 )
 
 const (
-	memberKey                  = "MEMBER:%s"
 	defaultMemberExpireTime    = 90
 	defaultMemberFreshInterval = 10
 )
 
 var (
+	memberKey   = fmt.Sprintf("MEMBER:%s:", common.Clusterkey)
 	clusterName = fmt.Sprintf("ServiceDiscovery_%s", common.Clusterkey)
 	clusterKey  = fmt.Sprintf("CLUSTER_%s", common.Clusterkey)
 )
@@ -28,7 +28,7 @@ type ConfigCluster struct {
 
 func NewConfigCluster(host string, mode string) Cluster {
 	cc := &ConfigCluster{BaseCluster{
-		Mode:    configMode,
+		Mode:    mode,
 		Host:    host,
 		Members: safemap.NewSafeMap(clusterName),
 		Done:    make(chan bool),
