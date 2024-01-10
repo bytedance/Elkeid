@@ -5,6 +5,7 @@ import (
 	"github.com/bytedance/Elkeid/server/service_discovery/common/safemap"
 	"github.com/bytedance/Elkeid/server/service_discovery/common/ylog"
 	"github.com/levigross/grequests"
+	"strings"
 	"time"
 )
 
@@ -64,6 +65,7 @@ func (bc *BaseCluster) ping() {
 }
 
 func (bc *BaseCluster) GetHost() string {
+	ylog.Infof("BaseCluster", "GetHost %s", bc.Host)
 	return bc.Host
 }
 
@@ -72,6 +74,7 @@ func (bc *BaseCluster) GetHosts() []string {
 	for _, host := range bc.Members.HKeys(clusterName) {
 		hosts = append(hosts, host)
 	}
+	ylog.Infof("BaseCluster", "GetHosts %s", strings.Join(hosts, ","))
 	return hosts
 }
 
@@ -82,6 +85,7 @@ func (bc *BaseCluster) GetOtherHosts() []string {
 			hosts = append(hosts, host)
 		}
 	}
+	ylog.Infof("BaseCluster", "GetHosts %s", strings.Join(hosts, ","))
 	return hosts
 }
 
