@@ -5701,9 +5701,13 @@ static void __init smith_init_systemd_ns(void)
     struct path root;
 
     pid_struct = find_get_pid(1);
-    task = pid_task(pid_struct,PIDTYPE_PID);
-
-    smith_get_task_struct(task);
+    if (!pid_struct)
+        return;
+    task = get_pid_task(pid_struct, PIDTYPE_PID);
+    if (!task) {
+        put_pid(pid_struct);
+        return;
+    }
     root = task->fs->root;
     if (root.mnt)
         ROOT_MNT_SB = root.mnt->mnt_sb;
