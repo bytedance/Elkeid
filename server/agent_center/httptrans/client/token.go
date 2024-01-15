@@ -77,7 +77,7 @@ func updateToken() error {
 	tokenMutex.Lock()
 	token = tResp.Data.Token
 	tokenMutex.Unlock()
-	ylog.Errorf("[tokenRefresh]", "success")
+	ylog.Infof("[tokenRefresh]", "success")
 	return nil
 }
 
