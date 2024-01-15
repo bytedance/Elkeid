@@ -114,12 +114,12 @@ func recvData(stream pb.Transfer_TransferServer, conn *pool.Connection) {
 	for {
 		select {
 		case <-conn.Ctx.Done():
-			ylog.Errorf("recvData", "the send direction of the tcp is closed, now close the recv direction, %s ", conn.AgentID)
+			ylog.Warnf("recvData", "the send direction of the tcp is closed, now close the recv direction, %s ", conn.AgentID)
 			return
 		default:
 			data, err := stream.Recv()
 			if err != nil {
-				ylog.Errorf("recvData", "Transfer Recv Error %s, now close the recv direction of the tcp, %s ", err.Error(), conn.AgentID)
+				ylog.Warnf("recvData", "Transfer Recv Error %s, now close the recv direction of the tcp, %s ", err.Error(), conn.AgentID)
 				return
 			}
 			recvCounter.Inc()
@@ -134,12 +134,12 @@ func sendData(stream pb.Transfer_TransferServer, conn *pool.Connection) {
 	for {
 		select {
 		case <-conn.Ctx.Done():
-			ylog.Infof("sendData", "the recv direction of the tcp is closed, now close the send direction, %s ", conn.AgentID)
+			ylog.Warnf("sendData", "the recv direction of the tcp is closed, now close the send direction, %s ", conn.AgentID)
 			return
 		case cmd := <-conn.CommandChan:
 			//if cmd is nil, close the connection
 			if cmd == nil {
-				ylog.Infof("sendData", "get the close signal , now close the send direction of the tcp, %s ", conn.AgentID)
+				ylog.Warnf("sendData", "get the close signal , now close the send direction of the tcp, %s ", conn.AgentID)
 				return
 			}
 			err := stream.Send(cmd.Command)
