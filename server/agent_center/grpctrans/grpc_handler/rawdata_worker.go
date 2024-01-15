@@ -25,9 +25,6 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 	var accountID = GlobalGRPCPool.GetIaasInfo(req.AgentID)
 
 	for k, v := range req.GetData() {
-		if v.GetDataType() >= 5050 && v.GetDataType() <= 5070 {
-			ylog.Infof("handleRawData", "Num:%d Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
-		}
 		ylog.Debugf("handleRawData", "Num:%d Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
 
 		mqMsg := &pb.MQData{}

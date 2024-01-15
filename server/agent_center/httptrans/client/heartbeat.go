@@ -81,6 +81,11 @@ func (w *hbWriter) runEvict() {
 
 	ylog.Infof("hbWriter", "runEvict")
 	for {
+		if len(writes) >= SendCountWeight {
+			PostHBEvict(writes)
+			writes = make([]HeartBeatEvictModel, 0)
+		}
+
 		select {
 		case tmp := <-w.EvictQueue:
 			writes = append(writes, tmp)
@@ -89,11 +94,6 @@ func (w *hbWriter) runEvict() {
 				continue
 			}
 
-			PostHBEvict(writes)
-			writes = make([]HeartBeatEvictModel, 0)
-		}
-
-		if len(writes) >= SendCountWeight {
 			PostHBEvict(writes)
 			writes = make([]HeartBeatEvictModel, 0)
 		}

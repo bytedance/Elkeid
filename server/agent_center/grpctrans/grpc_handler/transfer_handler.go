@@ -89,6 +89,7 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 
 		releaseAgentHeartbeatMetrics(agentID)
 
+		ylog.Infof("Evict", "HeartBeatEvict AgentID %s, AgentAddr: %s.", agentID, addr)
 		client.HBWriter.Evict(client.HeartBeatEvictModel{
 			AgentID:   agentID,
 			AgentAddr: addr,
