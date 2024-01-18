@@ -200,16 +200,24 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 	if !ok1 || !ok2 {
 		ylog.Errorf("parseAgentHeartBeat", "plugins_brief_info/os is not exists")
 	} else {
-		oldInfo, _ := conn.GetAgentDetail()["plugins_brief_info"].(string)
-		if info != oldInfo {
-			//如果插件信息不一致则重新生成字段
-			status, list, err := parseBriefPluginsInfo(info, os)
-			if err != nil {
-				ylog.Errorf("parseAgentHeartBeat", "parseBriefPluginsInfo error %s", err.Error())
-			} else {
-				detail["plugins_status"] = status
-				detail["abnormal_plugins_list"] = list
-			}
+		//oldInfo, _ := conn.GetAgentDetail()["plugins_brief_info"].(string)
+		//if info != oldInfo {
+		//	//如果插件信息不一致则重新生成字段
+		//	status, list, err := parseBriefPluginsInfo(info, os)
+		//	if err != nil {
+		//		ylog.Errorf("parseAgentHeartBeat", "parseBriefPluginsInfo error %s", err.Error())
+		//	} else {
+		//		detail["plugins_status"] = status
+		//		detail["abnormal_plugins_list"] = list
+		//	}
+		//}
+
+		status, list, err := parseBriefPluginsInfo(info, os)
+		if err != nil {
+			ylog.Errorf("parseAgentHeartBeat", "parseBriefPluginsInfo error %s", err.Error())
+		} else {
+			detail["plugins_status"] = status
+			detail["abnormal_plugins_list"] = list
 		}
 	}
 
