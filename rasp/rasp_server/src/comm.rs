@@ -119,6 +119,7 @@ pub async fn start_bind(sock: RASPSock) -> Result<(), String> {
                     (*pw).remove(&pid);
                 }
             }
+            drop(pw);
             sleep(Duration::from_secs(30)).await;
         }
     });
@@ -138,7 +139,7 @@ pub async fn start_bind(sock: RASPSock) -> Result<(), String> {
                     break;
                 }
                 Err(TryRecvError::Empty) => {
-                    sleep(Duration::from_secs(30)).await;
+                    sleep(Duration::from_secs(3)).await;
                     continue;
                 }
             };
