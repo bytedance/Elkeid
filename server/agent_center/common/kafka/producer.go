@@ -67,7 +67,8 @@ func NewProducerWithLog(addrs []string, topic, clientID, logPath, userName, pass
 	config.Producer.Flush.Bytes = 1024 * 1024 * 4
 	config.Producer.Flush.MaxMessages = 1024 * 1024 * 4
 	config.Producer.Flush.Frequency = 10 * time.Second
-	config.Producer.Retry.Max = 1
+	config.Producer.Retry.Max = 0
+	config.Net.MaxOpenRequests = 10
 
 	if enableAuth {
 		config.Net.SASL.User = userName
