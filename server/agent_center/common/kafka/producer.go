@@ -47,7 +47,7 @@ type Producer struct {
 	Topic    string
 }
 
-//NewProducer creates kafka async producer
+// NewProducer creates kafka async producer
 func NewProducerWithLog(addrs []string, topic, clientID, logPath, userName, passWord string, enableAuth bool) (*Producer, error) {
 	logger := ylog.NewYLog(
 		ylog.WithLogFile(logPath),
@@ -67,6 +67,7 @@ func NewProducerWithLog(addrs []string, topic, clientID, logPath, userName, pass
 	config.Producer.Flush.Bytes = 1024 * 1024 * 4
 	config.Producer.Flush.MaxMessages = 1024 * 1024 * 4
 	config.Producer.Flush.Frequency = 10 * time.Second
+	config.Producer.Retry.Max = 1
 
 	if enableAuth {
 		config.Net.SASL.User = userName
@@ -78,7 +79,7 @@ func NewProducerWithLog(addrs []string, topic, clientID, logPath, userName, pass
 	return newProducerWithConfig(addrs, topic, config)
 }
 
-//NewProducer creates kafka async producer
+// NewProducer creates kafka async producer
 func NewProducer(addrs []string, topic string, clientID string) (*Producer, error) {
 	//initial config and log
 	config := sarama.NewConfig()
@@ -93,7 +94,7 @@ func NewProducer(addrs []string, topic string, clientID string) (*Producer, erro
 	return newProducerWithConfig(addrs, topic, config)
 }
 
-//newProducerWithConfig creates kafka async producer
+// newProducerWithConfig creates kafka async producer
 func newProducerWithConfig(addrs []string, topic string, config *sarama.Config) (*Producer, error) {
 	//create async producer
 	client, err := sarama.NewClient(addrs, config)
