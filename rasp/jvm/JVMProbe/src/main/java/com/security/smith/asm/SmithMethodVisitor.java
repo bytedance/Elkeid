@@ -1,7 +1,6 @@
 package com.security.smith.asm;
 
 import com.security.smith.SmithProbe;
-import com.security.smith.client.message.Trace;
 import com.security.smith.processor.*;
 import org.apache.commons.lang3.ArrayUtils;
 import org.objectweb.asm.Label;
@@ -22,8 +21,8 @@ public class SmithMethodVisitor extends AdviceAdapter {
     private final boolean canBlock;
     private final boolean isStatic;
     private final boolean isConstructor;
-    private final int traceVariable;
     private final int returnVariable;
+    private final int argumentsVariable;
     private final Label start;
     private final Label end;
     private final Label handler;
@@ -55,89 +54,11 @@ public class SmithMethodVisitor extends AdviceAdapter {
         end = new Label();
         handler = new Label();
 
-        traceVariable = newLocal(Type.getType(Trace.class));
+        argumentsVariable = newLocal(Type.getType(Object[].class));
         returnVariable = newLocal(Type.getType(Object.class));
 
         isConstructor = name.equals("<init>");
         isStatic = (access & Opcodes.ACC_STATIC) != 0;
-    }
-
-    private void surplus() {
-        invokeStatic(
-                Type.getType(SmithProbe.class),
-                new Method(
-                        "getInstance",
-                        Type.getType(SmithProbe.class),
-                        new Type[]{}
-                )
-        );
-
-        push(classID);
-        push(methodID);
-
-        invokeVirtual(
-                Type.getType(SmithProbe.class),
-                new Method(
-                        "surplus",
-                        Type.BOOLEAN_TYPE,
-                        new Type[]{
-                                Type.INT_TYPE,
-                                Type.INT_TYPE
-                        }
-                )
-        );
-    }
-
-    private void post() {
-        invokeStatic(
-                Type.getType(SmithProbe.class),
-                new Method(
-                        "getInstance",
-                        Type.getType(SmithProbe.class),
-                        new Type[]{}
-                )
-        );
-
-        loadLocal(traceVariable);
-
-        invokeVirtual(
-                Type.getType(SmithProbe.class),
-                new Method(
-                        "post",
-                        Type.VOID_TYPE,
-                        new Type[]{
-                                Type.getType(Trace.class)
-                        }
-                )
-        );
-    }
-
-    private void newTrace() {
-        invokeStatic(
-                Type.getType(SmithProbe.class),
-                new Method(
-                        "getInstance",
-                        Type.getType(SmithProbe.class),
-                        new Type[]{}
-                )
-        );
-
-        push(classID);
-        push(methodID);
-        loadArgArray();
-
-        invokeVirtual(
-                Type.getType(SmithProbe.class),
-                new Method(
-                        "newTrace",
-                        Type.getType(Trace.class),
-                        new Type[]{
-                                Type.INT_TYPE,
-                                Type.INT_TYPE,
-                                Type.getType(Object[].class)
-                        }
-                )
-        );
     }
 
     @Override
@@ -172,26 +93,16 @@ public class SmithMethodVisitor extends AdviceAdapter {
 
         visitTryCatchBlock(start, end, handler, Type.getInternalName(Exception.class));
 
+        loadArgArray();
+        storeLocal(argumentsVariable);
+
         visitInsn(ACONST_NULL);
-        storeLocal(traceVariable);
+        storeLocal(returnVariable);
 
         mark(start);
 
-        if (!canBlock) {
-            Label label = new Label();
-
-            surplus();
-            ifZCmp(EQ, label);
-
-            newTrace();
-            storeLocal(traceVariable);
-
-            mark(label);
+        if (!canBlock)
             return;
-        }
-
-        newTrace();
-        storeLocal(traceVariable);
 
         invokeStatic(
                 Type.getType(SmithProbe.class),
@@ -202,7 +113,9 @@ public class SmithMethodVisitor extends AdviceAdapter {
                 )
         );
 
-        loadLocal(traceVariable);
+        push(classID);
+        push(methodID);
+        loadLocal(argumentsVariable);
 
         invokeVirtual(
                 Type.getType(SmithProbe.class),
@@ -210,20 +123,12 @@ public class SmithMethodVisitor extends AdviceAdapter {
                         "detect",
                         Type.VOID_TYPE,
                         new Type[]{
-                                Type.getType(Trace.class)
+                                Type.INT_TYPE,
+                                Type.INT_TYPE,
+                                Type.getType(Object[].class)
                         }
                 )
         );
-
-        Label label = new Label();
-
-        surplus();
-        ifZCmp(NE, label);
-
-        visitInsn(ACONST_NULL);
-        storeLocal(traceVariable);
-
-        mark(label);
     }
 
     @Override
@@ -232,11 +137,6 @@ public class SmithMethodVisitor extends AdviceAdapter {
 
         if (opcode == ATHROW)
             return;
-
-        Label label = new Label();
-
-        loadLocal(traceVariable);
-        ifNull(label);
 
         Type returnType = Type.getReturnType(methodDesc);
 
@@ -262,22 +162,35 @@ public class SmithMethodVisitor extends AdviceAdapter {
 
         storeLocal(returnVariable);
 
-        loadLocal(traceVariable);
-        loadLocal(returnVariable);
-
-        invokeVirtual(
-                Type.getType(Trace.class),
+        invokeStatic(
+                Type.getType(SmithProbe.class),
                 new Method(
-                        "setRet",
-                        Type.VOID_TYPE,
-                        new Type[]{
-                                Type.getType(Object.class)
-                        }
+                        "getInstance",
+                        Type.getType(SmithProbe.class),
+                        new Type[]{}
                 )
         );
 
-        post();
-        mark(label);
+        push(classID);
+        push(methodID);
+        loadLocal(argumentsVariable);
+        loadLocal(returnVariable);
+        push(false);
+
+        invokeVirtual(
+                Type.getType(SmithProbe.class),
+                new Method(
+                        "trace",
+                        Type.VOID_TYPE,
+                        new Type[]{
+                                Type.INT_TYPE,
+                                Type.INT_TYPE,
+                                Type.getType(Object[].class),
+                                Type.getType(Object.class),
+                                Type.BOOLEAN_TYPE
+                        }
+                )
+        );
     }
 
     @Override
@@ -321,16 +234,45 @@ public class SmithMethodVisitor extends AdviceAdapter {
                 new Object[]{Type.getInternalName(Exception.class)}
         );
 
-        storeLocal(traceVariable + 1, Type.getType(Exception.class));
+        storeLocal(returnVariable + 1, Type.getType(Exception.class));
 
-        Label label = new Label();
+        invokeStatic(
+                Type.getType(SmithProbe.class),
+                new Method(
+                        "getInstance",
+                        Type.getType(SmithProbe.class),
+                        new Type[]{}
+                )
+        );
 
-        loadLocal(traceVariable);
-        ifNull(label);
-        post();
-        mark(label);
+        push(classID);
+        push(methodID);
+        loadLocal(argumentsVariable);
+        visitInsn(Opcodes.ACONST_NULL);
 
-        loadLocal(traceVariable + 1);
+        if (!canBlock) {
+            push(false);
+        } else {
+            loadLocal(returnVariable + 1);
+            instanceOf(Type.getType(SecurityException.class));
+        }
+
+        invokeVirtual(
+                Type.getType(SmithProbe.class),
+                new Method(
+                        "trace",
+                        Type.VOID_TYPE,
+                        new Type[]{
+                                Type.INT_TYPE,
+                                Type.INT_TYPE,
+                                Type.getType(Object[].class),
+                                Type.getType(Object.class),
+                                Type.BOOLEAN_TYPE
+                        }
+                )
+        );
+
+        loadLocal(returnVariable + 1);
         throwException();
 
         super.visitMaxs(maxStack, maxLocals);

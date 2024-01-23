@@ -30,6 +30,9 @@ import java.lang.instrument.UnmodifiableClassException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.util.*;
@@ -56,7 +59,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     private final Map<String, SmithClass> smithClasses;
     private final Map<String, Patcher> patchers;
     private final Map<Pair<Integer, Integer>, Filter> filters;
-    private final Map<Pair<Integer, Integer>, List<Block>> blocks;
+    private final Map<Pair<Integer, Integer>, Block> blocks;
     private final Map<Pair<Integer, Integer>, Integer> limits;
     private final AtomicIntegerArray[] quotas;
 
@@ -153,99 +156,49 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         }
     }
 
-    public boolean surplus(int classID, int methodID) {
+    public void detect(int classID, int methodID, Object[] args) {
+        Block block = blocks.get(new ImmutablePair<>(classID, methodID));
+
+        if (block == null)
+            return;
+
+        if (Arrays.stream(block.getRules()).anyMatch(rule -> {
+            if (rule.getIndex() >= args.length)
+                return false;
+
+            return Pattern.compile(rule.getRegex()).matcher(args[rule.getIndex()].toString()).find();
+        })) {
+            throw new SecurityException("API blocked by RASP");
+        }
+    }
+
+    public void trace(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
         if (classID >= CLASS_MAX_ID || methodID >= METHOD_MAX_ID)
-            return false;
+            return;
 
         while (true) {
             int quota = quotas[classID].get(methodID);
 
             if (quota <= 0)
-                return false;
+                return;
 
             if (quotas[classID].compareAndSet(methodID, quota, quota - 1))
                 break;
         }
 
-        return true;
-    }
-
-    public Trace newTrace(int classID, int methodID, Object[] args) {
-        Trace trace = new Trace();
-
-        trace.setClassID(classID);
-        trace.setMethodID(methodID);
-        trace.setArgs(args);
-        trace.setStackTrace(Thread.currentThread().getStackTrace());
-
-        return trace;
-    }
-
-    public void detect(Trace trace) {
-        List<Block> policies = blocks.get(new ImmutablePair<>(trace.getClassID(), trace.getMethodID()));
-
-        if (policies == null)
-            return;
-
-        for (Block block : policies) {
-            MatchRule[] rules = block.getRules();
-
-            if (rules.length > 0 && Arrays.stream(block.getRules()).noneMatch(rule -> {
-                if (rule.getIndex() >= trace.getArgs().length)
-                    return false;
-
-                return Pattern.compile(rule.getRegex()).matcher(trace.getArgs()[rule.getIndex()].toString()).find();
-            }))
-                continue;
-
-            StackFrame stackFrame = block.getStackFrame();
-
-            if (stackFrame == null) {
-                trace.setBlocked(true);
-                trace.setPolicyID(block.getPolicyID());
-                throw new SecurityException("API blocked by RASP");
-            }
-
-            StackTraceElement[] elements = trace.getStackTrace();
-
-            if (elements.length <= 2)
-                continue;
-
-            String[] frames = Arrays.stream(Arrays.copyOfRange(elements, 2, elements.length))
-                    .map(StackTraceElement::toString)
-                    .toArray(String[]::new);
-
-            Predicate<String> pred = keyword -> Arrays.stream(frames).anyMatch(frame -> Pattern.compile(keyword).matcher(frame).find());
-
-            if (stackFrame.getOperator() == StackFrame.Operator.OR && Arrays.stream(stackFrame.getKeywords()).anyMatch(pred)) {
-                trace.setBlocked(true);
-                trace.setPolicyID(block.getPolicyID());
-                throw new SecurityException("API blocked by RASP");
-            }
-
-            if (stackFrame.getOperator() == StackFrame.Operator.AND && Arrays.stream(stackFrame.getKeywords()).allMatch(pred)) {
-                trace.setBlocked(true);
-                trace.setPolicyID(block.getPolicyID());
-                throw new SecurityException("API blocked by RASP");
-            }
-        }
-    }
-
-    public void post(Trace trace) {
         RingBuffer<Trace> ringBuffer = disruptor.getRingBuffer();
 
         try {
             long sequence = ringBuffer.tryNext();
 
-            Trace t = ringBuffer.get(sequence);
+            Trace trace = ringBuffer.get(sequence);
 
-            t.setClassID(trace.getClassID());
-            t.setMethodID(trace.getMethodID());
-            t.setBlocked(trace.isBlocked());
-            t.setPolicyID(trace.getPolicyID());
-            t.setRet(trace.getRet());
-            t.setArgs(trace.getArgs());
-            t.setStackTrace(trace.getStackTrace());
+            trace.setClassID(classID);
+            trace.setMethodID(methodID);
+            trace.setBlocked(blocked);
+            trace.setRet(ret);
+            trace.setArgs(args);
+            trace.setStackTrace(Thread.currentThread().getStackTrace());
 
             ringBuffer.publish(sequence);
         } catch (InsufficientCapacityException ignored) {
@@ -326,7 +279,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             );
 
             classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
-
             return classWriter.toByteArray();
         } catch (Exception e) {
             SmithLogger.exception(e);
@@ -422,10 +374,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         blocks.clear();
 
         for (Block block : config.getBlocks()) {
-            blocks.computeIfAbsent(
+            blocks.put(
                     new ImmutablePair<>(block.getClassID(), block.getMethodID()),
-                    k -> new ArrayList<>()
-            ).add(block);
+                    block
+            );
         }
 
         heartbeat.setBlock(config.getUUID());
