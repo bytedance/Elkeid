@@ -26,5 +26,3 @@ ADD . /elkeid
 WORKDIR /elkeid/driver
 RUN bash ./build_script/x86_64/batch_compile.sh
 RUN rm -rf /root/headers/*.rpm 
-
-
