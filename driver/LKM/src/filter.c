@@ -165,7 +165,6 @@ static int add_execve_exe_allowlist(char *data)
         write_unlock(&exe_allowlist_lock);
     } else {
         write_unlock(&exe_allowlist_lock);
-        printk(KERN_INFO "[ELKEID] add_execve_exe_allowlist: already added.\n");
         smith_kfree(node);
     }
 
@@ -258,7 +257,6 @@ static int add_execve_argv_allowlist(char *data)
         write_unlock(&argv_allowlist_lock);
     } else {
         write_unlock(&argv_allowlist_lock);
-        printk(KERN_INFO"[ELKEID] add_execve_argv_allowlist: already added.\n");
         smith_kfree(node);
     }
 
