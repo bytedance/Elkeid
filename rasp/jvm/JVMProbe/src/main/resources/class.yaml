@@ -187,21 +187,23 @@
      - id: 0
        name: addServletMapping
        desc: (Ljava/lang/String;Ljava/lang/String;Z)V
-
+       preHook: checkAddServletPre
      - id: 1
        name: addApplicationEventListener
        desc: (Ljava/lang/Object;)V
-
+       preHook: checkAddListenerPre
      - id: 2
        name: addFilterDef
        desc: (Lorg/apache/tomcat/util/descriptor/web/FilterDef;)V
-
+       preHook: checkAddFilterPre
      - id: 3
        name: addServletMappingDecoded
        desc: (Ljava/lang/String;Ljava/lang/String;Z)V
+       preHook: checkAddServletPre
 - id: 16
   name: org.apache.catalina.core.ApplicationFilterConfig
   methods:
     - id: 0
       name: <init>
       desc: (Lorg/apache/catalina/Context;Lorg/apache/tomcat/util/descriptor/web/FilterDef;)V
+      postHook: checkFilterConfigPost
