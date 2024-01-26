@@ -388,7 +388,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 } catch(Exception e) {
                     // SmithLogger.exception(e);
                 }
-                // 获取父类名和父类加载器
+
                 String superClassName = superClass != null ? superClass.getName() : "";
                 classFilter.setParentClassName(superClassName);
         
@@ -682,7 +682,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         }
         return interfacesName;
     }
-    /* 全量扫描 */
+    /* scan all class */
     @Override
     public void onScanAllClass() {
         scanswitch = false;
@@ -793,11 +793,11 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         int length = data.length;
         ClassUpload classUpload = new ClassUpload();
         classUpload.setTransId(transId);
-        // TODO 第一版先不分包，看下性能
+
         // client.write(Operate.CLASSDUMP, classUpload);
-        // 发送文件内容分包给服务器
-        // int packetSize = 1024; // 每个包的大小
-        // int totalPackets = (data.length + packetSize - 1) / packetSize; // 总包数
+
+        // int packetSize = 1024; 
+        // int totalPackets = (data.length + packetSize - 1) / packetSize
         //for (int i = 0; i < totalPackets; i++) {
             //int offset = i * packetSize;
             classUpload.setByteTotalLength(length);
