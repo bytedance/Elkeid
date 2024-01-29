@@ -143,15 +143,26 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 		return nil
 	}
 
-	//存储心跳数据到connect
+	//强制校验心跳字段
 	detail := make(map[string]interface{}, len(hb)+9)
 	for k, v := range hb {
-		//部分字段不需要修改
-		if k == "platform_version" || k == "version" || k == "host_serial" || k == "host_id" || k == "host_model" || k == "host_vendor" || k == "cpu_name" {
+		//必须为string
+		if common.Contains(common.StringHBFields, k) {
 			detail[k] = v
 			continue
 		}
+		//必须为float
+		if common.Contains(common.FloatHBFields, k) {
+			fv, err := strconv.ParseFloat(v, 64)
+			if err != nil || math.IsNaN(fv) || math.IsInf(fv, 0) {
+				detail[k] = 0
+			} else {
+				detail[k] = fv
+			}
+			continue
+		}
 
+		//其他字段
 		fv, err := strconv.ParseFloat(v, 64)
 		if err != nil || math.IsNaN(fv) || math.IsInf(fv, 0) {
 			detail[k] = v
@@ -159,6 +170,7 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 			detail[k] = fv
 		}
 	}
+
 	detail["agent_id"] = req.AgentID
 	detail["agent_addr"] = conn.SourceAddr
 	detail["create_at"] = conn.CreateAt

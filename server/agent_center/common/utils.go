@@ -64,3 +64,12 @@ func GetRandomManageAddr() string {
 	}
 	return ""
 }
+
+func Contains(items []string, item string) bool {
+	for _, eachItem := range items {
+		if eachItem == item {
+			return true
+		}
+	}
+	return false
+}
