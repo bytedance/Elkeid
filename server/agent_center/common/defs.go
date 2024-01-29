@@ -47,6 +47,29 @@ var (
 	Password string
 )
 
+// 硬编码维护的字段列表信息
+var (
+	// AgentUpdateKeys Agent心跳如下字段一更新则马上同步到后端
+	AgentUpdateKeys = []string{"state", "state_detail", "version",
+		"pid", "limit_cpu", "limit_memory",
+		"monitor_enable", "monitor_cpu_last_minute", "monitor_cpu_percent",
+		"monitor_memory_last_minute", "monitor_memory_percent", "monitor_operate",
+		"plugins_status", "abnormal_plugins_list"}
+
+	// PluginsUpdateKeys 插件心跳如下字段一更新则马上同步到后端
+	PluginsUpdateKeys = []string{"pversion", "pid"}
+
+	// FloatHBFields 必须为Float类型的心跳字段
+	FloatHBFields = []string{
+		"cpu_usage", "mem_usage", "start_time",
+	}
+
+	// StringHBFields 必须为string类型的心跳字段
+	StringHBFields = []string{
+		"platform_version", "version", "host_serial", "host_id", "host_model", "host_vendor", "cpu_name",
+	}
+)
+
 type ConfigReleaseInfo struct {
 	AgentID string              `json:"agent_id"`
 	Plugin  string              `json:"plugin"`

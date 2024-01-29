@@ -3,6 +3,7 @@ package pool
 import (
 	"context"
 	"errors"
+	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/bytedance/Elkeid/server/agent_center/httptrans/client"
@@ -65,18 +66,6 @@ type Connection struct {
 	connStatNeedSync   bool //是否需要把状态更新至manager端
 }
 
-var (
-	//Agent心跳如下字段一更新则马上同步到后端
-	agentUpdateKeys = []string{"state", "state_detail", "version",
-		"pid", "limit_cpu", "limit_memory", "limit_memory_usage_in_bytes",
-		"monitor_enable", "monitor_cpu_last_minute", "monitor_cpu_percent",
-		"monitor_memory_last_minute", "monitor_memory_percent", "monitor_operate",
-		"plugin_status", "plugin_stopped_reason"}
-
-	//插件心跳如下字段一更新则马上同步到后端
-	pluginsUpdateKeys = []string{"pversion", "pid"}
-)
-
 // Init 初始化同步状态
 func (c *Connection) Init() {
 	c.connStatNeedSync = false
@@ -109,7 +98,7 @@ func (c *Connection) SetAgentDetail(detail map[string]interface{}) {
 		updated = true
 	} else {
 		//check Agent状态是否有变化
-		if !areAllEqual(c.agentDetail, detail, agentUpdateKeys) {
+		if !areAllEqual(c.agentDetail, detail, common.AgentUpdateKeys) {
 			updated = true
 		}
 
@@ -150,7 +139,7 @@ func (c *Connection) SetPluginDetail(name string, detail map[string]interface{})
 		c.updateConnStat()
 	} else {
 		//插件状态更新
-		if !areAllEqual(p, detail, pluginsUpdateKeys) {
+		if !areAllEqual(p, detail, common.PluginsUpdateKeys) {
 			c.updateConnStat()
 		}
 	}
