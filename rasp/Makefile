@@ -231,7 +231,7 @@ endif
 go-probe-ebpf:
 	mkdir -p golang-ebpf/output golang-ebpf/build
 ifeq ($(STATIC), TRUE)
-	curl -fsSL https://zlib.net/zlib-1.3.tar.gz | tar -xz -C /tmp && cd /tmp/zlib-1.3 && CFLAGS="-fPIC" ./configure --static --prefix=/tmp/output && $(MAKE) && $(MAKE) install && rm -rf /tmp/zlib-1.3
+	curl -fsSL https://github.com/madler/zlib/releases/download/v1.3/zlib-1.3.tar.gz | tar -xz -C /tmp && cd /tmp/zlib-1.3 && CFLAGS="-fPIC" ./configure --static --prefix=/tmp/output && $(MAKE) && $(MAKE) install && rm -rf /tmp/zlib-1.3
 	curl -fsSL https://github.com/arachsys/libelf/archive/refs/tags/v0.188.tar.gz | tar -xz -C /tmp && cd /tmp/libelf-0.188 && sed -e 's|^CFLAGS = |CFLAGS = -fPIC -I/tmp/output/include -L/tmp/output/lib |g' -i Makefile && $(MAKE) PREFIX=/tmp/output install-static && rm -rf /tmp/libelf-0.188
 	echo -e 'prefix=/tmp/output\nexec_prefix=$${prefix}\nlibdir=$${exec_prefix}/lib\nincludedir=$${prefix}/include\n\nName: libelf\nDescription: elfutils libelf library to read and write ELF files\nVersion: 0.188\nURL: http://elfutils.org/\n\nLibs: -L$${libdir} -lelf\nCflags: -I$${includedir}\n\nRequires.private: zlib' > /tmp/output/lib/pkgconfig/libelf.pc
 
