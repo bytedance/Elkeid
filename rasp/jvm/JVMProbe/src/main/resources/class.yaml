@@ -207,3 +207,53 @@
       name: <init>
       desc: (Lorg/apache/catalina/Context;Lorg/apache/tomcat/util/descriptor/web/FilterDef;)V
       postHook: checkFilterConfigPost
+- id: 17
+  name: com.caucho.server.dispatch.FilterManager
+  methods:
+    - id: 0
+      name: addFilter
+      desc: (Lcom/caucho/server/dispatch/FilterConfigImpl;)V
+      preHook: checkResinAddFilterPre
+- id: 18
+  name: com.caucho.server.dispatch.ServletManager
+  methods:
+    - id: 0
+      name: addServlet
+      desc: (Lcom/caucho/server/dispatch/ServletConfigImpl;Z)V
+      preHook: checkResinAddServletPre
+- id: 19
+  name: com.caucho.server.webapp.WebApp
+  methods:
+    - id: 0
+      name: addListenerObject
+      desc: (Ljava/lang/Object;Z)V
+      preHook: checkAddListenerPre
+- id: 20
+  name: org.eclipse.jetty.servlet.BaseHolder
+  methods:
+    - id: 0
+      name: setHeldClass
+      desc: (Ljava/lang/Class;)V
+      preHook: checkJettyMemshellPre
+- id: 21
+  name: org.eclipse.jetty.servlet.Holder
+  methods:
+    - id: 0
+      name: setHeldClass
+      desc: (Ljava/lang/Class;)V
+      preHook: checkJettyMemshellPre
+- id: 22
+  name: org.eclipse.jetty.server.handler.ContextHandler
+  methods:
+    - id: 0
+      name: addEventListener
+      desc: (Ljava/util/EventListener;)V
+      preHook: checkJettyListenerPre
+- id: 23
+  name: org.eclipse.jetty.deploy.bindings.StandardDeployer
+  methods:
+    - id: 0
+      name: processBinding
+      desc: (Lorg/eclipse/jetty/deploy/graph/Node;Lorg/eclipse/jetty/deploy/App;)V
+      preHook: checkJettyDeployPre
+      postHook: checkJettyDeployPost

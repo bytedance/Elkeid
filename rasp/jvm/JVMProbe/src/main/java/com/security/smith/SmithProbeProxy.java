@@ -2,6 +2,7 @@ package com.security.smith;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -53,6 +54,13 @@ public class SmithProbeProxy {
         }
     };
 
+    InheritableThreadLocal<Boolean> jettyDeploying = new InheritableThreadLocal<Boolean>() {
+        @Override
+        protected Boolean initialValue() {
+            return false;
+        }
+    };
+
     public SmithProbeProxy() {
          quotas = Stream.generate(() -> new AtomicIntegerArray(METHOD_MAX_ID)).limit(CLASS_MAX_ID).toArray(AtomicIntegerArray[]::new);
     }
@@ -78,8 +86,10 @@ public class SmithProbeProxy {
         if (block == null)
             return;
 
-        if (Arrays.stream(block.getRules()).anyMatch(rule -> {
+        if (Arrays.stream(block.getRules()).filter(Objects::nonNull).anyMatch(rule -> {
             if (rule.getIndex() >= args.length)
+                return false;
+            if (args[rule.getIndex()] == null || rule.getRegex() == null)
                 return false;
 
             return Pattern.compile(rule.getRegex()).matcher(args[rule.getIndex()].toString()).find();
@@ -123,6 +133,28 @@ public class SmithProbeProxy {
         }
     }
 
+    public void sendMetadataObject(Object obj) {
+        if (obj != null) {
+            sendMetadataClass(obj.getClass());
+        }
+    }
+
+    public void sendMetadataClass(Class<?> cla) {
+        if (cla == null) {
+            return;
+        }
+        ClassFilter classFilter = new ClassFilter();
+        SmithHandler.queryClassFilter(cla, classFilter);
+        classFilter.setTransId();
+        classFilter.setRuleId(-1);
+        classFilter.setStackTrace(Thread.currentThread().getStackTrace());
+        if (client != null) {
+            client.write(Operate.SCANCLASS, classFilter);
+            SmithLogger.logger.info("send metadata: " + classFilter.toString());
+            SmithProbe.getInstance().sendClass(cla, classFilter.getTransId());
+        }
+    }
+
     public void checkAddServletPre(int classID, int methodID, Object[] args) {
         SmithLogger.logger.info("checkAddServlet pre_hook call success");
         if (args.length < 3) {
@@ -133,26 +165,12 @@ public class SmithProbeProxy {
             String name = (String)args[2];
             if (context != null) {
                  Class<?>[] argTypes = new Class[]{String.class};
-
                         Object wrapper = Reflection.invokeMethod(context, "findChild", argTypes, name);
-
                         if(wrapper != null) {
                             Class<?>[] emptyArgTypes = new Class[]{};
 
                             Object servlet = Reflection.invokeMethod(wrapper, "getServlet", emptyArgTypes);
-                            if(servlet != null) {
-                                ClassFilter classFilter = new ClassFilter();
-                                //classFilter.setClassName(name);
-                                SmithHandler.queryClassFilter(servlet.getClass(), classFilter);
-                                classFilter.setTransId();
-                                classFilter.setRuleId(-1);
-                                classFilter.setStackTrace(Thread.currentThread().getStackTrace());
-                                if (client != null) {
-                                    client.write(Operate.SCANCLASS, classFilter);
-                                    SmithLogger.logger.info("send metadata: " + classFilter.toString());
-                                    SmithProbe.getInstance().sendClass(servlet.getClass(), classFilter.getTransId());
-                                }
-                            }
+                            sendMetadataObject(servlet);
                         }
             }
 
@@ -252,21 +270,7 @@ public class SmithProbeProxy {
             // shiro filter check
             if (needFoundfilterDef != null && needFoundfilterDef.get() == args[1]) {
                 Object filter = getFilterFromConfig(ret);
-                if (filter != null) {
-                    ClassFilter classFilter = new ClassFilter();
-                        SmithHandler.queryClassFilter(filter.getClass(), classFilter);
-                    
-                        classFilter.setTransId();
-        
-                        classFilter.setRuleId(-1);
-                        classFilter.setStackTrace(Thread.currentThread().getStackTrace());
-                        if (client != null) {
-                            client.write(Operate.SCANCLASS, classFilter);
-                            SmithLogger.logger.info("send metadata: " + classFilter.toString());
-                            
-                            SmithProbe.getInstance().sendClass(filter.getClass(), classFilter.getTransId());
-                        }
-                }  
+                sendMetadataObject(filter); 
             }
         } catch(Exception e) {
             SmithLogger.exception(e);
@@ -279,18 +283,7 @@ public class SmithProbeProxy {
         }
         try {
             Object valve = args[1];
-            if (valve != null) {
-                ClassFilter classFilter = new ClassFilter();
-                SmithHandler.queryClassFilter(valve.getClass(), classFilter);
-                classFilter.setTransId();
-                classFilter.setRuleId(-1);
-                classFilter.setStackTrace(Thread.currentThread().getStackTrace());
-                if (client != null) {
-                    client.write(Operate.SCANCLASS, classFilter);
-                    SmithLogger.logger.info("send metadata: " + classFilter.toString());
-                    SmithProbe.getInstance().sendClass(valve.getClass(), classFilter.getTransId());
-                }
-            }
+            sendMetadataObject(valve);
 
         } catch (Exception e) {
             SmithLogger.exception(e);
@@ -316,10 +309,118 @@ public class SmithProbeProxy {
                     quotas[i].set(j, DEFAULT_QUOTA);
                     continue;
                 }
-
                 quotas[i].set(j, quota);
             }
         }
     }
 
+    public void checkResinAddServletPost(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        if (args.length < 2) {
+            return;
+        }
+        try {
+            Object servletMapping = args[1];
+            if (servletMapping != null) { 
+                Class<?>[] emptyArgTypes = new Class[]{};
+                Class<?> servletClass = (Class<?>)Reflection.invokeMethod(servletMapping, "getServletClass", emptyArgTypes);
+                sendMetadataClass(servletClass);
+            }
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+    }
+
+    /*
+     * check resin servlet
+     */
+    public void checkResinAddServletPre(int classID, int methodID, Object[] args)  {
+        if (args.length < 2) {
+            return;
+        }
+        try {
+            Object servletMapping = args[1];
+            if (servletMapping != null) { 
+                Class<?>[] emptyArgTypes = new Class[]{};
+                Class<?> servletClass = (Class<?>)Reflection.invokeMethod(servletMapping, "getServletClass", emptyArgTypes);
+                sendMetadataClass(servletClass);
+            }
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+    }
+
+    /*
+     * check resin add filter memshell
+     */
+    public void checkResinAddFilterPre(int classID, int methodID, Object[] args) {
+        SmithLogger.logger.info("checkResinAddFilter pre_hook call success");
+        if (args.length < 2) {
+            return;
+        }
+        try {
+            Object filterdef = args[1];
+            if (filterdef != null) {
+                Class<?>[] emptyArgTypes = new Class[]{};
+                Class <?> filterCla = (Class<?>)Reflection.invokeMethod(filterdef, "getFilterClass", emptyArgTypes);
+                sendMetadataClass(filterCla);
+            }
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+
+    }
+
+     /*
+     * check jetty version 9 add filter/servlet memshell
+     * TODO: add url check
+     */
+    public void checkJettyMemshellPre(int classID, int methodID, Object[] args) {
+        SmithLogger.logger.info("checkJettyMemshellPre pre_hook call success");
+        if (jettyDeploying != null && jettyDeploying.get() == true) {
+            return;
+        }
+        if (args.length < 2) {
+            return;
+        }
+        try {
+            Class<?> newclass = (Class<?>)args[1];
+            sendMetadataClass(newclass);
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+    }
+
+    /*
+     * check Jetty 9.4 Listener memshell
+     */
+    public void checkJettyListenerPre(int classID, int methodID, Object[] args) {
+        SmithLogger.logger.info("checkJettyListenerPre pre_hook call success");
+        if (args.length < 2) {
+            return;
+        }
+        try {
+            Object listener = args[1];
+            sendMetadataObject(listener);
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+    }
+
+    /*
+     * used for listener check
+     */
+    public void cehckJettyDeployPre(int classID, int methodID, Object[] args)  {
+        if (jettyDeploying != null) {
+            jettyDeploying.set(true);
+        }
+    }
+
+    /*
+     * used for listener check
+     */
+    public void checkJettyDeployPost(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        if (jettyDeploying != null) {
+            jettyDeploying.set(false);
+        }
+    }
 }
