@@ -1,8 +1,10 @@
 package com.security.smith.asm;
 
+import com.security.smith.SmithProbe;
 import com.security.smith.SmithProbeProxy;
 import com.security.smith.processor.*;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.time.StopWatch;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -21,6 +23,9 @@ public class SmithMethodVisitor extends AdviceAdapter {
     private final boolean canBlock;
     private final boolean isStatic;
     private final boolean isConstructor;
+    private final int stopWatchVariable;
+    private final int stopWatchTotalVariable;
+    private final int traceVariable;
     private final int returnVariable;
     private final int argumentsVariable;
     private final Label start;
@@ -60,7 +65,10 @@ public class SmithMethodVisitor extends AdviceAdapter {
         end = new Label();
         handler = new Label();
 
+        stopWatchTotalVariable = newLocal(Type.getType(StopWatch.class));
+        stopWatchVariable = newLocal(Type.getType(StopWatch.class));
         argumentsVariable = newLocal(Type.getType(Object[].class));
+        traceVariable = newLocal(Type.getType(Trace.class));
         returnVariable = newLocal(Type.getType(Object.class));
 
         isConstructor = name.equals("<init>");
@@ -99,6 +107,28 @@ public class SmithMethodVisitor extends AdviceAdapter {
 
         visitTryCatchBlock(start, end, handler, Type.getInternalName(Exception.class));
 
+        invokeStatic(
+                Type.getType(StopWatch.class),
+                new Method(
+                        "createStarted",
+                        Type.getType(StopWatch.class),
+                        new Type[]{}
+                )
+        );
+
+        storeLocal(stopWatchTotalVariable);
+
+        invokeStatic(
+                Type.getType(StopWatch.class),
+                new Method(
+                        "createStarted",
+                        Type.getType(StopWatch.class),
+                        new Type[]{}
+                )
+        );
+
+        storeLocal(stopWatchVariable);
+
         loadArgArray();
         storeLocal(argumentsVariable);
 
@@ -109,6 +139,16 @@ public class SmithMethodVisitor extends AdviceAdapter {
 
         if (preHook == null || preHook == "") {
             if (!canBlock) {
+                loadLocal(stopWatchVariable);
+
+                invokeVirtual(
+                        Type.getType(StopWatch.class),
+                        new Method(
+                                "suspend",
+                                Type.VOID_TYPE,
+                                new Type[]{}
+                        )
+                );
                 return;
             } else {
                 preHook = "detect";
@@ -140,6 +180,16 @@ public class SmithMethodVisitor extends AdviceAdapter {
                         }
                 )
         );
+        loadLocal(stopWatchVariable);
+
+        invokeVirtual(
+                Type.getType(StopWatch.class),
+                new Method(
+                        "suspend",
+                        Type.VOID_TYPE,
+                        new Type[]{}
+                )
+        );
     }
 
     @Override
@@ -148,6 +198,17 @@ public class SmithMethodVisitor extends AdviceAdapter {
 
         if (opcode == ATHROW)
             return;
+
+        loadLocal(stopWatchVariable);
+
+        invokeVirtual(
+                Type.getType(StopWatch.class),
+                new Method(
+                        "resume",
+                        Type.VOID_TYPE,
+                        new Type[]{}
+                )
+        );
 
         Type returnType = Type.getReturnType(methodDesc);
 
@@ -192,7 +253,6 @@ public class SmithMethodVisitor extends AdviceAdapter {
         loadLocal(returnVariable);
         push(false);
 
-        
 
         invokeVirtual(
                 Type.getType(SmithProbeProxy.class),
@@ -205,6 +265,66 @@ public class SmithMethodVisitor extends AdviceAdapter {
                                 Type.getType(Object[].class),
                                 Type.getType(Object.class),
                                 Type.BOOLEAN_TYPE
+                        }
+                )
+        );
+
+        loadLocal(stopWatchVariable);
+        invokeVirtual(
+                Type.getType(StopWatch.class),
+                new Method(
+                        "stop",
+                        Type.VOID_TYPE,
+                        new Type[]{}
+                )
+        );
+        loadLocal(stopWatchTotalVariable);
+        invokeVirtual(
+                Type.getType(StopWatch.class),
+                new Method(
+                        "stop",
+                        Type.VOID_TYPE,
+                        new Type[]{}
+                )
+        );
+        invokeStatic(
+                Type.getType(SmithProbe.class),
+                new Method(
+                        "getInstance",
+                        Type.getType(SmithProbe.class),
+                        new Type[]{}
+                )
+        );
+        push(classID);
+        push(methodID);
+        loadLocal(stopWatchVariable);
+        invokeVirtual(
+                Type.getType(StopWatch.class),
+                new Method(
+                        "getNanoTime",
+                        Type.LONG_TYPE,
+                        new Type[]{}
+                )
+        );
+        loadLocal(stopWatchTotalVariable);
+        invokeVirtual(
+                Type.getType(StopWatch.class),
+                new Method(
+                        "getNanoTime",
+                        Type.LONG_TYPE,
+                        new Type[]{}
+                )
+        );
+        invokeVirtual(
+                Type.getType(SmithProbe.class),
+                new Method(
+                        "record",
+                        Type.VOID_TYPE,
+                        new Type[]{
+                                Type.INT_TYPE,
+                                Type.INT_TYPE,
+                                Type.LONG_TYPE,
+                                Type.LONG_TYPE
                         }
                 )
         );
