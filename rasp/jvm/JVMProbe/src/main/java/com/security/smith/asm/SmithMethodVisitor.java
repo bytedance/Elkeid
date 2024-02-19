@@ -3,6 +3,7 @@ package com.security.smith.asm;
 //import com.security.smith.SmithProbeProxy;
 import com.security.smith.processor.*;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.time.StopWatch;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -22,8 +23,11 @@ public class SmithMethodVisitor extends AdviceAdapter {
     private final boolean canBlock;
     private final boolean isStatic;
     private final boolean isConstructor;
-    private final int returnVariable;
+    private final int stopWatchVariable;
+    private final int stopWatchTotalVariable;
     private final int argumentsVariable;
+    private final int traceVariable;
+    private final int returnVariable;
     private final Label start;
     private final Label end;
     private final Label handler;
@@ -63,6 +67,10 @@ public class SmithMethodVisitor extends AdviceAdapter {
         handler = new Label();
 
         argumentsVariable = newLocal(Type.getType(Object[].class));
+        stopWatchTotalVariable = newLocal(Type.getType(StopWatch.class));
+        stopWatchVariable = newLocal(Type.getType(StopWatch.class));
+        argumentsVariable = newLocal(Type.getType(Object[].class));
+        traceVariable = newLocal(Type.getType(Trace.class));
         returnVariable = newLocal(Type.getType(Object.class));
 
         isConstructor = name.equals("<init>");
@@ -101,6 +109,28 @@ public class SmithMethodVisitor extends AdviceAdapter {
 
         visitTryCatchBlock(start, end, handler, Type.getInternalName(Exception.class));
 
+        invokeStatic(
+                Type.getType(StopWatch.class),
+                new Method(
+                        "createStarted",
+                        Type.getType(StopWatch.class),
+                        new Type[]{}
+                )
+        );
+
+        storeLocal(stopWatchTotalVariable);
+
+        invokeStatic(
+                Type.getType(StopWatch.class),
+                new Method(
+                        "createStarted",
+                        Type.getType(StopWatch.class),
+                        new Type[]{}
+                )
+        );
+
+        storeLocal(stopWatchVariable);
+
         loadArgArray();
         storeLocal(argumentsVariable);
 
@@ -115,6 +145,28 @@ public class SmithMethodVisitor extends AdviceAdapter {
             } else {
                 preHook = "detect";
             }
+        if (!canBlock) {
+            Label label = new Label();
+
+            surplus();
+            ifZCmp(EQ, label);
+
+            newTrace();
+            storeLocal(traceVariable);
+
+            loadLocal(stopWatchVariable);
+
+            invokeVirtual(
+                    Type.getType(StopWatch.class),
+                    new Method(
+                            "suspend",
+                            Type.VOID_TYPE,
+                            new Type[]{}
+                    )
+            );
+
+            mark(label);
+            return;
         }
 
         push(preHook);
@@ -135,6 +187,27 @@ public class SmithMethodVisitor extends AdviceAdapter {
                         }
                 )
         );
+
+        Label label = new Label();
+
+        surplus();
+        ifZCmp(NE, label);
+
+        visitInsn(ACONST_NULL);
+        storeLocal(traceVariable);
+
+        mark(label);
+
+        loadLocal(stopWatchVariable);
+
+        invokeVirtual(
+                Type.getType(StopWatch.class),
+                new Method(
+                        "suspend",
+                        Type.VOID_TYPE,
+                        new Type[]{}
+                )
+        );
     }
 
     @Override
@@ -143,7 +216,22 @@ public class SmithMethodVisitor extends AdviceAdapter {
 
         if (opcode == ATHROW) {
             return;
-        }
+
+        loadLocal(stopWatchVariable);
+
+        invokeVirtual(
+                Type.getType(StopWatch.class),
+                new Method(
+                        "resume",
+                        Type.VOID_TYPE,
+                        new Type[]{}
+                )
+        );
+
+        Label label = new Label();
+
+        loadLocal(traceVariable);
+        ifNull(label);
 
         Type returnType = Type.getReturnType(methodDesc);
 
@@ -192,6 +280,79 @@ public class SmithMethodVisitor extends AdviceAdapter {
                                 Type.getType(Object[].class),
                                 Type.getType(Object.class),
                                 Type.BOOLEAN_TYPE
+                        }
+                )
+        );
+
+        post();
+        mark(label);
+
+        loadLocal(stopWatchVariable);
+
+        invokeVirtual(
+                Type.getType(StopWatch.class),
+                new Method(
+                        "stop",
+                        Type.VOID_TYPE,
+                        new Type[]{}
+                )
+        );
+
+        loadLocal(stopWatchTotalVariable);
+
+        invokeVirtual(
+                Type.getType(StopWatch.class),
+                new Method(
+                        "stop",
+                        Type.VOID_TYPE,
+                        new Type[]{}
+                )
+        );
+
+        invokeStatic(
+                Type.getType(SmithProbe.class),
+                new Method(
+                        "getInstance",
+                        Type.getType(SmithProbe.class),
+                        new Type[]{}
+                )
+        );
+
+        push(classID);
+        push(methodID);
+
+        loadLocal(stopWatchVariable);
+
+        invokeVirtual(
+                Type.getType(StopWatch.class),
+                new Method(
+                        "getNanoTime",
+                        Type.LONG_TYPE,
+                        new Type[]{}
+                )
+        );
+
+        loadLocal(stopWatchTotalVariable);
+
+        invokeVirtual(
+                Type.getType(StopWatch.class),
+                new Method(
+                        "getNanoTime",
+                        Type.LONG_TYPE,
+                        new Type[]{}
+                )
+        );
+
+        invokeVirtual(
+                Type.getType(SmithProbe.class),
+                new Method(
+                        "record",
+                        Type.VOID_TYPE,
+                        new Type[]{
+                                Type.INT_TYPE,
+                                Type.INT_TYPE,
+                                Type.LONG_TYPE,
+                                Type.LONG_TYPE
                         }
                 )
         );
