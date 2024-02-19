@@ -55,6 +55,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     private final Disruptor<Trace> disruptor;
     private final Map<String, SmithClass> smithClasses;
     private final Map<String, Patcher> patchers;
+    private final Map<Pair<Integer, Integer>, List<Long>> records;
+    private final Map<Pair<Integer, Integer>, List<Long>> recordsTotal;
+    private final Map<Pair<Integer, Integer>, Long> hooktimeRecords;
+    private final Map<Pair<Integer, Integer>, Long> runtimeRecords;
     private final Map<Pair<Integer, Integer>, Filter> filters;
     private final Map<Pair<Integer, Integer>, List<Block>> blocks;
     private final Map<Pair<Integer, Integer>, Integer> limits;
@@ -77,6 +81,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         filters = new ConcurrentHashMap<>();
         blocks = new ConcurrentHashMap<>();
         limits = new ConcurrentHashMap<>();
+        records = new HashMap<>();
+        recordsTotal = new HashMap<>();
+        hooktimeRecords = new HashMap<>();
+        runtimeRecords = new HashMap<>();
 
         heartbeat = new Heartbeat();
         client = new Client(this);
@@ -134,7 +142,18 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 0,
                 TimeUnit.MINUTES.toMillis(1)
         );
-    }
+
+        new Timer(true).schedule(
+            new TimerTask() {
+                @Override
+                public void run() {
+                    show();
+                }
+            },
+            TimeUnit.SECONDS.toMillis(5),
+            TimeUnit.SECONDS.toMillis(10)
+        );
+}
 
     private void reloadClasses() {
         reloadClasses(smithClasses.keySet());
@@ -250,6 +269,65 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             ringBuffer.publish(sequence);
         } catch (InsufficientCapacityException ignored) {
 
+        }
+    }
+
+    private Long tp(List<Long> times, double percent) {
+        return times.get((int)(percent / 100 * times.size() - 1));
+    }
+
+    private void show() {
+        synchronized (records) {
+            SmithLogger.logger.info("=================== statistics ===================");
+
+            records.forEach((k, v) -> {
+                Collections.sort(v);
+
+                List<Long> tv = recordsTotal.get(new ImmutablePair<>(k.getLeft(), k.getRight()));
+
+                Collections.sort(tv);
+
+                Long hooktime = hooktimeRecords.get(new ImmutablePair<>(k.getLeft(), k.getRight()));
+                Long runtime = runtimeRecords.get(new ImmutablePair<>(k.getLeft(), k.getRight()));
+
+                SmithLogger.logger.info(
+                        String.format(
+                                "class: %d method: %d count: %d tp50: %d tp90: %d tp95: %d tp99: %d tp99.99: %d max: %d total-max:%d hooktime:%d runtime:%d",
+                                k.getLeft(),
+                                k.getRight(),
+                                v.size(),
+                                tp(v, 50),
+                                tp(v, 90),
+                                tp(v, 95),
+                                tp(v, 99),
+                                tp(v, 99.99),
+                                v.get(v.size() - 1),
+                                tv.get(tv.size() - 1),
+                                hooktime,
+                                runtime
+                        )
+                );
+            });
+        }
+    }
+
+    public void record(int classID, int methodID, long time,long totaltime) {
+        synchronized (records) {
+            records.computeIfAbsent(new ImmutablePair<>(classID, methodID), k -> new ArrayList<>()).add(time);
+        }
+
+        synchronized (recordsTotal) {
+            recordsTotal.computeIfAbsent(new ImmutablePair<>(classID, methodID), k -> new ArrayList<>()).add(totaltime);
+        }
+
+        synchronized (hooktimeRecords) {
+            hooktimeRecords.computeIfAbsent(new ImmutablePair<>(classID, methodID), k -> time);
+            hooktimeRecords.computeIfPresent(new ImmutablePair<>(classID, methodID),(k,v) -> v+time);
+        }
+
+        synchronized (runtimeRecords) {
+            runtimeRecords.computeIfAbsent(new ImmutablePair<>(classID, methodID), k -> totaltime);
+            runtimeRecords.computeIfPresent(new ImmutablePair<>(classID, methodID),(k,v) -> v+totaltime);
         }
     }
 
