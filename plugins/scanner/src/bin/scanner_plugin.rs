@@ -10,7 +10,7 @@ use scanner::{
         ARCHIVE_DB_HASH, ARCHIVE_DB_PWD, ARCHIVE_DB_VERSION, DB_DEFAULT, DB_URLS,
         SERVICE_DEFAULT_CG_CPU, SERVICE_DEFAULT_CG_MEM, SERVICE_DEFAULT_LOG_LEVEL,
         SERVICE_DEFAULT_LOG_MAX_BAK, SERVICE_DEFAULT_LOG_PATH, SERVICE_DEFAULT_LOG_RLEVEL,
-        SERVICE_PID_LOCK_PATH,
+        SERVICE_ENABLE_CRONJOB, SERVICE_PID_LOCK_PATH,
     },
     detector::Detector,
     model::engine::clamav::{self, updater},
@@ -153,10 +153,12 @@ fn main() {
     });
 
     // cronjob scan dir and proc
-    let s_cron_worker = s.clone();
-    let s_cron_lock = s_lock.clone();
-    let _cronjob_t = Cronjob::new(s_cron_worker, s_cron_lock, WAIT_INTERVAL_DAILY);
-
+    let mut _cronjob_t  = None;
+    if *SERVICE_ENABLE_CRONJOB != 0{
+        let s_cron_worker = s.clone();
+        let s_cron_lock = s_lock.clone();
+        _cronjob_t = Some(Cronjob::new(s_cron_worker, s_cron_lock, WAIT_INTERVAL_DAILY));
+    }
     // wait childs
     let _: () = r_lock.recv().unwrap();
 

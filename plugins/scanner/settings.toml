@@ -14,6 +14,7 @@ log_level = "info"
 log_path = "./"
 remote_log_level = "error"
 max_backups = 10
+enable_cronjob = 0
 
 [engine]
 clamav_max_filesize = 18874368

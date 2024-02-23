@@ -17,6 +17,7 @@ lazy_static::lazy_static!(
     pub static ref SERVICE_DEFAULT_LOG_PATH: String = settings_string("service","log_path").unwrap().to_string();
     pub static ref SERVICE_DEFAULT_LOG_RLEVEL: String = settings_string("service","remote_log_level").unwrap().to_string();
     pub static ref SERVICE_DEFAULT_LOG_MAX_BAK: i64 = settings_int("service","max_backups").unwrap() as _;
+    pub static ref SERVICE_ENABLE_CRONJOB: i64 = settings_int("service","enable_cronjob").unwrap() as _;
 
     pub static ref SCAN_DIR_CONFIG: Vec<ScanConfigs> = gen_scan_dir().unwrap();
     pub static ref SCAN_DIR_FILTER: Vec<String> = settings_vec_string("scan","filter").unwrap();
