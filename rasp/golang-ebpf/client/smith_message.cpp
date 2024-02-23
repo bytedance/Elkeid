@@ -1,6 +1,6 @@
 #include "smith_message.h"
 
-constexpr auto RUNTIME = "golang";
+constexpr auto RUNTIME = "Golang";
 constexpr auto PROBE_VERSION = "1.0.0";
 
 void to_json(nlohmann::json &j, const ProcessInfo &processInfo) {

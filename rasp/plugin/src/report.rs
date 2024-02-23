@@ -2,6 +2,7 @@ use librasp::process::ProcessInfo;
 use serde_json::json;
 use std::collections::HashMap;
 use log::{error, debug};
+use librasp::settings::RASP_VERSION;
 use crate::utils;
 
 pub fn make_report(
@@ -93,6 +94,7 @@ pub fn make_report(
     );
     report.insert("try_attach_count", process.try_attach_count.to_string());
     report.insert("attached_count", process.attached_count.to_string());
+    report.insert("probe_version", RASP_VERSION.to_string());
     report.insert("uptime", match utils::count_uptime(process.start_time.unwrap_or(0 as f32)){
         Ok(t) => t.to_string(),
         Err(e) => {

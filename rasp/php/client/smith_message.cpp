@@ -5,7 +5,7 @@
 #include <Zend/zend.h>
 #include <Zend/zend_constants.h>
 
-constexpr auto RUNTIME = "php";
+constexpr auto RUNTIME = "PHP";
 constexpr auto PROBE_VERSION = "1.0.0";
 
 std::string getVersion() {
