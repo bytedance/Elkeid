@@ -4019,8 +4019,8 @@ void smith_enum_img(void)
 static struct tt_rb g_rb_ent;  /* rbtree of cached ents */
 static LIST_HEAD(g_lru_ent);   /* lru list of cached ents */
 
-#define SMITH_ENT_REAPER  (600)     /* 10 minutes */
-#define SMITH_ENT_MAX    (2048)     /* max cached imgs */
+#define SMITH_ENT_REAPER (60)         /* 60 seconds */
+#define SMITH_ENT_MAX    (1UL << 16)  /* max pathes to be cached */
 
 static int smith_build_ent(struct smith_ent *ent, struct smith_ent *obj)
 {
@@ -4093,7 +4093,7 @@ static void smith_release_ent(struct tt_rb *rb, struct tt_node *tnod)
  * support routines for entry cache
  */
 
-static int smith_drop_head_ent(void)
+static int smith_drop_head_ent(int count)
 {
     struct list_head *link;
     struct smith_ent *ent;
@@ -4105,18 +4105,14 @@ static int smith_drop_head_ent(void)
     if (list_empty(&g_lru_ent))
         goto errorout;
 
-    if (0 == atomic_read(&ent->se_node.refs)) {
-        if (smith_get_seconds() > ent->se_age) {
-            list_del_init(&ent->se_link);
-            /* this entry hasn't been touched for seconds */
-            /* so remove the ent from rbtree and drop it */
-            tt_rb_remove_node_nolock(&g_rb_ent, &ent->se_node);
-            rc++;
-        }
-    } else {
+    if (smith_get_seconds() > ent->se_age || count > SMITH_ENT_MAX) {
         list_del_init(&ent->se_link);
-        /* smith_put_ent will put it back to lru list */
+        /* this entry hasn't been touched for seconds */
+        /* so remove the ent from rbtree and drop it */
+        tt_rb_remove_node_nolock(&g_rb_ent, &ent->se_node);
+        rc++;
     }
+
 errorout:
     write_unlock(&g_rb_ent.lock);
 
@@ -4127,10 +4123,10 @@ static void smith_drop_head_ents(struct tt_rb *rb)
 {
     int count = atomic_read(&rb->count);
 
-    do {
-        if (!smith_drop_head_ent())
+    while (--count > SMITH_ENT_MAX) {
+        if (!smith_drop_head_ent(count))
             break;
-    } while (--count > SMITH_ENT_MAX);
+    }
 }
 
 static void smith_prepare_ent(char *path, struct smith_ent *ent)
@@ -4143,8 +4139,9 @@ static void smith_prepare_ent(char *path, struct smith_ent *ent)
 
 int smith_insert_ent(char *path)
 {
-    struct smith_ent obj;
+    struct smith_ent obj, *ent;
     struct tt_node *tnod = NULL;
+
 
     /* init obj */
     smith_prepare_ent(path, &obj);
@@ -4152,20 +4149,24 @@ int smith_insert_ent(char *path)
     /* check whether the entry was already inserted ? */
     read_lock(&g_rb_ent.lock);
     tnod = tt_rb_lookup_nolock(&g_rb_ent, &obj);
-    if (tnod) {
-        atomic_inc(&tnod->refs);
-        read_unlock(&g_rb_ent.lock);
+    read_unlock(&g_rb_ent.lock);
+    if (tnod)
         goto out;
-    } else {
-        read_unlock(&g_rb_ent.lock);
-    }
 
     /* insert new node to rbtree */
     write_lock(&g_rb_ent.lock);
     tnod = tt_rb_insert_key_nolock(&g_rb_ent, &obj.se_node);
-    if (tnod)
-        atomic_inc(&tnod->refs);
+    if (tnod) {
+        ent = container_of(tnod, struct smith_ent, se_node);
+        /* remove ent from LRU if it's already LRUed */
+        list_del_init(&ent->se_link);
+        ent->se_age = smith_get_seconds() + SMITH_ENT_REAPER;
+        /* insert ent to the tail of LRU list */
+        list_add_tail(&ent->se_link, &g_lru_ent);
+    }
     write_unlock(&g_rb_ent.lock);
+
+    smith_drop_head_ents(&g_rb_ent);
 
 out:
     return (!!tnod);
@@ -4182,31 +4183,21 @@ int smith_remove_ent(char *path)
     /* check whether the entry was already inserted ? */
     read_lock(&g_rb_ent.lock);
     tnod = tt_rb_lookup_nolock(&g_rb_ent, &obj);
-    if (tnod) {
-        ent = container_of(tnod, struct smith_ent, se_node);
-        if (ent->se_tgid != current->tgid)
-            tnod = NULL;
-    }
     read_unlock(&g_rb_ent.lock);
     if (!tnod)
         goto out;
 
     write_lock(&g_rb_ent.lock);
+    /* do 2nd search to assure it's in lru list */
     tnod = tt_rb_lookup_nolock(&g_rb_ent, &obj);
     if (tnod) {
         ent = container_of(tnod, struct smith_ent, se_node);
         list_del_init(&ent->se_link);
-        if (0 == atomic_dec_return(&ent->se_node.refs)) {
-            tt_rb_remove_node_nolock(&g_rb_ent, tnod);
-        } else {
-            ent->se_age = smith_get_seconds() + SMITH_ENT_REAPER;
-            list_add_tail(&ent->se_link, &g_lru_ent);
-        }
+        tt_rb_remove_node_nolock(&g_rb_ent, tnod);
     }
     write_unlock(&g_rb_ent.lock);
 
 out:
-    smith_drop_head_ents(&g_rb_ent);
     return (!!tnod);
 }
 
