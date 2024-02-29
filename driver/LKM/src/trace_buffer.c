@@ -3286,7 +3286,7 @@ tb_reserve_next_event(struct tb_ring *buffer,
 	 * storm or we have something buggy.
 	 * Bail!
 	 */
-	if (RB_WARN_ON(cpu_ring, ++nr_loops > 1000))
+	if (++nr_loops > 1000)
 		goto out_fail;
 
 	event = __tb_reserve_next(cpu_ring, &info);
