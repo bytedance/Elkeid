@@ -1813,7 +1813,8 @@ static void smith_trace_sysret_recvdat(long sockfd, unsigned long userp, long le
     if (addr.sa_family != AF_INET && addr.sa_family != AF_INET6)
         goto out;
     if (addr.sport != 53 && addr.sport != 5353 &&
-        addr.dport != 53 && addr.dport != 5353)
+        addr.dport != 53 && addr.dport != 5353 &&
+        addr.sport != 0 && addr.dport != 0)
         goto out;
 
     /* whether udp traffic of our interest goes high */
@@ -1869,7 +1870,8 @@ static void smith_trace_sysret_recvmsg(long sockfd, unsigned long umsg, long len
     if (addr.sa_family != AF_INET && addr.sa_family != AF_INET6)
         goto out;
     if (addr.sport != 53 && addr.sport != 5353 &&
-        addr.dport != 53 && addr.dport != 5353)
+        addr.dport != 53 && addr.dport != 5353 &&
+        addr.sport != 0 && addr.dport != 0)
         goto out;
 
     /* whether udp traffic of our interest goes high */
