@@ -314,7 +314,8 @@ static struct file *smith_fget_raw(unsigned int fd)
 	}
 	rcu_read_unlock();
 
-	smith_put_files_struct(files);
+	/* it's safe to call put_files_struct for current */
+	put_files_struct_sym(files);
 	return file;
 }
 
@@ -918,7 +919,10 @@ next_socket:
                 sockfd_put(socket);
             }
         }
-        smith_put_files_struct(files);
+        if (task == current)
+            put_files_struct_sym(files);
+        else
+            smith_put_files_struct(files);
 
         if (socket_check) {
             *socket_pid = task->tgid;
