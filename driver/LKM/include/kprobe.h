@@ -29,6 +29,6 @@ extern const struct kprobe_initcall KPROBE_CALL(filter);
 extern const struct kprobe_initcall KPROBE_CALL(anti_rootkit);
 extern const struct kprobe_initcall KPROBE_CALL(kprobe_hook);
 
-#define SMITH_VERSION "1.9.0.4"
+#define SMITH_VERSION "1.9.1.5"
 
 #endif /* __KPROBE_TEMPLATE_H */
