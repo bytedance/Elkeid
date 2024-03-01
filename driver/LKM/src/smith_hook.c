@@ -245,6 +245,10 @@ static void smith_fput(struct file *filp)
 {
     struct delayed_put_node *dnod;
 
+    /* just deref the reference of file structure */
+    if (atomic_long_add_unless(&filp->f_count, -1, 1))
+        return;
+
     /* just loop until we get a new recrod */
     do {
         dnod = smith_alloc_delayed_put_node();
@@ -261,6 +265,10 @@ static void smith_fput(struct file *filp)
 static void smith_put_files_struct(struct files_struct *files)
 {
     struct delayed_put_node *dnod;
+
+    /* just deref the reference of files_table */
+    if (atomic_add_unless(&files->count, -1, 1))
+        return;
 
     /* just loop until we get a new recrod */
     do {
@@ -314,7 +322,8 @@ static struct file *smith_fget_raw(unsigned int fd)
 	}
 	rcu_read_unlock();
 
-	smith_put_files_struct(files);
+	/* it's safe to call put_files_struct for current */
+	put_files_struct_sym(files);
 	return file;
 }
 
@@ -918,7 +927,10 @@ next_socket:
                 sockfd_put(socket);
             }
         }
-        smith_put_files_struct(files);
+        if (task == current)
+            put_files_struct_sym(files);
+        else
+            smith_put_files_struct(files);
 
         if (socket_check) {
             *socket_pid = task->tgid;
