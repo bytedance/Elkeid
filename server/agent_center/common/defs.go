@@ -48,6 +48,7 @@ var (
 	PProfPort   int //pprof
 
 	RawDataPort int
+	MonitorPort int
 
 	UserName string
 	Password string

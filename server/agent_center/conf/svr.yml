@@ -85,6 +85,9 @@ server:
   rawdata:
     port: 6754
 
+  monitor:
+    port: 6755
+
 plugins:
   windows:
     - collector

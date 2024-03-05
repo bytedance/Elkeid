@@ -64,6 +64,7 @@ func initDefault() {
 	PProfPort = UserConfig.GetInt("server.pprof.port")
 
 	RawDataPort = UserConfig.GetInt("server.rawdata.port")
+	MonitorPort = UserConfig.GetInt("server.monitor.port")
 
 	UserName = UserConfig.GetString("manage.username")
 	Password = UserConfig.GetString("manage.password")

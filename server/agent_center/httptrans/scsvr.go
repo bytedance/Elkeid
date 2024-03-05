@@ -17,6 +17,7 @@ import (
 
 func Run() {
 	go runAPIServer(common.HttpPort, common.HttpSSLEnable, common.HttpAuthEnable, common.SSLCertFile, common.SSLKeyFile)
+	go runMonitorServer(common.MonitorPort)
 	runRawDataServer(common.RawDataPort, common.SSLCaFile, common.SSLRawDataCertFile, common.SSLRawDataKeyFile)
 }
 
@@ -60,6 +61,23 @@ func runAPIServer(port int, enableSSL, enableAuth bool, certFile, keyFile string
 	}
 	if err != nil {
 		ylog.Errorf("RunServer", "####http run error: %v", err)
+	}
+}
+
+func runMonitorServer(port int) {
+	router := gin.Default()
+
+	router.GET("/metrics", func(c *gin.Context) {
+		promhttp.Handler().ServeHTTP(c.Writer, c.Request)
+	})
+	router.GET("/ping", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"message": "pong"})
+	})
+
+	ylog.Infof("runMonitorServer", "####HTTP_LISTEN_ON:%d", port)
+	err := router.Run(fmt.Sprintf(":%d", port))
+	if err != nil {
+		ylog.Errorf("runMonitorServer", "####http run error: %v", err)
 	}
 }
 
