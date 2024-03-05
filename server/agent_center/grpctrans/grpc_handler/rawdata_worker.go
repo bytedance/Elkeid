@@ -3,16 +3,18 @@ package grpc_handler
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/bytedance/Elkeid/server/agent_center/common"
-	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
-	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/pool"
-	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
-	"github.com/gogo/protobuf/proto"
-	"github.com/prometheus/client_golang/prometheus"
 	"math"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/bytedance/Elkeid/server/agent_center/common"
+	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
+	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/metrics"
+	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/pool"
+	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
+	"github.com/gogo/protobuf/proto"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
@@ -52,21 +54,21 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 			mqMsg.Enhanced = "false"
 		}
 
-		outputDataTypeCounter.With(prometheus.Labels{"data_type": fmt.Sprint(mqMsg.DataType)}).Add(float64(1))
-		outputAgentIDCounter.With(prometheus.Labels{"agent_id": mqMsg.AgentID}).Add(float64(1))
+		metrics.OutputDataTypeCounter.With(prometheus.Labels{"data_type": fmt.Sprint(mqMsg.DataType)}).Add(float64(1))
+		metrics.OutputAgentIDCounter.With(prometheus.Labels{"agent_id": mqMsg.AgentID}).Add(float64(1))
 
 		switch mqMsg.DataType {
 		case 1000:
 			//parse the agent heartbeat data
 			detail := parseAgentHeartBeat(req.GetData()[k], req, conn)
-			metricsAgentHeartBeat(req.AgentID, "agent", detail)
+			metrics.UpdateFromAgentHeartBeat(req.AgentID, "agent", detail)
 		case 1001:
 			//
 			//parse the agent plugins heartbeat data
 			detail := parsePluginHeartBeat(req.GetData()[k], req, conn)
 			if detail != nil {
 				if name, ok := detail["name"].(string); ok {
-					metricsAgentHeartBeat(req.AgentID, name, detail)
+					metrics.UpdateFromAgentHeartBeat(req.AgentID, name, detail)
 				}
 			}
 		case 2001, 2003, 6000, 5100, 5101, 8010, 1021, 1022, 1023, 1024, 1025, 1101, 1031:
@@ -122,19 +124,6 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 		common.KafkaProducer.SendPBWithKey(req.AgentID, mqMsg)
 	}
 	return req.AgentID
-}
-
-func metricsAgentHeartBeat(agentID, name string, detail map[string]interface{}) {
-	if detail == nil {
-		return
-	}
-	for k, v := range agentGauge {
-		if cpu, ok := detail[k]; ok {
-			if fv, ok2 := cpu.(float64); ok2 {
-				v.With(prometheus.Labels{"agent_id": agentID, "name": name}).Set(fv)
-			}
-		}
-	}
 }
 
 func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connection) map[string]interface{} {

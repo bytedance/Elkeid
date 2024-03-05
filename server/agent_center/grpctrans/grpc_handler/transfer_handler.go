@@ -4,14 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
+	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/metrics"
 	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/pool"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/bytedance/Elkeid/server/agent_center/httptrans/client"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/xid"
 	"google.golang.org/grpc/peer"
-	"time"
 )
 
 type TransferHandler struct{}
@@ -26,6 +29,14 @@ func InitGlobalGRPCPool() {
 	option.PoolLength = common.ConnLimit
 	option.ChanLen = common.ConnLimit * 2
 	GlobalGRPCPool = pool.NewGRPCPool(option)
+
+	gauge := prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+		Name: "elkeid_ac_grpc_conn_count",
+		Help: "Elkeid AC grpc connection count",
+	}, func() float64 {
+		return float64(GlobalGRPCPool.GetCount())
+	})
+	prometheus.MustRegister(gauge)
 }
 
 func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
@@ -87,7 +98,10 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 			GlobalConfigHandler.Delete(agentID)
 		}
 
-		releaseAgentHeartbeatMetrics(agentID)
+		metrics.ReleaseAgentHeartbeatMetrics(agentID, "agent")
+		for _, v := range connection.GetPluginNameList() {
+			metrics.ReleaseAgentHeartbeatMetrics(agentID, v)
+		}
 
 		//延迟6秒删除，避免状态被Join覆盖
 		time.AfterFunc(time.Second*6, func() {
@@ -126,7 +140,7 @@ func recvData(stream pb.Transfer_TransferServer, conn *pool.Connection) {
 				ylog.Warnf("recvData", "Transfer Recv Error %s, now close the recv direction of the tcp, %s ", err.Error(), conn.AgentID)
 				return
 			}
-			recvCounter.Inc()
+			metrics.RecvCounter.Inc()
 			handleRawData(data, conn)
 		}
 	}
@@ -153,7 +167,7 @@ func sendData(stream pb.Transfer_TransferServer, conn *pool.Connection) {
 				close(cmd.Ready)
 				return
 			}
-			sendCounter.Inc()
+			metrics.SendCounter.Inc()
 			ylog.Infof("sendData", "Transfer Send %s %v ", conn.AgentID, cmd)
 			cmd.Error = nil
 			close(cmd.Ready)

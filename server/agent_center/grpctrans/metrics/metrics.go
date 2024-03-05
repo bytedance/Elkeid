@@ -1,17 +1,17 @@
-package grpc_handler
+package metrics
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
-	recvCounter           = initPrometheusGrpcReceiveCounter()
-	sendCounter           = initPrometheusGrpcSendCounter()
-	outputDataTypeCounter = initPrometheusOutputDataTypeCounter()
-	outputAgentIDCounter  = initPrometheusOutputAgentIDCounter()
+	RecvCounter           = initPrometheusGrpcReceiveCounter()
+	SendCounter           = initPrometheusGrpcSendCounter()
+	OutputDataTypeCounter = initPrometheusOutputDataTypeCounter()
+	OutputAgentIDCounter  = initPrometheusOutputAgentIDCounter()
 )
 
-var agentGauge = map[string]*prometheus.GaugeVec{
+var AgentGauge = map[string]*prometheus.GaugeVec{
 	"cpu":         initPrometheusAgentCpuGauge(),
 	"rss":         initPrometheusAgentRssGauge(),
 	"du":          initPrometheusAgentDuGauge(),
@@ -19,17 +19,8 @@ var agentGauge = map[string]*prometheus.GaugeVec{
 	"write_speed": initPrometheusAgentWriteSpeedGauge(),
 	"tx_speed":    initPrometheusAgentTxSpeedGauge(),
 	"rx_speed":    initPrometheusAgentRxSpeedGauge(),
-}
-
-func initPrometheusGrpcConnGauge() {
-	prometheusOpts := prometheus.GaugeOpts{
-		Name: "elkeid_ac_grpc_conn_count",
-		Help: "Elkeid AC grpc connection count",
-	}
-	gauge := prometheus.NewGaugeFunc(prometheusOpts, func() float64 {
-		return float64(GlobalGRPCPool.GetCount())
-	})
-	prometheus.MustRegister(gauge)
+	"tx_tps":      initPrometheusAgentTxTpsGauge(),
+	"rx_tpx":      initPrometheusAgentRxTpsGauge(),
 }
 
 func initPrometheusGrpcReceiveCounter() prometheus.Counter {
@@ -142,22 +133,41 @@ func initPrometheusAgentRxSpeedGauge() *prometheus.GaugeVec {
 	return vec
 }
 
-func releaseAgentHeartbeatMetrics(agentID string) {
-	// tmp remove all gauge for v2.1.1
-	for _, v := range agentGauge {
-		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": "agent"})
-		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": "driver"})
-		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": "rasp"})
-		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": "etrace"})
-		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": "eventlog"})
-		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": "baseline"})
-		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": "collector"})
-		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": "journal_watcher"})
-		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": "scanner"})
-		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": "scanner_clamav"})
+func initPrometheusAgentTxTpsGauge() *prometheus.GaugeVec {
+	prometheusOpts := prometheus.GaugeOpts{
+		Name: "elkeid_ac_agent_tx_tps",
+		Help: "Elkeid AC agent tx tps",
+	}
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"agent_id", "name"})
+	prometheus.MustRegister(vec)
+	return vec
+}
+
+func initPrometheusAgentRxTpsGauge() *prometheus.GaugeVec {
+	prometheusOpts := prometheus.GaugeOpts{
+		Name: "elkeid_ac_agent_rx_tps",
+		Help: "Elkeid AC agent rx tps",
+	}
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"agent_id", "name"})
+	prometheus.MustRegister(vec)
+	return vec
+}
+
+func ReleaseAgentHeartbeatMetrics(agentID, pluginName string) {
+	for _, v := range AgentGauge {
+		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": pluginName})
 	}
 }
 
-func init() {
-	initPrometheusGrpcConnGauge()
+func UpdateFromAgentHeartBeat(agentID, name string, detail map[string]interface{}) {
+	if detail == nil {
+		return
+	}
+	for k, v := range AgentGauge {
+		if cpu, ok := detail[k]; ok {
+			if fv, ok2 := cpu.(float64); ok2 {
+				v.With(prometheus.Labels{"agent_id": agentID, "name": name}).Set(fv)
+			}
+		}
+	}
 }

@@ -3,16 +3,18 @@ package pool
 import (
 	"context"
 	"errors"
-	"github.com/bytedance/Elkeid/server/agent_center/common"
-	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
-	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
-	"github.com/bytedance/Elkeid/server/agent_center/httptrans/client"
-	"github.com/patrickmn/go-cache"
 	"math/rand"
 	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/bytedance/Elkeid/server/agent_center/common"
+	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
+	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/metrics"
+	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
+	"github.com/bytedance/Elkeid/server/agent_center/httptrans/client"
+	"github.com/patrickmn/go-cache"
 )
 
 type GRPCPool struct {
@@ -113,6 +115,7 @@ func (c *Connection) SetAgentDetail(detail map[string]interface{}) {
 			onlineTime := time.Now().Add(-120 * time.Second).Unix()
 			for k := range c.pluginDetail {
 				if c.pluginDetail[k]["last_heartbeat_time"].(int64) < onlineTime {
+					metrics.ReleaseAgentHeartbeatMetrics(c.AgentID, k)
 					c.pluginDetail[k]["online"] = false
 					c.updateConnStat()
 					break
@@ -120,6 +123,21 @@ func (c *Connection) SetAgentDetail(detail map[string]interface{}) {
 			}
 		})
 	}
+}
+
+func (c *Connection) GetPluginNameList() []string {
+	var ret []string
+	c.pluginDetailLock.Lock()
+	defer c.pluginDetailLock.Unlock()
+	if c.pluginDetail == nil {
+		return make([]string, 0)
+	} else {
+		ret = make([]string, 0, len(c.pluginDetail))
+	}
+	for k := range c.pluginDetail {
+		ret = append(ret, k)
+	}
+	return ret
 }
 
 func (c *Connection) GetPluginDetail(name string) map[string]interface{} {
