@@ -318,7 +318,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             ClassWriter classWriter = new SmithClassWriter(ClassWriter.COMPUTE_MAXS);
 
             ClassVisitor classVisitor = new SmithClassVisitor(
-                    Opcodes.ASM8,
+                    Opcodes.ASM9,
                     classWriter,
                     smithClass.getId(),
                     classType,
