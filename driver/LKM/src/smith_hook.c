@@ -121,24 +121,30 @@ struct delayed_put_node {
     uint32_t type:8;  /* 0: file, 1: files */
 };
 
-struct memcache_head g_delayed_put_root;
+static struct memcache_head g_delayed_put_root;
+static atomic_t g_delayed_put_active; /* active nodes */
 
 static struct delayed_put_node *smith_alloc_delayed_put_node(void)
 {
+    struct delayed_put_node *dnod;
     struct memcache_node *mnod;
 
     mnod = memcache_pop(&g_delayed_put_root);
     if (mnod) {
-        struct delayed_put_node *dnod;
         dnod = container_of(mnod, struct delayed_put_node, cache);
         dnod->flag_pool = 1;
-        return dnod;
+    } else {
+        dnod = smith_kzalloc(sizeof(struct delayed_put_node), GFP_ATOMIC);
     }
-    return smith_kzalloc(sizeof(struct delayed_put_node), GFP_ATOMIC);
+
+    return dnod;
 }
 
 static void smith_free_delayed_put_node(struct delayed_put_node *dnod)
 {
+    if (!dnod)
+        return;
+
     if (dnod->flag_pool)
         memcache_push(&dnod->cache, &g_delayed_put_root);
     else
@@ -167,6 +173,7 @@ static struct delayed_put_node *smith_deref_head_node(void)
         else if (0 == dnod->type)
             fput(dnod->filp);
         smith_free_delayed_put_node(dnod);
+        atomic_dec(&g_delayed_put_active);
     }
 
     return dnod;
@@ -216,6 +223,7 @@ static void smith_stop_delayed_put(void)
     /* kthread_stop will wait until worker thread exits */
     if (!IS_ERR_OR_NULL(g_delayed_put_thread)) {
         kthread_stop(g_delayed_put_thread);
+        g_delayed_put_thread = NULL;
     }
 
     /* make sure no records leaked */
@@ -227,6 +235,10 @@ static void smith_stop_delayed_put(void)
 
 static void smith_insert_delayed_put_node(struct delayed_put_node *dnod)
 {
+    if (!dnod)
+        return;
+
+    atomic_inc(&g_delayed_put_active);
     /* attach dnod to deayed_fput_queue */
     spin_lock(&g_delayed_put_lock);
     dnod->next = g_delayed_put_queue;
@@ -6428,6 +6440,71 @@ int smith_unregister_exec_load(void)
 
     return (rc ? 0 : -EALREADY);
 }
+
+/*
+ * System resouces used by HIDS/Elkeid LKM
+ */
+static char g_drv_stats[64] = "";
+
+#if !SMITH_FILE_CREATION_TRACK
+static atomic_t g_atomic_zero;
+static uint32_t g_nobjs_zero;
+#endif
+
+static struct smith_obj_stat {
+    const char *name;
+    atomic_t *active;
+    uint32_t *allocs;
+} g_stat_objs[] = {
+    {"tids", &g_hlist_tid.count, &g_hlist_tid.cache.fh_nobjs},
+    {"imgs", &g_rb_img.count, &g_rb_img.cache.fh_nobjs},
+    {"dput", &g_delayed_put_active, &g_delayed_put_root.fh_nobjs},
+#if SMITH_FILE_CREATION_TRACK
+    {"ents", &g_rb_ent.count, &g_rb_ent.cache.fh_nobjs},
+#else
+    {"ents", &g_atomic_zero, &g_nobjs_zero},
+#endif
+    {NULL, },
+};
+
+static int drvstats_get_params(char *val, K_PARAM_CONST struct kernel_param *kp)
+{
+    int len = 0, i;
+
+    if (0 == strcmp(kp->name, "worker_stats")) {
+        len = scnprintf(val, PAGE_SIZE, "%ld",
+              IS_ERR_OR_NULL(g_delayed_put_thread) ?
+              -1L : g_delayed_put_thread->pid);
+    } else if (0 == strcmp(kp->name, "mem_stats")) {
+        for (i = 0; g_stat_objs[i].name; i++) {
+            int l = scnprintf(val + len, PAGE_SIZE - len,
+                        i == 0 ? "%d %u" : " %d %u",
+                        atomic_read(g_stat_objs[i].active),
+                        *g_stat_objs[i].allocs);
+            len = len + l;
+        }
+    }
+    if (len)
+        len += scnprintf(val + len, PAGE_SIZE - len, "\n");
+
+    return len;
+}
+
+#if defined(module_param_cb)
+const struct kernel_param_ops drvstats_params_ops = {
+    .set = NULL,
+    .get = drvstats_get_params,
+};
+module_param_cb(worker_stats, &drvstats_params_ops, &g_drv_stats, 0400);
+module_param_cb(mem_stats, &drvstats_params_ops, &g_drv_stats, 0400);
+#elif defined(module_param_call)
+module_param_call(worker_stats, NULL, drvstats_get_params, &g_drv_stats, 0400);
+module_param_call(mem_stats, NULL, drvstats_get_params, &g_drv_stats, 0400);
+#else
+# warning "moudle_param_cb or module_param_call are not supported by target kernel"
+#endif
+MODULE_PARM_DESC(worker_stats, "kernel worker threads for elkeid");
+MODULE_PARM_DESC(mem_stats, "memory usage of core objects of elkeid");
 
 static int __init kprobe_hook_init(void)
 {
