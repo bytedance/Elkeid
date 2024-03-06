@@ -70,6 +70,10 @@ type Connection struct {
 
 	connUpdateStatLock sync.Mutex
 	connStatNeedSync   bool //是否需要把状态更新至manager端
+
+	IsNewDriverHeartbeat         atomic.Bool `json:"-"`
+	NewDriverHeartbeatLabels     []string    `json:"-"`
+	LastNewDriverHeartbeatUpdate int64       `json:"-"`
 }
 
 // Init 初始化同步状态
@@ -120,6 +124,11 @@ func (c *Connection) SetAgentDetail(detail map[string]interface{}) {
 					c.updateConnStat()
 					break
 				}
+			}
+			if c.IsNewDriverHeartbeat.Load() &&
+				c.LastNewDriverHeartbeatUpdate < onlineTime &&
+				c.IsNewDriverHeartbeat.CompareAndSwap(true, false) {
+				metrics.ReleaseDriverHeartbeat(c.NewDriverHeartbeatLabels)
 			}
 		})
 	}

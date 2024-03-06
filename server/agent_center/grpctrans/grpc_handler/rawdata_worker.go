@@ -58,6 +58,14 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 		metrics.OutputAgentIDCounter.With(prometheus.Labels{"agent_id": mqMsg.AgentID}).Add(float64(1))
 
 		switch mqMsg.DataType {
+		case 900:
+			driverLabels, ok := metrics.UpdateFromDriverHeartbeat(req.GetAgentID(), req.GetVersion(), req.GetData()[k])
+			if ok {
+				if conn.IsNewDriverHeartbeat.CompareAndSwap(false, true) {
+					conn.NewDriverHeartbeatLabels = driverLabels
+				}
+				conn.LastNewDriverHeartbeatUpdate = time.Now().Unix()
+			}
 		case 1000:
 			//parse the agent heartbeat data
 			detail := parseAgentHeartBeat(req.GetData()[k], req, conn)

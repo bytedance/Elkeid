@@ -103,6 +103,10 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 			metrics.ReleaseAgentHeartbeatMetrics(agentID, v)
 		}
 
+		if connection.IsNewDriverHeartbeat.CompareAndSwap(true, false) {
+			metrics.ReleaseDriverHeartbeat(connection.NewDriverHeartbeatLabels)
+		}
+
 		//延迟6秒删除，避免状态被Join覆盖
 		time.AfterFunc(time.Second*6, func() {
 			ylog.Infof("Evict", "HeartBeatEvict AgentID %s, AgentAddr: %s.", agentID, addr)
