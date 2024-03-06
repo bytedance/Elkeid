@@ -6,6 +6,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 use std::thread;
 use std::time::Duration;
+use std::fs::remove_file;
+use std::os::unix::fs::{symlink};
 
 use crossbeam::channel::{bounded, Receiver, SendError, Sender};
 use libc::{kill, killpg, SIGKILL};
@@ -210,37 +212,24 @@ impl RASPComm for ThreadMode {
                 );
             }
         }
-        if self.using_mount {
-            if let Some(bind_dir) = std::path::Path::new(&self.bind_path.clone()).parent() {
-                let bind_dir_str = bind_dir.to_str().unwrap();
-                mount(pid, bind_dir_str, bind_dir_str)?
+        if let Some(link_to) = self.linking_to.clone() {
+            if self.using_mount {
+                if let Some(bind_dir) = std::path::Path::new(&self.bind_path.clone()).parent() {
+    
+                    if let Some(link_dir) = std::path::Path::new(&link_to).parent() {
+                        let link_dir_str = link_dir.to_str().unwrap();
+                        let bind_dir_str = bind_dir.to_str().unwrap();
+                        mount(pid, bind_dir_str, link_dir_str)?
+                    }
+                }
+            } else {
+                if std::path::Path::new(&link_to).exists() {
+                    remove_file(link_to.as_str())?;
+                }
+                symlink(&self.bind_path.as_str(), link_to.as_str())?;
             }
         }
-        if let Some(linking_to) = self.linking_to.clone() {
-            match std::process::Command::new(settings::RASP_NS_ENTER_BIN())
-                .args([
-                    "-t",
-                    pid.to_string().as_str(),
-                    "-m",
-                    "-i",
-                    "-n",
-                    "-p",
-                    "/bin/ln",
-                    "-sf",
-                    self.bind_path.as_str(),
-                    linking_to.as_str(),
-                ])
-                .output()
-            {
-                Ok(o) => {
-                    info!("LN {} {:?} {:?}", o.status, o.stdout, o.stderr);
-                }
-                Err(e) => {
-                    error!("LN can not run: {}", e);
-                    return Err(anyhow!("link bind path failed: {}", e));
-                }
-            };
-        }
+        
         Ok(())
     }
     fn stop_comm(&mut self, _pid: i32, _mnt_namespace: &String) -> AnyhowResult<()> {

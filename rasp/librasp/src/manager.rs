@@ -249,7 +249,7 @@ impl RASPManager {
         }
 
         let valid_messages_string = serde_json::to_string(&valid_messages)?;
-        self.write_message_to_config_file(pid, nspid, valid_messages_string)?;
+        //self.write_message_to_config_file(pid, nspid, valid_messages_string)?;
 
         Ok(())
     }
@@ -315,7 +315,7 @@ impl RASPManager {
         let pid = process_info.pid;
         let nspid = ProcessInfo::read_nspid(pid)?.ok_or(anyhow!("can not read nspid: {}", pid))?;
         // delete config
-        self.delete_config_file(pid, nspid)?;
+        // self.delete_config_file(pid, nspid)?;
         let attach_result = match runtime_info.name {
             "JVM" => match JVMProbeState::inspect_process(process_info)? {
                 ProbeState::Attached => {
@@ -745,6 +745,7 @@ impl MntNamespaceTracer {
 }
 
 impl RASPManager {
+    /* 
     pub fn write_message_to_config_file(
         &self,
         pid: i32,
@@ -770,7 +771,6 @@ impl RASPManager {
                 .as_str(),
             ]),
         )?;
-        /*
         let ns_thread = thread::Builder::new().spawn(move || -> AnyhowResult<()> {
             debug!("switch namespace");
             libraspserver::ns::switch_namespace(pid);
@@ -784,9 +784,10 @@ impl RASPManager {
             Ok(())
         }).unwrap();
         ns_thread.join()?;
-         */
+         
         Ok(())
     }
+    
     pub fn delete_config_file(&self, pid: i32, nspid: i32) -> AnyhowResult<()> {
         let config_path = format!("/var/run/elkeid_rasp/{}.json", nspid);
         if Path::new(&config_path).exists() {
@@ -803,6 +804,7 @@ impl RASPManager {
         }
         Ok(())
     }
+    */
 }
 
 fn read_dir<P>(path: P) -> AnyhowResult<Vec<fs::DirEntry>>
