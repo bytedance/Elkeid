@@ -2,15 +2,15 @@ FROM centos:centos6 AS rhel6
 
 RUN rm -f /etc/yum.repos.d/CentOS-Media.repo
 RUN sed -e "s|^mirrorlist=|#mirrorlist=|g" \
-         -e "s|^#baseurl=http://mirror.centos.org/centos/\$releasever|baseurl=https://mirrors.aliyun.com/centos-vault/6.10|g" \
-         -i.bak \
-         /etc/yum.repos.d/CentOS-*.repo
+    -e "s|^#baseurl=http://mirror.centos.org/centos/\$releasever|baseurl=https://mirrors.aliyun.com/centos-vault/6.10|g" \
+    -i.bak \
+    /etc/yum.repos.d/CentOS-*.repo
 
 RUN yum install -y wget perl gcc make tree elfutils-libelf-devel unzip yum-utils; 
 RUN yum groupinstall -y  "Development Tools"; 
 
 RUN sed -i "s/enabled=0/enabled=1/g" /etc/yum.repos.d/*.repo
-
+RUN rm -rf /root/headers || true
 RUN mkdir /root/headers
 RUN for each_tag in `yum --showduplicates list kernel-devel | grep kernel-devel | awk  '{print $2}'`; do yumdownloader  --destdir /root/headers kernel-devel-$each_tag.x86_64; done
 

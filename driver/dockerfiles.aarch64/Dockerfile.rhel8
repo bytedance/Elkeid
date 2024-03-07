@@ -6,6 +6,7 @@ RUN dnf groupinstall -y  "Development Tools";
 RUN dnf install -y centos-release-scl
 RUN dnf install -y devtoolset-8
 
+RUN rm -rf /root/headers || true
 RUN mkdir /root/headers
 
 ADD . /elkeid

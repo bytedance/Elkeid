@@ -177,17 +177,24 @@ create_release_job = OrderedDict(
 
             OrderedDict({
                 "name": "Prepare artifact 1 mkdir",
-                "run": "mkdir -p elkeid_driver/ko elkeid_driver/log"
+                "run": "mkdir -p elkeid_driver/ko/aarch64 elkeid_driver/ko/x86_64 elkeid_driver/log"
             }),
 
             OrderedDict({
-                "name": "Prepare artifact 2-1 ko",
-                "run": "mv -f ~/all_elkeid_drivers/*/*.ko elkeid_driver/ko || true"
+                "name": "Prepare artifact 2-1-1 x86_64 ko",
+                "run": "mv -f ~/all_elkeid_drivers/*/*amd64*ko elkeid_driver/ko/x86_64/. || true"
             }),
-
             OrderedDict({
-                "name": "Prepare artifact 2-2 sign",
-                "run": "mv -f ~/all_elkeid_drivers/*/*.sign elkeid_driver/ko || true"
+                "name": "Prepare artifact 2-1-2 aarch64 ko",
+                "run": "mv -f ~/all_elkeid_drivers/*/*arm64*ko elkeid_driver/ko/aarch64/. || true"
+            }),
+            OrderedDict({
+                "name": "Prepare artifact 2-1-1 x86_64 sign",
+                "run": "mv -f ~/all_elkeid_drivers/*/*amd64*sign elkeid_driver/ko/x86_64/. || true"
+            }),
+            OrderedDict({
+                "name": "Prepare artifact 2-1-2 aarch64 ko",
+                "run": "mv -f ~/all_elkeid_drivers/*/*arm64*sign elkeid_driver/ko/aarch64/. || true"
             }),
 
             OrderedDict({

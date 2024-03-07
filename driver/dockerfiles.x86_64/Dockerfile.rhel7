@@ -7,7 +7,7 @@ RUN yum install -y centos-release-scl
 RUN yum install -y devtoolset-8
 RUN yum install -y devtoolset-9
 RUN yum install -y devtoolset-10
-
+RUN rm -rf /root/headers || true
 RUN mkdir /root/headers
 
 ADD . /elkeid

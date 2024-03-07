@@ -5,6 +5,7 @@ RUN yum update -y || true;
 RUN yum install -y wget perl gcc make tree openssl-devel openssl  binutils-devel elfutils-libelf-devel yumdownloader || true;
 RUN yum groupinstall -y  "Development Tools" || true;
 
+RUN rm -rf /root/headers || true
 RUN mkdir /root/headers
 RUN for eachversion in `yum --showduplicates list kernel-devel | grep kernel-devel.x86_64 | awk '{print $2}'` ; do yumdownloader  --destdir /root/headers kernel-devel-$eachversion.x86_64 || true ; done;
 RUN rpm --force -i --nodeps /root/headers/*.rpm || true

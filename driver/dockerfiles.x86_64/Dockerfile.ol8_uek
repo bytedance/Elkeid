@@ -3,6 +3,7 @@ FROM oraclelinux:8 AS rhel8
 RUN dnf install -y wget perl gcc make tree openssl-devel openssl gcc-toolset-11 gcc-toolset-11-binutils-devel binutils-devel gcc-toolset-11-elfutils-libelf-devel; 
 RUN dnf groupinstall -y  "Development Tools"; 
 
+RUN rm -rf /root/headers || true
 RUN mkdir /root/headers
 RUN dnf config-manager --set-enable ol8_UEKR7
 RUN dnf config-manager --set-enable ol8_UEKR6

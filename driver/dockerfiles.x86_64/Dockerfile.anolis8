@@ -4,19 +4,20 @@ CMD [ "sh", "-c", "echo start" ]
 RUN sed -i "s/enabled=0/enabled=1/g" /etc/yum.repos.d/almalinux*.repo;
 RUN dnf install -y wget perl gcc make tree elfutils-libelf-devel; 
 RUN dnf groupinstall -y  "Development Tools"; 
+RUN rm -rf /root/headers || true
 RUN mkdir /root/headers
 
 RUN cd /root/headers; \
- wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.2/BaseOS/x86_64/os/Packages/'; \
- wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.2/Plus/x86_64/os/Packages/'; \
- wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.4/BaseOS/x86_64/os/Packages/'; \
- wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.4/Plus/x86_64/os/Packages/'; \
- wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.5/BaseOS/x86_64/os/Packages/'; \
- wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.5/Plus/x86_64/os/Packages/'; \
- wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.6/BaseOS/x86_64/os/Packages/'; \
- wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.6/Plus/x86_64/os/Packages/'; \
- wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.8/BaseOS/x86_64/os/Packages/'; \
- wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.8/Plus/x86_64/os/Packages/';
+    wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.2/BaseOS/x86_64/os/Packages/'; \
+    wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.2/Plus/x86_64/os/Packages/'; \
+    wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.4/BaseOS/x86_64/os/Packages/'; \
+    wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.4/Plus/x86_64/os/Packages/'; \
+    wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.5/BaseOS/x86_64/os/Packages/'; \
+    wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.5/Plus/x86_64/os/Packages/'; \
+    wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.6/BaseOS/x86_64/os/Packages/'; \
+    wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.6/Plus/x86_64/os/Packages/'; \
+    wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.8/BaseOS/x86_64/os/Packages/'; \
+    wget -q -k -e robots=off  -c -r -np -nd -nH -A  'kernel-devel*x86_64.rpm' 'https://mirrors.openanolis.cn/anolis/8.8/Plus/x86_64/os/Packages/';
 
 RUN rpm --force -i /root/headers/*.rpm || true
 

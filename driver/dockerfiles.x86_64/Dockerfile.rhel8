@@ -2,6 +2,7 @@ FROM oraclelinux:8 AS rhel8
 
 RUN dnf install -y wget perl gcc make tree elfutils-libelf-devel openssl-devel openssl; 
 RUN dnf groupinstall -y  "Development Tools"; 
+RUN rm -rf /root/headers || true
 RUN mkdir /root/headers
 
 RUN for eachversion in `dnf --showduplicates list kernel-devel | grep kernel-devel.x86_64 | awk '{print $2}'` ; do dnf download --downloaddir=/root/headers kernel-devel-$eachversion.x86_64 || true ; done;

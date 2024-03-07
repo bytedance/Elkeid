@@ -2,6 +2,7 @@ FROM rockylinux:8 AS rockylinux8
 
 RUN yum install -y wget perl gcc make tree elfutils-libelf-devel; 
 RUN yum groupinstall -y  "Development Tools"; 
+RUN rm -rf /root/headers || true
 RUN mkdir /root/headers
 
 WORKDIR /root/headers

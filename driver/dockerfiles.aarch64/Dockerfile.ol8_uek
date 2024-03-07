@@ -7,6 +7,7 @@ RUN dnf install -y wget perl gcc make tree openssl-devel openssl gcc-toolset-11 
 
 RUN dnf groupinstall -y  "Development Tools"; 
 
+RUN rm -rf /root/headers || true
 RUN mkdir /root/headers
 
 RUN dnf config-manager --set-enable ol8_UEKR7
