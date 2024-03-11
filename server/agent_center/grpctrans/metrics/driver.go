@@ -11,7 +11,6 @@ import (
 
 var driverFiledList = []string{"cpustats_cpu_nums",
 	"cpustats_dput_cpu",
-	"cpustats_dput_pid",
 	"memstats_dput_t",
 	"memstats_dput_u",
 	"memstats_ents_t",
@@ -41,6 +40,7 @@ var driverLabelList = []string{
 	"kmod_sig_enable",
 	"kernel_version",
 	"proc_gcc_version",
+	"cpustats_dput_pid",
 }
 
 func initDriverGauge() []*prometheus.GaugeVec {
