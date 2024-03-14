@@ -700,6 +700,112 @@ struct update_cred_data {
 };
 
 /*
+ * Our own implementation of kernel_getsockname and kernel_getpeername,
+ * resuing codes logic of kernel inet_getname and inet6_getname.
+ *
+ * From 5.15.3 inet_getname and inet6_getname will call lock_sock for
+ * lock acquisition, and then lock_sock would lead possible reschedule,
+ * which violates the requirement of atomic context for kprobe/ketprobe.
+ *
+ * Interfaces of kernel_getsockname and kernel_getpeername are changed
+ * after 4.17.0, then we'll use our own routines to keep things simple.
+ */
+
+#define SMITH_DECLARE_SOCKADDR(type, dst, src)	\
+	type dst = (type)(src)
+
+static int smith_get_sock_v4(struct socket *sock, struct sockaddr *sa)
+{
+    struct sock *sk	= sock->sk;
+    struct inet_sock *inet = inet_sk(sk);
+    SMITH_DECLARE_SOCKADDR(struct sockaddr_in *, sin, sa);
+
+    sin->sin_family = AF_INET;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
+    sin->sin_port = inet->inet_sport;
+    if (inet->inet_rcv_saddr)
+        sin->sin_addr.s_addr = inet->inet_rcv_saddr;
+    else
+        sin->sin_addr.s_addr = inet->inet_saddr;
+#else
+    sin->sin_port = inet->sport;
+    sin->sin_addr.s_addr = inet->saddr;
+#endif
+
+    return sizeof(*sin);
+}
+
+static int smith_get_peer_v4(struct socket *sock, struct sockaddr *sa)
+{
+    struct sock *sk	= sock->sk;
+    struct inet_sock *inet = inet_sk(sk);
+    SMITH_DECLARE_SOCKADDR(struct sockaddr_in *, sin, sa);
+
+    sin->sin_family = AF_INET;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
+    sin->sin_port = inet->inet_dport;
+    sin->sin_addr.s_addr = inet->inet_daddr;
+#else
+    sin->sin_port = inet->dport;
+    sin->sin_addr.s_addr = inet->daddr;
+#endif
+    return sizeof(*sin);
+}
+
+#if IS_ENABLED(CONFIG_IPV6)
+static int smith_get_sock_v6(struct socket *sock, struct sockaddr *sa)
+{
+    struct sockaddr_in6 *sin = (struct sockaddr_in6 *)sa;
+    struct sock *sk = sock->sk;
+    struct inet_sock *inet = inet_sk(sk);
+    struct ipv6_pinfo *np = inet6_sk(sk);
+    const struct in6_addr *in6;
+
+    in6 = inet6_rcv_saddr(sk);
+    if (in6 && !ipv6_addr_any(in6))
+        memcpy(&sin->sin6_addr, in6, sizeof(sin->sin6_addr));
+    else if (np)
+        memcpy(&sin->sin6_addr, &np->saddr, sizeof(sin->sin6_addr));
+    else
+        memset(&sin->sin6_addr, 0, sizeof(sin->sin6_addr));
+
+    sin->sin6_family = AF_INET6;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
+    sin->sin6_port = inet->inet_sport;
+#else
+    sin->sin6_port = inet->sport;
+#endif
+
+    return sizeof(*sin);
+}
+
+static int smith_get_peer_v6(struct socket *sock, struct sockaddr *sa)
+{
+    struct sockaddr_in6 *sin = (struct sockaddr_in6 *)sa;
+    struct sock *sk = sock->sk;
+    struct inet_sock *inet = inet_sk(sk);
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(IPV6_SUPPORT)
+    memcpy(&sin->sin6_addr, &sk->sk_v6_daddr, sizeof(sin->sin6_addr));
+#else
+    struct ipv6_pinfo *np = inet6_sk(sk);
+    if (np)
+        memcpy(&sin->sin6_addr, &np->daddr, sizeof(sin->sin6_addr));
+    else
+        memset(&sin->sin6_addr, 0, sizeof(sin->sin6_addr));
+#endif
+
+    sin->sin6_family = AF_INET6;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
+    sin->sin6_port = inet->inet_dport;
+#else
+    sin->sin6_port = inet->dport;
+#endif
+    return sizeof(*sin);
+}
+#endif
+
+/*
  * Workaround for kretprobe BUG (fixed in 3.2.6):
  *
  * kretprobe instance memory leaking if entry_handler returns failure codes.
@@ -1087,29 +1193,13 @@ int accept4_entry_handler(struct kretprobe_instance *ri,
 }
 #endif
 
-static int smith_sock_getname(struct socket *s, struct sockaddr *sa, int *l, int peer)
-{
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
-    if (peer)
-        return kernel_getpeername(s, sa);
-    else
-        return kernel_getsockname(s, sa);
-#else
-    if (peer)
-        return kernel_getpeername(s, sa, l);
-    else
-        return kernel_getsockname(s, sa, l);
-#endif
-}
-
 int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     struct accept_data *data;
     struct socket *sock = NULL;
 
-    int sport = 0;
-    int dport = 0;
-    int retval, addrlen = 0, err = 0;
+    int sport, dport;
+    int retval, err = 0;
 
     char *exe_path = DEFAULT_RET_STR;
     char *buffer = NULL;
@@ -1123,35 +1213,39 @@ int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
     exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
-    if (smith_sock_getname(sock, &data->sa, &addrlen, 0) < 0)
-        goto out;
-
     //only get AF_INET/AF_INET6 accept info
-    if (data->si4.sin_family == AF_INET) {
-        __be32 sip4 = 0;
-        __be32 dip4 = data->si4.sin_addr.s_addr;
+    if (sock->sk->sk_family == AF_INET) {
+        __be32 sip4, dip4;
+
+        if (smith_get_sock_v4(sock, &data->sa) < 0)
+            goto out;
+        dip4 = data->si4.sin_addr.s_addr;
         dport = ntohs(data->si4.sin_port);
 
-        if (smith_sock_getname(sock, &data->sa, &addrlen, 1) < 0)
+        if (smith_get_peer_v4(sock, &data->sa) < 0)
             goto out;
-        sip4 = (data->si4.sin_addr.s_addr);
+        sip4 = data->si4.sin_addr.s_addr;
         sport = ntohs(data->si4.sin_port);
         accept_print(dport, dip4, exe_path, sip4, sport, retval);
         // printk("accept4_handler: %d.%d.%d.%d/%d -> %d.%d.%d.%d/%d rc=%d\n",
         //         NIPQUAD(sip4), sport, NIPQUAD(dip4), dport, retval);
     }
 #if IS_ENABLED(CONFIG_IPV6)
-    else if (data->si4.sin_family == AF_INET6) {
-        struct in6_addr *sip6;
-        struct in6_addr dip6 = data->si6.sin6_addr;
+    else if (sock->sk->sk_family == AF_INET6) {
+        struct in6_addr *sip6, dip6;
+
+        if (smith_get_sock_v6(sock, &data->sa) < 0)
+            goto out;
+        dip6 = data->si6.sin6_addr;
         dport = ntohs(data->si6.sin6_port);
 
-        if (smith_sock_getname(sock, &data->sa, &addrlen, 1) < 0)
+        if (smith_get_peer_v6(sock, &data->sa) < 0)
             goto out;
         sport = ntohs(data->si6.sin6_port);
         sip6 = &(data->si6.sin6_addr);
         accept6_print(dport, &dip6, exe_path, sip6, sport, retval);
-        // printk("accept6_handler: %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d -> %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d rc=%d\n",
+        // printk("accept6_handler: %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d"
+        //        " -> %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d rc=%d\n",
         //         NIP6(*sip6), sport, NIP6(dip6), dport, retval);
     }
 #endif
@@ -1800,113 +1894,6 @@ struct smith_ip_addr {
         };
     };
 };
-
-/*
- * Our own implementation of kernel_getsockname and kernel_getpeername,
- * resuing codes logic of kernel inet_getname and inet6_getname.
- *
- * From 5.15.3 inet_getname and inet6_getname will call lock_sock for
- * lock acquisition, and then lock_sock would lead possible reschedule,
- * which violates the requirement of atomic context for kprobe/ketprobe.
- *
- * Interfaces of kernel_getsockname and kernel_getpeername are changed
- * after 4.17.0, then we'll use our own routines to keep things simple.
- */
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
-
-static int smith_get_sock_v4(struct socket *sock, struct sockaddr *sa)
-{
-    struct sock *sk	= sock->sk;
-    struct inet_sock *inet = inet_sk(sk);
-    DECLARE_SOCKADDR(struct sockaddr_in *, sin, sa);
-    __be32 addr;
-
-    sin->sin_family = AF_INET;
-    addr = inet->inet_rcv_saddr;
-    if (!addr)
-        addr = inet->inet_saddr;
-    sin->sin_port = inet->inet_sport;
-    sin->sin_addr.s_addr = addr;
-    return sizeof(*sin);
-}
-
-static int smith_get_peer_v4(struct socket *sock, struct sockaddr *sa)
-{
-    struct sock *sk	= sock->sk;
-    struct inet_sock *inet = inet_sk(sk);
-    DECLARE_SOCKADDR(struct sockaddr_in *, sin, sa);
-
-    sin->sin_family = AF_INET;
-    if (!inet->inet_dport ||
-        (((1 << sk->sk_state) & (TCPF_CLOSE | TCPF_SYN_SENT))))
-        return -ENOTCONN;
-    sin->sin_port = inet->inet_dport;
-    sin->sin_addr.s_addr = inet->inet_daddr;
-    return sizeof(*sin);
-}
-
-#if IS_ENABLED(CONFIG_IPV6)
-static int smith_get_sock_v6(struct socket *sock, struct sockaddr *sa)
-{
-    struct sockaddr_in6 *sin = (struct sockaddr_in6 *)sa;
-    struct sock *sk = sock->sk;
-    struct inet_sock *inet = inet_sk(sk);
-    struct ipv6_pinfo *np = inet6_sk(sk);
-
-    sin->sin6_family = AF_INET6;
-    if (ipv6_addr_any(&sk->sk_v6_rcv_saddr))
-        sin->sin6_addr = np->saddr;
-    else
-        sin->sin6_addr = sk->sk_v6_rcv_saddr;
-    sin->sin6_port = inet->inet_sport;
-    return sizeof(*sin);
-}
-
-static int smith_get_peer_v6(struct socket *sock, struct sockaddr *sa)
-{
-    struct sockaddr_in6 *sin = (struct sockaddr_in6 *)sa;
-    struct sock *sk = sock->sk;
-    struct inet_sock *inet = inet_sk(sk);
-
-    sin->sin6_family = AF_INET6;
-    if (!inet->inet_dport)
-        return -ENOTCONN;
-    if ((1 << sk->sk_state) & (TCPF_CLOSE | TCPF_SYN_SENT))
-        return -ENOTCONN;
-    sin->sin6_port = inet->inet_dport;
-    sin->sin6_addr = sk->sk_v6_daddr;
-    return sizeof(*sin);
-}
-#endif
-
-#else /* < 4.17.0 */
-
-static int smith_get_sock_v4(struct socket *sock, struct sockaddr *sa)
-{
-    int len = 0;
-    return kernel_getsockname(sock, sa, &len);
-}
-static int smith_get_peer_v4(struct socket *sock, struct sockaddr *sa)
-{
-    int len = 0;
-    return kernel_getpeername(sock, sa, &len);
-}
-
-#if IS_ENABLED(CONFIG_IPV6)
-static int smith_get_sock_v6(struct socket *sock, struct sockaddr *sa)
-{
-    int len = 0;
-    return kernel_getsockname(sock, sa, &len);
-}
-static int smith_get_peer_v6(struct socket *sock, struct sockaddr *sa)
-{
-    int len = 0;
-    return kernel_getpeername(sock, sa, &len);
-}
-#endif
-
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0) */
 
 static int smith_query_ip_addr(struct socket *sock, struct smith_ip_addr *addr)
 {
