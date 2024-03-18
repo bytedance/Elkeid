@@ -4,6 +4,7 @@ CMD [ "sh", "-c", "echo start" ]
 RUN sed -i "s/enabled=0/enabled=1/g" /etc/yum.repos.d/almalinux*.repo;
 RUN dnf install -y wget perl gcc make tree elfutils-libelf-devel; 
 RUN dnf groupinstall -y  "Development Tools"; 
+RUN rm -rf /root/headers || true
 RUN mkdir /root/headers
 
 RUN cd /root/headers; \

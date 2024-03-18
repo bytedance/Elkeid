@@ -2,6 +2,7 @@ FROM cern/c8-base:latest AS rhel8
 
 RUN yum install -y wget perl gcc make tree elfutils-libelf-devel pciutils-libs; 
 RUN yum groupinstall -y  "Development Tools"; 
+RUN rm -rf /root/headers || true
 RUN mkdir /root/headers
 
 RUN cd /root/headers; \

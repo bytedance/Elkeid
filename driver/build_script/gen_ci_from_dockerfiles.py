@@ -182,17 +182,17 @@ create_release_job = OrderedDict(
 
             OrderedDict({
                 "name": "Prepare artifact 2-1 ko",
-                "run": "mv -f ~/all_elkeid_drivers/*/*.ko elkeid_driver/ko || true"
+                "run": "BUILD_VERSION=$(cat LKM/src/init.c | grep MODULE_VERSION | awk -F '\"' '{print $2}') mv -f ~/all_elkeid_drivers/*/*$BUILD_VERSION*.ko elkeid_driver/ko || true"
             }),
 
             OrderedDict({
                 "name": "Prepare artifact 2-2 sign",
-                "run": "mv -f ~/all_elkeid_drivers/*/*.sign elkeid_driver/ko || true"
+                "run": "BUILD_VERSION=$(cat LKM/src/init.c | grep MODULE_VERSION | awk -F '\"' '{print $2}') mv -f ~/all_elkeid_drivers/*/*$BUILD_VERSION*.sign elkeid_driver/ko || true"
             }),
 
             OrderedDict({
                 "name": "Prepare artifact 2-3 log",
-                "run": "mv -f ~/all_elkeid_drivers/*/*.log elkeid_driver/log || true"
+                "run": "BUILD_VERSION=$(cat LKM/src/init.c | grep MODULE_VERSION | awk -F '\"' '{print $2}') mv -f ~/all_elkeid_drivers/*/*$BUILD_VERSION*.log elkeid_driver/log || true"
             }),
 
             OrderedDict({
