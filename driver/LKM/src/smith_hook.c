@@ -215,6 +215,8 @@ static int __init smith_start_delayed_put(void)
     memcache_init_pool(&g_delayed_put_root, nobjs * num_possible_cpus(),
                        sizeof(struct delayed_put_node), 0, NULL, NULL);
 
+    /* wake up delayed-put worker thread */
+    wake_up_process(g_delayed_put_thread);
     return 0;
 }
 
