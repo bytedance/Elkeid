@@ -13,3 +13,7 @@ RUN bash ./build_script/x86_64/batch_compile.sh
 
 RUN apt-get -y remove linux-headers-4.10.*-generic  || true
 RUN apt-get -y remove linux-headers-4.11.*-generic  || true
+
+FROM ubuntu:xenial
+COPY --from=0 /ko_output /ko_output
+CMD [ "sh", "-c", "echo start" ]

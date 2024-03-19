@@ -27,3 +27,9 @@ ADD . /elkeid
 WORKDIR /elkeid/driver
 RUN bash ./build_script/x86_64/batch_compile.sh
 RUN rm -rf /root/headers/*.rpm 
+RUN dnf remove -y kernel-devel || true
+
+
+FROM rockylinux:9
+COPY --from=0 /ko_output /ko_output
+CMD [ "sh", "-c", "echo start" ]
