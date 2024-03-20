@@ -61,7 +61,7 @@ var (
 var (
 	// AgentUpdateKeys Agent心跳如下字段一更新则马上同步到后端
 	AgentUpdateKeys = []string{"state", "state_detail", "version",
-		"pid", "limit_cpu", "limit_memory", "limit_memory_usage_in_bytes",
+		"pid", "limit_cpu", "limit_memory",
 		"monitor_enable", "monitor_cpu_last_minute", "monitor_cpu_percent",
 		"monitor_memory_last_minute", "monitor_memory_percent", "monitor_operate",
 		"plugins_status", "abnormal_plugins_list"}
