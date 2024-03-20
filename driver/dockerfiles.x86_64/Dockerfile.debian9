@@ -7,8 +7,8 @@ RUN sed -i '/deb.debian.org/s/^/#/g' /etc/apt/sources.list
 
 RUN echo "deb http://snapshot.debian.org/archive/debian/20220622T000000Z stretch-backports main" >> /etc/apt/sources.list
 
-
-RUN apt-get -o Acquire::Check-Valid-Until=false update
+RUN rm -rf /var/lib/apt/lists/partial
+RUN apt-get -o Acquire::Check-Valid-Until=false -o Acquire::CompressionTypes::Order::=gz update
 RUN apt-get -o Acquire::Check-Valid-Until=false install -y apt-utils apt-transport-https ca-certificates debian-archive-keyring wget curl
 RUN apt-get -o Acquire::Check-Valid-Until=false install -y gcc build-essential libelf-dev; 
 RUN apt-get -o Acquire::Check-Valid-Until=false install -y linux-compiler-gcc* || true
