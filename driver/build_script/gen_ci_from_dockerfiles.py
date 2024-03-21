@@ -7,7 +7,10 @@ all_dockers_x86_64 = os.listdir(
 all_dockers_aarch64 = os.listdir(
     "driver/dockerfiles.aarch64")
 
-black_list = []
+black_list = [
+    "ubuntu1604-k410",
+    "ubuntu1604-k48",
+]
 white_list = []
 
 all_vms = []
@@ -170,7 +173,7 @@ create_release_job = OrderedDict(
             }),
             OrderedDict({
                 "name": "Setup Version",
-                "run": 'echo "KMOD_VERSION=$(cat LKM/src/init.c | grep MODULE_VERSION | awk -F \'\"\' \'{print $2}\')" >> "$GITHUB_ENV"'
+                "run": 'echo "KMOD_VERSION=$(cat driver/LKM/src/init.c | grep MODULE_VERSION | awk -F \'\"\' \'{print $2}\')" >> "$GITHUB_ENV"'
             }),
             OrderedDict({
                 "uses": "actions/download-artifact@v3",
