@@ -172,8 +172,22 @@ create_release_job = OrderedDict(
                 }
             }),
             OrderedDict({
+                    "uses": "actions/checkout@v3",
+                    "with": {
+                        "submodules": False
+                    }
+                }),
+            OrderedDict({
                 "name": "Setup Version",
                 "run": 'echo "KMOD_VERSION=$(cat driver/LKM/src/init.c | grep MODULE_VERSION | awk -F \'\"\' \'{print $2}\')" >> "$GITHUB_ENV"'
+            }),
+            OrderedDict({
+                "name": "Setup output Version format",
+                "run": 'echo "KMOD_RELEASE_PREFIX=$(echo $KMOD_VERSION | sed -e "s|\\.|\\_|g")" >> "$GITHUB_ENV"'
+            }),
+            OrderedDict({
+                "name": "Setup output Version format",
+                "run": 'echo "KO_TAR_XZ=\"$KMOD_RELEASE_PREFIX\"_elkeid_driver_ko_$(date +\"%Y%m%d\").tar.xz" >> "$GITHUB_ENV"'
             }),
             OrderedDict({
                 "uses": "actions/download-artifact@v3",
@@ -204,7 +218,7 @@ create_release_job = OrderedDict(
 
             OrderedDict({
                 "name": "Pack artifact",
-                "run": "tar -C elkeid_driver -cJf elkeid_driver_ko.tar.xz ko"
+                "run": "tar -C elkeid_driver -cJf \"$KO_TAR_XZ\" ko"
             }),
 
             OrderedDict({
@@ -236,8 +250,8 @@ create_release_job = OrderedDict(
                 },
                 "with": {
                     "upload_url": "${{steps.create_release.outputs.upload_url}}",
-                    "asset_path": "./elkeid_driver_ko.tar.xz",
-                    "asset_name": "elkeid_driver_ko.tar.xz",
+                    "asset_path": "${{env.KO_TAR_XZ}}",
+                    "asset_name": "${{env.KO_TAR_XZ}}",
                     "asset_content_type": "application/x-tar"
                 },
             })

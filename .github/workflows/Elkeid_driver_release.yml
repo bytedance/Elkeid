@@ -2584,9 +2584,17 @@ jobs:
         prerelease: false
         release_name: Release ${{github.ref}}
         tag_name: ${{github.ref}}
+    - uses: actions/checkout@v3
+      with:
+        submodules: false
     - name: Setup Version
       run: echo "KMOD_VERSION=$(cat driver/LKM/src/init.c | grep MODULE_VERSION |
         awk -F '"' '{print $2}')" >> "$GITHUB_ENV"
+    - name: Setup output Version format
+      run: echo "KMOD_RELEASE_PREFIX=$(echo $KMOD_VERSION | sed -e "s|\.|\_|g")" >>
+        "$GITHUB_ENV"
+    - name: Setup output Version format
+      run: echo "KO_TAR_XZ="$KMOD_RELEASE_PREFIX"_elkeid_driver_ko_$(date +"%Y%m%d").tar.xz" >> "$GITHUB_ENV"
     - uses: actions/download-artifact@v3
       with:
         path: ~/all_elkeid_drivers
@@ -2599,7 +2607,7 @@ jobs:
     - name: Prepare artifact 2-3 log
       run: mv -f ~/all_elkeid_drivers/*/*$KMOD_VERSION*.log elkeid_driver/log || true
     - name: Pack artifact
-      run: tar -C elkeid_driver -cJf elkeid_driver_ko.tar.xz ko
+      run: tar -C elkeid_driver -cJf "$KO_TAR_XZ" ko
     - name: Pack log
       run: zip -r elkeid_driver_log.zip elkeid_driver/log
     - name: Upload log
@@ -2619,8 +2627,8 @@ jobs:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
       with:
         asset_content_type: application/x-tar
-        asset_name: elkeid_driver_ko.tar.xz
-        asset_path: ./elkeid_driver_ko.tar.xz
+        asset_name: ${{env.KO_TAR_XZ}}
+        asset_path: ${{env.KO_TAR_XZ}}
         upload_url: ${{steps.create_release.outputs.upload_url}}
     needs:
     - build_debian8_x86_64
