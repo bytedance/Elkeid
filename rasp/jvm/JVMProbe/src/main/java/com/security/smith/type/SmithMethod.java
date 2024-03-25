@@ -7,6 +7,7 @@ public class SmithMethod {
     private boolean block;
     private String preHook;
     private String postHook;
+    private String exceptionHook;
 
     public int getId() {
         return id;
@@ -54,5 +55,13 @@ public class SmithMethod {
 
     public void setPostHook(String postHook) {
         this.postHook = postHook;
+    }
+
+    public String getExceptionHook() {
+        return exceptionHook;
+    }
+
+    public void setExceptionHook(String exceptionHook) {
+        this.exceptionHook = exceptionHook;
     }
 }

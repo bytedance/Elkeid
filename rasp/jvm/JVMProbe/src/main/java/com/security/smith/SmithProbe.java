@@ -160,6 +160,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         Class<?>[] cls = Arrays.stream(loadedClasses).filter(c -> classes.contains(c.getName())).toArray(Class<?>[]::new);
 
         SmithLogger.logger.info("reload: " + Arrays.toString(cls));
+        //System.out.println("reload Class:"+cls.getClass().getName());
 
         try {
             inst.retransformClasses(cls);
@@ -346,7 +347,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         try {
 
             ClassReader classReader = new ClassReader(classfileBuffer);
-            ClassWriter classWriter = new SmithClassWriter(ClassWriter.COMPUTE_MAXS);
+            ClassWriter classWriter = new SmithClassWriter(ClassWriter.COMPUTE_FRAMES);
 
             ClassVisitor classVisitor = new SmithClassVisitor(
                     Opcodes.ASM8,

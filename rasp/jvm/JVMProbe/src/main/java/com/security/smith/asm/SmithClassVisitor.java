@@ -29,6 +29,6 @@ public class SmithClassVisitor extends ClassVisitor {
         if (smithMethod == null)
             return methodVisitor;
 
-        return new SmithMethodVisitor(this.api, classType, classID, smithMethod.getId(), smithMethod.isBlock(), methodVisitor, access, name, descriptor, smithMethod.getPreHook(), smithMethod.getPostHook());
+        return new SmithMethodVisitor(this.api, classType, classID, smithMethod.getId(), smithMethod.isBlock(), methodVisitor, access, name, descriptor, smithMethod.getPreHook(), smithMethod.getPostHook(),smithMethod.getExceptionHook());
     }
 }
