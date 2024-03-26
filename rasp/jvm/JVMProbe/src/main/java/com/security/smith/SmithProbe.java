@@ -181,7 +181,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         Predicate<MatchRule> pred = rule -> {
             Object[] args = trace.getArgs();
 
-            if (rule.getIndex() >= args.length)
+            if (rule.getIndex() >= args.length || rule.getRegex().isEmpty() || args[rule.getIndex()] == null)
                 return false;
 
             return Pattern.compile(rule.getRegex()).matcher(args[rule.getIndex()].toString()).find();
@@ -341,6 +341,27 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         return false;
     }
 
+    public boolean checkInterfaceNeedTran(String interfaceName) {
+        if (interfaceName == null) {
+            return false;
+        }
+        boolean ret = false;
+        switch (interfaceName) {
+            case "org/springframework/web/servlet/HandlerInterceptor":
+            case "javax/servlet/Servlet":
+            case "javax/servlet/Filter":
+            case "javax/servlet/ServletRequestListener":
+            case "jakarta/servlet/Servlet":
+            case "jakarta/servlet/Filter":
+            case "jakarta/servlet/ServletRequestListener":
+            case "javax/websocket/Endpoint":
+                ret = true;
+                break;
+            default:
+                break;
+        }
+        return ret;
+    }
     @Override
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) {
          if (disable)
@@ -349,18 +370,41 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         // if(scanswitch) {
         //     checkClassFilter(loader, className,classfileBuffer);
         // }
-  
-        Type classType = Type.getObjectType(className);
-        SmithClass smithClass = smithClasses.get(classType.getClassName());
 
-        if (smithClass == null)
-            return null;
+        Type classType = null;
+        SmithClass smithClass = null;
+        try {
+            classType = Type.getObjectType(className);
+            smithClass = smithClasses.get(classType.getClassName());
+        } catch (Exception e) {
+            //SmithLogger.exception(e);
+        }
+     
+        if (smithClass == null && className == null)  {
+            
+            ClassReader cr = new ClassReader(classfileBuffer);
+            String[] interfaces = cr.getInterfaces();
+            if (className == null) {
+                className = cr.getClassName();
+                classType = Type.getObjectType(className);
+            }
 
-        SmithLogger.logger.info("transform: " + classType.getClassName());
+            for (String interName : interfaces) {
+                if (checkInterfaceNeedTran(interName)) {
+                    Type interfaceType = Type.getObjectType(interName);
+                    smithClass = smithClasses.get(interfaceType.getClassName());
+                    break;
+                }
+            }
+            if (smithClass == null) {
+                return null;
+            }
+        } 
 
         try {
             Map<String, SmithMethod> methodMap = smithClass.getMethods().stream().collect(Collectors.toMap(method -> method.getName() + method.getDesc(), method -> method));
             
+            SmithLogger.logger.info("transform: " + classType.getClassName());
             ClassReader classReader = new ClassReader(classfileBuffer);
 
             ClassWriter classWriter;
@@ -372,14 +416,14 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             }
 
             ClassVisitor classVisitor = new SmithClassVisitor(
-                    Opcodes.ASM8,
+                    Opcodes.ASM9,
                     classWriter,
                     smithClass.getId(),
                     classType,
                     methodMap
             );
 
-            classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
+            classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);      
             return classWriter.toByteArray();
         } catch (Exception e) {
             SmithLogger.exception(e);
