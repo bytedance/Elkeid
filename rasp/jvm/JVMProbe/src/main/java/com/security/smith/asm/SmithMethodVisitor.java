@@ -28,6 +28,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
     private final Label handler;
     private String preHook;
     private String postHook;
+    private String exceptionHook;
 
     private static final Map<String, Class<?>> smithProcessors = new HashMap<String, Class<?>>() {{
         put("byte[]", ByteArrayProcessor.class);
@@ -44,7 +45,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
         put("java.net.InetAddress[]", ObjectArrayProcessor.class);
     }};
 
-    protected SmithMethodVisitor(int api, Type classType, int classID, int methodID, boolean canBlock, MethodVisitor methodVisitor, int access, String name, String descriptor, String pre_hook, String post_hook) {
+    protected SmithMethodVisitor(int api, Type classType, int classID, int methodID, boolean canBlock, MethodVisitor methodVisitor, int access, String name, String descriptor, String pre_hook, String post_hook,String exception_hook) {
         super(api, methodVisitor, access, name, descriptor);
 
         this.classType = classType;
@@ -53,6 +54,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
         this.canBlock = canBlock;
         this.preHook = pre_hook;
         this.postHook = post_hook;
+        this.exceptionHook = exception_hook;
 
         start = new Label();
         end = new Label();
@@ -95,7 +97,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
     protected void onMethodEnter() {
         super.onMethodEnter();
 
-        visitTryCatchBlock(start, end, handler, Type.getInternalName(Exception.class));
+        visitTryCatchBlock(start, end, handler, Type.getInternalName(Throwable.class));
 
         loadArgArray();
         storeLocal(argumentsVariable);
@@ -213,84 +215,134 @@ public class SmithMethodVisitor extends AdviceAdapter {
         mark(end);
         mark(handler);
 
-        Type[] types = Type.getArgumentTypes(methodDesc);
+        if (exceptionHook == null || exceptionHook == "") {
+            Type[] types = Type.getArgumentTypes(methodDesc);
 
-        if (!isStatic) {
-            types = ArrayUtils.addFirst(types, classType);
-        }
-
-        Object[] local = Arrays.stream(types).map(t -> {
-            switch (t.getSort()) {
-                case Type.BOOLEAN:
-                case Type.CHAR:
-                case Type.BYTE:
-                case Type.SHORT:
-                case Type.INT:
-                    return Opcodes.INTEGER;
-                case Type.FLOAT:
-                    return Opcodes.FLOAT;
-                case Type.ARRAY:
-                case Type.OBJECT:
-                    return t.getInternalName();
-                case Type.LONG:
-                    return Opcodes.LONG;
-                case Type.DOUBLE:
-                    return Opcodes.DOUBLE;
-                default:
-                    throw new AssertionError();
+            if (!isStatic) {
+                types = ArrayUtils.addFirst(types, classType);
             }
-        }).toArray();
 
-        visitFrame(
-                Opcodes.F_NEW,
-                local.length,
-                local,
-                1,
-                new Object[]{Type.getInternalName(Exception.class)}
-        );
+            Object[] local = Arrays.stream(types).map(t -> {
+                switch (t.getSort()) {
+                    case Type.BOOLEAN:
+                    case Type.CHAR:
+                    case Type.BYTE:
+                    case Type.SHORT:
+                    case Type.INT:
+                        return Opcodes.INTEGER;
+                    case Type.FLOAT:
+                        return Opcodes.FLOAT;
+                    case Type.ARRAY:
+                    case Type.OBJECT:
+                        return t.getInternalName();
+                    case Type.LONG:
+                        return Opcodes.LONG;
+                    case Type.DOUBLE:
+                        return Opcodes.DOUBLE;
+                    default:
+                        throw new AssertionError();
+                }
+            }).toArray();
 
-        storeLocal(returnVariable + 1, Type.getType(Exception.class));
+            visitFrame(
+                    Opcodes.F_NEW,
+                    local.length,
+                    local,
+                    1,
+                    new Object[]{Type.getInternalName(Exception.class)}
+            );
 
-        invokeStatic(
-                Type.getType(SmithProbeProxy.class),
-                new Method(
-                        "getInstance",
-                        Type.getType(SmithProbeProxy.class),
-                        new Type[]{}
-                )
-        );
+            storeLocal(returnVariable + 1, Type.getType(Exception.class));
 
-        push(classID);
-        push(methodID);
-        loadLocal(argumentsVariable);
-        visitInsn(Opcodes.ACONST_NULL);
+            invokeStatic(
+                    Type.getType(SmithProbeProxy.class),
+                    new Method(
+                            "getInstance",
+                            Type.getType(SmithProbeProxy.class),
+                            new Type[]{}
+                    )
+            );
 
-        if (!canBlock) {
-            push(false);
-        } else {
+
+            push(classID);
+            push(methodID);
+            loadLocal(argumentsVariable);
+            visitInsn(Opcodes.ACONST_NULL);
+
+            if (!canBlock) {
+                push(false);
+            } else {
+                loadLocal(returnVariable + 1);
+                instanceOf(Type.getType(SecurityException.class));
+            }
+
+            invokeVirtual(
+                    Type.getType(SmithProbeProxy.class),
+                    new Method(
+                            "trace",
+                            Type.VOID_TYPE,
+                            new Type[]{
+                                    Type.INT_TYPE,
+                                    Type.INT_TYPE,
+                                    Type.getType(Object[].class),
+                                    Type.getType(Object.class),
+                                    Type.BOOLEAN_TYPE
+                            }
+                    )
+            );
+
             loadLocal(returnVariable + 1);
-            instanceOf(Type.getType(SecurityException.class));
+            throwException();
+
+            super.visitMaxs(maxStack, maxLocals);
         }
+        else {
+            int newLocal = newLocal(Type.getType(Throwable.class));
+            int retId = newLocal(Type.getType(Object.class));
 
-        invokeVirtual(
-                Type.getType(SmithProbeProxy.class),
-                new Method(
-                        "trace",
-                        Type.VOID_TYPE,
-                        new Type[]{
-                                Type.INT_TYPE,
-                                Type.INT_TYPE,
-                                Type.getType(Object[].class),
-                                Type.getType(Object.class),
-                                Type.BOOLEAN_TYPE
-                        }
-                )
-        );
+            storeLocal(newLocal,Type.getType(Throwable.class));
+            loadLocal(newLocal);
 
-        loadLocal(returnVariable + 1);
-        throwException();
+            invokeStatic(
+                    Type.getType(SmithProbeProxy.class),
+                    new Method(
+                            "getInstance",
+                            Type.getType(SmithProbeProxy.class),
+                            new Type[]{}
+                    )
+            );
 
-        super.visitMaxs(maxStack, maxLocals);
+            push(classID);
+            push(methodID);
+            loadLocal(argumentsVariable);
+            loadLocal(newLocal);
+
+            invokeVirtual(
+                    Type.getType(SmithProbeProxy.class),
+                    new Method(
+                            exceptionHook,
+                            Type.getType(Object.class),
+                            new Type[]{
+                                    Type.INT_TYPE,
+                                    Type.INT_TYPE,
+                                    Type.getType(Object[].class),
+                                    Type.getType(Object.class)
+                            }
+                    )
+            );
+            mv.visitVarInsn(ASTORE, retId);
+            mv.visitVarInsn(ALOAD, retId);
+            Label label_if = new Label();
+            mv.visitJumpInsn(IFNULL, label_if);
+            mv.visitVarInsn(ALOAD, retId);
+            mv.visitTypeInsn(CHECKCAST, "java/lang/Class");
+            mv.visitInsn(ARETURN);
+            mv.visitLabel(label_if);
+            loadLocal(newLocal);
+            throwException();
+
+            super.visitMaxs(maxStack, maxLocals);
+        } 
     }
 
     void processObject(String name) {

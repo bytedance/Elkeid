@@ -160,6 +160,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         Class<?>[] cls = Arrays.stream(loadedClasses).filter(c -> classes.contains(c.getName())).toArray(Class<?>[]::new);
 
         SmithLogger.logger.info("reload: " + Arrays.toString(cls));
+        //System.out.println("reload Class:"+cls.getClass().getName());
 
         try {
             inst.retransformClasses(cls);
@@ -326,6 +327,20 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         }
     }
 
+    boolean hasExceptionHook(Map<String, SmithMethod> methodMap) {
+        Iterator<Map.Entry<String, SmithMethod>> iterator = methodMap.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, SmithMethod> entry = iterator.next();
+            SmithMethod value = entry.getValue();
+            String exceptionHookName = value.getExceptionHook();
+            if(exceptionHookName != null && exceptionHookName.length() > 1 && exceptionHookName != "") {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     @Override
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) {
          if (disable)
@@ -344,16 +359,24 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         SmithLogger.logger.info("transform: " + classType.getClassName());
 
         try {
-
+            Map<String, SmithMethod> methodMap = smithClass.getMethods().stream().collect(Collectors.toMap(method -> method.getName() + method.getDesc(), method -> method));
+            
             ClassReader classReader = new ClassReader(classfileBuffer);
-            ClassWriter classWriter = new SmithClassWriter(ClassWriter.COMPUTE_MAXS);
+
+            ClassWriter classWriter;
+            if(!hasExceptionHook(methodMap)) {
+                classWriter = new SmithClassWriter(ClassWriter.COMPUTE_MAXS);
+            }
+            else {
+                classWriter = new SmithClassWriter(ClassWriter.COMPUTE_FRAMES);
+            }
 
             ClassVisitor classVisitor = new SmithClassVisitor(
                     Opcodes.ASM8,
                     classWriter,
                     smithClass.getId(),
                     classType,
-                    smithClass.getMethods().stream().collect(Collectors.toMap(method -> method.getName() + method.getDesc(), method -> method))
+                    methodMap
             );
 
             classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
