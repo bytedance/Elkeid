@@ -401,6 +401,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             }
         } 
 
+        if (smithClass == null) {
+            return null;
+        }
+
         try {
             Map<String, SmithMethod> methodMap = smithClass.getMethods().stream().collect(Collectors.toMap(method -> method.getName() + method.getDesc(), method -> method));
             

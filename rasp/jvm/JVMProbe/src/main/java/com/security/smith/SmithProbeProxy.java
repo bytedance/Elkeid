@@ -1,5 +1,6 @@
 package com.security.smith;
-
+                           
+import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
@@ -465,4 +466,108 @@ public class SmithProbeProxy {
         }
 
     }
+
+    /*
+     *  used for wildfly ModuleClassLoader findClass hook
+     */
+
+    public  Object processWildflyClassLoaderException(int classID, int methodID, Object[] args,Object exceptionObject) throws Throwable {
+        if(exceptionObject instanceof ClassNotFoundException) {
+            String classname = (String) args[1];
+
+            if (SmithProbeProxy.class.getClassLoader() == null && (classname.startsWith("com.security.smith.") || classname.startsWith("com.alibaba.third.rasp."))) {
+                return (Object)Class.forName(classname);
+            }
+    
+            throw (Throwable)exceptionObject;
+        }
+
+        return null;
+    }
+
+
+    public static Field getField(Object obj, String fieldName){
+        Class clazz = null;
+
+        if(obj == null){
+            return null;
+        }
+
+        if (obj instanceof Class){
+            clazz = (Class)obj;
+        }else {
+            clazz = obj.getClass();
+        }
+        Field field = null;
+        while (clazz!=null){
+            try {
+                field = clazz.getDeclaredField(fieldName);
+                clazz = null;
+            }catch (Exception e){
+                clazz = clazz.getSuperclass();
+            }
+        }
+
+        if (field != null){
+            field.setAccessible(true);
+        }
+
+        return field;
+    }
+
+    public static Object getFieldValue(Object obj, String fieldName) throws Exception {
+        Field f=null;
+        if (obj instanceof Field){
+            f=(Field)obj;
+        }else {
+            f = getField(obj, fieldName);
+        }
+        if (f != null) {
+            return f.get(obj);
+        }
+        return null;
+    }
+
+    /*
+
+    public ServletHandler addServlet(ServletInfo servletInfo) 
+      
+      
+     */
+
+     public void checkWildflyaddServletPre(int classID, int methodID, Object[] args) {
+        SmithLogger.logger.info("checkWildflyaddServlet pre_hook call success");
+        if(args.length < 2) {
+            return ;
+        }
+
+        try {
+            Object servletInfo = args[1];
+            if(servletInfo != null) {
+                Class<?> servletClass = (Class<?>)getFieldValue(servletInfo,"servletClass");
+                String servletName = (String)getFieldValue(servletInfo,"name");
+
+                if(servletName != null) {
+                    if (servletClass != null) {
+                        ClassFilter classFilter = new ClassFilter();
+                        SmithHandler.queryClassFilter((Class<?>)servletClass, classFilter);
+                        
+                        classFilter.setTransId();
+        
+                        classFilter.setRuleId(-1);
+                        classFilter.setStackTrace(Thread.currentThread().getStackTrace());
+                        if (client != null) {
+                            client.write(Operate.SCANCLASS, classFilter);
+                            SmithLogger.logger.info("send metadata: " + classFilter.toString());
+                            SmithProbe.getInstance().sendClass(servletClass, classFilter.getTransId());
+                        }
+                    } else {
+                        SmithLogger.logger.warning("can't find "+servletName);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+     }
 }

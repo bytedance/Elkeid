@@ -319,3 +319,17 @@
       name: <init>
       desc: ()V
       postHook: checkMemshellInitPost
+- id: 26
+  name: io.undertow.servlet.core.ManagedServlets
+  methods:
+     - id: 0
+       name: addServlet
+       desc: (Lio/undertow/servlet/api/ServletInfo;)Lio/undertow/servlet/handlers/ServletHandler;
+       preHook: checkWildflyaddServletPre
+- id: 27
+  name: org.jboss.modules.ModuleClassLoader
+  methods:
+    - id: 0
+      name: findClass
+      desc: (Ljava/lang/String;ZZ)Ljava/lang/Class;
+      exceptionHook: processWildflyClassLoaderException
