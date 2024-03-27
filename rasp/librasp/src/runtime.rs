@@ -74,8 +74,8 @@ pub trait RuntimeInspect {
             let version = match vm_version(process_info.pid) {
                 Ok(ver) => {
                     if ver < 8 {
-                        let msg = format!("process {}, Java version lower than 8: {}, so not inject",process_info.pid, ver);
-                        warn!("Java version lower than 8: {}, so not inject", ver);
+                        warn!("process {} Java version lower than 8: {}, so not inject", process_info.pid, ver);
+                        let msg = format!("Java version lower than 8: {}, so not inject", ver);
                         return Err(anyhow!(msg));
                     }
                     ver.to_string()

@@ -86,6 +86,15 @@ public class Client implements EventHandler {
 
         Message message = new Message();
 
+        // try {
+        //     if (operate == Operate.CLASSUPLOAD) {
+        //         Thread.sleep(1000);
+        //     }
+            
+        // } catch (Exception e) {
+        //     // TODO: handle exception
+        // }
+
         message.setOperate(operate);
         message.setData(objectMapper.valueToTree(object));
 
@@ -208,6 +217,42 @@ public class Client implements EventHandler {
                 }
 
                 break;
+            }
+            case CLASSFILTERSTART: {
+                 SmithLogger.logger.info("rule upload start: " + message.getData().toString());
+
+                 ObjectMapper objectMapper = new ObjectMapper();
+                objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,false);
+
+                try {
+                    Rule_Version ruleVersion = objectMapper.readValue(message.getData().toString(), Rule_Version.class);
+                    messageHandler.setRuleVersion(ruleVersion);
+                } catch (JsonProcessingException e) {
+                    SmithLogger.exception(e);
+                }
+
+                break;
+            }
+            case CLASSFILTER: {
+                 SmithLogger.logger.info("rule upload: " + message.getData().toString());
+
+                ObjectMapper objectMapper = new ObjectMapper();
+                objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,false);
+
+                try {
+                    Rule_Data ruleData = objectMapper.readValue(message.getData().toString(), Rule_Data.class);
+                    messageHandler.OnAddRule(ruleData);
+                } catch (JsonProcessingException e) {
+                    SmithLogger.exception(e);
+                }
+
+                break;
+            }
+            case CLASSFILTEREND: {
+                SmithLogger.logger.info("class filter config receive finish, start to scan all class");
+                Thread scanAllClassThread = new Thread(messageHandler::onScanAllClass);
+                scanAllClassThread.setDaemon(true);
+                scanAllClassThread.start();
             }
         }
     }

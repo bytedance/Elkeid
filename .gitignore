@@ -41,3 +41,5 @@ Cargo.lock
 *CMakeFiles*
 *vcpkg_installed
 *node_modules
+*.output/
+build

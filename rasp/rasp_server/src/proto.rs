@@ -122,7 +122,8 @@ pub struct PidMissingProbeConfig {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ProbeConfigData {
-    pub uuid: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uuid: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub blocks: Option<Vec<ProbeConfigBlock>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -131,6 +132,12 @@ pub struct ProbeConfigData {
     pub limits: Option<Vec<ProbeConfigLimit>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub patches: Option<Vec<ProbeConfigPatch>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rule_version: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub class_filter_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rule: Option<Vec<ProbeConfigClassRule>>,
 }
 
 impl ProbeConfigData {
@@ -140,35 +147,80 @@ impl ProbeConfigData {
         7BLOCK,
         8LIMIT,
         9PATCH
+        12CLASSFILTERSTART
+        13CLASSFILTER
+        14CLASSFILTEREND
          */
         let data = match message_type {
             6 => ProbeConfigData {
-                uuid: "".to_string(),
+                uuid: Some(String::new()),
                 blocks: None,
                 filters: Some(Vec::new()),
                 limits: None,
                 patches: None,
+                rule_version: None,
+                class_filter_version: None,
+                rule: None,
             },
             7 => ProbeConfigData {
-                uuid: "".to_string(),
+                uuid: Some(String::new()),
                 blocks: Some(Vec::new()),
                 filters: None,
                 limits: None,
                 patches: None,
+                rule_version: None,
+                class_filter_version: None,
+                rule: None,
             },
             8 => ProbeConfigData {
-                uuid: "".to_string(),
+                uuid: Some(String::new()),
                 blocks: None,
                 filters: None,
                 limits: Some(Vec::new()),
                 patches: None,
+                rule_version: None,
+                class_filter_version: None,
+                rule: None,
             },
             9 => ProbeConfigData {
-                uuid: "".to_string(),
+                uuid: Some(String::new()),
                 blocks: None,
                 filters: None,
                 limits: None,
-                patches: Some(Vec::new()),
+                patches: None,
+                rule_version: None,
+                class_filter_version: None,
+                rule: None,
+            },
+            12 => ProbeConfigData {
+                uuid: None,
+                blocks: None,
+                filters: None,
+                limits: None,
+                patches: None,
+                rule_version: Some(0),
+                class_filter_version: Some(String::new()),
+                rule: None,
+            },
+            13 => ProbeConfigData {
+                uuid: None,
+                blocks: None,
+                filters: None,
+                limits: None,
+                patches: None,
+                rule_version: None,
+                class_filter_version: None,
+                rule: Some(Vec::new()),
+            },
+            14 => ProbeConfigData {
+                uuid: None,
+                blocks: None,
+                filters: None,
+                limits: None,
+                patches: None,
+                rule_version: None,
+                class_filter_version: None,
+                rule: None,
             },
             _ => {
                 return Err(anyhow!("message type not valid"));
@@ -240,6 +292,20 @@ pub struct ProbeConfigPatch {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sum_hash: Option<String>,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ProbeConfigClassRule {
+    pub virusName: String,
+    pub flags: i32,
+    pub ruleId: i32,
+    pub className: Option<String>,
+    pub classPath: Option<String>,
+    pub interfacesName: Option<String>,
+    pub classLoaderName: Option<String>,
+    pub parentClassName: Option<String>,
+    pub virusSignature: Option<String>,
+}
+
 
 pub fn message_handle(message: &String) -> Result<String, String> {
     // parse message

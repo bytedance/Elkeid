@@ -141,7 +141,7 @@ impl Operator {
             "MISSING" => {
                 self.handle_missing(process)?;
             }
-            "WAIT_ATTACH" => {
+            "WAIT_ATTACH" | "ATTACHED" => {
                 info!("attaching process: {:?}", process);
                 if let Some(process_state) = process.tracing_state.as_ref() {
                     match process_state.to_string().as_str() {

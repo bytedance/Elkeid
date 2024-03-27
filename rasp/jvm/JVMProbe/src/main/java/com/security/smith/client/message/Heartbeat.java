@@ -5,6 +5,7 @@ public class Heartbeat {
     private String block;
     private String limit;
     private String patch;
+    private String class_filter_version;
 
     public String getFilter() {
         return filter;
@@ -36,5 +37,13 @@ public class Heartbeat {
 
     public void setPatch(String patch) {
         this.patch = patch;
+    }
+
+    public String getClassFilterVersion() {
+        return class_filter_version;
+    }
+
+    public void setClassFilterVersion(String classFilterVersion) {
+        this.class_filter_version = classFilterVersion;
     }
 }

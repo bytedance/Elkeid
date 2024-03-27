@@ -10,4 +10,8 @@ public interface MessageHandler {
     void onBlock(BlockConfig config);
     void onLimit(LimitConfig config);
     void onPatch(PatchConfig config);
+    boolean setRuleVersion(Rule_Version ruleVersion);
+    boolean OnAddRule(Rule_Data ruleData);
+    boolean OnAddRule(String rulejson);
+    void onScanAllClass();
 }
