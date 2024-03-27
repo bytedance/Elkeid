@@ -7,7 +7,10 @@ all_dockers_x86_64 = os.listdir(
 all_dockers_aarch64 = os.listdir(
     "driver/dockerfiles.aarch64")
 
-black_list = []
+black_list = [
+    "ubuntu1604-k410",
+    "ubuntu1604-k48",
+]
 white_list = []
 
 all_vms = []
@@ -25,12 +28,12 @@ def gen_job(vminfo):
     some_data = OrderedDict(
         {
             "runs-on": runs_on,
-            "continue-on-error": "true",
+            "continue-on-error": True,
             "steps": [
                 OrderedDict({
                     "uses": "actions/checkout@v3",
                     "with": {
-                        "submodules": "false"
+                        "submodules": False
                     }
                 }),
                 OrderedDict({
@@ -43,19 +46,19 @@ def gen_job(vminfo):
                 }),
                 OrderedDict({
                     "name": "Set up Docker Buildx "+vmname,
-                    "uses": "docker/setup-buildx-action@v2",
+                    "uses": "docker/setup-buildx-action@v3",
                     "with": {
                         "config": "/etc/buildkitd.toml",
                     }
                 }) if aarch.endswith("aarch64") else OrderedDict({
                     "name": "Set up Docker Buildx "+vmname,
-                    "uses": "docker/setup-buildx-action@v2"
+                    "uses": "docker/setup-buildx-action@v3"
                 }),
 
                 OrderedDict({
                     "name": "Build "+vmname,
                     "uses": "docker/build-push-action@v3",
-                    "timeout-minutes": "300",
+                    "timeout-minutes": 420,
                     "with": {
                         "context": ".",
                         "file": dockerpath + "/Dockerfile."+vmname,
@@ -118,19 +121,19 @@ yaml_cfg_build = OrderedDict(
         "on": {
             "push": {
                 "paths":[
-                    "'.github/workflows/Elkeid_driver_build.yml'",
-                    "'.github/workflows/Elkeid_driver_release.yml'",
-                    "'driver/LKM/**'",
-                    "'driver/build_script/aarch64/**'",
-                    "'driver/build_script/x86_64/**'",
-                    "'driver/dockerfiles.aarch64/**'",
-                    "'driver/dockerfiles.x86_64/**'",
+                    ".github/workflows/Elkeid_driver_build.yml",
+                    ".github/workflows/Elkeid_driver_release.yml",
+                    "driver/LKM/**",
+                    "driver/build_script/aarch64/**",
+                    "driver/build_script/x86_64/**",
+                    "driver/dockerfiles.aarch64/**",
+                    "driver/dockerfiles.x86_64/**",
                 ],
                 "branches": [
                     "main",
                 ]
             },
-            "schedule": ["cron : '0 3 1 * *'"]
+            "schedule": [{"cron":"0 3 1 * *"}]
         }
     }
 )
@@ -141,7 +144,7 @@ yaml_cfg_release = OrderedDict(
         "on": {
             "push": {
                 "tags": [
-                    "'v*'"
+                    "v*"
                 ]
             },
         }
@@ -169,6 +172,24 @@ create_release_job = OrderedDict(
                 }
             }),
             OrderedDict({
+                    "uses": "actions/checkout@v3",
+                    "with": {
+                        "submodules": False
+                    }
+                }),
+            OrderedDict({
+                "name": "Setup Version",
+                "run": 'echo "KMOD_VERSION=$(cat driver/LKM/src/init.c | grep MODULE_VERSION | awk -F \'\"\' \'{print $2}\')" >> "$GITHUB_ENV"'
+            }),
+            OrderedDict({
+                "name": "Setup output Version format",
+                "run": 'echo "KMOD_RELEASE_PREFIX=$(echo $KMOD_VERSION | sed -e "s|\\.|\\_|g")" >> "$GITHUB_ENV"'
+            }),
+            OrderedDict({
+                "name": "Setup output Version format",
+                "run": 'echo "KO_TAR_XZ=\"$KMOD_RELEASE_PREFIX\"_elkeid_driver_ko_$(date +\"%Y%m%d\").tar.xz" >> "$GITHUB_ENV"'
+            }),
+            OrderedDict({
                 "uses": "actions/download-artifact@v3",
                 "with": {
                     "path": "~/all_elkeid_drivers"
@@ -182,22 +203,22 @@ create_release_job = OrderedDict(
 
             OrderedDict({
                 "name": "Prepare artifact 2-1 ko",
-                "run": "BUILD_VERSION=$(cat LKM/src/init.c | grep MODULE_VERSION | awk -F '\"' '{print $2}') mv -f ~/all_elkeid_drivers/*/*$BUILD_VERSION*.ko elkeid_driver/ko || true"
+                "run": "mv -f ~/all_elkeid_drivers/*/*$KMOD_VERSION*.ko elkeid_driver/ko || true"
             }),
 
             OrderedDict({
                 "name": "Prepare artifact 2-2 sign",
-                "run": "BUILD_VERSION=$(cat LKM/src/init.c | grep MODULE_VERSION | awk -F '\"' '{print $2}') mv -f ~/all_elkeid_drivers/*/*$BUILD_VERSION*.sign elkeid_driver/ko || true"
+                "run": "mv -f ~/all_elkeid_drivers/*/*$KMOD_VERSION*.sign elkeid_driver/ko || true"
             }),
 
             OrderedDict({
                 "name": "Prepare artifact 2-3 log",
-                "run": "BUILD_VERSION=$(cat LKM/src/init.c | grep MODULE_VERSION | awk -F '\"' '{print $2}') mv -f ~/all_elkeid_drivers/*/*$BUILD_VERSION*.log elkeid_driver/log || true"
+                "run": "mv -f ~/all_elkeid_drivers/*/*$KMOD_VERSION*.log elkeid_driver/log || true"
             }),
 
             OrderedDict({
                 "name": "Pack artifact",
-                "run": "tar -C elkeid_driver -cJf elkeid_driver_ko.tar.xz ko"
+                "run": "tar -C elkeid_driver -cJf \"$KO_TAR_XZ\" ko"
             }),
 
             OrderedDict({
@@ -221,7 +242,7 @@ create_release_job = OrderedDict(
             }),
 
             OrderedDict({
-                "name": "Upload Release Asset ",
+                "name": "Upload Release Asset",
                 "id": "upload-release-asset",
                 "uses": "actions/upload-release-asset@v1",
                 "env": {
@@ -229,8 +250,8 @@ create_release_job = OrderedDict(
                 },
                 "with": {
                     "upload_url": "${{steps.create_release.outputs.upload_url}}",
-                    "asset_path": "./elkeid_driver_ko.tar.xz",
-                    "asset_name": "elkeid_driver_ko.tar.xz",
+                    "asset_path": "${{env.KO_TAR_XZ}}",
+                    "asset_name": "${{env.KO_TAR_XZ}}",
                     "asset_content_type": "application/x-tar"
                 },
             })
@@ -280,11 +301,17 @@ def setup_yaml():
 setup_yaml()
 
 with open(".github/workflows/Elkeid_driver_build.yml", "w") as f:
-    config_data = yaml.dump(yaml_cfg_build, default_flow_style=False)
-    config_data = config_data.replace("'", "")
+    config_data = yaml.dump(yaml_cfg_build, 
+    default_style=None,
+    default_flow_style=False)
+    config_data = config_data.replace("'on'", "on")
+    config_data = config_data.replace("'[self-hosted,linux,ARM64]'", "[self-hosted,linux,ARM64]")
     f.write(config_data)
 
 with open(".github/workflows/Elkeid_driver_release.yml", "w") as f:
-    config_data = yaml.dump(yaml_cfg_release, default_flow_style=False)
-    config_data = config_data.replace("'", "")
+    config_data = yaml.dump(yaml_cfg_release, 
+    default_style=None,
+    default_flow_style=False)
+    config_data = config_data.replace("'on'", "on")
+    config_data = config_data.replace("'[self-hosted,linux,ARM64]'", "[self-hosted,linux,ARM64]")
     f.write(config_data)
