@@ -97,7 +97,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
     protected void onMethodEnter() {
         super.onMethodEnter();
 
-        visitTryCatchBlock(start, end, handler, Type.getInternalName(Throwable.class));
+        visitTryCatchBlock(start, end, handler, Type.getInternalName(Exception.class));
 
         loadArgArray();
         storeLocal(argumentsVariable);
@@ -297,10 +297,10 @@ public class SmithMethodVisitor extends AdviceAdapter {
             super.visitMaxs(maxStack, maxLocals);
         }
         else {
-            int newLocal = newLocal(Type.getType(Throwable.class));
+            int newLocal = newLocal(Type.getType(Exception.class));
             int retId = newLocal(Type.getType(Object.class));
 
-            storeLocal(newLocal,Type.getType(Throwable.class));
+            storeLocal(newLocal,Type.getType(Exception.class));
             loadLocal(newLocal);
 
             invokeStatic(
