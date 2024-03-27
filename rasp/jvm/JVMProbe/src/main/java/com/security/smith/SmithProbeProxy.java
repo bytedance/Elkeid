@@ -423,4 +423,46 @@ public class SmithProbeProxy {
             jettyDeploying.set(false);
         }
     }
+
+    /*
+     * check spring controller memshell
+     */
+    public void checkSpringControllerPre(int classID, int methodID, Object[] args)  {
+        if (args.length < 3) {
+            return;
+        }
+        try {
+            Object controller = args[2];
+            sendMetadataObject(controller);
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+    }
+
+    /*
+     * check spring Interceptor memshell
+     */
+    public void checkSpringInterceptorPre(int classID, int methodID, Object[] args)  {
+        if (args.length < 1) {
+            return;
+        }
+        try {
+            Object interceptor = args[0];
+            sendMetadataObject(interceptor);
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+    }
+
+    public void checkMemshellInitPost(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        //SmithLogger.logger.info("checkMemshellInitPost call success");
+        if (ret != null) {
+            try {
+                sendMetadataObject(ret);
+            } catch (Exception e) {
+                SmithLogger.exception(e);
+            }
+        }
+
+    }
 }

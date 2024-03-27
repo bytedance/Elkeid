@@ -217,7 +217,9 @@ public class SmithHandler {
 								    || clsName.endsWith(".ServletRequestListener")) {
 								return true;
 							}
-					    }
+					    } else if (clsName.equals("org.springframework.web.servlet.HandlerInterceptor")) {
+                            return true;
+                        }
 				    }
 			    }
             }

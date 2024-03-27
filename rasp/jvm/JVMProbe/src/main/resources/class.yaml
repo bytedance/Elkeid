@@ -250,10 +250,72 @@
       desc: (Ljava/util/EventListener;)V
       preHook: checkJettyListenerPre
 - id: 23
-  name: org.eclipse.jetty.deploy.bindings.StandardDeployer
+  name: org.springframework.web.servlet.handler.AbstractUrlHandlerMapping
   methods:
     - id: 0
-      name: processBinding
-      desc: (Lorg/eclipse/jetty/deploy/graph/Node;Lorg/eclipse/jetty/deploy/App;)V
-      preHook: checkJettyDeployPre
-      postHook: checkJettyDeployPost
+      name: registerHandler
+      desc: (Ljava/lang/String;Ljava/lang/Object;)V
+      preHook: checkSpringControllerPre
+- id: 24
+  name: org.springframework.web.servlet.handler.AbstractHandlerMethodMapping$MappingRegistry
+  methods:
+    - id: 0
+      name: register
+      desc: (Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/reflect/Method;)V
+      preHook: checkSpringControllerPre
+- id: 25
+  name: org.springframework.web.servlet.HandlerInterceptor
+  methods:
+    - id: 0
+      name: <init>
+      desc: ()V
+      postHook: checkMemshellInitPost
+- id: 26
+  name: javax.servlet.Filter
+  methods:
+    - id: 0
+      name: <init>
+      desc: ()V
+      postHook: checkMemshellInitPost
+- id: 27
+  name: javax.servlet.Servlet
+  methods:
+    - id: 0
+      name: <init>
+      desc: ()V
+      postHook: checkMemshellInitPost
+- id: 28
+  name: javax.servlet.ServletRequestListener
+  methods:
+    - id: 0
+      name: <init>
+      desc: ()V
+      postHook: checkMemshellInitPost
+- id: 29
+  name: javax.websocket.Endpoint
+  methods:
+    - id: 0
+      name: <init>
+      desc: ()V
+      postHook: checkMemshellInitPost
+- id: 30
+  name: jakarta.servlet.Filter
+  methods:
+    - id: 0
+      name: <init>
+      desc: ()V
+      postHook: checkMemshellInitPost
+- id: 31
+  name: jakarta.servlet.Servlet
+  methods:
+    - id: 0
+      name: <init>
+      desc: ()V
+      postHook: checkMemshellInitPost
+- id: 32
+  name: jakarta.servlet.ServletRequestListener
+  methods:
+    - id: 0
+      name: <init>
+      desc: ()V
+      postHook: checkMemshellInitPost
