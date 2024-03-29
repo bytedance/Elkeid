@@ -259,7 +259,7 @@ static int __init smith_start_delayed_put(void)
     g_delayed_put_thread = kthread_create(smith_delayed_put_worker, 0, "elkeid - dput");
     if (IS_ERR(g_delayed_put_thread)) {
         int rc = g_delayed_put_thread ? PTR_ERR(g_delayed_put_thread) : -ENOMEM;
-        printk("smith_start_delayed_put: failed creating dealyed_fput worker: %d\n", rc);
+        printk("smith_start_delayed_put: failed creating delayed_fput worker: %d\n", rc);
         return rc;
     }
 
