@@ -223,9 +223,8 @@ impl RASPComm for ThreadMode {
             let root_dir = format!("/proc/{}/root", pid);
             let mut target = format!("{}/{}", root_dir, linking_to);
             
-            let resolved_path = resolve_symlink_path(target.clone()) {
-                target = format!("/proc/{}/root/{}", pid ,resolved_path);
-            }
+            let resolved_path = resolve_symlink_path(target.clone());
+            target = format!("/proc/{}/root/{}", pid ,resolved_path);
 
             // check socket exist
             let _  = remove_file(target.clone());
