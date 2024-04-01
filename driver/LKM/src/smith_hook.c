@@ -98,7 +98,7 @@ static char call_usermodehelper_exec_kprobe_state = 0x0;
 static char write_kprobe_state = 0x0;
 
 #if (EXIT_PROTECT == 1) && defined(MODULE)
-void exit_protect_action(void)
+static void exit_protect_action(void)
 {
 	__module_get(THIS_MODULE);
 }
@@ -566,7 +566,7 @@ static const struct cred *(*get_task_cred_sym) (struct task_struct *);
 #endif
 #include <linux/mount.h>
 
-struct proc_ns_operations *smith_mntns_ops;
+static struct proc_ns_operations *smith_mntns_ops;
 static uint64_t smith_query_mntns_id(struct task_struct *task)
 {
     struct super_block *sb = NULL;
@@ -863,9 +863,10 @@ static int smith_get_peer_v6(struct socket *sock, struct sockaddr *sa)
 #endif
 
 //get task tree first AF_INET/AF_INET6 socket info
-void get_process_socket(__be32 *sip4, struct in6_addr *sip6, int *sport,
-                        __be32 *dip4, struct in6_addr *dip6, int *dport,
-                        pid_t *socket_pid, int *sa_family)
+static void
+get_process_socket(__be32 *sip4, struct in6_addr *sip6, int *sport,
+                   __be32 *dip4, struct in6_addr *dip6, int *dport,
+                   pid_t *socket_pid, int *sa_family)
 {
     struct task_struct *task = current;
     int it = 0, socket_check = 0;
@@ -1436,7 +1437,8 @@ static void smith_trace_sysret_exec(int rc)
 }
 
 //get create file info
-int security_inode_create_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int
+security_inode_create_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     char *pname_buf = NULL;
     struct smith_tid *tid = NULL;
@@ -1754,7 +1756,7 @@ static int smith_query_ip_addr(struct socket *sock, struct smith_ip_addr *addr)
 #define SMITH_DNS_THRESHOLD    (10)     /* threshold: 2^10 = 1024 ops/s */
 #define SMITH_DNS_INTERVALS    (60)     /* 60 seconds */
 
-struct smith_dns_threshold {
+static struct smith_dns_threshold {
     atomic_t armed ____cacheline_aligned_in_smp;  /* dns process enabled */
     atomic_t ops ____cacheline_aligned_in_smp;    /* udp traffic count */
     uint64_t start ____cacheline_aligned_in_smp;  /* start time stamp of counting */
@@ -1935,7 +1937,7 @@ out:
         smith_kfree(data);
 }
 
-int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     int target_pid = -1;
     unsigned long prot;
@@ -2010,7 +2012,7 @@ out:
     return 0;
 }
 
-int call_usermodehelper_exec_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int call_usermodehelper_exec_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     int wait = 0, argv_res_len = 0, argv_len = 0;
     int offset = 0, res = 0, free_argv = 0, i;
@@ -2068,7 +2070,7 @@ int call_usermodehelper_exec_pre_handler(struct kprobe *p, struct pt_regs *regs)
     return 0;
 }
 
-void rename_and_link_handler(int type, char * oldori, char * newori, char * s_id)
+static void rename_and_link_handler(int type, char * oldori, char * newori, char * s_id)
 {
     struct smith_tid *tid = NULL;
     char *exe_path = DEFAULT_RET_STR;
@@ -2093,7 +2095,7 @@ out:
         smith_put_tid(tid);
 }
 
-int rename_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int rename_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     char *old_path_str = DEFAULT_RET_STR;
     char *new_path_str = DEFAULT_RET_STR;
@@ -2150,7 +2152,7 @@ int rename_pre_handler(struct kprobe *p, struct pt_regs *regs)
     return 0;
 }
 
-int link_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int link_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     char *old_path_str = DEFAULT_RET_STR;
     char *new_path_str = DEFAULT_RET_STR;
@@ -2244,7 +2246,7 @@ out:
         smith_kfree(fdname);
 }
 
-int open_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int open_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     int filename_len = 0;
 
@@ -2288,13 +2290,13 @@ out:
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0)
-struct inode *file_inode(struct file * f)
+static __inline struct inode *file_inode(struct file * f)
 {
     return f->f_path.dentry->d_inode;
 }
 #endif
 
-int write_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int write_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     struct file *file;
     const char __user *buf;
@@ -2343,7 +2345,7 @@ out:
     return 0;
 }
 
-int openat_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int openat_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     char *exe_path = DEFAULT_RET_STR;
     struct smith_tid *tid = NULL;
@@ -2518,7 +2520,7 @@ static int mount_check_options(char *data)
     return 0;
 }
 
-int mount_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int mount_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     unsigned long flags = 0;
 
@@ -3179,7 +3181,7 @@ struct update_cred_data {
 #endif
 };
 
-int update_cred_entry_handler(struct kretprobe_instance *ri,
+static int update_cred_entry_handler(struct kretprobe_instance *ri,
                               struct pt_regs *regs)
 {
     struct update_cred_data *data;
@@ -3188,7 +3190,7 @@ int update_cred_entry_handler(struct kretprobe_instance *ri,
     return 0;
 }
 
-int update_cred_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int update_cred_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     struct smith_tid *tid = NULL;
     char *exe_path = DEFAULT_RET_STR;
@@ -3226,7 +3228,7 @@ out:
     return 0;
 }
 
-int smith_usb_ncb(struct notifier_block *nb, unsigned long val, void *priv)
+static int smith_usb_ncb(struct notifier_block *nb, unsigned long val, void *priv)
 {
     char *exe_path = DEFAULT_RET_STR;
     struct smith_tid *tid = NULL;
@@ -3257,75 +3259,75 @@ out:
     return NOTIFY_OK;
 }
 
-struct kprobe call_usermodehelper_exec_kprobe = {
+static struct kprobe call_usermodehelper_exec_kprobe = {
         .symbol_name = "call_usermodehelper_exec",
         .pre_handler = call_usermodehelper_exec_pre_handler,
 };
 
-struct kprobe mount_kprobe = {
+static struct kprobe mount_kprobe = {
         .symbol_name = "security_sb_mount",
         .pre_handler = mount_pre_handler,
 };
 
-struct kprobe rename_kprobe = {
+static struct kprobe rename_kprobe = {
         .symbol_name = "security_inode_rename",
         .pre_handler = rename_pre_handler,
 };
 
-struct kprobe link_kprobe = {
+static struct kprobe link_kprobe = {
         .symbol_name = "security_inode_link",
         .pre_handler = link_pre_handler,
 };
 
-struct kretprobe update_cred_kretprobe = {
+static struct kretprobe update_cred_kretprobe = {
         .kp.symbol_name = "commit_creds",
         .data_size = sizeof(struct update_cred_data),
         .handler = update_cred_handler,
         .entry_handler = update_cred_entry_handler,
 };
 
-struct kprobe security_inode_create_kprobe = {
+static struct kprobe security_inode_create_kprobe = {
         .symbol_name = "security_inode_create",
         .pre_handler = security_inode_create_pre_handler,
 };
 
-struct kprobe mprotect_kprobe = {
+static struct kprobe mprotect_kprobe = {
         .symbol_name = "security_file_mprotect",
         .pre_handler = mprotect_pre_handler,
 };
 
-struct kprobe open_kprobe = {
+static struct kprobe open_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(open),
         .pre_handler = open_pre_handler,
 };
 
-struct kprobe openat_kprobe = {
+static struct kprobe openat_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(openat),
         .pre_handler = openat_pre_handler,
 };
 
-struct kprobe write_kprobe = {
+static struct kprobe write_kprobe = {
         .symbol_name = "vfs_write",
         .pre_handler = write_pre_handler,
 };
 
-struct kprobe exit_kprobe = {
+static struct kprobe exit_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(exit),
         .pre_handler = exit_pre_handler,
 };
 
-struct kprobe exit_group_kprobe = {
+static struct kprobe exit_group_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(exit_group),
         .pre_handler = exit_group_pre_handler,
 };
 
-struct kretprobe security_path_rmdir_kprobe = {
+static struct kretprobe security_path_rmdir_kprobe = {
         .kp.symbol_name = "security_path_rmdir",
         .handler = rm_handler,
         .entry_handler = security_path_rmdir_pre_handler,
 };
 
-struct kretprobe security_path_unlink_kprobe = {
+static struct kretprobe security_path_unlink_kprobe = {
         .kp.symbol_name = "security_path_unlink",
         .handler = rm_handler,
         .entry_handler = security_path_unlink_pre_handler,
@@ -3356,7 +3358,7 @@ static void smith_unregister_kretprobe(struct kretprobe *kr)
     kr->kp.addr = NULL;
 }
 
-int register_call_usermodehelper_exec_kprobe(void)
+static int register_call_usermodehelper_exec_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&call_usermodehelper_exec_kprobe);
@@ -3367,12 +3369,12 @@ int register_call_usermodehelper_exec_kprobe(void)
     return ret;
 }
 
-void unregister_call_usermodehelper_exec_kprobe(void)
+static void unregister_call_usermodehelper_exec_kprobe(void)
 {
     unregister_kprobe(&call_usermodehelper_exec_kprobe);
 }
 
-int register_rename_kprobe(void)
+static int register_rename_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&rename_kprobe);
@@ -3383,12 +3385,12 @@ int register_rename_kprobe(void)
     return ret;
 }
 
-void unregister_rename_kprobe(void)
+static void unregister_rename_kprobe(void)
 {
     unregister_kprobe(&rename_kprobe);
 }
 
-int register_exit_kprobe(void)
+static int register_exit_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&exit_kprobe);
@@ -3399,12 +3401,12 @@ int register_exit_kprobe(void)
     return ret;
 }
 
-void unregister_exit_kprobe(void)
+static void unregister_exit_kprobe(void)
 {
     unregister_kprobe(&exit_kprobe);
 }
 
-int register_exit_group_kprobe(void)
+static int register_exit_group_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&exit_group_kprobe);
@@ -3415,12 +3417,12 @@ int register_exit_group_kprobe(void)
     return ret;
 }
 
-void unregister_exit_group_kprobe(void)
+static void unregister_exit_group_kprobe(void)
 {
     unregister_kprobe(&exit_group_kprobe);
 }
 
-int register_link_kprobe(void)
+static int register_link_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&link_kprobe);
@@ -3431,12 +3433,12 @@ int register_link_kprobe(void)
     return ret;
 }
 
-void unregister_link_kprobe(void)
+static void unregister_link_kprobe(void)
 {
     unregister_kprobe(&link_kprobe);
 }
 
-int register_create_file_kprobe(void)
+static int register_create_file_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&security_inode_create_kprobe);
@@ -3446,12 +3448,12 @@ int register_create_file_kprobe(void)
     return ret;
 }
 
-void unregister_create_file_kprobe(void)
+static void unregister_create_file_kprobe(void)
 {
     unregister_kprobe(&security_inode_create_kprobe);
 }
 
-int register_mount_kprobe(void)
+static int register_mount_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&mount_kprobe);
@@ -3461,12 +3463,12 @@ int register_mount_kprobe(void)
     return ret;
 }
 
-void unregister_mount_kprobe(void)
+static void unregister_mount_kprobe(void)
 {
     unregister_kprobe(&mount_kprobe);
 }
 
-int register_update_cred_kprobe(void)
+static int register_update_cred_kprobe(void)
 {
     int ret;
     ret = smith_register_kretprobe(&update_cred_kretprobe);
@@ -3476,12 +3478,12 @@ int register_update_cred_kprobe(void)
     return ret;
 }
 
-void unregister_update_cred_kprobe(void)
+static void unregister_update_cred_kprobe(void)
 {
     smith_unregister_kretprobe(&update_cred_kretprobe);
 }
 
-int register_mprotect_kprobe(void)
+static int register_mprotect_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&mprotect_kprobe);
@@ -3491,12 +3493,12 @@ int register_mprotect_kprobe(void)
     return ret;
 }
 
-void unregister_mprotect_kprobe(void)
+static void unregister_mprotect_kprobe(void)
 {
     unregister_kprobe(&mprotect_kprobe);
 }
 
-int register_open_kprobe(void)
+static int register_open_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&open_kprobe);
@@ -3506,12 +3508,12 @@ int register_open_kprobe(void)
     return ret;
 }
 
-void unregister_open_kprobe(void)
+static void unregister_open_kprobe(void)
 {
     unregister_kprobe(&open_kprobe);
 }
 
-int register_openat_kprobe(void)
+static int register_openat_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&openat_kprobe);
@@ -3521,12 +3523,12 @@ int register_openat_kprobe(void)
     return ret;
 }
 
-void unregister_openat_kprobe(void)
+static void unregister_openat_kprobe(void)
 {
     unregister_kprobe(&openat_kprobe);
 }
 
-int register_security_path_rmdir_kprobe(void)
+static int register_security_path_rmdir_kprobe(void)
 {
     int ret;
     ret = smith_register_kretprobe(&security_path_rmdir_kprobe);
@@ -3536,12 +3538,12 @@ int register_security_path_rmdir_kprobe(void)
     return ret;
 }
 
-void unregister_security_path_rmdir_kprobe(void)
+static void unregister_security_path_rmdir_kprobe(void)
 {
     smith_unregister_kretprobe(&security_path_rmdir_kprobe);
 }
 
-int register_security_path_unlink_kprobe(void)
+static int register_security_path_unlink_kprobe(void)
 {
     int ret;
     ret = smith_register_kretprobe(&security_path_unlink_kprobe);
@@ -3551,12 +3553,12 @@ int register_security_path_unlink_kprobe(void)
     return ret;
 }
 
-void unregister_security_path_unlink_kprobe(void)
+static void unregister_security_path_unlink_kprobe(void)
 {
     smith_unregister_kretprobe(&security_path_unlink_kprobe);
 }
 
-int register_write_kprobe(void)
+static int register_write_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&write_kprobe);
@@ -3566,12 +3568,12 @@ int register_write_kprobe(void)
     return ret;
 }
 
-void unregister_write_kprobe(void)
+static void unregister_write_kprobe(void)
 {
     unregister_kprobe(&write_kprobe);
 }
 
-void uninstall_kprobe(void)
+static void uninstall_kprobe(void)
 {
     if (UDEV_HOOK == 1) {
         static void (*smith_usb_unregister_notify) (struct notifier_block * nb);
@@ -3625,7 +3627,7 @@ void uninstall_kprobe(void)
         unregister_link_kprobe();
 }
 
-void install_kprobe(void)
+static void install_kprobe(void)
 {
     int ret;
 
@@ -3901,14 +3903,7 @@ static void smith_drop_head_imgs(struct tt_rb *rb)
     } while (--count > SMITH_IMG_MAX);
 }
 
-struct smith_img *smith_get_img(struct smith_img *img)
-{
-    if (img)
-        atomic_inc_return(&img->si_node.refs);
-    return img;
-}
-
-void smith_put_img(struct smith_img *img)
+static void smith_put_img(struct smith_img *img)
 {
     if (in_interrupt()) {
         img->si_age = smith_get_seconds() + SMITH_IMG_REAPER;
@@ -4025,6 +4020,7 @@ static void smith_show_img(struct tt_node *tnod)
             atomic_read(&img->si_node.refs));
 }
 
+void smith_enum_img(void);
 void smith_enum_img(void)
 {
     printk("enum all imgs (%u):\n", atomic_read(&g_rb_img.count));
@@ -4308,7 +4304,7 @@ static int smith_is_anchor(struct task_struct *task)
 /*
  * hash lists for all active tasks
  */
-struct hlist_root g_hlist_tid;
+static struct hlist_root g_hlist_tid;
 
 /* query mntns id */
 uint64_t smith_query_mntns(void)
@@ -5539,7 +5535,7 @@ struct kprobe  set_task_comm_kprobe = {
 
 #endif
 
-struct smith_tracepoint {
+static struct smith_tracepoint {
     const char *name;
     void *handler;
     void *data;
@@ -6116,7 +6112,7 @@ static void smith_md5_destroy(smith_md5_t *md5)
     md5->md5 = NULL;
 }
 
-int smith_get_hash_file(struct file *file, image_hash_t *hash)
+static int smith_get_hash_file(struct file *file, image_hash_t *hash)
 {
     char *buf = NULL;
     smith_md5_t md5 = {0};

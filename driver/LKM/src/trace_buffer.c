@@ -2870,6 +2870,9 @@ tb_recursive_unlock(struct tb_per_cpu *cpu_ring)
 /* The recursive locking above uses 5 bits */
 #define NESTED_BITS 5
 
+void tb_nest_start(struct tb_ring *buffer);
+void tb_nest_end(struct tb_ring *buffer);
+
 /**
  * tb_nest_start - Allow to trace while nested
  * @buffer: The ring buffer to modify
@@ -4139,12 +4142,12 @@ static void tb_advance_reader(struct tb_per_cpu *cpu_ring)
 	cpu_ring->read_bytes += length;
 }
 
-int tb_lost_events(struct tb_per_cpu *cpu_ring)
+static int tb_lost_events(struct tb_per_cpu *cpu_ring)
 {
 	return cpu_ring->lost_events;
 }
 
-struct tb_event *
+static struct tb_event *
 tb_buffer_peek(struct tb_per_cpu *cpu_ring, u64 *ts,
 	       unsigned long *lost_events)
 {

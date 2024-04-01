@@ -30,4 +30,7 @@ struct filter_ops {
 };
 extern struct filter_ops g_flt_ops;
 
+extern int smith_register_exec_load(void);
+extern int smith_unregister_exec_load(void);
+
 #endif /* FILTER_H */

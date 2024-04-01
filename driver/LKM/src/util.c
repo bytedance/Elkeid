@@ -373,7 +373,7 @@ void hlist_free_node(struct hlist_root *hr, struct hlist_hnod *node)
     atomic_dec(&hr->allocs);
 }
 
-void hlist_free_node_rcu(struct rcu_head *rcu)
+static void hlist_free_node_rcu(struct rcu_head *rcu)
 {
     struct hlist_hnod *hnod = container_of(rcu, struct hlist_hnod, rcu);
     if (hnod->hash->release)
@@ -654,7 +654,7 @@ static int _kallsyms_lookup_kprobe(struct kprobe *p, struct pt_regs *regs)
         return 0;
 }
 
-unsigned long get_kallsyms_func(void)
+static unsigned long get_kallsyms_func(void)
 {
         struct kprobe probe;
         int ret;

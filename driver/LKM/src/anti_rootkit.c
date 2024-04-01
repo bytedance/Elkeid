@@ -110,7 +110,7 @@ static void module_list_unlock(void)
 
 static void analyze_syscalls(void)
 {
-    int i;
+	int i;
 	unsigned long addr;
 	struct module *mod;
 

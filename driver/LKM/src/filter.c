@@ -14,8 +14,8 @@
 #define ALLOWLIST_NODE_MAX 4090
 #define ALLOWLIST_LIMIT 128
 
-struct rb_root execve_exe_allowlist = RB_ROOT;
-struct rb_root execve_argv_allowlist = RB_ROOT;
+static struct rb_root execve_exe_allowlist = RB_ROOT;
+static struct rb_root execve_argv_allowlist = RB_ROOT;
 static int execve_exe_allowlist_limit = 0;
 static int execve_argv_allowlist_limit = 0;
 static DEFINE_RWLOCK(exe_allowlist_lock);
@@ -775,7 +775,7 @@ static struct psad_ip4_list {
     struct psad_ip_list list;
 } *g_ip4_list;
 
-void psad_free_list_rcu(struct rcu_head *rcu)
+static void psad_free_list_rcu(struct rcu_head *rcu)
 {
     printk("ip allowlist %px to be freed.\n", rcu);
     smith_kfree(rcu);
@@ -1083,9 +1083,6 @@ out:
     smith_kfree(data);
     return rc;
 }
-
-int smith_register_exec_load(void);
-int smith_unregister_exec_load(void);
 
 static int filter_ioctl(int cmd, const __user char *buf)
 {
