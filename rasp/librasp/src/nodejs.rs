@@ -91,7 +91,7 @@ pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str) -> Result<
                     // port
                     if n == 1 {
                         sleep(Duration::from_secs(1));
-                        error!("can not attach nodejs");
+                        error!("can not attach nodejs, exit code: {}, output: {}", n, output);
                         return Err(anyhow!(output));
                     }
                     return Err(anyhow!("return code: {} {}", n, output));
