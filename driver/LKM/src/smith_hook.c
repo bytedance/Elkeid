@@ -620,9 +620,20 @@ errorout:
     return mntns;
 }
 
+ssize_t (*smith_strscpy)(char *dest, const char *src, size_t count);
+
 static int __init kernel_symbols_init(void)
 {
-    void *ptr = (void *)smith_kallsyms_lookup_name("put_files_struct");
+    void *ptr;
+
+    ptr = (void *)smith_kallsyms_lookup_name("strscpy");
+    if (!ptr)
+        ptr = (void *)smith_kallsyms_lookup_name("strlcpy");
+    if (!ptr)
+        return -ENODEV;
+    smith_strscpy = ptr;
+
+    ptr = (void *)smith_kallsyms_lookup_name("put_files_struct");
     if (!ptr)
         return -ENODEV;
     put_files_struct_sym = ptr;
@@ -650,6 +661,7 @@ static int __init kernel_symbols_init(void)
         smith_ktime_get_real_seconds = ptr;
     smith_init_get_seconds();
 #endif
+
 
 /*
  * prepend_path will throw a WARN for d_absolute_path if root
@@ -2015,7 +2027,7 @@ out:
 static int call_usermodehelper_exec_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     int wait = 0, argv_res_len = 0, argv_len = 0;
-    int offset = 0, res = 0, free_argv = 0, i;
+    int offset = 0, free_argv = 0, i;
     void *si_tmp;
     char *path;
     char **argv;
@@ -2052,8 +2064,12 @@ static int call_usermodehelper_exec_pre_handler(struct kprobe *p, struct pt_regs
         } else {
             free_argv = 1;
             for (i = 0; offset < argv_res_len && i < argv_len; i++) {
-                res = argv_res_len - offset;
-                offset += strlcpy(argv_res + offset, argv[i], res) + 1;
+                int res = argv_res_len - offset, ret;
+                ret = smith_strscpy(argv_res + offset, argv[i], res);
+                if (ret < 0)
+                    offset += res;
+                else
+                    offset += ret + 1;
                 *(argv_res + offset - 1) = ' ';
             }
             *(argv_res + offset) = '\0';

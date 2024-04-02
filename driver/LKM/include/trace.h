@@ -93,12 +93,17 @@ struct exe_item {
 };
 
 #ifdef __KERNEL__
-
+extern ssize_t (*smith_strscpy)(char *dest, const char *src, size_t count);
 static __inline int sd_strncpy(char *d, int l, char *s)
 {
+    int rc;
+
     if (!d || !s || l <= 1)
        return 0;
-    return strlcpy(d, s, l);
+    rc = smith_strscpy(d, s, l);
+    if (rc < 0)
+	return l;
+    return rc;
 }
 
 extern uint64_t (*smith_ktime_get_real_ns)(void);
