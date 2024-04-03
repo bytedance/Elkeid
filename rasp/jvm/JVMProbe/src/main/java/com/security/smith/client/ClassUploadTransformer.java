@@ -99,24 +99,21 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
     }
 
     public void run() {
-        System.out.println("run enter");
+        SmithLogger.logger.info("class upload thread run enter");
 
         try {
             while(true) {
-                System.out.println("thread start receive");
                 SendClassInfo info = getUploadClassInfo_Wait();
                 if(notifyStop) {
+                    SmithLogger.logger.info("class upload thread stop!");
                     break;
                 }
 
                 if(info == null) {
-                    System.out.println("info == null");
                     continue;
                 }
 
                 try {
-                    System.out.println("start processing");
-
                     this.clazzToUpload = info.clazz;
                     this.transId = info.transId;
     
@@ -139,11 +136,11 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
             SmithLogger.exception(e);
         }
 
-        System.out.println("run leave");
+        SmithLogger.logger.info("class upload thread run leave");
     }
 
     public synchronized boolean start(Client client,Instrumentation inst) {
-        System.out.println("start enter");
+        SmithLogger.logger.info("start enter");
 
         if(!started) {
             try {
@@ -151,7 +148,7 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
                 this.inst = inst;
     
                 inst.addTransformer(ourInstance, true);
-                System.out.println("addTransformer success");
+                SmithLogger.logger.info("addTransformer success");
                 this.classToUploadLock = new ReentrantLock();
                 this.classToUploadcondition = this.classToUploadLock.newCondition();
                 this.classHashCachelock = new ReentrantReadWriteLock();
@@ -163,13 +160,13 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
                 };
                 this.classToUploadList = new LinkedList<>();
 
-                System.out.println("init ClassUploadTransformer Var success");
+                SmithLogger.logger.info("init ClassUploadTransformer Var success");
 
                 uploadClassThread = new Thread(ourInstance);
 
                 uploadClassThread.start();
 
-                System.out.println("Start  uploadClassThread success");
+                SmithLogger.logger.info("Start  uploadClassThread success");
 
                 started = true;
             }
@@ -187,22 +184,22 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
             }
         }
 
-        System.out.println("start leave");
+        SmithLogger.logger.info("start leave");
 
         return started;
     }
 
     public synchronized boolean stop() {
-        System.out.println("stop enter");
+        SmithLogger.logger.info("stop enter");
 
         if(started)  {
             try {
                 started = false;
                 inst.removeTransformer(ourInstance);
 
-                System.out.println("removeTransformer success");
+                SmithLogger.logger.info("removeTransformer success");
 
-                System.out.println("clear classHashCache");
+                SmithLogger.logger.info("clear classHashCache");
                 classHashCachelock.writeLock().lock();
                 try {
                     classHashCache.clear();
@@ -210,7 +207,7 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
                     classHashCachelock.writeLock().unlock();
                 }
 
-                System.out.println("notify thread stop");
+                SmithLogger.logger.info("notify thread stop");
                 classToUploadLock.lock();
                 try {
                     notifyStop = true;
@@ -220,11 +217,11 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
                     classToUploadLock.unlock();
                 }
 
-                System.out.println("wait thread stop");
+                SmithLogger.logger.info("wait thread stop");
                 uploadClassThread.join();
-                System.out.println("upload thread stop");
+                SmithLogger.logger.info("upload thread stoped");
 
-                System.out.println("clear classToUploadList");
+                SmithLogger.logger.info("clear classToUploadList");
                 classToUploadLock.lock();
                 try {
                     classToUploadList.clear();
@@ -247,14 +244,12 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
             }
         }
 
-        System.out.println("stop leave");
+        SmithLogger.logger.info("stop leave");
 
         return !started;
     }
 
     private boolean classIsSended(int hashcode) {
-        System.out.println("classIsSended enter");
-
         boolean isSended = false;
         classHashCachelock.readLock().lock();
         try {
@@ -263,16 +258,12 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
             classHashCachelock.readLock().unlock();
         }
 
-        System.out.println("classIsSended leave");
-
         return isSended;
     }
 
     private SendClassInfo getUploadClassInfo_Wait() {
         SendClassInfo ret = null;
         boolean     exceptioned = false;
-
-        System.out.println("getUploadClassInfo_Wait enter");
 
         classToUploadLock.lock();
         try {
@@ -294,14 +285,10 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
             classToUploadLock.unlock();
         }
 
-        System.out.println("getUploadClassInfo_Wait leave");
-
         return ret;
     }
 
     private boolean addUploadClassInfo(Class<?> classToUpload, String transId) {
-        System.out.println("addUploadClassInfo enter");
-
         boolean ret = false;
 
         try {
@@ -310,7 +297,6 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
                 SmithLogger.logger.info("upload Class:" + classToUpload + "  transId:"+transId);
                 classToUploadLock.lock();
                 try {
-                    System.out.println("add send class info:"+info);
                     classToUploadList.add(info);
                     classToUploadcondition.signal();
                 }
@@ -320,7 +306,6 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
 
                 classHashCachelock.writeLock().lock();
                 try {
-                    System.out.println("add class hash:"+classToUpload.hashCode());
                     classHashCache.put(classToUpload.hashCode(), 1);
                 } finally {
                     classHashCachelock.writeLock().unlock();
@@ -330,17 +315,13 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
             }
         }
         catch(Exception e) {
-            e.printStackTrace();
+            SmithLogger.exception(e);
         }
-
-        System.out.println("addUploadClassInfo leave");
 
         return ret;
     }
 
     public  boolean sendClass(Class<?> clazz, String transId) {
-        System.out.println("sendClass enter");
-
         boolean ret = false;
 
         if(!started) {
@@ -359,8 +340,6 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
         catch(Exception e) {
             SmithLogger.exception(e);
         }
-
-        System.out.println("sendClass leave");
 
         return ret;
     }

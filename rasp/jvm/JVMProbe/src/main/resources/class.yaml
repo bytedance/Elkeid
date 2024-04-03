@@ -319,14 +319,14 @@
       name: <init>
       desc: ()V
       postHook: checkMemshellInitPost
-- id: 26
+- id: 33
   name: io.undertow.servlet.core.ManagedServlets
   methods:
      - id: 0
        name: addServlet
        desc: (Lio/undertow/servlet/api/ServletInfo;)Lio/undertow/servlet/handlers/ServletHandler;
        preHook: checkWildflyaddServletPre
-- id: 27
+- id: 34
   name: org.jboss.modules.ModuleClassLoader
   methods:
     - id: 0
