@@ -116,6 +116,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     public void start() {
         SmithLogger.logger.info("probe start");
 
+        System.out.println("init ClassUploadTransformer");
+        ClassUploadTransformer.getInstance().start(client, inst);
+
         inst.addTransformer(this, true);
         reloadClasses();
 
@@ -400,6 +403,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 return null;
             }
         } 
+
+        if (smithClass == null) {
+            return null;
+        }
 
         try {
             Map<String, SmithMethod> methodMap = smithClass.getMethods().stream().collect(Collectors.toMap(method -> method.getName() + method.getDesc(), method -> method));
@@ -688,22 +695,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             return;
         }
         try {
-            ClassUploadTransformer transformer = new ClassUploadTransformer(clazz, client, transId);
-            try {
-                inst.addTransformer(transformer, true);
-                if (inst.isModifiableClass(clazz) && !clazz.getName().startsWith("java.lang.invoke.LambdaForm")) {
-                    try {
-                        inst.retransformClasses(clazz);
-                    } catch (Exception e) {
-                        SmithLogger.exception(e);
-                    }
-                }
-            } finally {
-                if (transformer != null) {
-                    inst.removeTransformer(transformer);
-                }
-            }
-         
+            ClassUploadTransformer.getInstance().sendClass(clazz, transId);
         } catch (Exception e) {
             SmithLogger.exception(e);
         }
