@@ -485,49 +485,6 @@ public class SmithProbeProxy {
         return null;
     }
 
-
-    public static Field getField(Object obj, String fieldName){
-        Class clazz = null;
-
-        if(obj == null){
-            return null;
-        }
-
-        if (obj instanceof Class){
-            clazz = (Class)obj;
-        }else {
-            clazz = obj.getClass();
-        }
-        Field field = null;
-        while (clazz!=null){
-            try {
-                field = clazz.getDeclaredField(fieldName);
-                clazz = null;
-            }catch (Exception e){
-                clazz = clazz.getSuperclass();
-            }
-        }
-
-        if (field != null){
-            field.setAccessible(true);
-        }
-
-        return field;
-    }
-
-    public static Object getFieldValue(Object obj, String fieldName) throws Exception {
-        Field f=null;
-        if (obj instanceof Field){
-            f=(Field)obj;
-        }else {
-            f = getField(obj, fieldName);
-        }
-        if (f != null) {
-            return f.get(obj);
-        }
-        return null;
-    }
-
     /*
 
     public ServletHandler addServlet(ServletInfo servletInfo) 
@@ -544,8 +501,8 @@ public class SmithProbeProxy {
         try {
             Object servletInfo = args[1];
             if(servletInfo != null) {
-                Class<?> servletClass = (Class<?>)getFieldValue(servletInfo,"servletClass");
-                String servletName = (String)getFieldValue(servletInfo,"name");
+                Class<?> servletClass = (Class<?>)Reflection.getField(servletInfo,"servletClass");
+                String servletName = (String)Reflection.getField(servletInfo,"name");
 
                 if(servletName != null) {
                     if (servletClass != null) {
