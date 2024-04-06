@@ -314,7 +314,12 @@ fn resolve_mount_path(path: String, pid: i32) -> String {
     if find_path.exists() {
         if let Ok(subfix_path) = current_path.strip_prefix(find_path) {
             let parent_resolve = resolve_symlink_path(find_path.to_string_lossy().into_owned());
-            return format!("{}/{}", parent_resolve, subfix_path.display());
+            if parent_resolve == find_path.to_string_lossy().into_owned() {
+                return path;
+            } 
+            else {
+                return format!("{}/{}", parent_resolve, subfix_path.display());
+            }
         }
     }
     path
