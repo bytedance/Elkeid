@@ -224,7 +224,7 @@ impl RASPComm for ThreadMode {
             let mut target = format!("{}/{}", root_dir, linking_to);
             
             let resolved_path = resolve_symlink_path(target.clone());
-            target = format!("/proc/{}/root/{}", pid ,resolved_path);
+            target = format!("/proc/{}/root{}", pid ,resolved_path);
 
             // check socket exist
             let _  = remove_file(target.clone());
@@ -302,7 +302,7 @@ fn check_need_mount(pid_mntns: &String) -> AnyhowResult<bool> {
 }
 
 fn resolve_mount_path(path: String, pid: i32) -> String {
-    let target_path = format!("/proc/{}/root/{}", pid, path);
+    let target_path = format!("/proc/{}/root{}", pid, path);
     let current_path = std::path::Path::new(&target_path);
     let mut find_path = current_path;
 
@@ -335,8 +335,13 @@ fn resolve_symlink_path(path: String) -> String {
                 let mut resolved_path = real_path;
                 if !resolved_path.is_absolute() {
                     resolved_path = check_path.parent().unwrap().join(resolved_path);
-                } 
-                return format!("{}/{}", resolved_path.to_string_lossy(), file_name.unwrap().to_string_lossy());
+                }
+                if resolved_path.parent().is_none() {
+                    return format!("/{}", file_name.unwrap().to_string_lossy());
+                }
+                else {
+                    return format!("{}/{}", resolved_path.to_string_lossy(), file_name.unwrap().to_string_lossy());
+                }
             }
         }
     }
