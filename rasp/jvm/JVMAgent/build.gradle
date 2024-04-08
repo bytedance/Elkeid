@@ -1,0 +1,51 @@
+plugins {
+    id 'java-library'
+    id 'com.github.johnrengelman.shadow' version '6.0.0'
+}
+
+group 'com.security'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation group: 'junit', name: 'junit', version: '4.13.1'
+    implementation group: 'org.ow2.asm', name: 'asm-tree', version: '9.6'
+    implementation group: 'org.ow2.asm', name: 'asm-commons', version: '9.6'
+    implementation group: 'io.netty', name: 'netty-all', version: '4.1.85.Final'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.14.0'
+    implementation group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-yaml', version: '2.14.0'
+    implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.11'
+    implementation group: 'com.lmax', name: 'disruptor', version: '3.4.4'
+    api group: 'org.javassist', name: 'javassist', version: '3.29.0-GA'
+}
+
+compileJava {
+    options.release.set(8)
+}
+
+jar {
+    manifest {
+        attributes 'Agent-Class': 'com.security.smith.SmithAgent'
+        attributes 'Premain-Class': 'com.security.smith.SmithAgent'
+        attributes 'Can-Retransform-Classes': 'true'
+        attributes 'Boot-Class-Path': 'SmithAgent.jar'
+        attributes 'Specification-Title': 'Smith Agent'
+        attributes 'Specification-Version': '1.0'
+        attributes 'Implementation-Title': 'Smith Agent'
+        attributes 'Implementation-Version': "$System.env.BUILD_VERSION"
+    }
+}
+
+shadowJar {
+    relocate 'io.netty', 'rasp.io.netty'
+    relocate 'org.objectweb.asm', 'rasp.org.objectweb.asm'
+    relocate 'org.apache.commons', 'rasp.org.apache.commons'
+    relocate 'org.yaml.snakeyaml', 'rasp.org.yaml.snakeyaml'
+    relocate 'com.lmax.disruptor', 'rasp.com.lmax.disruptor'
+    relocate 'com.fasterxml.jackson', 'rasp.com.fasterxml.jackson'
+    relocate 'javassist', 'rasp.javassist'
+    relocate 'META-INF/native/libnetty', 'META-INF/native/librasp_netty'
+}
