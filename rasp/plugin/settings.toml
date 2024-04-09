@@ -27,7 +27,7 @@ ignore_exe_name = [
 ]
 
 ignore_argv_regex = [
-    "/elkeid/manager/manager",
+    "^/elkeid",
 ]
 
 ### report env after inspected both key and value
