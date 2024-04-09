@@ -154,6 +154,14 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         SmithProbeProxy.getInstance().setDisruptor(disruptor);
     }
 
+    public void stop() {
+
+    }
+
+    public void uninit() {
+
+    }
+
     private void reloadClasses() {
         reloadClasses(smithClasses.keySet());
     }

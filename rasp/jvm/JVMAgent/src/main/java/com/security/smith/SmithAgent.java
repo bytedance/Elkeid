@@ -1,61 +1,62 @@
 package com.security.smith;
 
 import com.security.smith.log.SmithLogger;
+import com.security.smith.common.JarUtil;
+import com.security.smith.common.ParseParameter;
+import com.security.smith.common.Reflection;
 
 import io.netty.util.internal.SystemPropertyUtil;
 
 import java.lang.instrument.Instrumentation;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class SmithAgent {
-     private static boolean parseParameter(String Args,StringBuilder cmd,StringBuilder checksumStr,StringBuilder proberPath) {
+    private static ReentrantLock    xLoaderLock = new ReentrantLock();
+    private static SmithLoader      xLoader = null;
+    private static Class<?>         SmithProberClazz = null;
+    private static Object           SmithProberObj = null; 
+  
+    private static boolean loadSmithProber(String proberPath,Instrumentation inst) {
+        boolean bret = false;
 
         try {
-            /**
-             * attach;32 Byte Md5 Checksum;JavaProberPath;"
-             */
+            xLoader = new SmithLoader(proberPath, Thread.currentThread().getContextClassLoader());
+            SmithProberClazz = xLoader.loadClass("com.security.smith.SmithProbe");
 
-            if(Args.length() < 7) {
-                SmithLogger.logger.warning("Invalid agent parameter - "+Args);
-                return false;
-            }
-
-            String[] argX = Args.split(";") ;
-
-            if(argX.length == 0) {
-                SmithLogger.logger.warning("Invalid agent parameter - "+Args);
-                return false;
-            }
-
-            SmithLogger.logger.info("agent parameter:"+Args);
-
-            cmd.append(argX[0]);
-            String xCmd = cmd.toString(); 
-            if(xCmd.equals("attach")) {
-                if(argX.length != 3) {
-                    SmithLogger.logger.warning("Invalid attach parameter - "+Args);
-                    return false;
-                }
-
-                checksumStr.append(argX[1]);
-                proberPath.append(argX[2]);
-
-                return true;
-            }
-            else if(xCmd.equals("detach")) {
-                if(argX.length != 1) {
-                    return false;
-                }
-
-                return true;
-            }
-
-            SmithLogger.logger.warning("Invalid agent parameter - "+Args);
+            Class<?>[] emptyArgTypes = new Class[]{};
+            SmithProberObj = Reflection.invokeStaticMethod(SmithProberClazz,"getInstance", emptyArgTypes);
+            
+            Class<?>[]  argType = new Class[]{Instrumentation.class};
+            Reflection.invokeMethod(SmithProberObj,"setInst",argType,inst);
+            Reflection.invokeMethod(SmithProberObj,"init",emptyArgTypes);
+            Reflection.invokeMethod(SmithProberObj,"start",emptyArgTypes);
         }
         catch(Exception e) {
-            e.printStackTrace();
+            SmithLogger.exception(e);
         }
 
-        return false;
+        return bret;
+    }
+
+    private static Boolean unLoadSmithProber() {
+        boolean bret = false;
+
+        try {
+            if(SmithProberObj != null) {
+                Class<?>[] emptyArgTypes = new Class[]{};
+                Reflection.invokeMethod(SmithProberObj,"stop",emptyArgTypes);
+                Reflection.invokeMethod(SmithProberObj,"uninit",emptyArgTypes);
+
+                SmithProberObj = null;
+                SmithProberClazz = null;
+                xLoader = null;
+            }
+        }
+        catch(Exception e) {
+            SmithLogger.exception(e);
+        }
+
+        return bret;
     }
 
     public static void premain(String agentArgs, Instrumentation inst) {
@@ -74,15 +75,60 @@ public class SmithAgent {
         String checksumStr = "";
         String proberPath = "";
 
-        if(parseParameter(agentArgs,cmd_sb,checksumStr_sb,proberPath_sb)) {
+        if(ParseParameter.parseParameter(agentArgs,cmd_sb,checksumStr_sb,proberPath_sb)) {
             cmd = cmd_sb.toString();
-            checksumStr = checksumStr_sb.toString();
-            proberPath = proberPath_sb.toString();
-
             System.out.println("cmd:" + cmd);
-            System.out.println("checksumStr:" + checksumStr);
-            System.out.println("proberPath:" + proberPath); 
             System.out.println("parse parseParameter success");
+
+            if(cmd.equals("attach")) {
+                if(!JarUtil.checkJarFile(proberPath,checksumStr)) {
+                    SmithLogger.logger.warning(proberPath + " check fail!");
+                    return ;
+                }
+
+                checksumStr = checksumStr_sb.toString();
+                proberPath = proberPath_sb.toString();
+
+                System.out.println("checksumStr:" + checksumStr);
+                System.out.println("proberPath:" + proberPath); 
+
+                xLoaderLock.lock();
+                try {
+                    if(xLoader != null) {
+                        unLoadSmithProber();
+                        xLoader = null;
+                        SmithProberObj = null;
+                        SmithProberClazz = null;
+                    }
+
+                    if(!loadSmithProber(proberPath,inst)) {
+                        SmithLogger.logger.warning(proberPath + " loading fail!");
+                    }
+                }
+                finally {
+                    xLoaderLock.unlock();
+                }
+            }
+            else if(cmd.equals("deatch")) {
+                xLoaderLock.lock();
+                try {
+                    if(xLoader != null) {
+                        unLoadSmithProber();
+                        xLoader = null;
+                        SmithProberObj = null;
+                        SmithProberClazz = null;
+                    }
+                    else {
+                        SmithLogger.logger.warning("SmithProber No Loading!");
+                    }
+                }
+                finally {
+                    xLoaderLock.unlock();
+                }
+            } else {
+                SmithLogger.logger.warning("Unknow Command:"+cmd);
+                return ;
+            }
         }
         else {
             System.out.println("parse parameter fail");
