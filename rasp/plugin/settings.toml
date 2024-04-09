@@ -22,9 +22,13 @@ ignore_exe_name = [
     "rasp_server",
     "etrace",
     "collector",
+    "elkeid_hub"
+    "agent_center"
 ]
 
-ignore_argv_regex = []
+ignore_argv_regex = [
+    "/elkeid/manager/manager"
+]
 
 ### report env after inspected both key and value
 collect_env = [
@@ -51,7 +55,7 @@ report_action = 2995
 # process_mode_bind_path = "/var/run"
 # host_bind = true
 mode = "thread"
-bind_path = "/var/run/elkeid_rasp/smith_agent.sock"
+bind_path = "/tmp/elkeid_rasp/smith_agent.sock"
 linking_to = "/var/run/smith_agent.sock"
 using_mount = true
 
