@@ -22,9 +22,13 @@ ignore_exe_name = [
     "rasp_server",
     "etrace",
     "collector",
+    "elkeid_hub",
+    "agent_center"
 ]
 
-ignore_argv_regex = []
+ignore_argv_regex = [
+    "^/elkeid",
+]
 
 ### report env after inspected both key and value
 collect_env = [
