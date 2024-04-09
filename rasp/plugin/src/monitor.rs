@@ -274,7 +274,8 @@ fn internal_main(
         .spawn(move || loop {
             debug!("inspect thread looping");
             if !inspect_ctrl.check() {
-                warn!("inspect thread recv stop signal, quiting")
+                warn!("inspect thread recv stop signal, quiting");
+                break;
             }
             let pid = match pid_receiver.try_recv() {
                 Ok(p) => p,
