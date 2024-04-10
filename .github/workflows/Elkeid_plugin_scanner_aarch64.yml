@@ -5,6 +5,8 @@ on:
     branches:
     - main
     - 1.9/scanner
+    paths:
+    - plugins/scanner/**
 
 jobs:
 
