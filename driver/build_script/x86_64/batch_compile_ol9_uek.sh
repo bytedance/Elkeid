@@ -5,13 +5,13 @@ BUILD_VERSION=$(cat LKM/src/init.c | grep MODULE_VERSION | awk -F '"' '{print $2
 KO_NAME=$(grep "MODULE_NAME" ./LKM/Makefile | grep -m 1 ":=" | awk '{print $3}')
 
 
-enableGcc11(){
+enableGcc13(){
     export CC=/opt/rh/gcc-toolset-13/root/usr/bin/gcc
     export CPP=/opt/rh/gcc-toolset-13/root/usr/bin/cpp
     export CXX=/opt/rh/gcc-toolset-13/root/usr/bin/c++
 }
 
-enableGcc11
+enableGcc13
 
 echo "this is centos"
 for f in /usr/src/kernels/*
