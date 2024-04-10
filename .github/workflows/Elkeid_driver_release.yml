@@ -686,6 +686,49 @@ jobs:
       with:
         name: elkeid_driver_ol8_uek_x86_64
         path: ${{steps.extract-ol8_uek.outputs.destination}}
+  build_ol9_uek_x86_64:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: false
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Set up Docker Buildx ol9_uek
+      uses: docker/setup-buildx-action@v3
+    - name: Build ol9_uek
+      uses: docker/build-push-action@v3
+      timeout-minutes: 420
+      with:
+        context: .
+        file: driver/dockerfiles.x86_64/Dockerfile.ol9_uek
+        load: false
+        push: true
+        tags: elkeidteam/elkeid_driver_ol9_uek_x86_64:latest
+    - name: Docker Hub Description ol9_uek
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        password: ${{secrets.DOCKERHUB_TOKEN}}
+        repository: elkeidteam/elkeid_driver_ol9_uek_x86_64
+        short-description: ${{github.event.repository.description}}
+        username: ${{secrets.DOCKERHUB_USERNAME}}
+    - name: Extract ol9_uek
+      if: always()
+      id: extract-ol9_uek
+      uses: shrink/actions-docker-extract@v2
+      with:
+        image: elkeidteam/elkeid_driver_ol9_uek_x86_64:latest
+        path: /ko_output/.
+    - name: Upload ol9_uek
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: elkeid_driver_ol9_uek_x86_64
+        path: ${{steps.extract-ol9_uek.outputs.destination}}
   build_rhel6_x86_64:
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -2594,7 +2637,8 @@ jobs:
       run: echo "KMOD_RELEASE_PREFIX=$(echo $KMOD_VERSION | sed -e "s|\.|\_|g")" >>
         "$GITHUB_ENV"
     - name: Setup output Version format
-      run: echo "KO_TAR_XZ="$KMOD_RELEASE_PREFIX"_elkeid_driver_ko_$(date +"%Y%m%d").tar.xz" >> "$GITHUB_ENV"
+      run: echo "KO_TAR_XZ="$KMOD_RELEASE_PREFIX"_elkeid_driver_ko_$(date +"%Y%m%d").tar.xz"
+        >> "$GITHUB_ENV"
     - uses: actions/download-artifact@v3
       with:
         path: ~/all_elkeid_drivers
@@ -2647,6 +2691,7 @@ jobs:
     - build_debian11_x86_64
     - build_rocky9_x86_64
     - build_ubuntu1604_auzre_x86_64
+    - build_ol9_uek_x86_64
     - build_ubuntu1404_k3_x86_64
     - build_amazonlinux2_54_x86_64
     - build_ubuntu1204_x86_64
