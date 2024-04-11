@@ -127,8 +127,10 @@ pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
                         Ok(m) => m,
                         Err(e) => {
                             let _ = external_ctrl.stop();
-                            error!("recv failed from external client, {}", e);
-                            return Err(anyhow!("recv failed client failed: {}", e));
+                            error!("recv failed from external client, {}, now to stop process", e);
+                            info!("Elkeid RASP STOP");
+                            std::process::exit(0);
+                            //return Err(anyhow!("recv failed client failed: {}", e));
                         }
                     };
                     let parsed_message = match parse_message(&message) {
@@ -209,9 +211,10 @@ pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
                     warn!("from interval thread report a warn: {:?}", e);
                 }
             }
-            break;
+            info!("Elkeid RASP STOP");
+            std::process::exit(1);
         }
-        sleep(Duration::from_secs(60));
+        sleep(Duration::from_secs(10));
     }
     Ok(())
 }
@@ -509,12 +512,14 @@ fn internal_main(
 
     loop {
         if !ctrl.check() {
+            warn!("start to check ctrl2");
             pid_recv_thread.join().unwrap();
             inspect_thread.join().unwrap();
             cleaner_thread.join().unwrap();
             operation_thread.join().unwrap();
             reporter_thread.join().unwrap();
-            break;
+            info!("Elkeid RASP STOP");
+            std::process::exit(1);
         }
         sleep(Duration::from_secs(10));
     }
