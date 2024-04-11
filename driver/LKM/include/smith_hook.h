@@ -45,10 +45,6 @@
 #include <linux/kmod.h>
 #include <linux/dcache.h>
 
-#ifndef get_file_rcu
-#define get_file_rcu(x) atomic_long_inc_not_zero(&(x)->f_count)
-#endif
-
 #define NIPQUAD(addr) \
     ((unsigned char *)&addr)[0], \
     ((unsigned char *)&addr)[1], \

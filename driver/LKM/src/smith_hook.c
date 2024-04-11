@@ -404,6 +404,9 @@ Elong:
 }
 #endif /* < 2.6.38 */
 
+/* only inc f_count when it's not 0 to avoid races upon exe_file */
+#define smith_get_file(x) atomic_long_inc_not_zero(&(x)->f_count)
+
 /*
  * query task's executable image file, with mmap lock avoided, just because
  * mmput() could lead resched() (since it's calling might_sleep() interally)
@@ -425,14 +428,8 @@ static inline struct file *smith_get_task_exe_file(struct task_struct *task)
     task_lock(task);
     if (task->mm && task->mm->exe_file) {
         exe = task->mm->exe_file;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0)
-        if (!get_file_rcu(exe))
+        if (!smith_get_file(exe))
             exe = NULL;
-#else
-        /* only inc f_count when it's not 0 to avoid races upon exe_file */
-        if (!atomic_long_inc_not_zero(&exe->f_count))
-            exe = NULL;
-#endif
     }
     task_unlock(task);
 
@@ -1983,7 +1980,7 @@ static int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
             rcu_read_lock();
             if (!IS_ERR_OR_NULL(vma->vm_mm)) {
                 if (!IS_ERR_OR_NULL(&vma->vm_mm->exe_file)) {
-                    if (get_file_rcu(vma->vm_mm->exe_file)) {
+                    if (smith_get_file(vma->vm_mm->exe_file)) {
                         file_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
                         file_path = smith_d_path(&vma->vm_mm->exe_file->f_path, file_buf, PATH_MAX);
                         smith_fput(vma->vm_mm->exe_file);
@@ -1995,9 +1992,8 @@ static int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
             }
 
             if (!IS_ERR_OR_NULL(vma->vm_file)) {
-                if (get_file_rcu(vma->vm_file)) {
-                    vm_file_buff =
-                            smith_kzalloc(PATH_MAX, GFP_ATOMIC);
+                if (smith_get_file(vma->vm_file)) {
+                    vm_file_buff = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
                     vm_file_path = smith_d_path(&vma->vm_file->f_path, vm_file_buff, PATH_MAX);
                     smith_fput(vma->vm_file);
                 }
