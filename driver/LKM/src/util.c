@@ -5,6 +5,7 @@
  */
 #include "../include/util.h"
 #include <linux/version.h>
+#include <linux/vmalloc.h>
 #include <linux/kallsyms.h>
 #include <linux/prefetch.h>
 
@@ -14,36 +15,34 @@
 
 struct tt_node *tt_rb_alloc_node(struct tt_rb *rb)
 {
-    struct memcache_node *mnod;
+    struct tt_node *tnod;
     int size = rb->node ? rb->node : sizeof(struct tt_node);
 
-    mnod = memcache_pop(&rb->cache);
-    if (mnod) {
-        struct tt_node *tnod;
-        tnod = container_of(mnod, struct tt_node, cache);
+    tnod = memcache_pop(&rb->pool);
+    if (tnod) {
         memset((s8 *)tnod + offsetof(struct tt_node, node),
                 0, size - offsetof(struct tt_node, node));
         tnod->flag_pool = 1;
         return tnod;
     }
-    return smith_kmalloc(size, rb->gfp);
+    return smith_kzalloc(size, rb->gfp);
 }
 
 void tt_rb_free_node(struct tt_rb *rb, struct tt_node *node)
 {
     if (node->flag_pool)
-        memcache_push(&node->cache, &rb->cache);
+        memcache_push(node, &rb->pool);
     else
         smith_kfree(node);
 }
 
 /* one-time call, to init objs just after pool allocation */
-static int tt_rb_init_node(void *context, struct memcache_node *mnod)
+static int tt_rb_init_node(void *context, void *nod)
 {
-    struct tt_node *tnod;
+    struct tt_node *tnod = nod;
 
-    tnod = container_of(mnod, struct tt_node, cache);
     return 0;
+    tnod = tnod;
 }
 
 int tt_rb_init(struct tt_rb *rb, void *data, int nobjs, int objsz,
@@ -64,8 +63,8 @@ int tt_rb_init(struct tt_rb *rb, void *data, int nobjs, int objsz,
 
     /* initialize memory cache for tt_node, errors are to be ignored,
        then new nodes are to be allocated from memory pool */
-    memcache_init_pool(&rb->cache, nobjs, objsz, gfp_op, data,
-                       tt_rb_init_node);
+    memcache_init(&rb->pool, nobjs, objsz, gfp_op, rb,
+                  tt_rb_init_node, NULL);
 
     return 0;
 }
@@ -313,7 +312,7 @@ void tt_rb_fini(struct tt_rb *rb)
     write_unlock(&rb->lock);
 
     /* cleanup objects pool */
-    memcache_fini(&rb->cache, NULL, NULL);
+    memcache_fini(&rb->pool);
 }
 
 void tt_rb_enum(struct tt_rb *rb, void (*cb)(struct tt_node *))
@@ -334,19 +333,17 @@ void tt_rb_enum(struct tt_rb *rb, void (*cb)(struct tt_node *))
 struct hlist_hnod *hlist_alloc_node(struct hlist_root *hr)
 {
     struct hlist_hnod *hnod;
-    struct memcache_node *mnod;
     int size = hr->node ? hr->node : sizeof(struct hlist_hnod);
 
-    mnod = memcache_pop(&hr->cache);
-    if (mnod) {
-        hnod = container_of(mnod, struct hlist_hnod, cache);
+    hnod = memcache_pop(&hr->pool);
+    if (hnod) {
         memset((s8 *)hnod + offsetof(struct hlist_hnod, link),
                 0, size - offsetof(struct hlist_hnod, link));
         hnod->flag_pool = 1;
         hnod->hash = hr;
         atomic_inc(&hr->allocs);
     } else {
-        hnod = (struct hlist_hnod *)smith_kmalloc(size, hr->gfp);
+        hnod = (struct hlist_hnod *)smith_kzalloc(size, hr->gfp);
         if (hnod) {
             hnod->hash = hr;
             atomic_inc(&hr->allocs);
@@ -356,18 +353,19 @@ struct hlist_hnod *hlist_alloc_node(struct hlist_root *hr)
 }
 
 /* one-time call, to init objs just after pool allocation */
-static int hlist_init_node(void *context, struct memcache_node *mnod)
+static int hlist_init_node(void *context, void *nod)
 {
-    struct hlist_hnod *hnod;
-    hnod = container_of(mnod, struct hlist_hnod, cache);
+    struct hlist_hnod *hnod = nod;
+
     return 0;
+    hnod = hnod;
 }
 
 /* one-time call, to init objs just after pool allocation */
 void hlist_free_node(struct hlist_root *hr, struct hlist_hnod *node)
 {
     if (node->flag_pool)
-        memcache_push(&node->cache, &hr->cache);
+        memcache_push(node, &hr->pool);
     else
         smith_kfree(node);
     atomic_dec(&hr->allocs);
@@ -417,8 +415,8 @@ int hlist_init(struct hlist_root *hr, void *data, int nobjs,
 
     /* initialize memory cache for hnod, errors to be ignored,
        if fails, new node will be allocated from system slab */
-    memcache_init_pool(&hr->cache, nobjs, objsz, gfp_op, data,
-                       hlist_init_node);
+    memcache_init(&hr->pool, nobjs, objsz, gfp_op, hr,
+                  hlist_init_node, NULL);
     return 0;
 }
 
@@ -456,7 +454,7 @@ void hlist_fini(struct hlist_root *hr)
     vfree(hr->lists);
 
     /* cleanup objects pool */
-    memcache_fini(&hr->cache, NULL, NULL);
+    memcache_fini(&hr->pool);
 }
 
 void hlist_lock(struct hlist_root *hr)

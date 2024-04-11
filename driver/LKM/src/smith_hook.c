@@ -111,7 +111,6 @@ static void exit_protect_action(void)
 static void (*put_files_struct_sym) (struct files_struct * files);
 
 struct delayed_put_node {
-    struct memcache_node cache;
     struct delayed_put_node *next;
     union {
         struct file *filp;
@@ -127,11 +126,9 @@ static atomic_t g_delayed_put_active; /* active nodes */
 static struct delayed_put_node *smith_alloc_delayed_put_node(void)
 {
     struct delayed_put_node *dnod;
-    struct memcache_node *mnod;
 
-    mnod = memcache_pop(&g_delayed_put_root);
-    if (mnod) {
-        dnod = container_of(mnod, struct delayed_put_node, cache);
+    dnod = memcache_pop(&g_delayed_put_root);
+    if (dnod) {
         dnod->flag_pool = 1;
     } else {
         dnod = smith_kzalloc(sizeof(struct delayed_put_node), GFP_ATOMIC);
@@ -146,7 +143,7 @@ static void smith_free_delayed_put_node(struct delayed_put_node *dnod)
         return;
 
     if (dnod->flag_pool)
-        memcache_push(&dnod->cache, &g_delayed_put_root);
+        memcache_push(dnod, &g_delayed_put_root);
     else
         smith_kfree(dnod);
 }
@@ -212,8 +209,8 @@ static int __init smith_start_delayed_put(void)
 
     /* initialize memory cache for dnod, errors to be ignored,
        if fails, new node will be allocated from system slab */
-    memcache_init_pool(&g_delayed_put_root, nobjs * num_possible_cpus(),
-                       sizeof(struct delayed_put_node), 0, NULL, NULL);
+    memcache_init(&g_delayed_put_root, nobjs * num_possible_cpus(),
+                  sizeof(struct delayed_put_node), 0, NULL, NULL, NULL);
 
     /* wake up delayed-put worker thread */
     wake_up_process(g_delayed_put_thread);
@@ -232,7 +229,7 @@ static void smith_stop_delayed_put(void)
     while (g_delayed_put_queue)
         smith_deref_head_node();
 
-    memcache_fini(&g_delayed_put_root, NULL, NULL);
+    memcache_fini(&g_delayed_put_root);
 }
 
 static void smith_insert_delayed_put_node(struct delayed_put_node *dnod)
@@ -6487,11 +6484,11 @@ static struct smith_obj_stat {
     atomic_t *active;
     uint32_t *allocs;
 } g_stat_objs[] = {
-    {"tids", &g_hlist_tid.count, &g_hlist_tid.cache.fh_nobjs},
-    {"imgs", &g_rb_img.count, &g_rb_img.cache.fh_nobjs},
-    {"dput", &g_delayed_put_active, &g_delayed_put_root.fh_nobjs},
+    {"tids", &g_hlist_tid.count, &g_hlist_tid.pool.nr_objs},
+    {"imgs", &g_rb_img.count, &g_rb_img.pool.nr_objs},
+    {"dput", &g_delayed_put_active, &g_delayed_put_root.nr_objs},
 #if SMITH_FILE_CREATION_TRACK
-    {"ents", &g_rb_ent.count, &g_rb_ent.cache.fh_nobjs},
+    {"ents", &g_rb_ent.count, &g_rb_ent.pool.nr_objs},
 #else
     {"ents", &g_atomic_zero, &g_nobjs_zero},
 #endif

@@ -301,7 +301,6 @@ size_t smith_strnlen (const char *str, size_t maxlen);
 #include "../include/memcache.h"
 
 struct tt_node {
-    struct memcache_node cache;
     struct rb_node  node;
     atomic_t        refs;
     union {
@@ -333,7 +332,7 @@ struct tt_rb {
     int             node;
     gfp_t           gfp;
     atomic_t        count;
-    struct memcache_head cache;
+    struct memcache_head pool;
     struct tt_node * (*init)(struct tt_rb *, void *);
     int (*cmp)(struct tt_rb *, struct tt_node *, void *);
     void (*release)(struct tt_rb *, struct tt_node *);
@@ -366,7 +365,6 @@ void tt_rb_enum(struct tt_rb *rb, void (*cb)(struct tt_node *));
  */
 
 struct hlist_hnod {
-    struct memcache_node cache;
     struct list_head    link;
     struct rcu_head	    rcu;
     struct hlist_root  *hash;
@@ -397,7 +395,7 @@ struct hlist_root {
     atomic_t        count;
     atomic_t        allocs;
     struct list_head  *lists;
-    struct memcache_head cache;
+    struct memcache_head pool;
     struct hlist_hnod * (*init)(struct hlist_root *, void *);
     int (*hash)(struct hlist_root *, void *);
     int (*cmp)(struct hlist_root *, struct hlist_hnod *, void *);
