@@ -131,6 +131,8 @@ pub struct ProbeConfigData {
     pub limits: Option<Vec<ProbeConfigLimit>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub patches: Option<Vec<ProbeConfigPatch>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub switchs: Option<Vec<ProbeConfigSwitch>>,
 }
 
 impl ProbeConfigData {
@@ -148,6 +150,7 @@ impl ProbeConfigData {
                 filters: Some(Vec::new()),
                 limits: None,
                 patches: None,
+                switchs: None,
             },
             7 => ProbeConfigData {
                 uuid: "".to_string(),
@@ -155,6 +158,7 @@ impl ProbeConfigData {
                 filters: None,
                 limits: None,
                 patches: None,
+                switchs: None,
             },
             8 => ProbeConfigData {
                 uuid: "".to_string(),
@@ -162,6 +166,7 @@ impl ProbeConfigData {
                 filters: None,
                 limits: Some(Vec::new()),
                 patches: None,
+                switchs: None,
             },
             9 => ProbeConfigData {
                 uuid: "".to_string(),
@@ -169,6 +174,15 @@ impl ProbeConfigData {
                 filters: None,
                 limits: None,
                 patches: Some(Vec::new()),
+                switchs: None,
+            },
+            17 => ProbeConfigData {
+                uuid: "".to_string(),
+                blocks: None,
+                filters: None,
+                limits: None,
+                patches: None,
+                switchs: Some(Vec::new()),
             },
             _ => {
                 return Err(anyhow!("message type not valid"));
@@ -241,6 +255,19 @@ pub struct ProbeConfigPatch {
     pub sum_hash: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ProbeConfigSwitch {
+    pub enable_switch: i32,
+    pub disable_hooks: Vec<DisableHookRule>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct DisableHookRule {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub class_id: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub method_id: Option<i32>,
+}
 pub fn message_handle(message: &String) -> Result<String, String> {
     // parse message
     let message = match Message::from(message) {

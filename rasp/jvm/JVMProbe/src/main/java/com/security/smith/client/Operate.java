@@ -10,5 +10,6 @@ public enum Operate {
     FILTER,
     BLOCK,
     LIMIT,
-    PATCH
+    PATCH,
+    SWITCH
 }

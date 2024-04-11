@@ -209,6 +209,27 @@ public class Client implements EventHandler {
 
                 break;
             }
+            
+            case SWITCH: {
+                SmithLogger.logger.info("switch: " + message.getData().toString());
+
+                ObjectMapper objectMapper = new ObjectMapper()
+                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+                        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+                try {
+                    messageHandler.onSwitch(
+                            objectMapper.treeToValue(
+                                    message.getData(),
+                                    SwitchConfig.class
+                            )
+                    );
+                } catch (JsonProcessingException e) {
+                    SmithLogger.exception(e);
+                }
+
+                break;
+            }
         }
     }
 

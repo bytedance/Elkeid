@@ -5,6 +5,7 @@ public class Heartbeat {
     private String block;
     private String limit;
     private String patch;
+    private String switchConfig;
 
     public String getFilter() {
         return filter;
@@ -36,5 +37,13 @@ public class Heartbeat {
 
     public void setPatch(String patch) {
         this.patch = patch;
+    }
+
+    public String getSwitchConfig() {
+        return switchConfig;
+    }
+
+    public void setSwitchConfig(String config) {
+        this.switchConfig = config;
     }
 }

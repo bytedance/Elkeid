@@ -48,6 +48,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     private static final int METHOD_MAX_ID = 20;
     private static final int DEFAULT_QUOTA = 12000;
 
+    // switch
+    private static int hookSwitch = Switch.DISABLEALL.ordinal();
+    private final Map<Pair<Integer, Integer>, Boolean> disableHooks;
+
     private Boolean disable;
     private Instrumentation inst;
     private final Client client;
@@ -65,6 +69,12 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         START
     }
 
+    enum Switch {
+        DISABLEALL,
+        ENABLEALL,
+        ENABLEPART
+    }
+
     public static SmithProbe getInstance() {
         return ourInstance;
     }
@@ -77,6 +87,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         filters = new ConcurrentHashMap<>();
         blocks = new ConcurrentHashMap<>();
         limits = new ConcurrentHashMap<>();
+        disableHooks = new ConcurrentHashMap<>();
 
         heartbeat = new Heartbeat();
         client = new Client(this);
@@ -154,6 +165,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
 
     public boolean surplus(int classID, int methodID) {
+        if (getSwitch() == Switch.DISABLEALL.ordinal() || (getSwitch() == Switch.ENABLEPART.ordinal() && getIsDisabled(classID, methodID))) {
+            return false;
+        }
         if (classID >= CLASS_MAX_ID || methodID >= METHOD_MAX_ID)
             return false;
 
@@ -182,6 +196,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
 
     public void detect(Trace trace) {
+        if (getSwitch() == Switch.DISABLEALL.ordinal() || (getSwitch() == Switch.ENABLEPART.ordinal() && getIsDisabled(trace.getClassID(), trace.getMethodID()))) {
+            return ;
+        }
         List<Block> policies = blocks.get(new ImmutablePair<>(trace.getClassID(), trace.getMethodID()));
 
         if (policies == null)
@@ -232,6 +249,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
 
     public void post(Trace trace) {
+        if (getSwitch() == Switch.DISABLEALL.ordinal() || (getSwitch() == Switch.ENABLEPART.ordinal() && getIsDisabled(trace.getClassID(), trace.getMethodID()))) {
+            return ;
+        }
         RingBuffer<Trace> ringBuffer = disruptor.getRingBuffer();
 
         try {
@@ -486,5 +506,27 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         );
 
         heartbeat.setPatch(config.getUUID());
+    }
+
+    @Override
+    public void onSwitch(SwitchConfig config) {
+        disableHooks.clear();
+        hookSwitch = config.getEnableSwitch();
+        if (hookSwitch == Switch.ENABLEPART.ordinal()) {
+            for (DisableHooks disableHook : config.getDisableHooks()) {
+                disableHooks.computeIfAbsent(
+                    new ImmutablePair<>(disableHook.getClassID(), disableHook.getMethodID()), k -> true);
+            }
+        }
+
+        heartbeat.setSwitchConfig(config.getUUID());
+    }
+
+    public Integer getSwitch() {
+        return hookSwitch;
+    }
+
+    public Boolean getIsDisabled(Integer class_id, Integer method_id) {
+        return  disableHooks.getOrDefault(new ImmutablePair<>(class_id, method_id),false);
     }
 }

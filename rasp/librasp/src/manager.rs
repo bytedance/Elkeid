@@ -204,7 +204,7 @@ impl RASPManager {
             serde_json::from_str(message)?;
         let mut valid_messages: Vec<libraspserver::proto::PidMissingProbeConfig> = Vec::new();
         if messages.len() <= 0 {
-            for message_type in [6, 7, 8, 9] {
+            for message_type in [6, 7, 8, 9, 17] {
                 messages.push(PidMissingProbeConfig {
                     message_type,
                     data: ProbeConfigData::empty(message_type)?,
