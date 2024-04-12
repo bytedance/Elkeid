@@ -5,7 +5,8 @@ import com.security.smith.common.JarUtil;
 import com.security.smith.common.ParseParameter;
 import com.security.smith.common.Reflection;
 
-import io.netty.util.internal.SystemPropertyUtil;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 
 import java.lang.instrument.Instrumentation;
 import java.util.concurrent.locks.ReentrantLock;
@@ -50,6 +51,8 @@ public class SmithAgent {
                 SmithProberObj = null;
                 SmithProberClazz = null;
                 xLoader = null;
+
+                bret = true;
             }
         }
         catch(Exception e) {
@@ -57,6 +60,23 @@ public class SmithAgent {
         }
 
         return bret;
+    }
+
+    private static String getProberVersion(String jarFilePath) {
+        try {
+            java.util.jar.JarFile jarFile = new java.util.jar.JarFile(jarFilePath);
+            Manifest manifest = jarFile.getManifest();
+            Attributes mainAttributes = manifest.getMainAttributes();
+
+            String ImplementationVersion = manifest.getMainAttributes().getValue("Implementation-Version");
+
+            return ImplementationVersion;
+        }
+        catch(Exception e) {
+            e.printStackTrace();
+        }
+
+        return null;
     }
 
     public static void premain(String agentArgs, Instrumentation inst) {
@@ -82,6 +102,7 @@ public class SmithAgent {
 
             if(cmd.equals("attach")) {
                 if(!JarUtil.checkJarFile(proberPath,checksumStr)) {
+                    System.setProperty("smith.status", proberPath + " check fail!");
                     SmithLogger.logger.warning(proberPath + " check fail!");
                     return ;
                 }
@@ -89,20 +110,33 @@ public class SmithAgent {
                 checksumStr = checksumStr_sb.toString();
                 proberPath = proberPath_sb.toString();
 
+                String probeVersion = getProberVersion(proberPath);
+
                 System.out.println("checksumStr:" + checksumStr);
                 System.out.println("proberPath:" + proberPath); 
+                System.out.println("proberVersion:"+ probeVersion);
 
                 xLoaderLock.lock();
                 try {
                     if(xLoader != null) {
-                        unLoadSmithProber();
+                        if(unLoadSmithProber()) {
+                            System.setProperty("smith.rasp", "");
+                            System.setProperty("smith.status", "detach");
+                        }
                         xLoader = null;
                         SmithProberObj = null;
                         SmithProberClazz = null;
                     }
 
+                    System.setProperty("smith.rasp", "");
+
                     if(!loadSmithProber(proberPath,inst)) {
+                        System.setProperty("smith.status",proberPath + " loading fail!");
                         SmithLogger.logger.warning(proberPath + " loading fail!");
+                    }
+                    else {
+                        System.setProperty("smith.rasp", probeVersion+"-"+checksumStr);
+                        System.setProperty("smith.status", "attach");
                     }
                 }
                 finally {
@@ -113,7 +147,13 @@ public class SmithAgent {
                 xLoaderLock.lock();
                 try {
                     if(xLoader != null) {
-                        unLoadSmithProber();
+                        if(unLoadSmithProber()) {
+                            System.setProperty("smith.rasp", "");
+                            System.setProperty("smith.status", "detach");
+                        }
+                        else {
+                            System.setProperty("smith.status", "prober unload fail");
+                        }
                         xLoader = null;
                         SmithProberObj = null;
                         SmithProberClazz = null;
