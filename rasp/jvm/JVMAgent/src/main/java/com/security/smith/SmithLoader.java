@@ -2,33 +2,21 @@ package com.security.smith;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
-import java.net.URLClassLoader;
+import java.io.InputStream;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
+import java.util.zip.ZipEntry;
 
-public class SmithLoader extends URLClassLoader {
+public class SmithLoader extends ClassLoader {
       private JarFile jarFile;
-
-    public SmithLoader(URL jarFileURL, ClassLoader parent) throws IOException {
-        super(new URL[] { jarFileURL }, parent);
-        this.jarFile = new JarFile(new File(jarFileURL.getFile()));
-    }
-
     public SmithLoader(String jarFilePath, ClassLoader parent) throws IOException {
-        URL jarFileURL = new URL(jarFilePath);
-        
-        super(new URL[] { jarFileURL }, parent);
-        this.jarFile = new JarFile(new File(jarFileURL.getFile()));
+        this.jarFile = new JarFile(new File(jarFilePath));
     }
 
     @Override
     protected Class<?> findClass(String name) throws ClassNotFoundException {
         try {
-            return super.findClass(name);
-        } catch (ClassNotFoundException e) {
-            // If the class is not found by the parent class loader, try to load it from the JAR file
             String className = name.replace('.', '/') + ".class";
             try {
                 byte[] classData = loadClassData(className);
@@ -38,20 +26,64 @@ public class SmithLoader extends URLClassLoader {
             } catch (IOException ex) {
                 throw new ClassNotFoundException("Failed to load class: " + name, ex);
             }
-            throw new ClassNotFoundException(name);
+        } catch (ClassNotFoundException e) {
+            // If the class is not found in JAR file,try to load from parent class loader
+            return super.findClass(name);
         }
+
+        return null;
     }
 
     private byte[] loadClassData(String className) throws IOException {
-        return jarFile.getInputStream(jarFile.getEntry(className)).readAllBytes();
+        byte[] bytes = null;
+
+        try {
+            ZipEntry zEntry = jarFile.getEntry(className);
+            if(zEntry == null) {
+                throw new IOException("class not found");
+            }
+
+            InputStream inputStream = jarFile.getInputStream(zEntry);
+            if(inputStream == null) {
+                throw new IOException("class not found");
+            }
+
+            bytes = new byte[inputStream.available()];
+
+            int bytesRead = inputStream.read(bytes);
+            if (bytesRead != bytes.length) {
+                throw new IOException("get byte array fail");
+            }
+        }
+        catch(Exception e) {
+            throw e;
+        }
+
+        return bytes;
+    }
+
+    @Override
+    protected void finalize() throws Throwable {
+        try {
+            jarFile = null;
+        } finally {
+            super.finalize();
+        }
     }
 
     public String getJarMainClass() {
-        Manifest manifest = jarFile.getManifest();
-        if (manifest != null) {
-            Attributes attributes = manifest.getMainAttributes();
-            return attributes.getValue(Attributes.Name.MAIN_CLASS);
+        try {
+            Manifest manifest = jarFile.getManifest();
+            if (manifest != null) {
+                Attributes attributes = manifest.getMainAttributes();
+                return attributes.getValue(Attributes.Name.MAIN_CLASS);
+            }
         }
+        catch(IOException e) {
+
+        }
+
         return null;
     }
 }
+

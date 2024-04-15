@@ -17,24 +17,30 @@ public class SmithAgent {
     private static Class<?>         SmithProberClazz = null;
     private static Object           SmithProberObj = null; 
   
-    private static boolean loadSmithProber(String proberPath,Instrumentation inst) {
+    private static boolean loadSmithProber(String proberPath, Instrumentation inst) {
         boolean bret = false;
 
+        System.out.println("loadSmithProber Entry");
+
         try {
-            xLoader = new SmithLoader(proberPath, Thread.currentThread().getContextClassLoader());
+            xLoader = new SmithLoader(proberPath, null);
             SmithProberClazz = xLoader.loadClass("com.security.smith.SmithProbe");
 
             Class<?>[] emptyArgTypes = new Class[]{};
             SmithProberObj = Reflection.invokeStaticMethod(SmithProberClazz,"getInstance", emptyArgTypes);
-            
+
             Class<?>[]  argType = new Class[]{Instrumentation.class};
             Reflection.invokeMethod(SmithProberObj,"setInst",argType,inst);
             Reflection.invokeMethod(SmithProberObj,"init",emptyArgTypes);
             Reflection.invokeMethod(SmithProberObj,"start",emptyArgTypes);
+
+            bret = true;
         }
         catch(Exception e) {
-            SmithLogger.exception(e);
+            e.printStackTrace();
         }
+
+        System.out.println("loadSmithProber Leave");
 
         return bret;
     }
@@ -42,22 +48,31 @@ public class SmithAgent {
     private static Boolean unLoadSmithProber() {
         boolean bret = false;
 
+        System.out.println("unLoadSmithProber Entry");
+
         try {
             if(SmithProberObj != null) {
+                System.out.println("Start unload prober");
                 Class<?>[] emptyArgTypes = new Class[]{};
                 Reflection.invokeMethod(SmithProberObj,"stop",emptyArgTypes);
+                System.out.println("unload prober 0");
                 Reflection.invokeMethod(SmithProberObj,"uninit",emptyArgTypes);
+                System.out.println("unload prober 1");
 
                 SmithProberObj = null;
                 SmithProberClazz = null;
                 xLoader = null;
 
+                System.out.println("unload prober end");
+
                 bret = true;
             }
         }
         catch(Exception e) {
-            SmithLogger.exception(e);
+            e.printStackTrace();
         }
+
+        System.out.println("unLoadSmithProber Leave");
 
         return bret;
     }
@@ -101,20 +116,20 @@ public class SmithAgent {
             System.out.println("parse parseParameter success");
 
             if(cmd.equals("attach")) {
+                checksumStr = checksumStr_sb.toString();
+                proberPath = proberPath_sb.toString();
+                
+                System.out.println("checksumStr:" + checksumStr);
+                System.out.println("proberPath:" + proberPath); 
+
                 if(!JarUtil.checkJarFile(proberPath,checksumStr)) {
                     System.setProperty("smith.status", proberPath + " check fail!");
                     SmithLogger.logger.warning(proberPath + " check fail!");
                     return ;
                 }
 
-                checksumStr = checksumStr_sb.toString();
-                proberPath = proberPath_sb.toString();
-
                 String probeVersion = getProberVersion(proberPath);
-
-                System.out.println("checksumStr:" + checksumStr);
-                System.out.println("proberPath:" + proberPath); 
-                System.out.println("proberVersion:"+ probeVersion);
+                System.out.println("proberVersion:" + probeVersion);
 
                 xLoaderLock.lock();
                 try {
@@ -143,7 +158,7 @@ public class SmithAgent {
                     xLoaderLock.unlock();
                 }
             }
-            else if(cmd.equals("deatch")) {
+            else if(cmd.equals("detach")) {
                 xLoaderLock.lock();
                 try {
                     if(xLoader != null) {
