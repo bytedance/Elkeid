@@ -4539,8 +4539,9 @@ static void smith_process_tasks(struct hlist_root *hr)
 {
     struct task_struct *task;
 
+    /* rcu lock is enough since we are only reading tasklist */
+    rcu_read_lock();
     hlist_lock(hr);
-    /* hlist locked instead of grabing tasklist_lock */
     for_each_process(task) {
         /* skip kernel threads and tasks being shut donw */
         if (task->flags & (PF_KTHREAD | PF_EXITING))
@@ -4551,6 +4552,7 @@ static void smith_process_tasks(struct hlist_root *hr)
         hlist_insert_key_nolock(hr, task);
     }
     hlist_unlock(hr);
+    rcu_read_unlock();
 }
 
 /*
