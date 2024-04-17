@@ -123,7 +123,6 @@ static inline int smith_query_sid(void)
 uint64_t smith_query_mntns(void);
 int smith_put_tid(struct smith_tid *tid);
 int smith_drop_tid(struct task_struct *task);
-void smith_enum_tid(void);
 
 /*
  * cache list of newly created files, to be managed by by rbtree and lru list

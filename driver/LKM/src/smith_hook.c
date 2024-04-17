@@ -4000,16 +4000,32 @@ static void smith_show_img(struct tt_node *tnod)
         return;
 
     img = container_of(tnod, struct smith_img, si_node);
-    printk("img: %px (%s) sb: %px ino: %lu refs: %d\n",
-            img, img->si_path, img->si_sb, img->si_ino,
-            atomic_read(&img->si_node.refs));
+    printk("img: %px sb: %px ino: %lu lru: %u/%d refs: %d -> %s\n",
+            img, img->si_sb, img->si_ino, img->si_age,
+            smith_get_delta(0) >= img->si_age,
+            atomic_read(&img->si_node.refs), img->si_path);
 }
 
-void smith_enum_img(void);
-void smith_enum_img(void)
+static void smith_enum_img(void)
 {
-    printk("enum all imgs (%u):\n", atomic_read(&g_rb_img.count));
+    printk("enum all imgs (%d):\n", atomic_read(&g_rb_img.count));
     tt_rb_enum(&g_rb_img, smith_show_img);
+}
+
+static void smith_enum_img_lru(void)
+{
+    struct list_head *link;
+    struct smith_img *img;
+
+    printk("enum all imgs in lru (%d):\n", atomic_read(&g_rb_img.count));
+    read_lock(&g_rb_img.lock);
+    link = g_lru_img.next;
+    while (link != &g_lru_img) {
+        img = list_entry(link, struct smith_img, si_link);
+        link = link->next;
+        smith_show_img(&img->si_node);
+    }
+    read_unlock(&g_rb_img.lock);
 }
 
 /* FMODE_CREATED added since v4.19 */
@@ -4506,14 +4522,14 @@ static void smith_show_tid(struct hlist_hnod *hnod)
         return;
 
     tid = container_of(hnod, struct smith_tid, st_node);
-    printk("tgid: %u sid: %u task: %s mnt: %llu refs: %d\n",
+    printk("tgid: %u sid: %u task: %s mnt: %llu img: %px\n",
             tid->st_tgid, tid->st_sid, tid->st_pid_tree,
-            tid->st_root, atomic_read(&tid->st_node.refs));
+            tid->st_root, tid->st_img);
 }
 
-void smith_enum_tid(void)
+static void smith_enum_tid(void)
 {
-    printk("enum all tids:\n");
+    printk("enum all tids (%d):\n", atomic_read(&g_hlist_tid.count));
     hlist_enum(&g_hlist_tid, smith_show_tid);
 }
 
@@ -6494,16 +6510,36 @@ static int drvstats_get_params(char *val, K_PARAM_CONST struct kernel_param *kp)
     return len;
 }
 
+static int drvstats_set_params(const char *val, K_PARAM_CONST struct kernel_param *kp)
+{
+    if (0 == strcmp(kp->name, "mem_stats")) {
+        int i, l = strnlen(val, 4095);
+        for (i = 0; i < l; i++) {
+            if (val[i] == 'I' || val[i] == 'i') {
+                smith_enum_img();
+            } else if (val[i] == 'L' || val[i] == 'l') {
+                smith_enum_img_lru();
+            } else if (val[i] == 'E' || val[i] == 'e') {
+                smith_enum_img_lru();
+                smith_enum_img();
+            } else if (val[i] == 'T' || val[i] == 't') {
+                smith_enum_tid();
+            }
+        }
+    }
+    return -EACCES;
+}
+
 #if defined(module_param_cb)
 const struct kernel_param_ops drvstats_params_ops = {
-    .set = NULL,
+    .set = drvstats_set_params,
     .get = drvstats_get_params,
 };
 module_param_cb(worker_stats, &drvstats_params_ops, &g_drv_stats, 0400);
-module_param_cb(mem_stats, &drvstats_params_ops, &g_drv_stats, 0400);
+module_param_cb(mem_stats, &drvstats_params_ops, &g_drv_stats, 0600);
 #elif defined(module_param_call)
 module_param_call(worker_stats, NULL, drvstats_get_params, &g_drv_stats, 0400);
-module_param_call(mem_stats, NULL, drvstats_get_params, &g_drv_stats, 0400);
+module_param_call(mem_stats, drvstats_set_params, drvstats_get_params, &g_drv_stats, 0600);
 #else
 # warning "moudle_param_cb or module_param_call are not supported by target kernel"
 #endif
