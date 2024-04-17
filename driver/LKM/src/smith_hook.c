@@ -613,9 +613,16 @@ errorout:
 
 ssize_t (*smith_strscpy)(char *dest, const char *src, size_t count);
 
+static struct task_struct *(*smith_get_pid_task)(struct pid *pid, enum pid_type type);
+
 static int __init kernel_symbols_init(void)
 {
     void *ptr;
+
+    ptr = (void *)smith_kallsyms_lookup_name("get_pid_task");
+    if (!ptr)
+        return -ENODEV;
+    smith_get_pid_task = ptr;
 
     ptr = (void *)smith_kallsyms_lookup_name("strscpy");
     if (!ptr)
@@ -5731,7 +5738,7 @@ static void __init smith_init_systemd_ns(void)
     pid_struct = find_get_pid(1);
     if (!pid_struct)
         return;
-    task = get_pid_task(pid_struct, PIDTYPE_PID);
+    task = smith_get_pid_task(pid_struct, PIDTYPE_PID);
     if (!task) {
         put_pid(pid_struct);
         return;
