@@ -6553,6 +6553,14 @@ module_param_call(mem_stats, drvstats_set_params, drvstats_get_params, &g_drv_st
 MODULE_PARM_DESC(worker_stats, "kernel worker threads for elkeid");
 MODULE_PARM_DESC(mem_stats, "memory usage of core objects of elkeid");
 
+#define SMITH_SRCID(name)                           \
+    #name;                                          \
+    static char *sid_##name = #name;                \
+    module_param(sid_##name, charp, S_IRUSR|S_IRGRP|S_IROTH)
+
+/* latest commit id */
+static char *smith_srcid = SMITH_SRCID(2e5a03fe5f11521b8488de27eb8e3a376743b144);
+
 static int __init kprobe_hook_init(void)
 {
     int ret;
@@ -6560,11 +6568,12 @@ static int __init kprobe_hook_init(void)
     g_loaded_jiffies = smith_get_jiffies();
 
 #if defined(MODULE)
-    printk(KERN_INFO "[ELKEID] kmod %s (%s) loaded.\n",
-           THIS_MODULE->name, THIS_MODULE->version);
+    printk(KERN_INFO "[ELKEID] kmod: %s (%s / %s) loaded\n",
+           THIS_MODULE->name, THIS_MODULE->version, THIS_MODULE->srcversion);
 #else
     printk(KERN_INFO "[ELKEID] intree (" SMITH_VERSION ") loaded.\n");
 #endif
+    printk(KERN_INFO "[ELKEID] srcid: %s\n", smith_srcid);
 
     ret = kernel_symbols_init();
     if (ret)
