@@ -118,10 +118,10 @@ static uint64_t smith_get_jiffies(void)
 static uint64_t g_loaded_jiffies;
 
 /* uint32_t is enough for total seconds of 136+ years */
-static uint32_t smith_get_seconds(void)
+static uint32_t smith_get_delta(uint32_t start)
 {
     uint64_t delta = smith_get_jiffies() - g_loaded_jiffies;
-    return (uint32_t)(delta / USER_HZ);
+    return (uint32_t)(delta / USER_HZ) + start;
 }
 
 /*
@@ -1785,7 +1785,7 @@ static void smith_check_dns_params(void)
 
 static int smith_is_dns_armed(struct smith_dns_threshold *sdt)
 {
-    uint64_t now = smith_get_seconds(), delta = now - sdt->start;
+    uint64_t now = smith_get_delta(0), delta = now - sdt->start;
 
     if (delta >= dns_intervals) {
 
@@ -1796,7 +1796,7 @@ static int smith_is_dns_armed(struct smith_dns_threshold *sdt)
         }
         /* reset timestamp for a refresh counting */
         atomic_set(&sdt->ops, 0);
-        WRITE_ONCE(sdt->start, smith_get_seconds());
+        WRITE_ONCE(sdt->start, smith_get_delta(0));
 
     } else {
 
@@ -3747,8 +3747,8 @@ static void install_kprobe(void)
 static struct tt_rb g_rb_img;  /* rbtree of cached images */
 static LIST_HEAD(g_lru_img);   /* lru list of cached images */
 
-#define SMITH_IMG_REAPER  (600)     /* 10 minutes */
-#define SMITH_IMG_MAX    (2048)     /* max cached imgs */
+#define SMITH_IMG_REAPER_TIMEOUT  (60 * 5)   /* 5 minutes */
+#define SMITH_IMG_MAX_INSTANCES   (2048)     /* max cached imgs */
 
 /*
  * callbacks for img-cache
@@ -3856,36 +3856,39 @@ static void smith_release_img(struct tt_rb *rb, struct tt_node *tnod)
 /*
  * img-cache support routines
  */
-
-static int smith_drop_head_img(void)
+static int smith_drop_head_img(int count)
 {
-    struct list_head *link;
+    struct list_head *link, *prev = NULL;
     struct smith_img *img;
-    int rc = 0;
+    int rc = 0, dropped;
 
     write_lock(&g_rb_img.lock);
-    link = g_lru_img.next;
-    img = list_entry(link, struct smith_img, si_link);
-    if (list_empty(&g_lru_img))
-        goto errorout;
+    do {
+        if (list_empty(&g_lru_img))
+            break;
 
-    if (0 == atomic_read(&img->si_node.refs)) {
-        if (smith_get_seconds() > img->si_age) {
-            list_del_init(&img->si_link);
-            /* img hasn't been touched for seconds */
-            /* remove this img from rbtree */
-            /* drop img */
-            tt_rb_remove_node_nolock(&g_rb_img, &img->si_node);
-            rc++;
-        } else {
-            /* it doesn't timeout yet, so continue and wait */
-        }
-    } else {
+        link = g_lru_img.next;
+        img = list_entry(link, struct smith_img, si_link);
+        if (link == prev)
+            break;
+        prev = link;
+        /* it doesn't timeout yet, so continue and wait */
+        if (smith_get_delta(0) < img->si_age)
+            break;
+
+        /* img hasn't been touched for seconds */
         list_del_init(&img->si_link);
-        /* smith_put_img will put it back to lru list */
-    }
-
-errorout:
+        if (0 == atomic_read(&img->si_node.refs)) {
+            /* remove this img from rbtree */
+            tt_rb_remove_node_nolock(&g_rb_img, &img->si_node);
+            dropped = 1;
+        } else {
+            img->si_age = smith_get_delta(SMITH_IMG_REAPER_TIMEOUT);
+            list_add_tail(&img->si_link, &g_lru_img);
+            dropped = 0;
+        }
+        rc += dropped;
+    } while (count-- > SMITH_IMG_MAX_INSTANCES || dropped);
     write_unlock(&g_rb_img.lock);
 
     return rc;
@@ -3893,34 +3896,15 @@ errorout:
 
 static void smith_drop_head_imgs(struct tt_rb *rb)
 {
-    int count = atomic_read(&rb->count);
-
-    do {
-        if (!smith_drop_head_img())
-            break;
-    } while (--count > SMITH_IMG_MAX);
+    smith_drop_head_img(atomic_read(&rb->count));
 }
 
 static void smith_put_img(struct smith_img *img)
 {
-    if (in_interrupt()) {
-        img->si_age = smith_get_seconds() + SMITH_IMG_REAPER;
-        atomic_dec(&img->si_node.refs);
-        return;
-    }
+    atomic_dec(&img->si_node.refs);
 
-    if (atomic_add_unless(&img->si_node.refs, -1, 1))
-        return;
-
-    write_lock(&g_rb_img.lock);
-    list_del_init(&img->si_link);
-    if (0 == atomic_dec_return(&img->si_node.refs)) {
-        img->si_age = smith_get_seconds() + SMITH_IMG_REAPER;
-        list_add_tail(&img->si_link, &g_lru_img);
-    }
-    write_unlock(&g_rb_img.lock);
-
-    smith_drop_head_imgs(&g_rb_img);
+    if (!in_interrupt())
+        smith_drop_head_imgs(&g_rb_img);
 }
 
 static int smith_file2img(struct file *filp, struct smith_img *img)
@@ -3970,8 +3954,11 @@ static struct smith_img *smith_find_img(struct smith_img *img)
     write_lock(&g_rb_img.lock);
     tnod = tt_rb_insert_key_nolock(&g_rb_img, &img->si_node);
     if (tnod) {
-        atomic_inc(&tnod->refs);
         si = container_of(tnod, struct smith_img, si_node);
+        atomic_inc(&tnod->refs);
+        list_del_init(&si->si_link);
+        si->si_age = smith_get_delta(SMITH_IMG_REAPER_TIMEOUT);
+        list_add_tail(&si->si_link, &g_lru_img);
     }
     write_unlock(&g_rb_img.lock);
 
@@ -4055,7 +4042,7 @@ static int smith_build_ent(struct smith_ent *ent, struct smith_ent *obj)
     }
     strncpy(ent->se_path, obj->se_path, len + 1);
     ent->se_hash = obj->se_hash;
-    ent->se_age = smith_get_seconds() + SMITH_ENT_REAPER;
+    ent->se_age = smith_get_delta(SMITH_ENT_REAPER);
     ent->se_tgid = current->tgid;
 
     return 0;
@@ -4125,7 +4112,7 @@ static int smith_drop_head_ent(int count)
         if (!list_empty(&g_lru_ent)) {
             link = g_lru_ent.next;
             ent = list_entry(link, struct smith_ent, se_link);
-            if (smith_get_seconds() > ent->se_age)
+            if (smith_get_delta(0) > ent->se_age)
                 count = 1;
         }
         read_unlock(&g_rb_ent.lock);
@@ -4189,12 +4176,13 @@ int smith_insert_ent(char *path)
         ent = container_of(tnod, struct smith_ent, se_node);
         /* remove ent from LRU if it's already LRUed */
         list_del_init(&ent->se_link);
-        ent->se_age = smith_get_seconds() + SMITH_ENT_REAPER;
+        ent->se_age = smith_get_delta(SMITH_ENT_REAPER);
         /* insert ent to the tail of LRU list */
         list_add_tail(&ent->se_link, &g_lru_ent);
     }
     write_unlock(&g_rb_ent.lock);
 
+    /* drop stale entries */
     smith_drop_head_ents(&g_rb_ent);
 
 out:
@@ -5633,9 +5621,9 @@ static int __init smith_tid_init(void)
     ntids = 64 * num_present_cpus();
     if (ntids < 512)
         ntids = 512;
-    if (ntids > (SMITH_IMG_MAX << 1))
-        ntids = SMITH_IMG_MAX << 1;
-    nimgs = SMITH_IMG_MAX;
+    if (ntids > (SMITH_IMG_MAX_INSTANCES << 1))
+        ntids = SMITH_IMG_MAX_INSTANCES << 1;
+    nimgs = SMITH_IMG_MAX_INSTANCES;
     if (nimgs > ntids)
         nimgs = ntids;
 
@@ -6315,8 +6303,9 @@ static int smith_exec_load(struct linux_binprm *bprm, struct pt_regs *regs)
 
     /* both path and hash rules are empty, so skip */
     if (!g_flt_ops.rule_check(NULL, 0, NULL) &&
-        !g_flt_ops.hash_check(NULL))
-        return -ENOEXEC;
+        !g_flt_ops.hash_check(NULL)) {
+        goto errorout; /* -ENOEXEC */
+    }
 
     /*
      * path rules matching
