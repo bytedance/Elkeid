@@ -105,6 +105,26 @@ static void exit_protect_action(void)
 #endif
 
 /*
+ * wrapper for ktime_get_boottime
+ */
+
+#include <linux/jiffies.h>
+static uint64_t smith_get_jiffies(void)
+{
+    /* converted jiffies to USER_HZ, normally 100 */
+    return jiffies_64_to_clock_t(get_jiffies_64());
+}
+
+static uint64_t g_loaded_jiffies;
+
+/* uint32_t is enough for total seconds of 136+ years */
+static uint32_t smith_get_seconds(void)
+{
+    uint64_t delta = smith_get_jiffies() - g_loaded_jiffies;
+    return (uint32_t)(delta / USER_HZ);
+}
+
+/*
  * delayed put_files_struct
  */
 
@@ -523,30 +543,7 @@ static inline int smith_is_exe_trusted(struct smith_img *img)
                                img->si_murmur64);
 }
 
-/*
- * wrapper for ktime_get_real_seconds
- */
-
 uint64_t (*smith_ktime_get_real_ns)(void);
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
-#define smith_get_seconds ktime_get_real_seconds
-#else /* < 5.11.0 */
-static uint64_t (*smith_ktime_get_real_seconds)(void);
-static uint64_t smith_get_seconds(void)
-{
-    return smith_ktime_get_real_seconds();
-}
-static uint64_t smith_get_seconds_ext(void)
-{
-    return (uint64_t)get_seconds();
-}
-static void smith_init_get_seconds(void)
-{
-    if (!smith_ktime_get_real_seconds)
-        smith_ktime_get_real_seconds = smith_get_seconds_ext;
-}
-#endif /* >= 5.11.0 */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
 void (*__smith_put_task_struct)(struct task_struct *tsk);
@@ -648,14 +645,6 @@ static int __init kernel_symbols_init(void)
     if (!ptr)
         return -ENODEV;
     smith_ktime_get_real_ns = ptr;
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
-    ptr = (void *)smith_kallsyms_lookup_name("ktime_get_real_seconds");
-    if (ptr)
-        smith_ktime_get_real_seconds = ptr;
-    smith_init_get_seconds();
-#endif
-
 
 /*
  * prepend_path will throw a WARN for d_absolute_path if root
@@ -6533,6 +6522,8 @@ MODULE_PARM_DESC(mem_stats, "memory usage of core objects of elkeid");
 static int __init kprobe_hook_init(void)
 {
     int ret;
+
+    g_loaded_jiffies = smith_get_jiffies();
 
 #if defined(MODULE)
     printk(KERN_INFO "[ELKEID] kmod %s (%s) loaded.\n",
