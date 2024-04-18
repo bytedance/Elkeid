@@ -7,6 +7,7 @@ import com.security.smith.common.Reflection;
 
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
+import com.security.smith.MemCheck;
 
 import java.lang.instrument.Instrumentation;
 import java.util.concurrent.locks.ReentrantLock;
@@ -15,7 +16,9 @@ public class SmithAgent {
     private static ReentrantLock    xLoaderLock = new ReentrantLock();
     private static SmithLoader      xLoader = null;
     private static Class<?>         SmithProberClazz = null;
-    private static Object           SmithProberObj = null; 
+    private static Object           SmithProberObj = null;
+    private static long             jvmHeapFree = 100;
+    private static long             jvmMetaFree = 5;
   
     private static boolean loadSmithProber(String proberPath, Instrumentation inst) {
         boolean bret = false;
@@ -81,9 +84,9 @@ public class SmithAgent {
         try {
             java.util.jar.JarFile jarFile = new java.util.jar.JarFile(jarFilePath);
             Manifest manifest = jarFile.getManifest();
-            Attributes mainAttributes = manifest.getMainAttributes();
 
             String ImplementationVersion = manifest.getMainAttributes().getValue("Implementation-Version");
+            jarFile.close();
 
             return ImplementationVersion;
         }
@@ -99,7 +102,7 @@ public class SmithAgent {
     }
 
     public static void agentmain(String agentArgs, Instrumentation inst) {
-        String agent = System.getProperty("rasp.agent");
+        String agent = System.getProperty("rasp.probe");
 
         System.out.println("agentArgs:"+agentArgs);
 
@@ -123,7 +126,7 @@ public class SmithAgent {
                 System.out.println("proberPath:" + proberPath); 
 
                 if(!JarUtil.checkJarFile(proberPath,checksumStr)) {
-                    System.setProperty("smith.status", proberPath + " check fail!");
+                    System.setProperty("smith.status", proberPath + " check fail");
                     SmithLogger.logger.warning(proberPath + " check fail!");
                     return ;
                 }
@@ -135,8 +138,10 @@ public class SmithAgent {
                 try {
                     if(xLoader != null) {
                         if(unLoadSmithProber()) {
-                            System.setProperty("smith.rasp", "");
                             System.setProperty("smith.status", "detach");
+                        }
+                        if (agent != null) {
+                            System.clearProperty("rasp.probe");
                         }
                         xLoader = null;
                         SmithProberObj = null;
@@ -144,14 +149,19 @@ public class SmithAgent {
                     }
 
                     System.setProperty("smith.rasp", "");
-
-                    if(!loadSmithProber(proberPath,inst)) {
-                        System.setProperty("smith.status",proberPath + " loading fail!");
-                        SmithLogger.logger.warning(proberPath + " loading fail!");
-                    }
-                    else {
-                        System.setProperty("smith.rasp", probeVersion+"-"+checksumStr);
-                        System.setProperty("smith.status", "attach");
+                    if (!checkMemoryAvailable()) {
+                        System.setProperty("smith.status",  "memory not enough");
+                        SmithLogger.logger.warning("checkMemory failed");
+                    } else {
+                        if(!loadSmithProber(proberPath,inst)) {
+                            System.setProperty("smith.status",proberPath + " loading fail");
+                            SmithLogger.logger.warning(proberPath + " loading fail!");
+                        }
+                        else {
+                            System.setProperty("smith.rasp", probeVersion+"-"+checksumStr);
+                            System.setProperty("smith.status", "attach");
+                        }
+                        System.setProperty("rasp.probe", "smith");
                     }
                 }
                 finally {
@@ -163,7 +173,6 @@ public class SmithAgent {
                 try {
                     if(xLoader != null) {
                         if(unLoadSmithProber()) {
-                            System.setProperty("smith.rasp", "");
                             System.setProperty("smith.status", "detach");
                         }
                         else {
@@ -172,6 +181,9 @@ public class SmithAgent {
                         xLoader = null;
                         SmithProberObj = null;
                         SmithProberClazz = null;
+                        if (agent != null) {
+                            System.clearProperty("rasp.probe");
+                        }
                     }
                     else {
                         SmithLogger.logger.warning("SmithProber No Loading!");
@@ -196,7 +208,35 @@ public class SmithAgent {
             SmithLogger.logger.info("agent running");
             return;
         }
+    }
 
-        System.setProperty("rasp.agent", "smith");
+    private static boolean checkMemoryAvailable() {
+        try {
+            long systemFree = MemCheck.getSystemMemoryFree();
+            System.out.println("systemmemory free: "+ systemFree);
+            long cpuload = MemCheck.getSystemCpuLoad();
+            System.out.println("system cpu load: "+ cpuload);
+            long heapFree = MemCheck.getHeapMemoryFree();
+            if (heapFree < jvmHeapFree) {
+                System.out.println("heapmemory is not enough, free: "+ heapFree);
+                return false;
+            }
+            else {
+                System.out.println("heapmemory is enough, free: "+ heapFree);
+                long metaBeanFree = MemCheck.getMetaMemoryFree();
+                if (metaBeanFree > 0L && metaBeanFree < jvmMetaFree) {
+                    System.out.println("metamemory is not enough, free: " + metaBeanFree);
+                    return false;
+                } else {
+                    System.out.println("metamemory is enough, free: " + metaBeanFree);
+                }
+            }
+        
+        } catch (Exception e) {
+            // TODO: handle exception
+            SmithLogger.exception(e);
+        }
+        return true;
+        
     }
 }

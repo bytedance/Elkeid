@@ -1,8 +1,8 @@
 use anyhow::{anyhow, Result as AnyhowResult};
 use crossbeam::channel::{Sender};
-use librasp::manager::{RASPManager, BPFSelect};
+use librasp::{manager::{BPFSelect, RASPManager}, runtime::ProbeState};
 use log::*;
-
+use librasp::process::TracingState;
 use crate::{utils::Control};
 use librasp::process::ProcessInfo;
 use crate::config::{settings_bool, settings_string};
@@ -96,17 +96,24 @@ impl Operator {
                 );
             }
             Err(e) => {
-                process.update_failed_time();
-                warn!(
-                    "pid: {} runtime: {}, attach failed",
-                    process.pid,
-                    process.runtime.as_ref().unwrap()
-                );
-                self.stop_comm(&process)?;
-                return Err(anyhow!("attach failed: {}", e));
+                //if process.tracing_state != ProbeState::Attached {
+                    process.update_failed_time();
+                    warn!(
+                        "pid: {} runtime: {}, attach failed",
+                        process.pid,
+                        process.runtime.as_ref().unwrap()
+                    );
+                    self.stop_comm(&process)?;
+                    return Err(anyhow!("attach failed: {}", e));
+               // }
             }
         }
         Ok(())
+    }
+
+    pub fn detach_process(&mut self, process: &mut ProcessInfo) -> AnyhowResult<()> {
+        info!("process: {:?}", process);
+        self.rasp_manager.detach(&process)
     }
 
     pub fn handle_missing(&mut self, process: &mut ProcessInfo) -> AnyhowResult<()> {
@@ -159,6 +166,25 @@ impl Operator {
                                 return Err(anyhow!(msg));
                             }
                         };
+                    }
+                }
+            }
+            "DETACH" => {
+                info!("detaching process: {:?}", process);
+                if let Some(process_state) = process.tracing_state.as_ref() {
+                    match process_state.to_string().as_str() {
+                        "ATTACHED" => {
+                            match  self.detach_process(process) {
+                                Ok(res) => {
+                                    process.tracing_state = Some(TracingState::INSPECTED);
+                                }
+                                Err(e) => {
+                                    return Err(anyhow!(e));
+                                }
+                               
+                            }
+                        }
+                        _ => {}
                     }
                 }
             }

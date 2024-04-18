@@ -13,7 +13,7 @@ use log::*;
 
 use crate::cpython::{python_attach, CPythonProbe, CPythonProbeState};
 use crate::golang::{golang_attach, GolangProbe, GolangProbeState};
-use crate::jvm::{java_attach, JVMProbe, JVMProbeState};
+use crate::jvm::{java_attach, java_detach, JVMProbe, JVMProbeState};
 use crate::nodejs::{nodejs_attach, NodeJSProbe};
 use crate::php::{php_attach, PHPProbeState};
 use crate::{
@@ -331,7 +331,7 @@ impl RASPManager {
         let attach_result = match runtime_info.name {
             "JVM" => match JVMProbeState::inspect_process(process_info)? {
                 ProbeState::Attached => {
-                    info!("JVM attached process");
+                    info!("JVM attached process {}", pid);
                     Ok(true)
                 }
                 ProbeState::NotAttach => {
@@ -344,6 +344,26 @@ impl RASPManager {
                         }
                     }
                     java_attach(process_info.pid)
+                }
+                ProbeState::AttachedVersionNotMatch => {
+                  match java_detach(pid) {
+                    Ok(result) => {
+                        if self.can_copy(mnt_namespace) {
+                            for from in JVMProbe::names().0.iter() {
+                                self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
+                            }
+                            for from in JVMProbe::names().1.iter() {
+                                self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
+                            }
+                        }
+                        java_attach(pid)
+                    }
+                    Err(e) => {
+                        //process_info.tracing_state = ProbeState::Attached;
+                        Err(anyhow!(e))
+                    } 
+                  }
+
                 }
             },
             "CPython" => match CPythonProbeState::inspect_process(process_info)? {
@@ -361,6 +381,11 @@ impl RASPManager {
                         }
                     }
                     python_attach(process_info.pid)
+                }
+                ProbeState::AttachedVersionNotMatch => {
+                    let msg = format!("not support CPython update version now");
+                    error!("{}", msg);
+                    Err(anyhow!(msg))
                 }
             },
             "Golang" => match GolangProbeState::inspect_process(process_info)? {
@@ -423,6 +448,11 @@ impl RASPManager {
                         }
                     }
                 }
+                ProbeState::AttachedVersionNotMatch => {
+                    let msg = format!("not support Golang update version now");
+                    error!("{}", msg);
+                    Err(anyhow!(msg))
+                }
             },
             "NodeJS" => {
                 if self.can_copy(mnt_namespace) {
@@ -446,6 +476,11 @@ impl RASPManager {
                     Ok(true)
                 }
                 ProbeState::NotAttach => php_attach(process_info, runtime_info.version.clone()),
+                ProbeState::AttachedVersionNotMatch => {
+                    let msg = format!("not support PHP update version now");
+                    error!("{}", msg);
+                    Err(anyhow!(msg))
+                }
             },
             _ => {
                 let msg = format!("can not attach to runtime: `{}`", runtime_info.name);
@@ -457,6 +492,32 @@ impl RASPManager {
             Ok(success) => {
                 if !success {
                     let msg = format!("attach failed: {:?}", process_info);
+                    error!("{}", msg);
+                    Err(anyhow!(msg))
+                } else {
+                    Ok(())
+                }
+            }
+            Err(e) => Err(anyhow!(e)),
+        }
+    }
+
+    pub fn detach(&mut self, process_info: &ProcessInfo) -> Result<()>  {
+        if let Some(runtime) = process_info.runtime.clone() {
+            if runtime.name != "JVM" {
+                let msg = "attaching to not support runtime process";
+                error!("{}, runtime: {}", msg, runtime);
+                return Err(anyhow!(msg));
+            }
+        } else {
+            let msg = "attaching to unknow runtime process";
+            error!("{}", msg);
+            return Err(anyhow!(msg));
+        }
+        match java_detach(process_info.pid) {
+            Ok(success) => {
+                if !success {
+                    let msg = format!("detach failed: {:?}", process_info);
                     error!("{}", msg);
                     Err(anyhow!(msg))
                 } else {
@@ -734,7 +795,7 @@ impl MntNamespaceTracer {
         None
     }
     pub fn server_state_on(&mut self, mnt_namespace: String) {
-        if let Some(mut value) = self.tracer.get_mut(&mnt_namespace) {
+        if let Some(value) = self.tracer.get_mut(&mnt_namespace) {
             value.1 = true
         }
     }

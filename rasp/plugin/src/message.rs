@@ -93,7 +93,7 @@ pub fn parse_message(task: &plugins::Task) -> Anyhow<RASPMessage> {
 
 pub fn file_check_sum(file_path: &String, sum: &String) -> Anyhow<()> {
     let bytes = std::fs::read(file_path)?;  // Vec<u8>
-    let hash = sha256::digest_bytes(&bytes);
+    let hash = sha256::digest(&bytes);
     if sum == &hash {
         Ok(())
     } else {

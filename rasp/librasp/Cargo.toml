@@ -27,6 +27,7 @@ npm-package-json = "0.1.3"
 version-compare = "0.0.10"
 # time
 coarsetime = "0.1"
+lazy_static = "1.4.0"
 
 # plugins
 plugins = { path = "../../plugins/lib/rust"}

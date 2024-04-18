@@ -293,12 +293,12 @@ pub async fn looping(
                         }
                     }
                     Ok(None) => {
-                        warn!("frame_rx thread quiting");
+                        warn!("frame_rx thread quiting, pid:{}", pid);
                         let _ = rx_ctrl.stop();
                         return
                     }
                     Err(e) => {
-                        error!("frame_rx got err: {}", e);
+                        error!("frame_rx got err: {}, pid:{}", e, pid);
                         let _ = rx_ctrl.stop();
                         return
                     }

@@ -37,6 +37,7 @@ impl Display for Runtime {
 pub enum ProbeState {
     Attached,
     NotAttach,
+    AttachedVersionNotMatch,
 }
 
 pub trait ProbeStateInspect {
