@@ -10,14 +10,14 @@ import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
-public class SmithLogger {
-    public static Logger logger = Logger.getLogger("RASP");
+public class SmithAgentLogger {
+    public static Logger logger = Logger.getLogger("RASPAgent");
 
     static {
         logger.setUseParentHandlers(false);
 
         try {
-            String filename = String.format("/tmp/JVMAgent.%d.%d.log", ProcessHelper.getCurrentPID(), Instant.now().getEpochSecond());
+            String filename = String.format("/tmp/JVMAgent.%d.log", ProcessHelper.getCurrentPID());
 
             FileHandler handler = new FileHandler(filename, 5 * 1024 * 1024, 5);
             logger.addHandler(handler);
