@@ -30,7 +30,7 @@ public class SmithProbeProxy {
     private static final int METHOD_MAX_ID = 20;
     private static final int DEFAULT_QUOTA = 12000;
     
-    private final AtomicIntegerArray[] quotas;
+    private AtomicIntegerArray[] quotas;
     private Disruptor<Trace> disruptor;
     private Client client;
 
@@ -39,12 +39,26 @@ public class SmithProbeProxy {
         protected Object initialValue() {
             return null;
         }
+
+        @Override
+        protected String childValue(String parentValue) {
+            long threadId = Thread.currentThread().getId();
+            System.out.println("Current Thread ID: " + threadId + "----> parentValue:"+parentValue);
+            return parentValue;
+        }
     };
 
     public static InheritableThreadLocal<Object> localfilterDef = new InheritableThreadLocal<Object>() {
         @Override
         protected Object initialValue() {
             return null;
+        }
+
+        @Override
+        protected String childValue(String parentValue) {
+            long threadId = Thread.currentThread().getId();
+            System.out.println("Current Thread ID: " + threadId + "----> parentValue:"+parentValue);
+            return parentValue;
         }
     };
 
@@ -53,12 +67,26 @@ public class SmithProbeProxy {
         protected Object initialValue() {
             return null;
         }
+
+        @Override
+        protected String childValue(String parentValue) {
+            long threadId = Thread.currentThread().getId();
+            System.out.println("Current Thread ID: " + threadId + "----> parentValue:"+parentValue);
+            return parentValue;
+        }
     };
 
     InheritableThreadLocal<Boolean> jettyDeploying = new InheritableThreadLocal<Boolean>() {
         @Override
         protected Boolean initialValue() {
             return false;
+        }
+
+        @Override
+        protected String childValue(String parentValue) {
+            long threadId = Thread.currentThread().getId();
+            System.out.println("Current Thread ID: " + threadId + "----> parentValue:"+parentValue);
+            return parentValue;
         }
     };
 

@@ -50,25 +50,30 @@ import java.util.stream.Collectors;
 
 
 public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHandler<Trace> {
-    private static final SmithProbe ourInstance = new SmithProbe();
-    private static final int TRACE_BUFFER_SIZE = 1024;
+    private static SmithProbe ourInstance = new SmithProbe();
+    private static int TRACE_BUFFER_SIZE = 1024;
+
 
     private Boolean disable;
     private Boolean scanswitch;
     private Instrumentation inst;
-    private final Client client;
-    private final Heartbeat heartbeat;
+    private Client client;
+    private Heartbeat heartbeat;
     
-    private final Map<String, SmithClass> smithClasses;
-    private final Map<String, Patcher> patchers;
-    private final Map<Pair<Integer, Integer>, Filter> filters;
-    private final Map<Pair<Integer, Integer>, Block> blocks;
-    private final Map<Pair<Integer, Integer>, Integer> limits;
-    private final Disruptor<Trace> disruptor;
+    private Map<String, SmithClass> smithClasses;
+    private Map<String, Patcher> patchers;
+    private Map<Pair<Integer, Integer>, Filter> filters;
+    private Map<Pair<Integer, Integer>, Block> blocks;
+    private Map<Pair<Integer, Integer>, Integer> limits;
+    private Disruptor<Trace> disruptor;
     
-    private final Rule_Mgr    rulemgr;
-    private final Rule_Config ruleconfig;
+    private Rule_Mgr    rulemgr;
+    private Rule_Config ruleconfig;
     private SmithProbeProxy smithProxy;
+    private Timer detectTimer;
+    private Timer smithproxyTimer;
+    private TimerTask detectTimerTask;
+    private TimerTask smithproxyTimerTask;
 
     enum Action {
         STOP,
@@ -82,6 +87,13 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     public SmithProbe() {
         disable = false;
         scanswitch = true;
+    }
+
+    public void setInst(Instrumentation inst) {
+        this.inst = inst;
+    }
+
+    public void init() {
 
         smithClasses = new ConcurrentHashMap<>();
         patchers = new ConcurrentHashMap<>();
@@ -95,13 +107,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         disruptor = new Disruptor<>(Trace::new, TRACE_BUFFER_SIZE, DaemonThreadFactory.INSTANCE);
         rulemgr = new Rule_Mgr();
         ruleconfig = new Rule_Config(rulemgr);
-    }
 
-    public void setInst(Instrumentation inst) {
-        this.inst = inst;
-    }
-
-    public void init() {
         ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
         InputStream inputStream = this.getClass().getResourceAsStream("/class.yaml");
 
@@ -130,23 +136,39 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         clientThread.setDaemon(true);
         clientThread.start();
 
-        new Timer(true).schedule(
-                new TimerTask() {
-                    @Override
-                    public void run() {
-                        onDetect();
-                    }
-                },
+        detectTimerTask = new TimerTask() {
+            @Override
+            public void run() {
+                onDetect();
+            }
+
+            @Override
+            public boolean cancel() {
+                return true;
+            }
+        };
+
+        detectTimer = new Timer(true);
+        detectTimer.schedule(
+                detectTimerTask,
                 TimeUnit.MINUTES.toMillis(1)
         );
         smithProxy = SmithProbeProxy.getInstance();
-        new Timer(true).schedule(
-                new TimerTask() {
-                    @Override
-                    public void run() {
-                        smithProxy.onTimer();
-                    }
-                },
+        smithproxyTimerTask =  new TimerTask() {
+            @Override
+            public void run() {
+                smithProxy.onTimer();
+            }
+
+            @Override
+            public boolean cancel() {
+                return true;
+            }
+        };
+
+        smithproxyTimer = new Timer(true);
+        smithproxyTimer.schedule(
+                smithproxyTimerTask,
                 0,
                 TimeUnit.MINUTES.toMillis(1)
         );
@@ -155,11 +177,47 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
 
     public void stop() {
+        inst.removeTransformer(this);
+        reloadClasses();
 
+        ClassUploadTransformer.getInstance().stop();
+
+        detectTimer.cancel();
+        smithproxyTimer.cancel();
+
+        disruptor.shutdown();
+
+        client.stop();
+
+        rulemgr.delRule_all();
     }
 
     public void uninit() {
+        ClassUploadTransformer.delInstance();
 
+        detectTimer =null;
+        detectTimerTask = null;
+
+        smithproxyTimer = null;
+        smithproxyTimerTask = null;
+
+        smithClasses.clear();
+        smithClasses = null;
+        patchers.clear();
+        patchers = null;
+        filters.clear();
+        filters = null;
+        blocks.clear();
+        blocks = null;
+        limits.clear();
+        limits = null;
+        
+        disruptor = null;
+        ruleconfig = null;
+        rulemgr = null;
+
+        heartbeat = null;
+        inst = null;
     }
 
     private void reloadClasses() {

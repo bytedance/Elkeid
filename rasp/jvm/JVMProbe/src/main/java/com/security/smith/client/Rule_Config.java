@@ -124,5 +124,15 @@ public class Rule_Config {
         return bresult;
     }
 
-
+     @Override
+    protected void finalize() throws Throwable {
+        try {
+            m_Rule_Json = null;
+            m_Rule_Mgr.delRule_all();
+            m_Rule_Mgr = null;
+            m_objectMapper = null;
+        } catch (Exception e) {
+        }
+        super.finalize();
+    }
 }

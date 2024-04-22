@@ -33,8 +33,8 @@ public class Client implements EventHandler {
     private static final String MESSAGE_DIRECTORY = "/var/run/elkeid_rasp";
 
     private Channel channel;
-    private final MessageHandler messageHandler;
-    private final EpollEventLoopGroup group;
+    private MessageHandler messageHandler;
+    private EpollEventLoopGroup group;
 
     public Client(MessageHandler messageHandler) {
         // note: linux use epoll, mac use kqueue
@@ -75,6 +75,8 @@ public class Client implements EventHandler {
 
     public void stop() {
         group.shutdownGracefully();
+        messageHandler = null;
+        group = null;
     }
 
     public void write(Operate operate, Object object) {
