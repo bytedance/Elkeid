@@ -18,7 +18,7 @@ constexpr auto POINTER_FREE_OFFSET = 32;
 
 constexpr auto MAX_VAR_INT_LENGTH = 10;
 
-static bool readUVarInt(const unsigned char **pp, unsigned long &value) {
+static int readUVarInt(const unsigned char **pp, unsigned long &value) {
     unsigned int v = 0;
     unsigned int shift = 0;
 
@@ -29,19 +29,19 @@ static bool readUVarInt(const unsigned char **pp, unsigned long &value) {
 
         if (b < 0x80) {
             if (i == MAX_VAR_INT_LENGTH - 1 && b > 1)
-                return false;
+                return 0;
 
             *pp = p;
             value = v | b << shift;
 
-            return true;
+            return i + 1;
         }
 
         v |= (b & 0x7f) << shift;
         shift += 7;
     }
 
-    return false;
+    return 0;
 }
 
 bool BuildInfo::load(const std::string &file) {
@@ -113,15 +113,18 @@ bool BuildInfo::load(const std::string &file, unsigned long base) {
 
         unsigned long length = 0;
         char *p = &data[POINTER_FREE_OFFSET];
+        int ret = 0;
 
-        if (!readUVarInt((const unsigned char **)&p, length))
-            return false;
+        ret = readUVarInt((const unsigned char **)&p, length);
+        if (ret <= 0) return false;
+        p += ret;
 
         buildVersion = {p, (ptrdiff_t)length};
         p += length;
 
-        if (!readUVarInt((const unsigned char **)&p, length))
-            return false;
+        ret = readUVarInt((const unsigned char **)&p, length);
+        if (ret <= 0) return false;
+        p += ret;
 
         modInfo = {p, (ptrdiff_t)length};
     } else {
