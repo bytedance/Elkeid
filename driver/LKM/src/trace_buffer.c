@@ -26,6 +26,7 @@
 #include <linux/oom.h>
 #include <linux/kernel.h>
 
+#include "../include/util.h"
 #include "../include/trace_buffer.h"
 
 /* kernel has READ_ONCE defined since 3.18.13 */
