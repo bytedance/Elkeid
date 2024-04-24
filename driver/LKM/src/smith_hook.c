@@ -14,7 +14,12 @@
 #include <linux/moduleparam.h>
 #include <linux/netfilter.h>
 #include <linux/netfilter_ipv4.h>
+
+#if IS_ENABLED(CONFIG_IPV6)
+#include <linux/ipv6.h>
+#include <net/ipv6.h> /* ipv6_addr_any */
 #include <linux/netfilter_ipv6.h>
+#endif
 
 #define EXIT_PROTECT 0
 #define SANDBOX 0
