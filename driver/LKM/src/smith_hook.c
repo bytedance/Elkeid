@@ -423,9 +423,20 @@ void (*__smith_put_task_struct)(struct task_struct *tsk);
 
 static const struct cred *(*get_task_cred_sym) (struct task_struct *);
 
+static ssize_t (*smith_strscpy)(char *dest, const char *src, size_t count);
+
 static int __init kernel_symbols_init(void)
 {
-    void *ptr = (void *)smith_kallsyms_lookup_name("put_files_struct");
+    void *ptr;
+
+    ptr = (void *)smith_kallsyms_lookup_name("strscpy");
+    if (!ptr)
+        ptr = (void *)smith_kallsyms_lookup_name("strlcpy");
+    if (!ptr)
+        return -ENODEV;
+    smith_strscpy = ptr;
+
+    ptr = (void *)smith_kallsyms_lookup_name("put_files_struct");
     if (!ptr)
         return -ENODEV;
     put_files_struct_sym = ptr;
@@ -705,6 +716,7 @@ struct update_cred_data {
     int old_uid;
 #endif
 };
+
 
 /*
  * Our own implementation of kernel_getsockname and kernel_getpeername,
@@ -2858,7 +2870,7 @@ int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
 int call_usermodehelper_exec_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     int wait = 0, argv_res_len = 0, argv_len = 0;
-    int offset = 0, res = 0, free_argv = 0, i;
+    int offset = 0, free_argv = 0, i;
     void *si_tmp;
     const char *path;
     char **argv;
@@ -2895,8 +2907,12 @@ int call_usermodehelper_exec_pre_handler(struct kprobe *p, struct pt_regs *regs)
         } else {
             free_argv = 1;
             for (i = 0; offset < argv_res_len && i < argv_len; i++) {
-                res = argv_res_len - offset;
-                offset += strlcpy(argv_res + offset, argv[i], res) + 1;
+                int res = argv_res_len - offset, ret;
+                ret = smith_strscpy(argv_res + offset, argv[i], res);
+                if (ret < 0)
+                    offset += res;
+                else
+                    offset += ret + 1;
                 *(argv_res + offset - 1) = ' ';
             }
             *(argv_res + offset) = '\0';
