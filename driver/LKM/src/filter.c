@@ -27,9 +27,8 @@ static struct class *filter_class;
 static int filter_major;
 static char *sh_mem = NULL;
 
-struct rb_root execve_exe_allowlist = RB_ROOT;
-
-struct rb_root execve_argv_allowlist = RB_ROOT;
+static struct rb_root execve_exe_allowlist = RB_ROOT;
+static struct rb_root execve_argv_allowlist = RB_ROOT;
 
 static int execve_exe_allowlist_limit = 0;
 
