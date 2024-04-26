@@ -1,4 +1,4 @@
-package com.security.smith.common;
+package com.security.smithloader.common;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -123,28 +123,6 @@ public class Reflection {
         return null;
     }
 
-        /**
-     * 反射调用类的无返回值方法
-     *
-     * @param object     类的对象
-     * @param methodName 类的方法名称
-     * @param argTypes   参数类型
-     * @param args       参数
-     * @return Object
-     */
-    public static boolean invokeMethodNoReturn(Object object, String methodName, Class<?>[] argTypes, Object... args) {
-        try {
-            Method method = object.getClass().getDeclaredMethod(methodName, argTypes);
-            method.setAccessible(true);
-            method.invoke(object, args);
-
-            return true;
-        } catch (Throwable t) {
-        }
-
-        return false;
-    }
-
     /**
      * 反射调用父类的方法
      *
@@ -156,8 +134,6 @@ public class Reflection {
      */
     public static Object invokeSuperMethod(Object object, String methodName, Class<?>[] argTypes, Object... args) {
         try {
-            System.out.println("[invokeSuperMethod] Object.class:"+object.getClass());
-            System.out.println("[invokeSuperMethod] Object.class.superclass:"+object.getClass().getSuperclass().getName());
             Method method = object.getClass().getSuperclass().getMethod(methodName, argTypes);
             method.setAccessible(true);
             return method.invoke(object, args);
@@ -165,51 +141,5 @@ public class Reflection {
         }
 
         return null;
-    }
-
-     /**
-     * 反射调用父类的无返回值方法
-     *
-     * @param object     类的对象
-     * @param methodName 类的方法名称
-     * @param argTypes   参数类型
-     * @param args       参数
-     * @return boolean
-     */
-
-    public static boolean invokeSuperMethodNoReturn(Object object, String methodName, Class<?>[] argTypes, Object... args) {
-        try {
-            Method method = object.getClass().getSuperclass().getDeclaredMethod(methodName, argTypes);
-            method.setAccessible(true);
-            method.invoke(object, args);
-            return true;
-        } catch (Throwable t) {
-        }
-
-        return false;
-    }
-
-         /**
-     * 反射调用父类的父类的无返回值方法
-     *
-     * @param object     类的对象
-     * @param methodName 类的方法名称
-     * @param argTypes   参数类型
-     * @param args       参数
-     * @return boolean
-     */
-
-    public static boolean invokeSuperSuperMethodNoReturn(Object object, String methodName, Class<?>[] argTypes, Object... args) {
-        try {
-            System.out.println("Object.class:"+object.getClass());
-            System.out.println("Object.class.superclass:"+object.getClass().getSuperclass().getName());
-            Method method = object.getClass().getSuperclass().getSuperclass().getDeclaredMethod(methodName, argTypes);
-            method.setAccessible(true);
-            method.invoke(object, args);
-            return true;
-        } catch (Throwable t) {
-        }
-
-        return false;
     }
 }

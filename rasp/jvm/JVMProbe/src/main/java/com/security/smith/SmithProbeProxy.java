@@ -25,7 +25,7 @@ import com.security.smith.common.SmithHandler;
 import com.security.smith.log.SmithLogger;
 
 public class SmithProbeProxy {
-    private static final SmithProbeProxy ourInstance = new SmithProbeProxy();
+    private static SmithProbeProxy ourInstance = new SmithProbeProxy();
     private static final int CLASS_MAX_ID = 30;
     private static final int METHOD_MAX_ID = 20;
     private static final int DEFAULT_QUOTA = 12000;
@@ -39,26 +39,12 @@ public class SmithProbeProxy {
         protected Object initialValue() {
             return null;
         }
-
-        @Override
-        protected String childValue(String parentValue) {
-            long threadId = Thread.currentThread().getId();
-            System.out.println("Current Thread ID: " + threadId + "----> parentValue:"+parentValue);
-            return parentValue;
-        }
     };
 
     public static InheritableThreadLocal<Object> localfilterDef = new InheritableThreadLocal<Object>() {
         @Override
         protected Object initialValue() {
             return null;
-        }
-
-        @Override
-        protected String childValue(String parentValue) {
-            long threadId = Thread.currentThread().getId();
-            System.out.println("Current Thread ID: " + threadId + "----> parentValue:"+parentValue);
-            return parentValue;
         }
     };
 
@@ -67,28 +53,107 @@ public class SmithProbeProxy {
         protected Object initialValue() {
             return null;
         }
-
-        @Override
-        protected String childValue(String parentValue) {
-            long threadId = Thread.currentThread().getId();
-            System.out.println("Current Thread ID: " + threadId + "----> parentValue:"+parentValue);
-            return parentValue;
-        }
     };
 
-    InheritableThreadLocal<Boolean> jettyDeploying = new InheritableThreadLocal<Boolean>() {
+    public static InheritableThreadLocal<Boolean> jettyDeploying = new InheritableThreadLocal<Boolean>() {
         @Override
         protected Boolean initialValue() {
             return false;
         }
-
-        @Override
-        protected String childValue(String parentValue) {
-            long threadId = Thread.currentThread().getId();
-            System.out.println("Current Thread ID: " + threadId + "----> parentValue:"+parentValue);
-            return parentValue;
-        }
     };
+
+     private static  boolean removeThreadLocalFormThread(Object threadObj,Object threadLocalObj) {
+        boolean bret = false;
+        boolean usegetMap = false;
+
+        if(threadObj == null ||
+           threadLocalObj == null)  {
+            return false;
+        }
+
+        try {
+            String className = threadLocalObj.getClass().getSuperclass().getName();
+            if(className.contains("java.lang.InheritableThreadLocal")) {
+                Class<?>[]  argType_remove = new Class[]{Thread.class};
+                 bret = Reflection.invokeSuperSuperMethodNoReturn(threadLocalObj,"remove",argType_remove,threadObj);
+            }
+            else if(className.contains("java.lang.ThreadLocal")) {
+                System.out.println("[removeThreadLocalFormThread] 10");
+                Class<?>[]  argType_remove = new Class[]{Thread.class};
+                System.out.println("[removeThreadLocalFormThread] 20");
+                bret = Reflection.invokeSuperMethodNoReturn(threadLocalObj,"remove",argType_remove,threadObj);
+            }
+        }
+        catch(Throwable t) {
+        }
+
+        if(!bret) {
+            try {
+                System.out.println("[removeThreadLocalFormThread] 11");
+                Class<?>[]  argType_getMap = new Class[]{Thread.class};
+                System.out.println("[removeThreadLocalFormThread] 21");
+                Object threadlocalMap = Reflection.invokeSuperMethod(threadLocalObj,"getMap",argType_getMap,threadObj);
+                if(threadlocalMap != null) {
+                    Class<?>[]  argType_remove = new Class[]{ThreadLocal.class};
+                    bret = Reflection.invokeMethodNoReturn(threadlocalMap,"remove",argType_remove,threadLocalObj);
+                    System.out.println("threadlocalMap remove(thread) success!");
+                }
+                else {
+                    System.out.println("threadlocalMap == null");
+                }
+            }
+            catch(Throwable t) {
+                System.out.println("removeThreadLocalFormThread 0:");
+                t.printStackTrace();
+            }
+        }
+        else {
+            System.out.println("threadlocal remove(thread) success!");
+        }
+
+        System.out.println("removeThreadLocalFormThread End");
+
+        return bret;
+    }
+
+    private static void RemoveThreadLocalVar() {
+        int activeCount = Thread.activeCount();
+        System.out.println("activethread:"+activeCount);
+        Thread[] threads = new Thread[activeCount+100];
+        int count = Thread.enumerate(threads);
+        System.out.println("thread Count:"+count);
+        for (int i = 0; i < count; i++) {
+            System.out.println("i:"+i);
+            System.out.println("removeX i:"+i);
+            if(removeThreadLocalFormThread(threads[i], localfilterConfig)) {
+                System.out.println("remove Tid:" + threads[i].getId() + " -Thread Local: " + localfilterConfig + " ThreadLocal success");
+            }
+            else {
+                System.out.println("remove Tid:" + threads[i].getId() + " -Thread Local: " + localfilterConfig + " ThreadLocal fail");
+            }
+
+            if(removeThreadLocalFormThread(threads[i], localfilterDef)) {
+                System.out.println("remove Tid:" + threads[i].getId() + " -Thread Local: " + localfilterDef + " ThreadLocal success");
+            }
+            else {
+                System.out.println("remove Tid:" + threads[i].getId() + " -Thread Local: " + localfilterDef + " ThreadLocal fail");
+            }
+
+            if(removeThreadLocalFormThread(threads[i], needFoundfilterDef)) {
+                System.out.println("remove Tid:" + threads[i].getId() + " -Thread Local: " + needFoundfilterDef + " ThreadLocal success");
+            }
+            else {
+                System.out.println("remove Tid:" + threads[i].getId() + " -Thread Local: " + needFoundfilterDef + " ThreadLocal fail");
+            }
+
+              if(removeThreadLocalFormThread(threads[i], jettyDeploying)) {
+                System.out.println("remove Tid:" + threads[i].getId() + " -Thread Local: " + jettyDeploying + " ThreadLocal success");
+            }
+            else {
+                System.out.println("remove Tid:" + threads[i].getId() + " -Thread Local: " + jettyDeploying + " ThreadLocal fail");
+            }
+        }
+    }
 
     public SmithProbeProxy() {
          quotas = Stream.generate(() -> new AtomicIntegerArray(METHOD_MAX_ID)).limit(CLASS_MAX_ID).toArray(AtomicIntegerArray[]::new);
@@ -96,6 +161,23 @@ public class SmithProbeProxy {
 
     public static SmithProbeProxy getInstance() {
         return ourInstance;
+    }
+
+    public static void delInstance() {
+        ourInstance.client = null;
+        ourInstance.disruptor = null;
+        for(int i = 0;i < ourInstance.quotas.length;i++) {
+            ourInstance.quotas[i] = null;
+        }
+        ourInstance.quotas = null;
+        RemoveThreadLocalVar();
+
+        localfilterConfig = null; 
+        localfilterDef = null;
+        needFoundfilterDef = null;
+        jettyDeploying = null;
+
+        ourInstance = null;
     }
 
     public void setClient(Client client) {

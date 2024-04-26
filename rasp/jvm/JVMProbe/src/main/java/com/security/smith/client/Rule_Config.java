@@ -39,6 +39,16 @@ public class Rule_Config {
         return true;
     }
 
+    public static void destry() {
+        try {
+            m_Rule_Json = null;
+            m_objectMapper = null;
+            m_Rule_Mgr.delRule_all();
+            m_Rule_Mgr = null;
+        } catch (Exception e) {
+        }
+    }
+
     public static void printRule(Rule_Scanner RuleScanner) {
         System.out.println("Add RuleItem:" + RuleScanner);
         System.out.println("ruleId:" + RuleScanner.m_ruleId);
@@ -122,17 +132,5 @@ public class Rule_Config {
         }
 
         return bresult;
-    }
-
-     @Override
-    protected void finalize() throws Throwable {
-        try {
-            m_Rule_Json = null;
-            m_Rule_Mgr.delRule_all();
-            m_Rule_Mgr = null;
-            m_objectMapper = null;
-        } catch (Exception e) {
-        }
-        super.finalize();
     }
 }

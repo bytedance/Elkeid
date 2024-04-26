@@ -48,7 +48,6 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-
 public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHandler<Trace> {
     private static SmithProbe ourInstance = new SmithProbe();
     private static int TRACE_BUFFER_SIZE = 1024;
@@ -177,29 +176,47 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
 
     public void stop() {
+        SmithLogger.logger.info("probe stop");
+
         inst.removeTransformer(this);
         reloadClasses();
+        SmithLogger.logger.info("probe stop 0");
+
+        disable = true;
+        scanswitch = false;
 
         ClassUploadTransformer.getInstance().stop();
 
+        SmithLogger.logger.info("probe stop 1");
+
         detectTimer.cancel();
         smithproxyTimer.cancel();
-
+        SmithLogger.logger.info("probe stop 2");
+        
         disruptor.shutdown();
+        SmithLogger.logger.info("probe stop 3");
 
         client.stop();
+        SmithLogger.logger.info("probe stop 4");
+        ruleconfig.destry();
 
-        rulemgr.delRule_all();
+        rulemgr.destry();
+        SmithLogger.logger.info("probe stop 5");
+
+        detectTimerTask = null;
+        detectTimer =null;
+
+        smithproxyTimerTask = null;
+        smithproxyTimer = null;
+
+        SmithProbeProxy.delInstance();
+
+        SmithLogger.logger.info("probe stop 7");
     }
 
     public void uninit() {
+        SmithLogger.logger.info("probe uninit");
         ClassUploadTransformer.delInstance();
-
-        detectTimer =null;
-        detectTimerTask = null;
-
-        smithproxyTimer = null;
-        smithproxyTimerTask = null;
 
         smithClasses.clear();
         smithClasses = null;
@@ -211,6 +228,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         blocks = null;
         limits.clear();
         limits = null;
+        SmithLogger.logger.info("probe uninit 0");
         
         disruptor = null;
         ruleconfig = null;
@@ -218,6 +236,8 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
         heartbeat = null;
         inst = null;
+        ourInstance = null;
+        SmithLogger.logger.info("probe uninit 1");
     }
 
     private void reloadClasses() {

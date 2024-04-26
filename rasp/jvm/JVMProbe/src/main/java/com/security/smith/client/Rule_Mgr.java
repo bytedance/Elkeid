@@ -9,8 +9,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Rule_Mgr {
     private static int m_rule_version;
-    final private static ArrayList<Rule_Scanner>     m_ruleList = new ArrayList<Rule_Scanner>();
-    final private static ReadWriteLock m_ruleLock = new ReentrantReadWriteLock();
+    private static ArrayList<Rule_Scanner>     m_ruleList = new ArrayList<Rule_Scanner>();
+    private static ReadWriteLock m_ruleLock = new ReentrantReadWriteLock();
 
     public static void setVersion(int rule_version) {
         m_rule_version = rule_version;
@@ -39,7 +39,6 @@ public class Rule_Mgr {
             m_ruleLock.writeLock().unlock();
         }
 
-        
         return bresult;
     }
 
@@ -57,6 +56,14 @@ public class Rule_Mgr {
         finally {
             m_ruleLock.writeLock().unlock();
         }
+    }
+
+    public static void destry() {
+        delRule_all();
+
+        m_ruleList = null;
+
+        m_ruleLock = null;
     }
 
     public static long matchRule(ClassFilter Data) {

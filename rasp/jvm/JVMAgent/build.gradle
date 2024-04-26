@@ -28,8 +28,8 @@ compileJava {
 
 jar {
     manifest {
-        attributes 'Agent-Class': 'com.security.smith.SmithAgent'
-        attributes 'Premain-Class': 'com.security.smith.SmithAgent'
+        attributes 'Agent-Class': 'com.security.smithloader.SmithAgent'
+        attributes 'Premain-Class': 'com.security.smithloader.SmithAgent'
         attributes 'Can-Retransform-Classes': 'true'
         attributes 'Boot-Class-Path': 'SmithAgent.jar'
         attributes 'Specification-Title': 'Smith Agent'
