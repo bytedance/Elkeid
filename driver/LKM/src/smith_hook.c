@@ -227,7 +227,6 @@ static int count(struct user_arg_ptr argv, int max)
 static void (*put_files_struct_sym) (struct files_struct * files);
 
 struct delayed_put_node {
-    struct memcache_node cache;
     struct delayed_put_node *next;
     union {
         struct file *filp;
@@ -238,25 +237,29 @@ struct delayed_put_node {
 };
 
 static struct memcache_head g_delayed_put_root;
+static atomic_t g_delayed_put_active; /* active nodes */
 
 static struct delayed_put_node *smith_alloc_delayed_put_node(void)
 {
-    struct memcache_node *mnod;
+    struct delayed_put_node *dnod;
 
-    mnod = memcache_pop(&g_delayed_put_root);
-    if (mnod) {
-        struct delayed_put_node *dnod;
-        dnod = container_of(mnod, struct delayed_put_node, cache);
+    dnod = memcache_pop(&g_delayed_put_root);
+    if (dnod) {
         dnod->flag_pool = 1;
-        return dnod;
+    } else {
+        dnod = smith_kzalloc(sizeof(struct delayed_put_node), GFP_ATOMIC);
     }
-    return smith_kzalloc(sizeof(struct delayed_put_node), GFP_ATOMIC);
+
+    return dnod;
 }
 
 static void smith_free_delayed_put_node(struct delayed_put_node *dnod)
 {
+    if (!dnod)
+        return;
+
     if (dnod->flag_pool)
-        memcache_push(&dnod->cache, &g_delayed_put_root);
+        memcache_push(dnod, &g_delayed_put_root);
     else
         smith_kfree(dnod);
 }
@@ -283,6 +286,7 @@ static struct delayed_put_node *smith_deref_head_node(void)
         else if (0 == dnod->type)
             fput(dnod->filp);
         smith_free_delayed_put_node(dnod);
+        atomic_dec(&g_delayed_put_active);
     }
 
     return dnod;
@@ -321,8 +325,8 @@ static int __init smith_start_delayed_put(void)
 
     /* initialize memory cache for dnod, errors to be ignored,
        if fails, new node will be allocated from system slab */
-    memcache_init_pool(&g_delayed_put_root, nobjs * num_possible_cpus(),
-                       sizeof(struct delayed_put_node), 0, NULL, NULL);
+    memcache_init(&g_delayed_put_root, nobjs * num_possible_cpus(),
+                  sizeof(struct delayed_put_node), 0, NULL, NULL, NULL);
 
     /* wake up delayed-put worker thread */
     wake_up_process(g_delayed_put_thread);
@@ -340,11 +344,15 @@ static void smith_stop_delayed_put(void)
     while (g_delayed_put_queue)
         smith_deref_head_node();
 
-    memcache_fini(&g_delayed_put_root, NULL, NULL);
+    memcache_fini(&g_delayed_put_root);
 }
 
 static void smith_insert_delayed_put_node(struct delayed_put_node *dnod)
 {
+    if (!dnod)
+        return;
+
+    atomic_inc(&g_delayed_put_active);
     /* attach dnod to deayed_fput_queue */
     spin_lock(&g_delayed_put_lock);
     dnod->next = g_delayed_put_queue;
