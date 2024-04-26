@@ -5004,14 +5004,23 @@ static void __init install_kprobe(void)
     }
 }
 
+#define SMITH_SRCID(name)                           \
+    #name;                                          \
+    static char *sid_##name = #name;                \
+    module_param(sid_##name, charp, S_IRUSR|S_IRGRP|S_IROTH)
+
+/* latest commit id */
+static char *smith_srcid = SMITH_SRCID(6638bbc49a041916c5a5e5c325f6cb3ca9498581);
+
 static int __init kprobe_hook_init(void)
 {
     int ret;
 
 #if defined(MODULE)
-    printk(KERN_INFO "[ELKEID] loading kmod %s (%s).\n",
-           THIS_MODULE->name, THIS_MODULE->version);
+    printk(KERN_INFO "[ELKEID] kmod: %s (%s / %s) loaded\n",
+           THIS_MODULE->name, THIS_MODULE->version, THIS_MODULE->srcversion);
 #endif
+    printk(KERN_INFO "[ELKEID] srcid: %s\n", smith_srcid);
 
     ret = kernel_symbols_init();
     if (ret)
