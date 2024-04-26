@@ -249,7 +249,7 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
         return !started;
     }
 
-    private boolean classIsSended(int hashcode) {
+    public boolean classIsSended(int hashcode) {
         boolean isSended = false;
         classHashCachelock.readLock().lock();
         try {
@@ -322,26 +322,19 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
     }
 
     public  boolean sendClass(Class<?> clazz, String transId) {
-        boolean ret = false;
-
         if(!started) {
             System.out.println("sendClass !started leave");
             return false;
         }
 
         try {
-            if(!classIsSended(clazz.hashCode())) {
-                ret = addUploadClassInfo(clazz,transId);
-            }
-            else {
-                ret = true;
-            }
+            return addUploadClassInfo(clazz,transId);
         }
         catch(Exception e) {
             SmithLogger.exception(e);
         }
 
-        return ret;
+        return false;
     }
 
     @Override

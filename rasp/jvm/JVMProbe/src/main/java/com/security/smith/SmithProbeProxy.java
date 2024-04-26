@@ -144,6 +144,11 @@ public class SmithProbeProxy {
         if (cla == null) {
             return;
         }
+
+        if(SmithProbe.getInstance().classIsSended(cla)) {
+            return ;
+        }
+
         ClassFilter classFilter = new ClassFilter();
         SmithHandler.queryClassFilter(cla, classFilter);
         classFilter.setTransId();
@@ -230,12 +235,19 @@ public class SmithProbeProxy {
                     }
                 }
                 if (filter != null || filterClass != null) {
-                    ClassFilter classFilter = new ClassFilter();
+                    Class<?> clazz = null;
                     if (filterClass != null) {
-                        SmithHandler.queryClassFilter(filterClass, classFilter);
+                        clazz = filterClass;
                     } else {
-                        SmithHandler.queryClassFilter(filter.getClass(), classFilter);
+                        clazz = filter.getClass();
                     }
+
+                    if(SmithProbe.getInstance().classIsSended(clazz)) {
+                        return ;
+                    }
+
+                    ClassFilter classFilter = new ClassFilter();
+                    SmithHandler.queryClassFilter(clazz, classFilter);
                     
                     classFilter.setTransId();
     
@@ -244,12 +256,7 @@ public class SmithProbeProxy {
                     if (client != null) {
                         client.write(Operate.SCANCLASS, classFilter);
                         SmithLogger.logger.info("send metadata: " + classFilter.toString());
-                        if (filterClass != null) {
-                            SmithProbe.getInstance().sendClass(filterClass, classFilter.getTransId());
-                        }
-                        else {
-                            SmithProbe.getInstance().sendClass(filter.getClass(), classFilter.getTransId());
-                        }
+                        SmithProbe.getInstance().sendClass(clazz, classFilter.getTransId());
                     }
                 } else {
                     needFoundfilterDef.set(filterdef);
@@ -506,6 +513,10 @@ public class SmithProbeProxy {
 
                 if(servletName != null) {
                     if (servletClass != null) {
+                    if(SmithProbe.getInstance().classIsSended(servletClass)) {
+                        return ;
+                    }
+
                         ClassFilter classFilter = new ClassFilter();
                         SmithHandler.queryClassFilter((Class<?>)servletClass, classFilter);
                         

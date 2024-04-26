@@ -655,8 +655,11 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     if (className.startsWith("rasp.") || className.startsWith("com.security.smith") || className.startsWith("java.lang.invoke.LambdaForm")) {
                         continue;
                     }
-                    
 
+                    if(classIsSended(clazz)) {
+                        continue;
+                    }
+                    
                     ClassFilter classFilter = new ClassFilter();
                     
                     SmithHandler.queryClassFilter(clazz, classFilter);
@@ -699,6 +702,16 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         } catch (Exception e) {
             SmithLogger.exception(e);
         }
+    }
+
+    public boolean classIsSended(Class<?> clazz) {
+        try {
+            return ClassUploadTransformer.getInstance().classIsSended(clazz.hashCode());
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+
+        return false;
     }
 
     /*
