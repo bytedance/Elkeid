@@ -5010,7 +5010,7 @@ static void __init install_kprobe(void)
     module_param(sid_##name, charp, S_IRUSR|S_IRGRP|S_IROTH)
 
 /* latest commit id */
-static char *smith_srcid = SMITH_SRCID(6638bbc49a041916c5a5e5c325f6cb3ca9498581);
+static char *smith_srcid = SMITH_SRCID(d21bece42d1e187e249dfb64c452c239e909cba7);
 
 static int __init kprobe_hook_init(void)
 {
