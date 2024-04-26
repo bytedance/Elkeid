@@ -165,61 +165,6 @@ static inline void __init_root_pid_ns_inum(void) {
     put_pid(pid_struct);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)
-struct user_arg_ptr {
-#ifdef CONFIG_COMPAT
-	bool is_compat;
-#endif
-	union {
-		const char __user *const __user *native;
-#ifdef CONFIG_COMPAT
-		const compat_uptr_t __user *compat;
-#endif
-	} ptr;
-};
-
-static const char __user *get_user_arg_ptr(struct user_arg_ptr argv, int nr)
-{
-	const char __user *native;
-
-#ifdef CONFIG_COMPAT
-	if (argv.is_compat) {
-		compat_uptr_t compat;
-
-		if (smith_get_user(compat, argv.ptr.compat + nr))
-		    return ERR_PTR(-EFAULT);
-
-		return compat_ptr(compat);
-	}
-#endif
-
-	if (smith_get_user(native, argv.ptr.native + nr))
-	    return ERR_PTR(-EFAULT);
-
-	return native;
-}
-
-//count execve argv num
-static int count(struct user_arg_ptr argv, int max)
-{
-	int i = 0;
-	if (argv.ptr.native != NULL) {
-		for (;;) {
-			const char __user *p = get_user_arg_ptr(argv, i);
-			if (!p)
-				break;
-			if (IS_ERR(p))
-				return -EFAULT;
-			if (++i >= max)
-				break;
-			if (fatal_signal_pending(current))
-				return -ERESTARTNOHAND;
-		}
-	}
-	return i;
-}
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0) */
-
 /*
  * delayed put_files_struct
  */
@@ -1546,6 +1491,60 @@ release_data:
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)
+
+struct user_arg_ptr {
+#ifdef CONFIG_COMPAT
+	bool is_compat;
+#endif
+	union {
+		const char __user *const __user *native;
+#ifdef CONFIG_COMPAT
+		const compat_uptr_t __user *compat;
+#endif
+	} ptr;
+};
+
+static const char __user *get_user_arg_ptr(struct user_arg_ptr argv, int nr)
+{
+	const char __user *native;
+
+#ifdef CONFIG_COMPAT
+	if (argv.is_compat) {
+		compat_uptr_t compat;
+
+		if (smith_get_user(compat, argv.ptr.compat + nr))
+		    return ERR_PTR(-EFAULT);
+
+		return compat_ptr(compat);
+	}
+#endif
+
+	if (smith_get_user(native, argv.ptr.native + nr))
+	    return ERR_PTR(-EFAULT);
+
+	return native;
+}
+
+//count execve argv num
+static int execve_count_args(struct user_arg_ptr argv, int max)
+{
+	int i = 0;
+	if (argv.ptr.native != NULL) {
+		for (;;) {
+			const char __user *p = get_user_arg_ptr(argv, i);
+			if (!p)
+				break;
+			if (IS_ERR(p))
+				return -EFAULT;
+			if (++i >= max)
+				break;
+			if (fatal_signal_pending(current))
+				return -ERESTARTNOHAND;
+		}
+	}
+	return i;
+}
+
 //get execve syscall argv/LD_PRELOAD && SSH_CONNECTION env info
 static void get_execve_data(struct user_arg_ptr argv_ptr,
                             struct user_arg_ptr env_ptr,
@@ -1561,8 +1560,8 @@ static void get_execve_data(struct user_arg_ptr argv_ptr,
 	char *ld_preload = NULL;
 	const char __user *native;
 
-	env_len = count(env_ptr, MAX_ARG_STRINGS);
-	argv_len = count(argv_ptr, SMITH_MAX_ARG_STRINGS);
+	env_len = execve_count_args(env_ptr, MAX_ARG_STRINGS);
+	argv_len = execve_count_args(argv_ptr, SMITH_MAX_ARG_STRINGS);
 	argv_res_len = 256 * argv_len;
 
 	if (argv_len > 0) {
@@ -1679,6 +1678,9 @@ static int compat_execve_entry_handler(
 	struct execve_data *data;
 	data = (struct execve_data *)ri->data;
 
+    memset(&argv_ptr, 0, sizeof(argv_ptr));
+    memset(&env_ptr, 0, sizeof(env_ptr));
+
 	argv_ptr.is_compat = true;
 	argv_ptr.ptr.compat = (const compat_uptr_t __user *)p_get_arg2_syscall(regs);
 
@@ -1698,6 +1700,9 @@ static int compat_execveat_entry_handler(
 	struct execve_data *data;
 	data = (struct execve_data *)ri->data;
 
+    memset(&argv_ptr, 0, sizeof(argv_ptr));
+    memset(&env_ptr, 0, sizeof(env_ptr));
+
 	argv_ptr.is_compat = true;
 	argv_ptr.ptr.compat = (const compat_uptr_t __user *)p_get_arg3_syscall(regs);
 
@@ -1716,6 +1721,9 @@ static int execveat_entry_handler(struct kretprobe_instance *ri, struct pt_regs 
 	struct execve_data *data;
 	data = (struct execve_data *)ri->data;
 
+    memset(&argv_ptr, 0, sizeof(argv_ptr));
+    memset(&env_ptr, 0, sizeof(env_ptr));
+
 	argv_ptr.ptr.native = (const char *const *)p_get_arg3_syscall(regs);
 	env_ptr.ptr.native = (const char *const *)p_get_arg4_syscall(regs);
 
@@ -1729,6 +1737,9 @@ static int execve_entry_handler(struct kretprobe_instance *ri, struct pt_regs *r
 	struct user_arg_ptr env_ptr;
 	struct execve_data *data;
 	data = (struct execve_data *)ri->data;
+
+    memset(&argv_ptr, 0, sizeof(argv_ptr));
+    memset(&env_ptr, 0, sizeof(env_ptr));
 
 	argv_ptr.ptr.native = (const char *const *)p_get_arg2_syscall(regs);
 	env_ptr.ptr.native = (const char *const *)p_get_arg3_syscall(regs);
