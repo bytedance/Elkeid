@@ -343,7 +343,7 @@ static int trace_release_pipe(struct inode *inode, struct file *file)
     return 0;
 }
 
-long trace_ioctl_pipe(struct file *filp, unsigned int cmd, unsigned long __user arg)
+static long trace_ioctl_pipe(struct file *filp, unsigned int cmd, unsigned long __user arg)
 {
     struct print_event_iterator *iter = filp->private_data;
     long rc = -EINVAL;
