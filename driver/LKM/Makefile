@@ -10,6 +10,10 @@ obj-m			+= $(MODULE_NAME).o
 ccflags-y		+= -I$(MODULE_DIR)/include -I$(MODULE_DIR)
 
 K_I_PATH		:= .
+ifneq ($(wildcard $(srctree)/include/.),)
+K_I_PATH                += $(srctree)/include
+endif
+
 ifneq ($(wildcard /usr/src/kernels/$(KERNEL_HEAD)/include/.),)
 K_I_PATH		+= /usr/src/kernels/$(KERNEL_HEAD)/include
 endif
@@ -67,9 +71,21 @@ ccflags-y += -D SMITH_TRACE_EVENTS
 endif
 
 TRACE_SEQ_FILES := $(shell find -L $(K_I_PATH) -path \*/linux/trace_seq.h) /dev/null
-TRACE_SEQ_SEQ := $(shell sh -c "grep -s trace_seq_used $(TRACE_SEQ_FILES)")
+TRACE_SEQ_SEQ := $(shell sh -c "grep -s 'struct trace_seq {' -A5 $(TRACE_SEQ_FILES) | grep 'seq;'")
 ifneq ($(TRACE_SEQ_SEQ),)
 ccflags-y += -D SMITH_TRACE_SEQ
+endif
+TRACE_SEQ_READPOS := $(shell sh -c "grep -s 'struct trace_seq {' -A5 $(TRACE_SEQ_FILES) | grep 'readpos;'")
+ifneq ($(TRACE_SEQ_READPOS),)
+ccflags-y += -D SMITH_TRACE_READPOS
+endif
+TRACE_SEQ_FULL := $(shell sh -c "grep -s 'struct trace_seq {' -A5 $(TRACE_SEQ_FILES) | grep 'full;'")
+ifneq ($(TRACE_SEQ_FULL),)
+ccflags-y += -D SMITH_TRACE_FULL
+endif
+TRACE_SEQ_LEN := $(shell sh -c "grep -s 'struct trace_seq {' -A5 $(TRACE_SEQ_FILES) | grep 'len;'")
+ifneq ($(TRACE_SEQ_LEN),)
+ccflags-y += -D SMITH_TRACE_LEN
 endif
 
 FS_H_FILES := $(shell find -L $(K_I_PATH) -path "*/linux/fs.h") /dev/null
@@ -117,7 +133,15 @@ endif
 else
 
 MODULE_DIR		:= $(shell pwd)
-KERNEL_DIR		:= $(if $(wildcard /usr/src/kernels/$(KERNEL_HEAD)),/usr/src/kernels/$(KERNEL_HEAD),/lib/modules/$(KERNEL_HEAD)/build)
+ifneq ($(wildcard /lib/modules/$(KERNEL_HEAD)/build),)
+KERNEL_DIR		:= /lib/modules/$(KERNEL_HEAD)/build
+else ifneq ($(wildcard /usr/src/kernels/$(KERNEL_HEAD)),)
+KERNEL_DIR		:= /usr/src/kernels/$(KERNEL_HEAD)
+else ifneq ($(wildcard /usr/src/$(KERNEL_HEAD)),)
+KERNEL_DIR		:= /usr/src/$(KERNEL_HEAD)
+else
+$(error Kernel header files related to $(KERNEL_HEAD) not found)
+endif
 
 all:
 	@echo "|-----------------------------------|"
