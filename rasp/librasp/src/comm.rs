@@ -224,10 +224,10 @@ impl RASPComm for ThreadMode {
             let mut target = format!("{}{}", root_dir, linking_to);
             
             let resolved_path = resolve_symlink_path(target.clone());
-            if resolved_path.as_str().starts_with(&root_dir) {
-                return Err(anyhow!("link bind path find failed: {}, pid {} may not exist", target, pid));
-            } else {
+            if !resolved_path.as_str().starts_with(&root_dir) {
                 target = format!("/proc/{}/root{}", pid ,resolved_path);
+            } else {
+                target = resolved_path;
             }
 
             // check socket exist
