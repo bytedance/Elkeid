@@ -631,7 +631,7 @@ static inline bool __tb_time_read(tb_time_t *t, u64 *ret, unsigned long *cnt)
 	*cnt = tb_time_cnt(top);
 
 	/* If top, msb or bottom counts don't match, this interrupted a write */
-	if (*cnt != tb_time_cnt(msb) || *cnt != tb_time_cnt(bottom)
+	if (*cnt != tb_time_cnt(msb) || *cnt != tb_time_cnt(bottom))
 		return false;
 
 	/* The shift to msb will lose its cnt bits */
@@ -686,7 +686,7 @@ tb_time_read_cmpxchg(local_t *l, unsigned long expect, unsigned long set)
 	unsigned long ret;
 
 	ret = local_cmpxchg(l, expect, set);
-	return ret == expect
+	return ret == expect;
 }
 
 #else /* 64 bits */
