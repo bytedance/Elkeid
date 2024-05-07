@@ -121,7 +121,7 @@ static uint64_t g_loaded_jiffies;
 static uint32_t smith_get_delta(uint32_t start)
 {
     uint64_t delta = smith_get_jiffies() - g_loaded_jiffies;
-    return (uint32_t)(delta / USER_HZ) + start;
+    return (uint32_t)do_div(delta, USER_HZ) + start;
 }
 
 /*
