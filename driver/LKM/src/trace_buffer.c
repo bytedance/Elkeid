@@ -686,7 +686,7 @@ tb_time_read_cmpxchg(local_t *l, unsigned long expect, unsigned long set)
 	unsigned long ret;
 
 	ret = local_cmpxchg(l, expect, set);
-	return ret == expect
+	return ret == expect;
 }
 
 #else /* 64 bits */
