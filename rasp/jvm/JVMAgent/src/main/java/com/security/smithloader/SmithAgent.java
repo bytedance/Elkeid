@@ -58,7 +58,9 @@ public class SmithAgent {
                 SmithAgentLogger.logger.info("Start unload prober");
                 Class<?>[] emptyArgTypes = new Class[]{};
                 Reflection.invokeMethod(SmithProberObj,"stop",emptyArgTypes);
+                SmithAgentLogger.logger.info("unload prober 0");
                 Reflection.invokeMethod(SmithProberObj,"uninit",emptyArgTypes);
+                SmithAgentLogger.logger.info("unload prober 1");
 
                 SmithProberObj = null;
                 SmithProberClazz = null;
@@ -123,13 +125,11 @@ public class SmithAgent {
                 SmithAgentLogger.logger.info("checksumStr:" + checksumStr);
                 SmithAgentLogger.logger.info("proberPath:" + proberPath); 
 
-                /*
                 if(!JarUtil.checkJarFile(proberPath,checksumStr)) {
                     System.setProperty("smith.status", proberPath + " check fail");
                     SmithAgentLogger.logger.warning(proberPath + " check fail!");
                     return ;
                 }
-                */
 
                 String probeVersion = getProberVersion(proberPath);
                 SmithAgentLogger.logger.info("proberVersion:" + probeVersion);
@@ -233,7 +233,6 @@ public class SmithAgent {
             }
         
         } catch (Exception e) {
-            // TODO: handle exception
             SmithAgentLogger.exception(e);
         }
         return true;
