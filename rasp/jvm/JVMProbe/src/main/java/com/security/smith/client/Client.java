@@ -14,6 +14,7 @@ import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.unix.DomainSocketAddress;
 import io.netty.channel.unix.DomainSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import io.netty.util.concurrent.GenericFutureListener;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -33,11 +34,21 @@ public class Client implements EventHandler {
     private static final String MESSAGE_DIRECTORY = "/var/run/elkeid_rasp";
 
     private Channel channel;
+    private boolean stopX;
     private MessageHandler messageHandler;
     private EpollEventLoopGroup group;
+    private ChannelFuture cf;
+    private GenericFutureListener<ChannelFuture> connectListener = (ChannelFuture f) -> {
+                        if (!f.isSuccess()) {
+                            if(!stopX) {
+                                f.channel().eventLoop().schedule(this::onReconnect, RECONNECT_SCHEDULE, TimeUnit.SECONDS);
+                            }
+                        }
+                    };
 
     public Client(MessageHandler messageHandler) {
         // note: linux use epoll, mac use kqueue
+        this.stopX = false;
         this.messageHandler = messageHandler;
         this.group = new EpollEventLoopGroup(EVENT_LOOP_THREADS, new DefaultThreadFactory(getClass(), true));
     }
@@ -60,12 +71,9 @@ public class Client implements EventHandler {
                         }
                     });
 
-            channel = b.connect(new DomainSocketAddress(SOCKET_PATH))
-                    .addListener((ChannelFuture f) -> {
-                        if (!f.isSuccess()) {
-                            f.channel().eventLoop().schedule(this::onReconnect, RECONNECT_SCHEDULE, TimeUnit.SECONDS);
-                        }
-                    }).sync().channel();
+            cf = b.connect(new DomainSocketAddress(SOCKET_PATH)).addListener(connectListener);
+
+            channel = cf.sync().channel();
 
             channel.closeFuture().sync();
         } catch (Exception e) {
@@ -74,9 +82,15 @@ public class Client implements EventHandler {
     }
 
     public void stop() {
+        stopX = true;
         group.shutdownGracefully();
         messageHandler = null;
         group = null;
+        channel.close();
+        channel = null;
+        cf.removeListener(connectListener);
+        cf = null;
+        connectListener = null;
     }
 
     public void write(Operate operate, Object object) {
@@ -284,10 +298,14 @@ public class Client implements EventHandler {
     }
 
     static class ClientHandlerAdapter extends ChannelInboundHandlerAdapter {
-        private final EventHandler eventHandler;
+        private EventHandler eventHandler;
 
         ClientHandlerAdapter(EventHandler eventHandler) {
             this.eventHandler = eventHandler;
+        }
+
+        public void closeHandler() {
+            this.eventHandler = null;
         }
 
         @Override

@@ -30,4 +30,8 @@ public class SmithClass {
     public void setMethods(List<SmithMethod> methods) {
         this.methods = methods;
     }
+
+    public void clear() {
+        methods.clear();
+    }
 }

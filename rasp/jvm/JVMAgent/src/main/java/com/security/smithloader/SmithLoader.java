@@ -3,9 +3,12 @@ package com.security.smithloader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
+import java.util.Enumeration;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 
 public class SmithLoader extends ClassLoader {
@@ -69,6 +72,54 @@ public class SmithLoader extends ClassLoader {
         } finally {
             super.finalize();
         }
+    }
+/* 
+    @Override
+    protected URL findResource(String moduleName, String name) throws IOException {
+      System.out.println("findResource Entry");
+      System.out.println("moduleName:"+moduleName);
+      System.out.println("name:"+name);
+      return moduleName == null ? this.findResource(name) : null;
+   }
+
+   @Override
+    protected Enumeration<URL> findResources(String name) throws IOException {
+      System.out.println("Enumeration findResource Entry");
+        return super.findResources(name);
+   }
+   */
+
+    @Override
+    public InputStream getResourceAsStream(String name) {
+        InputStream inputStream = findResourceAsStream(name);
+        if (inputStream == null) {
+            inputStream = super.getResourceAsStream(name);
+        }
+        return inputStream;
+    }
+
+    private InputStream findResourceAsStream(String name) {
+        InputStream inputStream = null;
+
+        if(name.length() <= 0) {
+            throw new NullPointerException();
+        }
+
+        String resourcePath = name;
+
+        try {
+            ZipEntry zEntry = jarFile.getEntry(resourcePath);
+            if(zEntry == null) {
+                throw new IOException("resource not found");
+            }
+
+            inputStream = jarFile.getInputStream(zEntry);
+        }
+        catch(Exception e) {
+            
+        }
+
+        return inputStream;
     }
 
     public String getJarMainClass() {

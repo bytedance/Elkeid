@@ -1,6 +1,6 @@
 package com.security.smith.asm;
 
-import com.security.smith.SmithProbeProxy;
+//import com.security.smith.SmithProbeProxy;
 import com.security.smith.processor.*;
 import org.apache.commons.lang3.ArrayUtils;
 import org.objectweb.asm.Label;
@@ -29,6 +29,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
     private String preHook;
     private String postHook;
     private String exceptionHook;
+    private String xHook;
 
     private static final Map<String, Class<?>> smithProcessors = new HashMap<String, Class<?>>() {{
         put("byte[]", ByteArrayProcessor.class);
@@ -115,25 +116,18 @@ public class SmithMethodVisitor extends AdviceAdapter {
             }
         }
 
-        invokeStatic(
-                Type.getType(SmithProbeProxy.class),
-                new Method(
-                        "getInstance",
-                        Type.getType(SmithProbeProxy.class),
-                        new Type[]{}
-                )
-        );
-
+        push(preHook);
         push(classID);
         push(methodID);
         loadLocal(argumentsVariable);
 
-        invokeVirtual(
-                Type.getType(SmithProbeProxy.class),
+        invokeStatic(
+                Type.getType("Lcom/security/smithloader/SmithAgent;"),
                 new Method(
-                        preHook,
+                        "PreProxy",
                         Type.VOID_TYPE,
                         new Type[]{
+                            Type.getType(Object.class),
                                 Type.INT_TYPE,
                                 Type.INT_TYPE,
                                 Type.getType(Object[].class)
@@ -177,29 +171,20 @@ public class SmithMethodVisitor extends AdviceAdapter {
             postHook = "trace";
         }
 
-        invokeStatic(
-                Type.getType(SmithProbeProxy.class),
-                new Method(
-                        "getInstance",
-                        Type.getType(SmithProbeProxy.class),
-                        new Type[]{}
-                )
-        );
-
+        push(postHook);
         push(classID);
         push(methodID);
         loadLocal(argumentsVariable);
         loadLocal(returnVariable);
         push(false);
 
-        
-
-        invokeVirtual(
-                Type.getType(SmithProbeProxy.class),
+        invokeStatic(
+                Type.getType("Lcom/security/smithloader/SmithAgent;"),
                 new Method(
-                        postHook,
+                        "PostProxy",
                         Type.VOID_TYPE,
                         new Type[]{
+                            Type.getType(Object.class),
                                 Type.INT_TYPE,
                                 Type.INT_TYPE,
                                 Type.getType(Object[].class),
@@ -216,6 +201,11 @@ public class SmithMethodVisitor extends AdviceAdapter {
         mark(handler);
 
         if (exceptionHook == null || exceptionHook == "") {
+
+            if (xHook == null || xHook == "") {
+                xHook = "trace";
+            }
+
             Type[] types = Type.getArgumentTypes(methodDesc);
 
             if (!isStatic) {
@@ -254,16 +244,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
 
             storeLocal(returnVariable + 1, Type.getType(Exception.class));
 
-            invokeStatic(
-                    Type.getType(SmithProbeProxy.class),
-                    new Method(
-                            "getInstance",
-                            Type.getType(SmithProbeProxy.class),
-                            new Type[]{}
-                    )
-            );
-
-
+            push(xHook);
             push(classID);
             push(methodID);
             loadLocal(argumentsVariable);
@@ -276,12 +257,13 @@ public class SmithMethodVisitor extends AdviceAdapter {
                 instanceOf(Type.getType(SecurityException.class));
             }
 
-            invokeVirtual(
-                    Type.getType(SmithProbeProxy.class),
+            invokeStatic(
+                    Type.getType("Lcom/security/smithloader/SmithAgent;"),
                     new Method(
-                            "trace",
+                            "PostProxy",
                             Type.VOID_TYPE,
                             new Type[]{
+                                Type.getType(Object.class),
                                     Type.INT_TYPE,
                                     Type.INT_TYPE,
                                     Type.getType(Object[].class),
@@ -303,26 +285,19 @@ public class SmithMethodVisitor extends AdviceAdapter {
             storeLocal(newLocal,Type.getType(Exception.class));
             loadLocal(newLocal);
 
-            invokeStatic(
-                    Type.getType(SmithProbeProxy.class),
-                    new Method(
-                            "getInstance",
-                            Type.getType(SmithProbeProxy.class),
-                            new Type[]{}
-                    )
-            );
-
+            push(exceptionHook);
             push(classID);
             push(methodID);
             loadLocal(argumentsVariable);
             loadLocal(newLocal);
 
             invokeVirtual(
-                    Type.getType(SmithProbeProxy.class),
+                    Type.getType("Lcom/security/smithloader/SmithAgent;"),
                     new Method(
-                            exceptionHook,
+                            "ExceptionProxy",
                             Type.getType(Object.class),
                             new Type[]{
+                                Type.getType(Object.class),
                                     Type.INT_TYPE,
                                     Type.INT_TYPE,
                                     Type.getType(Object[].class),
@@ -330,6 +305,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
                             }
                     )
             );
+
             mv.visitVarInsn(ASTORE, retId);
             mv.visitVarInsn(ALOAD, retId);
             Label label_if = new Label();

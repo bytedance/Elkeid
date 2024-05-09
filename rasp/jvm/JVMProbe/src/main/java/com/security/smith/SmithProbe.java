@@ -48,8 +48,12 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+
 public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHandler<Trace> {
     private static SmithProbe ourInstance = new SmithProbe();
+    private static SmithProbeProxy smithProxy = null;
     private static int TRACE_BUFFER_SIZE = 1024;
 
 
@@ -68,7 +72,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     
     private Rule_Mgr    rulemgr;
     private Rule_Config ruleconfig;
-    private SmithProbeProxy smithProxy;
     private Timer detectTimer;
     private Timer smithproxyTimer;
     private TimerTask detectTimerTask;
@@ -92,8 +95,13 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         this.inst = inst;
     }
 
+    public static Object getSmithProbeProxy() {
+        return smithProxy;
+    }
+
     public void init() {
 
+        System.out.println("[init] Entry");
         smithClasses = new ConcurrentHashMap<>();
         patchers = new ConcurrentHashMap<>();
         filters = new ConcurrentHashMap<>();
@@ -101,6 +109,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         limits = new ConcurrentHashMap<>();
 
         heartbeat = new Heartbeat();
+
         client = new Client(this);
        
         disruptor = new Disruptor<>(Trace::new, TRACE_BUFFER_SIZE, DaemonThreadFactory.INSTANCE);
@@ -110,12 +119,24 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
         InputStream inputStream = this.getClass().getResourceAsStream("/class.yaml");
 
-        try {
-            for (SmithClass smithClass : objectMapper.readValue(inputStream, SmithClass[].class))
-                smithClasses.put(smithClass.getName(), smithClass);
-        } catch (IOException e) {
-            SmithLogger.exception(e);
+        if(inputStream != null) {
+            System.out.println("finded class.yaml");
+            try {
+                for (SmithClass smithClass : objectMapper.readValue(inputStream, SmithClass[].class)) {
+                    smithClasses.put(smithClass.getName(), smithClass);
+                    System.out.println("hook point info:"+smithClass.getName());
+                }
+            } catch (IOException e) {
+                SmithLogger.exception(e);
+            }
         }
+        else {
+            System.out.println("not find class.yaml");
+        }
+        
+        smithProxy = SmithProbeProxy.getInstance();
+  
+        System.out.println("[init] Leave");
     }
 
     public void start() {
@@ -152,7 +173,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 detectTimerTask,
                 TimeUnit.MINUTES.toMillis(1)
         );
-        smithProxy = SmithProbeProxy.getInstance();
         smithproxyTimerTask =  new TimerTask() {
             @Override
             public void run() {
@@ -171,8 +191,8 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 0,
                 TimeUnit.MINUTES.toMillis(1)
         );
-        SmithProbeProxy.getInstance().setClient(client);
-        SmithProbeProxy.getInstance().setDisruptor(disruptor);
+        smithProxy.setClient(client);
+        smithProxy.setDisruptor(disruptor);
     }
 
     public void stop() {
@@ -209,15 +229,20 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         smithproxyTimerTask = null;
         smithproxyTimer = null;
 
-        SmithProbeProxy.delInstance();
-
         SmithLogger.logger.info("probe stop 7");
     }
 
     public void uninit() {
         SmithLogger.logger.info("probe uninit");
         ClassUploadTransformer.delInstance();
+        
+        smithProxy = null;
+        SmithProbeProxy.delInstance();
 
+        for (String key : smithClasses.keySet()) {
+            SmithClass smithClass = smithClasses.get(key);
+            smithClass.clear();
+        }
         smithClasses.clear();
         smithClasses = null;
         patchers.clear();
@@ -233,6 +258,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         disruptor = null;
         ruleconfig = null;
         rulemgr = null;
+        client = null;
 
         heartbeat = null;
         inst = null;
@@ -516,7 +542,17 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     methodMap
             );
 
-            classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);      
+            classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);  
+            /* 
+            try (FileOutputStream fos = new FileOutputStream("/tmp/"+classType.getClassName()+".class")) {
+                byte[] bytecode = classWriter.toByteArray();
+                fos.write(bytecode);
+                System.out.println(classType.getClassName() + " 字节码保存成功！");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            */
+
             return classWriter.toByteArray();
         } catch (Exception e) {
             SmithLogger.exception(e);

@@ -17,11 +17,58 @@ public class SmithAgent {
     private static SmithLoader      xLoader = null;
     private static Class<?>         SmithProberClazz = null;
     private static Object           SmithProberObj = null;
+    private static Object           SmithProberProxyObj = null;
     private static long             jvmHeapFree = 150;
     private static long             jvmMetaFree = 20;
+
+    public static Object getSmithProbeProxy() {
+        return SmithProberProxyObj;
+    }
+
+    public static void PreProxy(Object MethodNameObj,int classID, int methodID, Object[] args) {
+        System.out.println("PreProxy Entry");
+        if(SmithProberProxyObj != null) {
+            String MethodName = (String)MethodNameObj;
+            System.out.println("MethodName:"+MethodName);
+            Class<?>[]  argType = new Class[]{int.class,int.class,Object[].class};
+            Reflection.invokeMethod(SmithProberProxyObj,MethodName,argType,classID,methodID,args);
+        }
+        System.out.println("PreProxy Leave");
+    }
+
+    public static void PostProxy(Object MethodNameObj,int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        System.out.println("PostProxy Entry");
+        if(SmithProberProxyObj != null) {
+            String MethodName = (String)MethodNameObj;
+            if(ret == null) {
+                System.out.println("ret == null");
+            }
+            System.out.println("MethodName:"+MethodName);
+            Class<?>[]  argType = new Class[]{int.class,int.class,Object[].class,Object.class,boolean.class};
+            Reflection.invokeMethod(SmithProberProxyObj,MethodName,argType,classID,methodID,args,ret,blocked);
+        }
+        System.out.println("PostProxy Leave");
+    }
+
+    public static Object ExceptionProxy(Object MethodNameObj,int classID, int methodID, Object[] args,Object exceptionObject) throws Throwable {
+        System.out.println("ExceptionProxy Entry");
+
+        if(SmithProberProxyObj != null) {
+            String MethodName = (String)MethodNameObj;
+            System.out.println("MethodName:"+MethodName);
+            Class<?>[]  argType = new Class[]{int.class,int.class,Object[].class,Object.class};
+            return Reflection.invokeMethod(SmithProberProxyObj,MethodName,argType,classID,methodID,args,exceptionObject);
+        }
+        
+        System.out.println("ExceptionProxy Leave");
+
+        return null;
+    }
   
     private static boolean loadSmithProber(String proberPath, Instrumentation inst) {
         boolean bret = false;
+        boolean bexception = false;
+        boolean binited = false;
 
         SmithAgentLogger.logger.info("loadSmithProber Entry");
 
@@ -35,12 +82,35 @@ public class SmithAgent {
             Class<?>[]  argType = new Class[]{Instrumentation.class};
             Reflection.invokeMethod(SmithProberObj,"setInst",argType,inst);
             Reflection.invokeMethod(SmithProberObj,"init",emptyArgTypes);
+            binited = true;
+
+            SmithProberProxyObj = Reflection.invokeStaticMethod(SmithProberClazz,"getSmithProbeProxy", emptyArgTypes);
+
             Reflection.invokeMethod(SmithProberObj,"start",emptyArgTypes);
 
             bret = true;
         }
         catch(Exception e) {
             SmithAgentLogger.exception(e);
+            bexception = true;
+        }
+
+        if(bexception) {
+            if(binited) {
+                try {
+                    Class<?>[] emptyArgTypes = new Class[]{};
+                    Reflection.invokeMethod(SmithProberObj,"stop",emptyArgTypes);
+                    SmithProberProxyObj = null;
+                    Reflection.invokeMethod(SmithProberObj,"uninit",emptyArgTypes);
+                }
+                catch(Exception e) {
+
+                }
+            }
+
+            SmithProberObj = null;
+            SmithProberClazz = null;
+            xLoader = null;
         }
 
         SmithAgentLogger.logger.info("loadSmithProber Leave");
@@ -58,6 +128,7 @@ public class SmithAgent {
                 SmithAgentLogger.logger.info("Start unload prober");
                 Class<?>[] emptyArgTypes = new Class[]{};
                 Reflection.invokeMethod(SmithProberObj,"stop",emptyArgTypes);
+                SmithProberProxyObj = null;
                 SmithAgentLogger.logger.info("unload prober 0");
                 Reflection.invokeMethod(SmithProberObj,"uninit",emptyArgTypes);
                 SmithAgentLogger.logger.info("unload prober 1");
@@ -125,11 +196,13 @@ public class SmithAgent {
                 SmithAgentLogger.logger.info("checksumStr:" + checksumStr);
                 SmithAgentLogger.logger.info("proberPath:" + proberPath); 
 
+                /* 
                 if(!JarUtil.checkJarFile(proberPath,checksumStr)) {
                     System.setProperty("smith.status", proberPath + " check fail");
                     SmithAgentLogger.logger.warning(proberPath + " check fail!");
                     return ;
                 }
+                */
 
                 String probeVersion = getProberVersion(proberPath);
                 SmithAgentLogger.logger.info("proberVersion:" + probeVersion);

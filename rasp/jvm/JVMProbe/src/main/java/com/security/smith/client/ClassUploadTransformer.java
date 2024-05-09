@@ -21,8 +21,6 @@ import com.security.smith.client.message.ClassUpload;
 import com.security.smith.common.ProcessHelper;
 import com.security.smith.log.SmithLogger;
 
-import io.netty.buffer.Unpooled;
-
 import java.lang.instrument.IllegalClassFormatException;
 import java.lang.management.ManagementFactory;
 
