@@ -156,8 +156,6 @@ public class Reflection {
      */
     public static Object invokeSuperMethod(Object object, String methodName, Class<?>[] argTypes, Object... args) {
         try {
-            System.out.println("[invokeSuperMethod] Object.class:"+object.getClass());
-            System.out.println("[invokeSuperMethod] Object.class.superclass:"+object.getClass().getSuperclass().getName());
             Method method = object.getClass().getSuperclass().getMethod(methodName, argTypes);
             method.setAccessible(true);
             return method.invoke(object, args);
@@ -201,8 +199,6 @@ public class Reflection {
 
     public static boolean invokeSuperSuperMethodNoReturn(Object object, String methodName, Class<?>[] argTypes, Object... args) {
         try {
-            System.out.println("Object.class:"+object.getClass());
-            System.out.println("Object.class.superclass:"+object.getClass().getSuperclass().getName());
             Method method = object.getClass().getSuperclass().getSuperclass().getDeclaredMethod(methodName, argTypes);
             method.setAccessible(true);
             method.invoke(object, args);

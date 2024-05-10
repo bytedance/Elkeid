@@ -9,6 +9,7 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.AdviceAdapter;
 import org.objectweb.asm.commons.Method;
+import java.util.function.Function;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -195,6 +196,30 @@ public class SmithMethodVisitor extends AdviceAdapter {
         );
     }
 
+    class TypeMapper implements Function<Type, Object> {
+    @Override
+    public Object apply(Type t) {
+        switch (t.getSort()) {
+            case Type.BOOLEAN:
+            case Type.CHAR:
+            case Type.BYTE:
+            case Type.SHORT:
+            case Type.INT:
+                return Opcodes.INTEGER;
+            case Type.FLOAT:
+                return Opcodes.FLOAT;
+            case Type.ARRAY:
+            case Type.OBJECT:
+                return t.getInternalName();
+            case Type.LONG:
+                return Opcodes.LONG;
+            case Type.DOUBLE:
+                return Opcodes.DOUBLE;
+            default:
+                throw new AssertionError();
+        }
+    }
+}
     @Override
     public void visitMaxs(final int maxStack, final int maxLocals) {
         mark(end);
@@ -212,6 +237,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
                 types = ArrayUtils.addFirst(types, classType);
             }
 
+            /* 
             Object[] local = Arrays.stream(types).map(t -> {
                 switch (t.getSort()) {
                     case Type.BOOLEAN:
@@ -233,6 +259,10 @@ public class SmithMethodVisitor extends AdviceAdapter {
                         throw new AssertionError();
                 }
             }).toArray();
+*/
+
+            Function<Type, Object> typeMapper = new TypeMapper();
+            Object[] local = Arrays.stream(types).map(typeMapper).toArray();
 
             visitFrame(
                     Opcodes.F_NEW,

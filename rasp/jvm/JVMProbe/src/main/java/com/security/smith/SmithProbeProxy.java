@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -18,6 +19,7 @@ import com.security.smith.client.Client;
 import com.security.smith.client.Operate;
 import com.security.smith.client.message.ClassFilter;
 import com.security.smith.client.message.Heartbeat;
+import com.security.smith.client.message.MatchRule;
 import com.security.smith.client.message.Trace;
 import com.security.smith.client.message.Block;
 import com.security.smith.common.Reflection;
@@ -33,6 +35,7 @@ public class SmithProbeProxy {
     private AtomicIntegerArray[] quotas;
     private Disruptor<Trace> disruptor;
     private Client client;
+    private boolean stopX;
 
     public static InheritableThreadLocal<Object> localfilterConfig = new InheritableThreadLocal<Object>() {
         @Override
@@ -78,9 +81,7 @@ public class SmithProbeProxy {
                  bret = Reflection.invokeSuperSuperMethodNoReturn(threadLocalObj,"remove",argType_remove,threadObj);
             }
             else if(className.contains("java.lang.ThreadLocal")) {
-                System.out.println("[removeThreadLocalFormThread] 10");
                 Class<?>[]  argType_remove = new Class[]{Thread.class};
-                System.out.println("[removeThreadLocalFormThread] 20");
                 bret = Reflection.invokeSuperMethodNoReturn(threadLocalObj,"remove",argType_remove,threadObj);
             }
         }
@@ -89,74 +90,70 @@ public class SmithProbeProxy {
 
         if(!bret) {
             try {
-                System.out.println("[removeThreadLocalFormThread] 11");
                 Class<?>[]  argType_getMap = new Class[]{Thread.class};
-                System.out.println("[removeThreadLocalFormThread] 21");
                 Object threadlocalMap = Reflection.invokeSuperMethod(threadLocalObj,"getMap",argType_getMap,threadObj);
                 if(threadlocalMap != null) {
                     Class<?>[]  argType_remove = new Class[]{ThreadLocal.class};
                     bret = Reflection.invokeMethodNoReturn(threadlocalMap,"remove",argType_remove,threadLocalObj);
-                    System.out.println("threadlocalMap remove(thread) success!");
-                }
-                else {
-                    System.out.println("threadlocalMap == null");
                 }
             }
             catch(Throwable t) {
-                System.out.println("removeThreadLocalFormThread 0:");
                 t.printStackTrace();
             }
         }
-        else {
-            System.out.println("threadlocal remove(thread) success!");
-        }
-
-        System.out.println("removeThreadLocalFormThread End");
 
         return bret;
     }
 
     private static void RemoveThreadLocalVar() {
         int activeCount = Thread.activeCount();
-        System.out.println("activethread:"+activeCount);
         Thread[] threads = new Thread[activeCount+100];
         int count = Thread.enumerate(threads);
-        System.out.println("thread Count:"+count);
         for (int i = 0; i < count; i++) {
-            System.out.println("i:"+i);
-            System.out.println("removeX i:"+i);
             if(removeThreadLocalFormThread(threads[i], localfilterConfig)) {
-                System.out.println("remove Tid:" + threads[i].getId() + " -Thread Local: " + localfilterConfig + " ThreadLocal success");
+                SmithLogger.logger.info("remove Tid:" + threads[i].getId() + " -Thread Local: " + localfilterConfig + " ThreadLocal success");
             }
             else {
-                System.out.println("remove Tid:" + threads[i].getId() + " -Thread Local: " + localfilterConfig + " ThreadLocal fail");
+                SmithLogger.logger.info("remove Tid:" + threads[i].getId() + " -Thread Local: " + localfilterConfig + " ThreadLocal fail");
             }
 
             if(removeThreadLocalFormThread(threads[i], localfilterDef)) {
-                System.out.println("remove Tid:" + threads[i].getId() + " -Thread Local: " + localfilterDef + " ThreadLocal success");
+                SmithLogger.logger.info("remove Tid:" + threads[i].getId() + " -Thread Local: " + localfilterDef + " ThreadLocal success");
             }
             else {
-                System.out.println("remove Tid:" + threads[i].getId() + " -Thread Local: " + localfilterDef + " ThreadLocal fail");
+                SmithLogger.logger.info("remove Tid:" + threads[i].getId() + " -Thread Local: " + localfilterDef + " ThreadLocal fail");
             }
 
             if(removeThreadLocalFormThread(threads[i], needFoundfilterDef)) {
-                System.out.println("remove Tid:" + threads[i].getId() + " -Thread Local: " + needFoundfilterDef + " ThreadLocal success");
+                SmithLogger.logger.info("remove Tid:" + threads[i].getId() + " -Thread Local: " + needFoundfilterDef + " ThreadLocal success");
             }
             else {
-                System.out.println("remove Tid:" + threads[i].getId() + " -Thread Local: " + needFoundfilterDef + " ThreadLocal fail");
+                SmithLogger.logger.info("remove Tid:" + threads[i].getId() + " -Thread Local: " + needFoundfilterDef + " ThreadLocal fail");
             }
 
-              if(removeThreadLocalFormThread(threads[i], jettyDeploying)) {
-                System.out.println("remove Tid:" + threads[i].getId() + " -Thread Local: " + jettyDeploying + " ThreadLocal success");
+            if(removeThreadLocalFormThread(threads[i], jettyDeploying)) {
+                SmithLogger.logger.info("remove Tid:" + threads[i].getId() + " -Thread Local: " + jettyDeploying + " ThreadLocal success");
             }
             else {
-                System.out.println("remove Tid:" + threads[i].getId() + " -Thread Local: " + jettyDeploying + " ThreadLocal fail");
+                SmithLogger.logger.info("remove Tid:" + threads[i].getId() + " -Thread Local: " + jettyDeploying + " ThreadLocal fail");
             }
         }
     }
 
+    class AtomicIntegerArraySupplier {
+        public AtomicIntegerArray get() {
+            return new AtomicIntegerArray(METHOD_MAX_ID);
+        }
+    }
+
     public SmithProbeProxy() {
-         quotas = Stream.generate(() -> new AtomicIntegerArray(METHOD_MAX_ID)).limit(CLASS_MAX_ID).toArray(AtomicIntegerArray[]::new);
+        stopX = false;
+        //quotas = Stream.generate(() -> new AtomicIntegerArray(METHOD_MAX_ID)).limit(CLASS_MAX_ID).toArray(AtomicIntegerArray[]::new);
+
+        AtomicIntegerArraySupplier supplier = new AtomicIntegerArraySupplier();
+        quotas = Stream.generate(supplier::get)
+                                           .limit(CLASS_MAX_ID)
+                                           .toArray(AtomicIntegerArray[]::new);
     }
 
     public static SmithProbeProxy getInstance() {
@@ -189,6 +186,10 @@ public class SmithProbeProxy {
     }
 
     public void detect(int classID, int methodID, Object[] args) {
+        if(stopX) {
+            return;
+        }
+
         Map<Pair<Integer, Integer>, Block> blocks = SmithProbe.getInstance().GetBlocks();
         if (blocks == null)
             return;
@@ -197,6 +198,7 @@ public class SmithProbeProxy {
         if (block == null)
             return;
 
+            /* 
         if (Arrays.stream(block.getRules()).filter(Objects::nonNull).anyMatch(rule -> {
             if (rule.getIndex() >= args.length)
                 return false;
@@ -207,10 +209,34 @@ public class SmithProbeProxy {
         })) {
             throw new SecurityException("API blocked by RASP");
         }
+        */
+
+        MatchRule[] rules = block.getRules();
+        boolean isBlocked = false;
+
+        for (MatchRule rule : rules) {
+            if (rule != null) {
+                if (rule.getIndex() >= args.length || args[rule.getIndex()] == null || rule.getRegex() == null) {
+                    continue;
+                }
+
+                Pattern pattern = Pattern.compile(rule.getRegex());
+                Matcher matcher = pattern.matcher(args[rule.getIndex()].toString());
+
+                if (matcher.find()) {
+                    isBlocked = true;
+                    break;
+                }
+            }
+        }
+
+        if (isBlocked) {
+            throw new SecurityException("API blocked by RASP");
+        }
     }
 
     public void trace(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
-        if (classID >= CLASS_MAX_ID || methodID >= METHOD_MAX_ID)
+        if (classID >= CLASS_MAX_ID || methodID >= METHOD_MAX_ID || stopX)
             return;
 
         while (true) {
@@ -245,13 +271,17 @@ public class SmithProbeProxy {
     }
 
     public void sendMetadataObject(Object obj) {
+        if(stopX) {
+            return;
+        }
+
         if (obj != null) {
             sendMetadataClass(obj.getClass());
         }
     }
 
     public void sendMetadataClass(Class<?> cla) {
-        if (cla == null) {
+        if (cla == null || stopX) {
             return;
         }
         ClassFilter classFilter = new ClassFilter();
@@ -267,6 +297,9 @@ public class SmithProbeProxy {
     }
 
     public void checkAddServletPre(int classID, int methodID, Object[] args) {
+        if(stopX) {
+            return;
+        }
         SmithLogger.logger.info("checkAddServlet pre_hook call success");
         if (args.length < 3) {
             return;
@@ -318,6 +351,9 @@ public class SmithProbeProxy {
     }
 
     public void checkAddFilterPre(int classID, int methodID, Object[] args) {
+        if(stopX) {
+            return;
+        }
         SmithLogger.logger.info("checkAddFilter pre_hook call success");
         if (args.length < 2) {
             return;
@@ -370,6 +406,9 @@ public class SmithProbeProxy {
         }
     }
     public void checkFilterConfigPost(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        if(stopX) {
+            return;
+        }
         SmithLogger.logger.info("checkAddFilter post_hook call success");
         if (ret == null || args.length < 2) {
             return;
@@ -389,6 +428,9 @@ public class SmithProbeProxy {
     }
 
     public void checkAddValvePre(int classID, int methodID, Object[] args) {
+        if(stopX) {
+            return;
+        }
         if (args.length < 2) {
             return;
         }
@@ -426,6 +468,9 @@ public class SmithProbeProxy {
     }
 
     public void checkResinAddServletPost(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        if(stopX) {
+            return;
+        }
         if (args.length < 2) {
             return;
         }
@@ -445,6 +490,9 @@ public class SmithProbeProxy {
      * check resin servlet
      */
     public void checkResinAddServletPre(int classID, int methodID, Object[] args)  {
+        if(stopX) {
+            return;
+        }
         if (args.length < 2) {
             return;
         }
@@ -464,6 +512,9 @@ public class SmithProbeProxy {
      * check resin add filter memshell
      */
     public void checkResinAddFilterPre(int classID, int methodID, Object[] args) {
+        if(stopX) {
+            return;
+        }
         SmithLogger.logger.info("checkResinAddFilter pre_hook call success");
         if (args.length < 2) {
             return;
@@ -486,6 +537,9 @@ public class SmithProbeProxy {
      * TODO: add url check
      */
     public void checkJettyMemshellPre(int classID, int methodID, Object[] args) {
+        if(stopX) {
+            return;
+        }
         SmithLogger.logger.info("checkJettyMemshellPre pre_hook call success");
         if (jettyDeploying != null && jettyDeploying.get() == true) {
             return;
@@ -505,6 +559,9 @@ public class SmithProbeProxy {
      * check Jetty 9.4 Listener memshell
      */
     public void checkJettyListenerPre(int classID, int methodID, Object[] args) {
+        if(stopX) {
+            return;
+        }
         SmithLogger.logger.info("checkJettyListenerPre pre_hook call success");
         if (args.length < 2) {
             return;
@@ -521,6 +578,9 @@ public class SmithProbeProxy {
      * used for listener check
      */
     public void cehckJettyDeployPre(int classID, int methodID, Object[] args)  {
+        if(stopX) {
+            return;
+        }
         if (jettyDeploying != null) {
             jettyDeploying.set(true);
         }
@@ -530,6 +590,9 @@ public class SmithProbeProxy {
      * used for listener check
      */
     public void checkJettyDeployPost(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        if(stopX) {
+            return;
+        }
         if (jettyDeploying != null) {
             jettyDeploying.set(false);
         }
@@ -539,6 +602,9 @@ public class SmithProbeProxy {
      * check spring controller memshell
      */
     public void checkSpringControllerPre(int classID, int methodID, Object[] args)  {
+        if(stopX) {
+            return;
+        }
         if (args.length < 3) {
             return;
         }
@@ -554,6 +620,9 @@ public class SmithProbeProxy {
      * check spring Interceptor memshell
      */
     public void checkSpringInterceptorPre(int classID, int methodID, Object[] args)  {
+        if(stopX) {
+            return;
+        }
         if (args.length < 1) {
             return;
         }
@@ -566,6 +635,9 @@ public class SmithProbeProxy {
     }
 
     public void checkMemshellInitPost(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        if(stopX) {
+            return;
+        }
         //SmithLogger.logger.info("checkMemshellInitPost call success");
         if (ret != null) {
             try {
@@ -603,6 +675,9 @@ public class SmithProbeProxy {
      */
 
      public void checkWildflyaddServletPre(int classID, int methodID, Object[] args) {
+        if(stopX) {
+            return;
+        }
         SmithLogger.logger.info("checkWildflyaddServlet pre_hook call success");
         if(args.length < 2) {
             return ;

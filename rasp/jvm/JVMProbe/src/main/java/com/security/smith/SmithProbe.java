@@ -46,6 +46,7 @@ import java.util.concurrent.TimeUnit;
 
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
 import java.io.FileOutputStream;
@@ -74,12 +75,46 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     private Rule_Config ruleconfig;
     private Timer detectTimer;
     private Timer smithproxyTimer;
-    private TimerTask detectTimerTask;
-    private TimerTask smithproxyTimerTask;
+    private DetectTimerTask detectTimerTask;
+    private SmithproxyTimerTask smithproxyTimerTask;
 
     enum Action {
         STOP,
         START
+    }
+
+    class DetectTimerTask extends TimerTask {
+            boolean isCancel = false;
+
+            @Override
+            public void run() {
+                if(!isCancel) {
+                    onDetect();
+                }
+            }
+
+            @Override
+            public boolean cancel() {
+                isCancel = true;
+                return super.cancel();
+            }
+    }
+
+    class SmithproxyTimerTask extends TimerTask {
+            boolean isCancel = false;
+
+            @Override
+            public void run() {
+                if(!isCancel) {
+                    smithProxy.onTimer();
+                }
+            }
+
+            @Override
+            public boolean cancel() {
+                isCancel = true;
+                return super.cancel();
+            }
     }
 
     public static SmithProbe getInstance() {
@@ -156,34 +191,14 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         clientThread.setDaemon(true);
         clientThread.start();
 
-        detectTimerTask = new TimerTask() {
-            @Override
-            public void run() {
-                onDetect();
-            }
-
-            @Override
-            public boolean cancel() {
-                return true;
-            }
-        };
+        detectTimerTask = new DetectTimerTask();
 
         detectTimer = new Timer(true);
         detectTimer.schedule(
                 detectTimerTask,
                 TimeUnit.MINUTES.toMillis(1)
         );
-        smithproxyTimerTask =  new TimerTask() {
-            @Override
-            public void run() {
-                smithProxy.onTimer();
-            }
-
-            @Override
-            public boolean cancel() {
-                return true;
-            }
-        };
+        smithproxyTimerTask =  new SmithproxyTimerTask();
 
         smithproxyTimer = new Timer(true);
         smithproxyTimer.schedule(
@@ -272,7 +287,15 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
     private void reloadClasses(Collection<String> classes) {
         Class<?>[] loadedClasses = inst.getAllLoadedClasses();
-        Class<?>[] cls = Arrays.stream(loadedClasses).filter(c -> classes.contains(c.getName())).toArray(Class<?>[]::new);
+        //Class<?>[] cls = Arrays.stream(loadedClasses).filter(c -> classes.contains(c.getName())).toArray(Class<?>[]::new);
+
+        List<Class<?>> resultList = new ArrayList<>();
+        for (Class<?> loadedClass : loadedClasses) {
+            if (classes.contains(loadedClass.getName())) {
+                resultList.add(loadedClass);
+            }
+        }
+        Class<?>[] cls = resultList.toArray(new Class<?>[0]);
 
         SmithLogger.logger.info("reload: " + Arrays.toString(cls));
         //System.out.println("reload Class:"+cls.getClass().getName());
@@ -281,6 +304,27 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             inst.retransformClasses(cls);
         } catch (UnmodifiableClassException e) {
             SmithLogger.exception(e);
+        }
+    }
+
+    public class MatchRulePredicate implements Predicate<MatchRule> {
+        private final Trace trace;
+
+         MatchRulePredicate(Trace trace) {
+            this.trace = trace;
+         }
+
+        @Override
+        public boolean test(MatchRule rule) {
+            Object[] args = trace.getArgs();
+
+            if (rule.getIndex() >= args.length || rule.getRegex().isEmpty() || args[rule.getIndex()] == null)
+                return false;
+
+            Pattern pattern = Pattern.compile(rule.getRegex());
+            Matcher matcher = pattern.matcher(args[rule.getIndex()].toString());
+
+            return matcher.find();
         }
     }
 
@@ -293,6 +337,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             return;
         }
 
+        Predicate<MatchRule> pred = new MatchRulePredicate(trace);
+
+        /* 
         Predicate<MatchRule> pred = rule -> {
             Object[] args = trace.getArgs();
 
@@ -301,6 +348,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
             return Pattern.compile(rule.getRegex()).matcher(args[rule.getIndex()].toString()).find();
         };
+        */
 
         MatchRule[] include = filter.getInclude();
         MatchRule[] exclude = filter.getExclude();
@@ -521,8 +569,15 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         }
 
         try {
-            Map<String, SmithMethod> methodMap = smithClass.getMethods().stream().collect(Collectors.toMap(method -> method.getName() + method.getDesc(), method -> method));
-            
+            //Map<String, SmithMethod> methodMap = smithClass.getMethods().stream().collect(Collectors.toMap(method -> method.getName() + method.getDesc(), method -> method));
+            Map<String, SmithMethod> methodMap = new HashMap<>();
+            List<SmithMethod> methods = smithClass.getMethods();
+
+            for (SmithMethod method : methods) {
+                String key = method.getName() + method.getDesc();
+                methodMap.put(key, method);
+            }
+                        
             SmithLogger.logger.info("transform: " + classType.getClassName());
             ClassReader classReader = new ClassReader(classfileBuffer);
 
@@ -698,6 +753,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
         Set<String> active = Arrays.stream(config.getPatches()).map(Patch::getClassName).collect(Collectors.toSet());
 
+        /* 
         patchers.keySet().stream().filter(name -> !active.contains(name)).forEach(
                 name -> {
                     SmithLogger.logger.info("uninstall patch: " + name);
@@ -710,6 +766,17 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     patcher.uninstall();
                 }
         );
+        */
+
+        for (String name : patchers.keySet()) {
+            if (!active.contains(name)) {
+                SmithLogger.logger.info("uninstall patch: " + name);
+                Patcher patcher = patchers.remove(name);
+                if (patcher == null)
+                    continue;
+                patcher.uninstall();
+            }
+        }
 
         heartbeat.setPatch(config.getUUID());
     }
