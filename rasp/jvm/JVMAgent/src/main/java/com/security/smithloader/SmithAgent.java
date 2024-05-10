@@ -26,41 +26,31 @@ public class SmithAgent {
     }
 
     public static void PreProxy(Object MethodNameObj,int classID, int methodID, Object[] args) {
-        System.out.println("PreProxy Entry");
+
         if(SmithProberProxyObj != null) {
             String MethodName = (String)MethodNameObj;
-            System.out.println("MethodName:"+MethodName);
             Class<?>[]  argType = new Class[]{int.class,int.class,Object[].class};
             Reflection.invokeMethod(SmithProberProxyObj,MethodName,argType,classID,methodID,args);
         }
-        System.out.println("PreProxy Leave");
+
     }
 
     public static void PostProxy(Object MethodNameObj,int classID, int methodID, Object[] args, Object ret, boolean blocked) {
-        System.out.println("PostProxy Entry");
+
         if(SmithProberProxyObj != null) {
             String MethodName = (String)MethodNameObj;
-            if(ret == null) {
-                System.out.println("ret == null");
-            }
-            System.out.println("MethodName:"+MethodName);
             Class<?>[]  argType = new Class[]{int.class,int.class,Object[].class,Object.class,boolean.class};
             Reflection.invokeMethod(SmithProberProxyObj,MethodName,argType,classID,methodID,args,ret,blocked);
         }
-        System.out.println("PostProxy Leave");
     }
 
     public static Object ExceptionProxy(Object MethodNameObj,int classID, int methodID, Object[] args,Object exceptionObject) throws Throwable {
-        System.out.println("ExceptionProxy Entry");
 
         if(SmithProberProxyObj != null) {
             String MethodName = (String)MethodNameObj;
-            System.out.println("MethodName:"+MethodName);
             Class<?>[]  argType = new Class[]{int.class,int.class,Object[].class,Object.class};
             return Reflection.invokeMethod(SmithProberProxyObj,MethodName,argType,classID,methodID,args,exceptionObject);
         }
-        
-        System.out.println("ExceptionProxy Leave");
 
         return null;
     }
