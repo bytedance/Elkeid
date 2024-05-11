@@ -251,6 +251,8 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         smithproxyTimerTask = null;
         smithproxyTimer = null;
 
+        SmithLogger.loggerProberUnInit();
+
         SmithLogger.logger.info("probe stop leave");
     }
 
@@ -289,6 +291,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         heartbeat = null;
         inst = null;
         ourInstance = null;
+
         SmithLogger.logger.info("probe uninit leave");
     }
 

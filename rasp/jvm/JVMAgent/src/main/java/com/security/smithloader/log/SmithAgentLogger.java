@@ -19,7 +19,7 @@ public class SmithAgentLogger {
         try {
             String filename = String.format("/tmp/JVMAgent.%d.log", ProcessHelper.getCurrentPID());
 
-            FileHandler handler = new FileHandler(filename, 5 * 1024 * 1024, 5);
+            FileHandler handler = new FileHandler(filename, 5 * 1024 * 1024, 5, true);
             logger.addHandler(handler);
 
             SimpleFormatter formatter = new SimpleFormatter();
