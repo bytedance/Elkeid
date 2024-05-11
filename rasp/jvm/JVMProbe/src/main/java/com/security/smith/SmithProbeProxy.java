@@ -95,6 +95,7 @@ public class SmithProbeProxy {
                 if(threadlocalMap != null) {
                     Class<?>[]  argType_remove = new Class[]{ThreadLocal.class};
                     bret = Reflection.invokeMethodNoReturn(threadlocalMap,"remove",argType_remove,threadLocalObj);
+
                 }
             }
             catch(Throwable t) {
@@ -110,33 +111,10 @@ public class SmithProbeProxy {
         Thread[] threads = new Thread[activeCount+100];
         int count = Thread.enumerate(threads);
         for (int i = 0; i < count; i++) {
-            if(removeThreadLocalFormThread(threads[i], localfilterConfig)) {
-                SmithLogger.logger.info("remove Tid:" + threads[i].getId() + " -Thread Local: " + localfilterConfig + " ThreadLocal success");
-            }
-            else {
-                SmithLogger.logger.info("remove Tid:" + threads[i].getId() + " -Thread Local: " + localfilterConfig + " ThreadLocal fail");
-            }
-
-            if(removeThreadLocalFormThread(threads[i], localfilterDef)) {
-                SmithLogger.logger.info("remove Tid:" + threads[i].getId() + " -Thread Local: " + localfilterDef + " ThreadLocal success");
-            }
-            else {
-                SmithLogger.logger.info("remove Tid:" + threads[i].getId() + " -Thread Local: " + localfilterDef + " ThreadLocal fail");
-            }
-
-            if(removeThreadLocalFormThread(threads[i], needFoundfilterDef)) {
-                SmithLogger.logger.info("remove Tid:" + threads[i].getId() + " -Thread Local: " + needFoundfilterDef + " ThreadLocal success");
-            }
-            else {
-                SmithLogger.logger.info("remove Tid:" + threads[i].getId() + " -Thread Local: " + needFoundfilterDef + " ThreadLocal fail");
-            }
-
-            if(removeThreadLocalFormThread(threads[i], jettyDeploying)) {
-                SmithLogger.logger.info("remove Tid:" + threads[i].getId() + " -Thread Local: " + jettyDeploying + " ThreadLocal success");
-            }
-            else {
-                SmithLogger.logger.info("remove Tid:" + threads[i].getId() + " -Thread Local: " + jettyDeploying + " ThreadLocal fail");
-            }
+            removeThreadLocalFormThread(threads[i], localfilterConfig);
+            removeThreadLocalFormThread(threads[i], localfilterDef);
+            removeThreadLocalFormThread(threads[i], needFoundfilterDef);
+            removeThreadLocalFormThread(threads[i], jettyDeploying);
         }
     }
 

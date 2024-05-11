@@ -323,7 +323,6 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
         boolean ret = false;
 
         if(!started) {
-            System.out.println("sendClass !started leave");
             return false;
         }
 

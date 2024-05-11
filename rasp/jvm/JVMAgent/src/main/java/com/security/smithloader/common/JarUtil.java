@@ -86,7 +86,6 @@ public class JarUtil {
         try {
             byte[] hashbytes = calculateMD5(FilePath);
             if(hashbytes == null)  {
-                System.out.println("calc "+FilePath+" fail");
                 return false;
             }
 

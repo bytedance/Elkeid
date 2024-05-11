@@ -118,7 +118,12 @@ public class Reflection {
             Method method = object.getClass().getMethod(methodName, argTypes);
             method.setAccessible(true);
             return method.invoke(object, args);
-        } catch (Throwable t) {  
+        } catch (InvocationTargetException e) {
+            if (e.getCause() instanceof SecurityException) {
+                SecurityException securityException = (SecurityException) e.getCause();
+                throw securityException;
+            }
+        } catch(Throwable e) {
         }
 
         return null;

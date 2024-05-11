@@ -73,21 +73,6 @@ public class SmithLoader extends ClassLoader {
             super.finalize();
         }
     }
-/* 
-    @Override
-    protected URL findResource(String moduleName, String name) throws IOException {
-      System.out.println("findResource Entry");
-      System.out.println("moduleName:"+moduleName);
-      System.out.println("name:"+name);
-      return moduleName == null ? this.findResource(name) : null;
-   }
-
-   @Override
-    protected Enumeration<URL> findResources(String name) throws IOException {
-      System.out.println("Enumeration findResource Entry");
-        return super.findResources(name);
-   }
-   */
 
     @Override
     public InputStream getResourceAsStream(String name) {

@@ -136,7 +136,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
     public void init() {
 
-        System.out.println("[init] Entry");
         smithClasses = new ConcurrentHashMap<>();
         patchers = new ConcurrentHashMap<>();
         filters = new ConcurrentHashMap<>();
@@ -155,29 +154,21 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         InputStream inputStream = this.getClass().getResourceAsStream("/class.yaml");
 
         if(inputStream != null) {
-            System.out.println("finded class.yaml");
             try {
                 for (SmithClass smithClass : objectMapper.readValue(inputStream, SmithClass[].class)) {
                     smithClasses.put(smithClass.getName(), smithClass);
-                    System.out.println("hook point info:"+smithClass.getName());
                 }
             } catch (IOException e) {
                 SmithLogger.exception(e);
             }
         }
-        else {
-            System.out.println("not find class.yaml");
-        }
         
         smithProxy = SmithProbeProxy.getInstance();
-  
-        System.out.println("[init] Leave");
     }
 
     public void start() {
         SmithLogger.logger.info("probe start");
 
-        System.out.println("init ClassUploadTransformer");
         ClassUploadTransformer.getInstance().start(client, inst);
 
         inst.addTransformer(this, true);
@@ -302,7 +293,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         Class<?>[] cls = resultList.toArray(new Class<?>[0]);
 
         SmithLogger.logger.info("reload: " + Arrays.toString(cls));
-        //System.out.println("reload Class:"+cls.getClass().getName());
 
         try {
             inst.retransformClasses(cls);
@@ -473,7 +463,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 */
             long rule_id = rulemgr.matchRule(classFilter);
             if(rule_id != -1) {
-               // System.out.println("Hit---------------------RuleId:" + rule_id);
 
                 classFilter.setRuleId(rule_id);
                 classFilter.setTransId();
