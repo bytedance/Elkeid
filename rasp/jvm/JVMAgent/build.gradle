@@ -12,6 +12,7 @@ repositories {
 
 dependencies {
     implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.11'
+    implementation group: 'io.netty', name: 'netty-all', version: '4.1.85.Final'
 }
 
 compileJava {
@@ -33,4 +34,5 @@ jar {
 
 shadowJar {
     relocate 'org.apache.commons', 'agent.org.apache.commons'
+    relocate 'META-INF/native/libnetty', 'META-INF/native/librasp_netty'
 }

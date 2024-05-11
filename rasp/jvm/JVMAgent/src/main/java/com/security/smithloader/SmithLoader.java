@@ -76,13 +76,10 @@ public class SmithLoader extends ClassLoader {
 
     @Override
     public InputStream getResourceAsStream(String name) {
-        System.out.println("getResourceAsStream Enter");
-        System.out.println("name:"+name);
         InputStream inputStream = findResourceAsStream(name);
         if (inputStream == null) {
             inputStream = super.getResourceAsStream(name);
         }
-        System.out.println("getResourceAsStream Leave");
         return inputStream;
     }
 

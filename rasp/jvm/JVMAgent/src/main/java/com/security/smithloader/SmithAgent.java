@@ -10,10 +10,7 @@ import com.security.smithloader.common.ParseParameter;
 import com.security.smithloader.common.Reflection;
 import com.security.smithloader.log.SmithAgentLogger;
 
-import java.io.UnsupportedEncodingException;
 import java.lang.instrument.Instrumentation;
-import java.net.URL;
-import java.net.URLDecoder;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class SmithAgent {
@@ -24,6 +21,13 @@ public class SmithAgent {
     private static Object           SmithProberProxyObj = null;
     private static long             jvmHeapFree = 150;
     private static long             jvmMetaFree = 20;
+    private static String probeVersion;
+    private static String checksumStr;
+    private static String proberPath;
+
+    public static Object getClassLoader() {
+        return xLoader;
+    }
 
     public static Object getSmithProbeProxy() {
         return SmithProberProxyObj;
@@ -73,6 +77,8 @@ public class SmithAgent {
             Class<?>[] emptyArgTypes = new Class[]{};
             SmithProberObj = Reflection.invokeStaticMethod(SmithProberClazz,"getInstance", emptyArgTypes);
 
+            Class<?>[] objArgTypes = new Class[]{Object.class};
+            Reflection.invokeMethod(SmithProberObj,"setClassLoader",objArgTypes,xLoader);
             Class<?>[]  argType = new Class[]{Instrumentation.class};
             Reflection.invokeMethod(SmithProberObj,"setInst",argType,inst);
             Reflection.invokeMethod(SmithProberObj,"init",emptyArgTypes);
@@ -98,7 +104,7 @@ public class SmithAgent {
                     Reflection.invokeMethod(SmithProberObj,"uninit",emptyArgTypes);
                 }
                 catch(Exception e) {
-
+                    SmithAgentLogger.exception(e);
                 }
             }
 
@@ -175,8 +181,6 @@ public class SmithAgent {
         StringBuilder checksumStr_sb = new StringBuilder();
         StringBuilder proberPath_sb = new StringBuilder();
         String cmd = "";
-        String checksumStr = "";
-        String proberPath = "";
 
         if(ParseParameter.parseParameter(agentArgs,cmd_sb,checksumStr_sb,proberPath_sb)) {
             cmd = cmd_sb.toString();
@@ -186,10 +190,11 @@ public class SmithAgent {
             if(cmd.equals("attach")) {
                 checksumStr = checksumStr_sb.toString();
                 proberPath = proberPath_sb.toString();
+
+                System.out.println("classLoader:"+SmithAgent.class.getClassLoader());
                 
                 SmithAgentLogger.logger.info("checksumStr:" + checksumStr);
                 SmithAgentLogger.logger.info("proberPath:" + proberPath); 
-
 
                 /* 
                 if(!JarUtil.checkJarFile(proberPath,checksumStr)) {
@@ -201,12 +206,12 @@ public class SmithAgent {
 
                 try {
                     inst.appendToBootstrapClassLoaderSearch(new JarFile(proberPath));
-                } catch (Throwable e) {
-                    System.out.println("Exception Msg:"+e.getMessage());
-                    e.printStackTrace();
+                }
+                catch(Exception e) {
+                    SmithAgentLogger.exception(e);
                 }
 
-                String probeVersion = getProberVersion(proberPath);
+                probeVersion = getProberVersion(proberPath);
                 SmithAgentLogger.logger.info("proberVersion:" + probeVersion);
 
                 xLoaderLock.lock();
@@ -222,7 +227,7 @@ public class SmithAgent {
                         SmithProberObj = null;
                         SmithProberClazz = null;
                     }
-
+    
                     System.setProperty("smith.rasp", "");
                     if (!checkMemoryAvailable()) {
                         System.setProperty("smith.status",  "memory not enough");

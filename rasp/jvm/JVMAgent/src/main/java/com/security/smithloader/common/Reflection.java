@@ -122,7 +122,7 @@ public class Reflection {
             if (e.getCause() instanceof SecurityException) {
                 SecurityException securityException = (SecurityException) e.getCause();
                 throw securityException;
-            }
+            } 
         } catch(Throwable e) {
         }
 

@@ -10,7 +10,7 @@ import com.lmax.disruptor.util.DaemonThreadFactory;
 import com.security.smith.asm.SmithClassVisitor;
 import com.security.smith.asm.SmithClassWriter;
 import com.security.smith.client.message.*;
-
+import com.security.smith.common.Reflection;
 import com.security.smith.common.SmithHandler;
 import com.security.smith.log.SmithLogger;
 import com.security.smith.module.Patcher;
@@ -57,7 +57,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     private static SmithProbeProxy smithProxy = null;
     private static int TRACE_BUFFER_SIZE = 1024;
 
-
+    private Object  xClassLoaderObj;
     private Boolean disable;
     private Boolean scanswitch;
     private Instrumentation inst;
@@ -134,8 +134,17 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         return smithProxy;
     }
 
-    public void init() {
+    public void setClassLoader(Object classLoaderObj) {
+        xClassLoaderObj = classLoaderObj;
+    }
 
+    public InputStream getResourceAsStream(String name) {
+        Class<?>[] strArgTypes = new Class[]{String.class};
+        return (InputStream)Reflection.invokeMethod(xClassLoaderObj,"getResourceAsStream", strArgTypes,name);
+    }
+
+    public void init() {
+        SmithLogger.logger.info("probe init enter");
         smithClasses = new ConcurrentHashMap<>();
         patchers = new ConcurrentHashMap<>();
         filters = new ConcurrentHashMap<>();
@@ -151,9 +160,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         ruleconfig = new Rule_Config(rulemgr);
 
         ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
-        InputStream inputStream = this.getClass().getResourceAsStream("/class.yaml");
+        InputStream inputStream = getResourceAsStream("class.yaml");
 
         if(inputStream != null) {
+            SmithLogger.logger.info("find class.yaml");
             try {
                 for (SmithClass smithClass : objectMapper.readValue(inputStream, SmithClass[].class)) {
                     smithClasses.put(smithClass.getName(), smithClass);
@@ -162,12 +172,16 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 SmithLogger.exception(e);
             }
         }
+        else {
+            SmithLogger.logger.info("not find class.yaml");
+        }
         
         smithProxy = SmithProbeProxy.getInstance();
+        SmithLogger.logger.info("probe init leave");
     }
 
     public void start() {
-        SmithLogger.logger.info("probe start");
+        SmithLogger.logger.info("probe start enter");
 
         ClassUploadTransformer.getInstance().start(client, inst);
 
@@ -199,10 +213,12 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         );
         smithProxy.setClient(client);
         smithProxy.setDisruptor(disruptor);
+
+        SmithLogger.logger.info("probe start leave");
     }
 
     public void stop() {
-        SmithLogger.logger.info("probe stop");
+        SmithLogger.logger.info("probe stop enter");
 
         inst.removeTransformer(this);
         reloadClasses();
@@ -235,11 +251,11 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         smithproxyTimerTask = null;
         smithproxyTimer = null;
 
-        SmithLogger.logger.info("probe stop 7");
+        SmithLogger.logger.info("probe stop leave");
     }
 
     public void uninit() {
-        SmithLogger.logger.info("probe uninit");
+        SmithLogger.logger.info("probe uninit enter");
         ClassUploadTransformer.delInstance();
         
         smithProxy = null;
@@ -273,7 +289,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         heartbeat = null;
         inst = null;
         ourInstance = null;
-        SmithLogger.logger.info("probe uninit 1");
+        SmithLogger.logger.info("probe uninit leave");
     }
 
     private void reloadClasses() {
