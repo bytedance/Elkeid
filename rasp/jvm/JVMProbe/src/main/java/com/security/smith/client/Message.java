@@ -29,14 +29,14 @@ class Message {
     static final int PROTOCOL_HEADER_SIZE = 4;
     static final int MAX_PAYLOAD_SIZE = 10240;
 
-    private Operate operate;
+    private int operate;
     private JsonNode data;
 
-    Operate getOperate() {
+    int getOperate() {
         return operate;
     }
 
-    public void setOperate(Operate operate) {
+    public void setOperate(int operate) {
         this.operate = operate;
     }
 
@@ -71,7 +71,7 @@ class MessageSerializer extends StdSerializer<Message> {
     @Override
     public void serialize(Message value, JsonGenerator gen, SerializerProvider provider) throws IOException {
         gen.writeStartObject();
-        gen.writeNumberField("message_type", value.getOperate().ordinal());
+        gen.writeNumberField("message_type", value.getOperate());
         // TODO 首包才传metadata, 把pid 相关的信息加到metadata里
         gen.writeNumberField("pid", pid);
         gen.writeStringField("runtime", "JVM");
@@ -100,7 +100,7 @@ class MessageDeserializer extends StdDeserializer<Message> {
 
         Message message = new Message();
 
-        message.setOperate(Operate.values()[node.get("message_type").asInt()]);
+        message.setOperate(node.get("message_type").asInt());
         message.setData(node.get("data"));
 
         return message;

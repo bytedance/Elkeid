@@ -84,7 +84,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
 
     class DetectTimerTask extends TimerTask {
-            boolean isCancel = false;
+            private boolean isCancel = false;
 
             @Override
             public void run() {
@@ -101,7 +101,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
 
     class SmithproxyTimerTask extends TimerTask {
-            boolean isCancel = false;
+            private boolean isCancel = false;
 
             @Override
             public void run() {
@@ -257,9 +257,13 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         for (String key : smithClasses.keySet()) {
             SmithClass smithClass = smithClasses.get(key);
             smithClass.clear();
+            smithClasses.remove(key);
         }
         smithClasses.clear();
         smithClasses = null;
+        for (String key : patchers.keySet()) {
+            patchers.remove(key);
+        }
         patchers.clear();
         patchers = null;
         filters.clear();

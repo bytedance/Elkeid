@@ -1,6 +1,7 @@
 package com.security.smithloader;
 
 import java.util.jar.Attributes;
+import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
 import com.security.smithloader.MemCheck;
@@ -9,7 +10,10 @@ import com.security.smithloader.common.ParseParameter;
 import com.security.smithloader.common.Reflection;
 import com.security.smithloader.log.SmithAgentLogger;
 
+import java.io.UnsupportedEncodingException;
 import java.lang.instrument.Instrumentation;
+import java.net.URL;
+import java.net.URLDecoder;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class SmithAgent {
@@ -196,6 +200,7 @@ public class SmithAgent {
                 SmithAgentLogger.logger.info("checksumStr:" + checksumStr);
                 SmithAgentLogger.logger.info("proberPath:" + proberPath); 
 
+
                 /* 
                 if(!JarUtil.checkJarFile(proberPath,checksumStr)) {
                     System.setProperty("smith.status", proberPath + " check fail");
@@ -203,6 +208,13 @@ public class SmithAgent {
                     return ;
                 }
                 */
+
+                try {
+                    inst.appendToBootstrapClassLoaderSearch(new JarFile(proberPath));
+                } catch (Throwable e) {
+                    System.out.println("Exception Msg:"+e.getMessage());
+                    e.printStackTrace();
+                }
 
                 String probeVersion = getProberVersion(proberPath);
                 SmithAgentLogger.logger.info("proberVersion:" + probeVersion);
