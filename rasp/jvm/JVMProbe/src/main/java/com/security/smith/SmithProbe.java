@@ -236,6 +236,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         smithproxyTimer = null;
 
         SmithLogger.logger.info("probe stop 7");
+        SmithLogger.loggerProberUnInit();
     }
 
     public void uninit() {
@@ -270,6 +271,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         inst = null;
         ourInstance = null;
         SmithLogger.logger.info("probe uninit 1");
+
     }
 
     private void reloadClasses() {

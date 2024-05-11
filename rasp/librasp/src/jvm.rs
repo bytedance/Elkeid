@@ -131,8 +131,9 @@ pub fn prop(pid: i32) -> Result<ProbeState> {
                 if let Some(captures) = re.captures(&response) {
                     if let Some(value_match) = captures.get(1) {
                        let check_str = value_match.as_str().trim().to_string();
-                       info!("found checkstr: {}", check_str);
-                       if check_str != format!("{}-{}", RASP_VERSION, *RASP_JAVA_CHECKSUMSTR) {
+                       let unescaped_string = check_str.replace(r"\=", "=");
+                       info!("found checkstr: {}", unescaped_string);
+                       if unescaped_string != format!("{}-{}", RASP_VERSION, *RASP_JAVA_CHECKSUMSTR) {
                             return Ok(ProbeState::AttachedVersionNotMatch);
                        }
                     }
