@@ -14,7 +14,8 @@ public class SmithLogger {
     public static Logger logger = Logger.getLogger("RASP");
     private static FileHandler fileHandler = null;
 
-    static {
+
+    public static void loggerProberInit() {
         logger.setUseParentHandlers(false);
 
         try {

@@ -11,6 +11,7 @@ import com.security.smithloader.common.Reflection;
 import com.security.smithloader.log.SmithAgentLogger;
 
 import java.lang.instrument.Instrumentation;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -74,32 +75,34 @@ public class SmithAgent {
         try {
             xLoader = new SmithLoader(proberPath, null);
             SmithProberClazz = xLoader.loadClass("com.security.smith.SmithProbe");
-            Method[] methods = SmithProberClazz.getDeclaredMethods();
-            for (Method method : methods) {
-                if (method.isSynthetic()) {
-                    System.out.println("Lambda method: " + method.getName());
-                }
-                else {
-                    System.out.println("method: " + method.getName());
-                }
-            }
             
             Class<?>[] emptyArgTypes = new Class[]{};
             //SmithProberObj = Reflection.invokeStaticMethod(SmithProberClazz,"getInstance", emptyArgTypes);
-            SmithProberObj = SmithProberClazz.newInstance();
+            if (SmithProberClazz != null) {
+                Constructor<?> constructor = SmithProberClazz.getDeclaredConstructor();
+                constructor.setAccessible(true);
+                SmithProberObj = constructor.newInstance();
+                if (SmithProberObj != null) {
+                    Class<?>[] objArgTypes = new Class[]{Object.class};
+                    Reflection.invokeMethod(SmithProberObj,"setClassLoader",objArgTypes,xLoader);
+                    Class<?>[]  argType = new Class[]{Instrumentation.class};
+                    Reflection.invokeMethod(SmithProberObj,"setInst",argType,inst);
+                    Reflection.invokeMethod(SmithProberObj,"init",emptyArgTypes);
+                    SmithProberProxyObj = Reflection.invokeMethod(SmithProberObj,"getSmithProbeProxy", emptyArgTypes);
+                    binited = true;
 
-            Class<?>[] objArgTypes = new Class[]{Object.class};
-            Reflection.invokeMethod(SmithProberObj,"setClassLoader",objArgTypes,xLoader);
-            Class<?>[]  argType = new Class[]{Instrumentation.class};
-            Reflection.invokeMethod(SmithProberObj,"setInst",argType,inst);
-            Reflection.invokeMethod(SmithProberObj,"init",emptyArgTypes);
-            SmithProberProxyObj = Reflection.invokeMethod(SmithProberObj,"getSmithProbeProxy", emptyArgTypes);
-            binited = true;
 
+                    Reflection.invokeMethod(SmithProberObj,"start",emptyArgTypes);
 
-            Reflection.invokeMethod(SmithProberObj,"start",emptyArgTypes);
-
-            bret = true;
+                    bret = true; 
+                } else {
+                    SmithAgentLogger.logger.info("call SmithProbe init failed");
+                } 
+            } else {
+                SmithAgentLogger.logger.info("load com.security.smith.SmithProbe failed");
+                bret = false;
+            }
+            
         }
         catch(Exception e) {
             SmithAgentLogger.exception(e);
@@ -135,7 +138,7 @@ public class SmithAgent {
         SmithAgentLogger.logger.info("unLoadSmithProber Entry");
 
         try {
-            if(SmithProberObj != null) {
+            if (SmithProberObj != null) {
                 SmithAgentLogger.logger.info("Start unload prober");
                 Class<?>[] emptyArgTypes = new Class[]{};
                 Reflection.invokeMethod(SmithProberObj,"stop",emptyArgTypes);
@@ -151,8 +154,7 @@ public class SmithAgent {
                 SmithAgentLogger.logger.info("unload prober end");
 
                 bret = true;
-            }
-            else {
+            } else {
                 bret = true;
             }
         }
@@ -253,8 +255,8 @@ public class SmithAgent {
                         else {
                             System.setProperty("smith.rasp", probeVersion+"-"+checksumStr);
                             System.setProperty("smith.status", "attach");
+                            System.setProperty("rasp.probe", "smith");
                         }
-                        System.setProperty("rasp.probe", "smith");
                     }
                 }
                 finally {

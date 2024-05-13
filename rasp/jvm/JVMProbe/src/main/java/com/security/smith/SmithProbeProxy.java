@@ -99,7 +99,7 @@ public class SmithProbeProxy {
                 }
             }
             catch(Throwable t) {
-                t.printStackTrace();
+                SmithLogger.exception(t);
             }
         }
 

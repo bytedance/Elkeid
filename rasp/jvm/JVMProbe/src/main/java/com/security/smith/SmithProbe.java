@@ -164,6 +164,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
 
     public void init() {
+        SmithLogger.loggerProberInit();
         SmithLogger.logger.info("probe init enter");
         smithClasses = new ConcurrentHashMap<>();
         patchers = new ConcurrentHashMap<>();
@@ -276,9 +277,8 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         smithproxyTimerTask = null;
         smithproxyTimer = null;
 
-        SmithLogger.loggerProberUnInit();
-
         SmithLogger.logger.info("probe stop leave");
+        SmithLogger.loggerProberUnInit();
     }
 
     public void uninit() {
@@ -586,7 +586,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             else {
                 classWriter = new SmithClassWriter(ClassWriter.COMPUTE_FRAMES);
             }
-
             ClassVisitor classVisitor = new SmithClassVisitor(
                     Opcodes.ASM9,
                     classWriter,
@@ -596,15 +595,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             );
 
             classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);  
-            /* 
-            try (FileOutputStream fos = new FileOutputStream("/tmp/"+classType.getClassName()+".class")) {
-                byte[] bytecode = classWriter.toByteArray();
-                fos.write(bytecode);
-                System.out.println(classType.getClassName() + " 字节码保存成功！");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            */
 
             return classWriter.toByteArray();
         } catch (Exception e) {

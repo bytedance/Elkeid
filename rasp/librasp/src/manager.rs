@@ -7,7 +7,7 @@ use std::process::Command;
 use anyhow::{anyhow, Result, Result as AnyhowResult};
 use crossbeam::channel::Sender;
 use fs_extra::dir::{copy, create_all, CopyOptions};
-use fs_extra::file::{copy as file_copy, CopyOptions as FileCopyOptions};
+use fs_extra::file::{copy as file_copy, remove as file_remove, CopyOptions as FileCopyOptions};
 use libraspserver::proto::{PidMissingProbeConfig, ProbeConfigData};
 use log::*;
 
@@ -17,7 +17,7 @@ use crate::jvm::{java_attach, java_detach, JVMProbe, JVMProbeState};
 use crate::nodejs::{nodejs_attach, NodeJSProbe};
 use crate::php::{php_attach, PHPProbeState};
 use crate::{
-    comm::{Control, EbpfMode, ProcessMode, RASPComm, ThreadMode},
+    comm::{Control, EbpfMode, ProcessMode, RASPComm, ThreadMode, check_need_mount},
     process::ProcessInfo,
     runtime::{ProbeCopy, ProbeState, ProbeStateInspect, RuntimeInspect},
     settings,
@@ -348,6 +348,9 @@ impl RASPManager {
                 ProbeState::AttachedVersionNotMatch => {
                   match java_detach(pid) {
                     Ok(result) => {
+                        if let Ok(true) = check_need_mount(mnt_namespace) {
+                            Self::remove_dir_from_to_dest(format!("{}/{}", root_dir.clone(), settings::RASP_JAVA_DIR()));
+                        }
                         if self.can_copy(mnt_namespace) {
                             for from in JVMProbe::names().0.iter() {
                                 self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
@@ -701,6 +704,25 @@ impl RASPManager {
             }
         };
     }
+
+    pub fn remove_dir_from_to_dest(dest_root: String) -> AnyhowResult<()> {
+        if Path::new(&dest_root).exists() {
+            return match std::fs::remove_dir_all(dest_root.clone()) {
+                Ok(_) => {
+                    info!("remove file: {}", dest_root);
+                    Ok(())
+                }
+                Err(e) => {
+                    warn!("can not remove: {}", e);
+                    Err(anyhow!(
+                        "remove failed: dir {}, err: {}",
+                        dest_root.clone(), e))
+                }
+            }
+        }
+        return Ok(());
+    }
+
     pub fn copy_dir_from_to_dest(&self, from: String, dest_root: String) -> AnyhowResult<()> {
         let target = format!("{}{}", dest_root, from);
         if Path::new(&target).exists() {
