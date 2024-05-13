@@ -46,4 +46,12 @@ public class Block {
     public void setStackFrame(StackFrame stackFrame) {
         this.stackFrame = stackFrame;
     }
+
+    public void removeAll() {
+        for (int i = 0; i < rules.length; i++) {
+            rules[i] = null;
+        }
+        this.rules = null;
+        stackFrame = null;
+    }
 }

@@ -32,7 +32,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
     private String exceptionHook;
     private String xHook;
 
-    private static final Map<String, Class<?>> smithProcessors = new HashMap<String, Class<?>>() {{
+    private final Map<String, Class<?>> smithProcessors = new HashMap<String, Class<?>>() {{
         put("byte[]", ByteArrayProcessor.class);
         put("int[]", IntegerArrayProcessor.class);
         put("java.net.ProtocolFamily", ProtocolFamilyProcessor.class);

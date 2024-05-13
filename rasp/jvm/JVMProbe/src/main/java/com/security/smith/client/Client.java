@@ -180,12 +180,13 @@ public class Client implements EventHandler {
                         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
                 try {
-                    messageHandler.onBlock(
-                            objectMapper.treeToValue(
+                    BlockConfig config =   objectMapper.treeToValue(
                                     message.getData(),
                                     BlockConfig.class
-                            )
-                    );
+                            );
+                    messageHandler.onBlock(config);
+
+                    config.removeAll();
                 } catch (JsonProcessingException e) {
                     SmithLogger.exception(e);
                 }

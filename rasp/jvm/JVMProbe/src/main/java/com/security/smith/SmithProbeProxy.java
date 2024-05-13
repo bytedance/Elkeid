@@ -27,45 +27,45 @@ import com.security.smith.common.SmithHandler;
 import com.security.smith.log.SmithLogger;
 
 public class SmithProbeProxy {
-    private static SmithProbeProxy ourInstance = new SmithProbeProxy();
-    private static final int CLASS_MAX_ID = 30;
-    private static final int METHOD_MAX_ID = 20;
-    private static final int DEFAULT_QUOTA = 12000;
+    private final int CLASS_MAX_ID = 30;
+    private final int METHOD_MAX_ID = 20;
+    private final int DEFAULT_QUOTA = 12000;
     
+    private SmithProbe SmithProbeObj = null;
     private AtomicIntegerArray[] quotas;
     private Disruptor<Trace> disruptor;
     private Client client;
     private boolean stopX;
 
-    public static InheritableThreadLocal<Object> localfilterConfig = new InheritableThreadLocal<Object>() {
+    public InheritableThreadLocal<Object> localfilterConfig = new InheritableThreadLocal<Object>() {
         @Override
         protected Object initialValue() {
             return null;
         }
     };
 
-    public static InheritableThreadLocal<Object> localfilterDef = new InheritableThreadLocal<Object>() {
+    public InheritableThreadLocal<Object> localfilterDef = new InheritableThreadLocal<Object>() {
         @Override
         protected Object initialValue() {
             return null;
         }
     };
 
-    public static InheritableThreadLocal<Object> needFoundfilterDef = new InheritableThreadLocal<Object>() {
+    public InheritableThreadLocal<Object> needFoundfilterDef = new InheritableThreadLocal<Object>() {
         @Override
         protected Object initialValue() {
             return null;
         }
     };
 
-    public static InheritableThreadLocal<Boolean> jettyDeploying = new InheritableThreadLocal<Boolean>() {
+    public InheritableThreadLocal<Boolean> jettyDeploying = new InheritableThreadLocal<Boolean>() {
         @Override
         protected Boolean initialValue() {
             return false;
         }
     };
 
-     private static  boolean removeThreadLocalFormThread(Object threadObj,Object threadLocalObj) {
+     private boolean removeThreadLocalFormThread(Object threadObj,Object threadLocalObj) {
         boolean bret = false;
         boolean usegetMap = false;
 
@@ -106,7 +106,7 @@ public class SmithProbeProxy {
         return bret;
     }
 
-    private static void RemoveThreadLocalVar() {
+    private void RemoveThreadLocalVar() {
         int activeCount = Thread.activeCount();
         Thread[] threads = new Thread[activeCount+100];
         int count = Thread.enumerate(threads);
@@ -118,41 +118,34 @@ public class SmithProbeProxy {
         }
     }
 
-    class AtomicIntegerArraySupplier {
-        public AtomicIntegerArray get() {
-            return new AtomicIntegerArray(METHOD_MAX_ID);
-        }
-    }
-
     public SmithProbeProxy() {
         stopX = false;
         //quotas = Stream.generate(() -> new AtomicIntegerArray(METHOD_MAX_ID)).limit(CLASS_MAX_ID).toArray(AtomicIntegerArray[]::new);
 
-        AtomicIntegerArraySupplier supplier = new AtomicIntegerArraySupplier();
-        quotas = Stream.generate(supplier::get)
-                                           .limit(CLASS_MAX_ID)
-                                           .toArray(AtomicIntegerArray[]::new);
-    }
-
-    public static SmithProbeProxy getInstance() {
-        return ourInstance;
-    }
-
-    public static void delInstance() {
-        ourInstance.client = null;
-        ourInstance.disruptor = null;
-        for(int i = 0;i < ourInstance.quotas.length;i++) {
-            ourInstance.quotas[i] = null;
+        quotas = new AtomicIntegerArray[CLASS_MAX_ID];
+        for (int i = 0; i < CLASS_MAX_ID; i++) {
+            quotas[i] = new AtomicIntegerArray(METHOD_MAX_ID);
         }
-        ourInstance.quotas = null;
+    }
+
+     public void uninit() {
+        this.client = null;
+        this.disruptor = null;
+        for(int i = 0;i < this.quotas.length;i++) {
+            this.quotas[i] = null;
+        }
+        this.quotas = null;
+        this.SmithProbeObj = null;
         RemoveThreadLocalVar();
 
         localfilterConfig = null; 
         localfilterDef = null;
         needFoundfilterDef = null;
         jettyDeploying = null;
+    }
 
-        ourInstance = null;
+    public void setProbe(SmithProbe SmithProbeObj) {
+        this.SmithProbeObj = SmithProbeObj;
     }
 
     public void setClient(Client client) {
@@ -168,26 +161,13 @@ public class SmithProbeProxy {
             return;
         }
 
-        Map<Pair<Integer, Integer>, Block> blocks = SmithProbe.getInstance().GetBlocks();
+        Map<Pair<Integer, Integer>, Block> blocks = SmithProbeObj.GetBlocks();
         if (blocks == null)
             return;
         Block block = blocks.get(new ImmutablePair<>(classID, methodID));
 
         if (block == null)
             return;
-
-            /* 
-        if (Arrays.stream(block.getRules()).filter(Objects::nonNull).anyMatch(rule -> {
-            if (rule.getIndex() >= args.length)
-                return false;
-            if (args[rule.getIndex()] == null || rule.getRegex() == null)
-                return false;
-
-            return Pattern.compile(rule.getRegex()).matcher(args[rule.getIndex()].toString()).find();
-        })) {
-            throw new SecurityException("API blocked by RASP");
-        }
-        */
 
         MatchRule[] rules = block.getRules();
         boolean isBlocked = false;
@@ -270,7 +250,7 @@ public class SmithProbeProxy {
         if (client != null) {
             client.write(Operate.SCANCLASS, classFilter);
             SmithLogger.logger.info("send metadata: " + classFilter.toString());
-            SmithProbe.getInstance().sendClass(cla, classFilter.getTransId());
+            SmithProbeObj.sendClass(cla, classFilter.getTransId());
         }
     }
 
@@ -369,10 +349,10 @@ public class SmithProbeProxy {
                         client.write(Operate.SCANCLASS, classFilter);
                         SmithLogger.logger.info("send metadata: " + classFilter.toString());
                         if (filterClass != null) {
-                            SmithProbe.getInstance().sendClass(filterClass, classFilter.getTransId());
+                            SmithProbeObj.sendClass(filterClass, classFilter.getTransId());
                         }
                         else {
-                            SmithProbe.getInstance().sendClass(filter.getClass(), classFilter.getTransId());
+                            SmithProbeObj.sendClass(filter.getClass(), classFilter.getTransId());
                         }
                     }
                 } else {
@@ -426,11 +406,11 @@ public class SmithProbeProxy {
     }
 
     public  void onTimer() {
-        Heartbeat heartbeat = SmithProbe.getInstance().getHeartbeat();
+        Heartbeat heartbeat = SmithProbeObj.getHeartbeat();
         if (client != null)
             client.write(Operate.HEARTBEAT, heartbeat);
 
-        Map<Pair<Integer, Integer>, Integer> limits = SmithProbe.getInstance().getLimits();
+        Map<Pair<Integer, Integer>, Integer> limits = SmithProbeObj.getLimits();
 
         for (int i = 0; i < CLASS_MAX_ID; i++) {
             for (int j = 0; j < METHOD_MAX_ID; j++) {
@@ -679,7 +659,7 @@ public class SmithProbeProxy {
                         if (client != null) {
                             client.write(Operate.SCANCLASS, classFilter);
                             SmithLogger.logger.info("send metadata: " + classFilter.toString());
-                            SmithProbe.getInstance().sendClass(servletClass, classFilter.getTransId());
+                            SmithProbeObj.sendClass(servletClass, classFilter.getTransId());
                         }
                     } else {
                         SmithLogger.logger.warning("can't find "+servletName);

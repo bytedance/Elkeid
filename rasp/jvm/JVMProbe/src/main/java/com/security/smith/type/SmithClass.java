@@ -32,6 +32,9 @@ public class SmithClass {
     }
 
     public void clear() {
+        for (int i = 0; i < methods.size(); i++) {
+            methods.set(i, null);
+        }
         methods.clear();
     }
 }

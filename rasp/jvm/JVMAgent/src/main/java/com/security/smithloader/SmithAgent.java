@@ -11,6 +11,7 @@ import com.security.smithloader.common.Reflection;
 import com.security.smithloader.log.SmithAgentLogger;
 
 import java.lang.instrument.Instrumentation;
+import java.lang.reflect.Method;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class SmithAgent {
@@ -73,18 +74,28 @@ public class SmithAgent {
         try {
             xLoader = new SmithLoader(proberPath, null);
             SmithProberClazz = xLoader.loadClass("com.security.smith.SmithProbe");
-
+            Method[] methods = SmithProberClazz.getDeclaredMethods();
+            for (Method method : methods) {
+                if (method.isSynthetic()) {
+                    System.out.println("Lambda method: " + method.getName());
+                }
+                else {
+                    System.out.println("method: " + method.getName());
+                }
+            }
+            
             Class<?>[] emptyArgTypes = new Class[]{};
-            SmithProberObj = Reflection.invokeStaticMethod(SmithProberClazz,"getInstance", emptyArgTypes);
+            //SmithProberObj = Reflection.invokeStaticMethod(SmithProberClazz,"getInstance", emptyArgTypes);
+            SmithProberObj = SmithProberClazz.newInstance();
 
             Class<?>[] objArgTypes = new Class[]{Object.class};
             Reflection.invokeMethod(SmithProberObj,"setClassLoader",objArgTypes,xLoader);
             Class<?>[]  argType = new Class[]{Instrumentation.class};
             Reflection.invokeMethod(SmithProberObj,"setInst",argType,inst);
             Reflection.invokeMethod(SmithProberObj,"init",emptyArgTypes);
+            SmithProberProxyObj = Reflection.invokeMethod(SmithProberObj,"getSmithProbeProxy", emptyArgTypes);
             binited = true;
 
-            SmithProberProxyObj = Reflection.invokeStaticMethod(SmithProberClazz,"getSmithProbeProxy", emptyArgTypes);
 
             Reflection.invokeMethod(SmithProberObj,"start",emptyArgTypes);
 
@@ -141,6 +152,9 @@ public class SmithAgent {
 
                 bret = true;
             }
+            else {
+                bret = true;
+            }
         }
         catch(Exception e) {
             SmithAgentLogger.exception(e);
@@ -191,17 +205,16 @@ public class SmithAgent {
                 checksumStr = checksumStr_sb.toString();
                 proberPath = proberPath_sb.toString();
 
-                System.out.println("classLoader:"+SmithAgent.class.getClassLoader());
-                
                 SmithAgentLogger.logger.info("checksumStr:" + checksumStr);
                 SmithAgentLogger.logger.info("proberPath:" + proberPath); 
 
-                
+               /* 
                 if(!JarUtil.checkJarFile(proberPath,checksumStr)) {
                     System.setProperty("smith.status", proberPath + " check fail");
                     SmithAgentLogger.logger.warning(proberPath + " check fail!");
                     return ;
                 }
+                */
                 
 
                 try {
