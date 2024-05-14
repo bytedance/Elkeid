@@ -14,8 +14,7 @@ enableGcc11(){
 enableGcc11
 
 echo "this is centos"
-for f in /usr/src/kernels/*
-do
+for f in /usr/src/kernels/*; do
     set -e
     set -o xtrace
     KV="$(basename -- $f)"

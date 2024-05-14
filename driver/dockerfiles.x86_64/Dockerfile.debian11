@@ -13,3 +13,7 @@ RUN apt clean all
 ADD . /elkeid
 WORKDIR /elkeid/driver
 RUN bash ./build_script/x86_64/batch_compile.sh
+
+FROM debian:bullseye
+COPY --from=0 /ko_output /ko_output
+CMD [ "sh", "-c", "echo start" ]

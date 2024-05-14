@@ -12,3 +12,7 @@ RUN rm -f  /root/kernel-devel-*amzn2.x86_64.rpm
 ADD . /elkeid
 WORKDIR /elkeid/driver
 RUN bash ./build_script/x86_64/batch_compile.sh
+
+FROM amazonlinux:2
+COPY --from=0 /ko_output /ko_output
+CMD [ "sh", "-c", "echo start" ]

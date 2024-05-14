@@ -10,3 +10,7 @@ WORKDIR /elkeid/driver
 RUN bash ./build_script/x86_64/batch_compile.sh
 
 RUN apt-get -y remove linux-headers-*-aws || true
+
+FROM ubuntu:focal
+COPY --from=0 /ko_output /ko_output
+CMD [ "sh", "-c", "echo start" ]
