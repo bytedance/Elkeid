@@ -321,7 +321,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
             loadLocal(argumentsVariable);
             loadLocal(newLocal);
 
-            invokeVirtual(
+            invokeStatic(
                     Type.getType("Lcom/security/smithloader/SmithAgent;"),
                     new Method(
                             "ExceptionProxy",

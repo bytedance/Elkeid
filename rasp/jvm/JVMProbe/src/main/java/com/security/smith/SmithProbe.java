@@ -278,7 +278,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         smithproxyTimer = null;
 
         SmithLogger.logger.info("probe stop leave");
-        SmithLogger.loggerProberUnInit();
     }
 
     public void uninit() {
@@ -326,6 +325,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         ourInstance = null;
 
         SmithLogger.logger.info("probe uninit leave");
+        SmithLogger.loggerProberUnInit();
     }
 
     private void reloadClasses() {
@@ -594,7 +594,22 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     methodMap
             );
 
+
             classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);  
+
+            /* 
+            // 获取生成的类的字节数组
+            byte[] bytecode = classWriter.toByteArray();
+
+            // 将字节码保存到文件
+            String filePath = "/tmp/"+classType.getClassName()+".class"; // 文件路径和名称
+            try (FileOutputStream fos = new FileOutputStream(filePath)) {
+                fos.write(bytecode);
+                System.out.println("字节码已成功保存到文件: " + filePath);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            */
 
             return classWriter.toByteArray();
         } catch (Exception e) {

@@ -77,7 +77,6 @@ public class SmithAgent {
             SmithProberClazz = xLoader.loadClass("com.security.smith.SmithProbe");
             
             Class<?>[] emptyArgTypes = new Class[]{};
-            //SmithProberObj = Reflection.invokeStaticMethod(SmithProberClazz,"getInstance", emptyArgTypes);
             if (SmithProberClazz != null) {
                 Constructor<?> constructor = SmithProberClazz.getDeclaredConstructor();
                 constructor.setAccessible(true);
