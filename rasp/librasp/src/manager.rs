@@ -349,7 +349,7 @@ impl RASPManager {
                   match java_detach(pid) {
                     Ok(result) => {
                         if let Ok(true) = check_need_mount(mnt_namespace) {
-                            Self::remove_dir_from_to_dest(format!("{}/{}", root_dir.clone(), settings::RASP_JAVA_DIR()));
+                            Self::remove_dir_from_to_dest(format!("{}{}", root_dir.clone(), settings::RASP_JAVA_DIR()));
                         }
                         if self.can_copy(mnt_namespace) {
                             for from in JVMProbe::names().0.iter() {

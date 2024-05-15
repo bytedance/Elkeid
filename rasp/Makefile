@@ -430,7 +430,7 @@ endif
 	cp NSMount/bin/NSMount $(OUTPUT)/NSMount
 	cp pangolin/bin/pangolin $(LIB_OUTPUT)/pangolin
 
-	cp jvm/JVMAgent/output/SmithAgent.jar 
+	cp jvm/JVMAgent/output/SmithAgent.jar $(LIB_OUTPUT)/java/SmithAgent.jar
 	cp jvm/JVMProbe/output/SmithProbe.jar $(LIB_OUTPUT)/java/SmithProbe.jar
 	cp jvm/jattach/build/jattach $(LIB_OUTPUT)/java/jattach
 
