@@ -69,13 +69,13 @@ public class Rule_Scanner {
     System.out.println("classLoaderName:" + data.getClassLoaderName());
     System.out.println("parentClassName:" + data.getParentClassName());
 
-     // 步骤1：获取当前线程
+
     Thread currentThread = Thread.currentThread();
 
-    // 步骤2：获取当前线程的堆栈跟踪
+
     StackTraceElement[] stackTrace = currentThread.getStackTrace();
 
-    // 步骤3：打印堆栈跟踪信息
+
     for (StackTraceElement element : stackTrace) {
         System.out.println(element);
     }

@@ -800,7 +800,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
 
     
-    /* 全量扫描 */
+    /* scan all class */
     @Override
     public void onScanAllClass() {
         if (scanswitch == false) {
