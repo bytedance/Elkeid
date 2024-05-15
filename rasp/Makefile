@@ -6,7 +6,7 @@ DEBUG_SYMBOLS ?= debug
 LIB_OUTPUT ?= $(OUTPUT)/lib-$(VERSION)
 VCPKG_OVERLAY_PORTS ?= $(abspath overlay-ports)
 
-.PHONY: all help install clean set-version agent-plugin nsenter pangolin jattach JVMProbe python-probe python-loader go-probe go-probe-ebpf node-probe php-probe librasp rasp-server NSMount
+.PHONY: all help install clean set-version agent-plugin nsenter pangolin jattach  JVMAgent JVMProbe python-probe python-loader go-probe go-probe-ebpf node-probe php-probe librasp rasp-server NSMount
 
 all: rasp-$(VERSION).tar.gz rasp-$(VERSION)-debug.tar.gz SHA256SUMS
 
@@ -112,11 +112,16 @@ else
 endif
 
 
+JVMAgent:
+	cd jvm/JVMAgent && \
+	mkdir -p output && \
+	BUILD_VERSION=${VERSION} ./gradlew shadow && \
+	cp build/libs/JVMAgent-1.0-SNAPSHOT-all.jar output/SmithAgent.jar
 JVMProbe:
 	cd jvm/JVMProbe && \
 	mkdir -p output && \
 	BUILD_VERSION=${VERSION} ./gradlew shadow && \
-	cp build/libs/JVMProbe-1.0-SNAPSHOT-all.jar output/SmithAgent.jar
+	cp build/libs/JVMProbe-1.0-SNAPSHOT-all.jar output/SmithProbe.jar
 
 
 pangolin:
@@ -405,7 +410,7 @@ else
 endif
 
 
-$(OUTPUT): set-version agent-plugin nsenter pangolin jattach JVMProbe python-probe python-loader go-probe go-probe-ebpf node-probe php-probe rasp-server librasp NSMount
+$(OUTPUT): set-version agent-plugin nsenter pangolin jattach JVMAgent JVMProbe python-probe python-loader go-probe go-probe-ebpf node-probe php-probe rasp-server librasp NSMount
 	mkdir -p $(OUTPUT) $(LIB_OUTPUT) $(LIB_OUTPUT)/golang $(LIB_OUTPUT)/java $(LIB_OUTPUT)/node $(LIB_OUTPUT)/php $(LIB_OUTPUT)/python
 
 	cp plugin/settings.toml $(OUTPUT)/settings.toml
@@ -425,7 +430,8 @@ endif
 	cp NSMount/bin/NSMount $(OUTPUT)/NSMount
 	cp pangolin/bin/pangolin $(LIB_OUTPUT)/pangolin
 
-	cp jvm/JVMProbe/output/SmithAgent.jar $(LIB_OUTPUT)/java/SmithAgent.jar
+	cp jvm/JVMAgent/output/SmithAgent.jar 
+	cp jvm/JVMProbe/output/SmithProbe.jar $(LIB_OUTPUT)/java/SmithProbe.jar
 	cp jvm/jattach/build/jattach $(LIB_OUTPUT)/java/jattach
 
 	cp python/python-loader/bin/python_loader $(LIB_OUTPUT)/python

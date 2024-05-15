@@ -231,6 +231,7 @@ fn internal_main(
     let mut tracking_pids = Vec::<i32>::new();
     let (pid_sender, pid_receiver) =
         bounded(settings_int("internal", "pid_queue_length")? as usize);
+    let pid_poll_interval = settings_int("internal", "pid_poll_interval")? as u64;
     let pid_recv_thread = Builder::new()
         .name("pid_recv".to_string())
         .spawn(move || loop {
@@ -258,7 +259,7 @@ fn internal_main(
                     break;
                 };
             }
-            sleep(Duration::from_secs(60));
+            sleep(Duration::from_secs(pid_poll_interval));
         })?;
     /* consume pid then inspect runtime */
     let mut inspect_ctrl = ctrl.clone();
@@ -381,6 +382,7 @@ fn internal_main(
         })?;
     /* clean missing process */
     let mut cleaner_ctrl = ctrl.clone();
+    let clean_up_interval = settings_int("internal", "clean_up_interval")? as u64;
     let cleaner_thread = Builder::new()
         .name("cleaner".to_string())
         .spawn(move || loop {
@@ -388,7 +390,7 @@ fn internal_main(
             if !cleaner_ctrl.check() {
                 break;
             }
-            sleep(Duration::from_secs(60));
+            sleep(Duration::from_secs(clean_up_interval));
             let cleaning_process = cleaning_process_rw.read();
             let check_needed = (*cleaning_process).clone();
             drop(cleaning_process);
@@ -458,14 +460,16 @@ fn internal_main(
             match operator.op(&mut process, state.clone(), probe_message.clone()) {
                 Ok(_) => {
                     info!("operation success: {:?}", operation_message);
-                    let report = make_report(&process.clone(), format!("{}_success", state.clone()).as_str(), String::new());
-                    let mut record = hashmap_to_record(report);
-                    record.data_type = report_action_data_type.clone() as i32;
-                    record.timestamp = time();
-                    if let Err(e) = operation_reporter.send(
-                        record
-                    ) {
-                        warn!("operation thread send command to receiver err: {}, pid: {}", e, process.pid);
+                    if state != "ATTACHED" {
+                        let report = make_report(&process.clone(), format!("{}_success", state.clone()).as_str(), String::new());
+                        let mut record = hashmap_to_record(report);
+                        record.data_type = report_action_data_type.clone() as i32;
+                        record.timestamp = time();
+                        if let Err(e) = operation_reporter.send(
+                            record
+                        ) {
+                            warn!("operation thread send command to receiver err: {}, pid: {}", e, process.pid);
+                        }
                     }
                 }
                 Err(e) => {
@@ -503,6 +507,10 @@ fn internal_main(
                 }
                 "MISSING" => {
                     (*opp).remove(&process.pid);
+                }
+                "DETACH" => {
+                    process.tracing_state = Some(TracingState::INSPECTED);
+                    (*opp).insert(process.pid, process);
                 }
                 _ => {}
             }

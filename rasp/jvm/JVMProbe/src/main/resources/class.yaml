@@ -48,6 +48,9 @@
     - id: 3
       name: createNewFile
       desc: ()Z
+    - id: 4
+      name: <init>
+      desc: (Ljava/lang/String;Ljava/lang/String;)V
 - id: 4
   name: java.net.Socket
   methods:
@@ -171,3 +174,162 @@
     - id: 1
       name: move
       desc: (Ljava/nio/file/Path;Ljava/nio/file/Path;[Ljava/nio/file/CopyOption;)Ljava/nio/file/Path;
+- id: 14
+  name: org.apache.catalina.core.StandardPipeline
+  methods:
+     - id: 0
+       name: addValve
+       desc: (Lorg/apache/catalina/Valve;)V
+       preHook: checkAddValvePre
+- id: 15
+  name: org.apache.catalina.core.StandardContext
+  methods:
+     - id: 0
+       name: addServletMapping
+       desc: (Ljava/lang/String;Ljava/lang/String;Z)V
+       preHook: checkAddServletPre
+     - id: 1
+       name: addApplicationEventListener
+       desc: (Ljava/lang/Object;)V
+       preHook: checkAddListenerPre
+     - id: 2
+       name: addFilterDef
+       desc: (Lorg/apache/tomcat/util/descriptor/web/FilterDef;)V
+       preHook: checkAddFilterPre
+     - id: 3
+       name: addServletMappingDecoded
+       desc: (Ljava/lang/String;Ljava/lang/String;Z)V
+       preHook: checkAddServletPre
+- id: 16
+  name: org.apache.catalina.core.ApplicationFilterConfig
+  methods:
+    - id: 0
+      name: <init>
+      desc: (Lorg/apache/catalina/Context;Lorg/apache/tomcat/util/descriptor/web/FilterDef;)V
+      postHook: checkFilterConfigPost
+- id: 17
+  name: com.caucho.server.dispatch.FilterManager
+  methods:
+    - id: 0
+      name: addFilter
+      desc: (Lcom/caucho/server/dispatch/FilterConfigImpl;)V
+      preHook: checkResinAddFilterPre
+- id: 18
+  name: com.caucho.server.dispatch.ServletManager
+  methods:
+    - id: 0
+      name: addServlet
+      desc: (Lcom/caucho/server/dispatch/ServletConfigImpl;Z)V
+      preHook: checkResinAddServletPre
+- id: 19
+  name: com.caucho.server.webapp.WebApp
+  methods:
+    - id: 0
+      name: addListenerObject
+      desc: (Ljava/lang/Object;Z)V
+      preHook: checkAddListenerPre
+- id: 20
+  name: org.eclipse.jetty.servlet.BaseHolder
+  methods:
+    - id: 0
+      name: setHeldClass
+      desc: (Ljava/lang/Class;)V
+      preHook: checkJettyMemshellPre
+- id: 21
+  name: org.eclipse.jetty.servlet.Holder
+  methods:
+    - id: 0
+      name: setHeldClass
+      desc: (Ljava/lang/Class;)V
+      preHook: checkJettyMemshellPre
+- id: 22
+  name: org.eclipse.jetty.server.handler.ContextHandler
+  methods:
+    - id: 0
+      name: addEventListener
+      desc: (Ljava/util/EventListener;)V
+      preHook: checkJettyListenerPre
+- id: 23
+  name: org.springframework.web.servlet.handler.AbstractUrlHandlerMapping
+  methods:
+    - id: 0
+      name: registerHandler
+      desc: (Ljava/lang/String;Ljava/lang/Object;)V
+      preHook: checkSpringControllerPre
+- id: 24
+  name: org.springframework.web.servlet.handler.AbstractHandlerMethodMapping$MappingRegistry
+  methods:
+    - id: 0
+      name: register
+      desc: (Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/reflect/Method;)V
+      preHook: checkSpringControllerPre
+- id: 25
+  name: org.springframework.web.servlet.HandlerInterceptor
+  methods:
+    - id: 0
+      name: <init>
+      desc: ()V
+      postHook: checkMemshellInitPost
+- id: 26
+  name: javax.servlet.Filter
+  methods:
+    - id: 0
+      name: <init>
+      desc: ()V
+      postHook: checkMemshellInitPost
+- id: 27
+  name: javax.servlet.Servlet
+  methods:
+    - id: 0
+      name: <init>
+      desc: ()V
+      postHook: checkMemshellInitPost
+- id: 28
+  name: javax.servlet.ServletRequestListener
+  methods:
+    - id: 0
+      name: <init>
+      desc: ()V
+      postHook: checkMemshellInitPost
+- id: 29
+  name: javax.websocket.Endpoint
+  methods:
+    - id: 0
+      name: <init>
+      desc: ()V
+      postHook: checkMemshellInitPost
+- id: 30
+  name: jakarta.servlet.Filter
+  methods:
+    - id: 0
+      name: <init>
+      desc: ()V
+      postHook: checkMemshellInitPost
+- id: 31
+  name: jakarta.servlet.Servlet
+  methods:
+    - id: 0
+      name: <init>
+      desc: ()V
+      postHook: checkMemshellInitPost
+- id: 32
+  name: jakarta.servlet.ServletRequestListener
+  methods:
+    - id: 0
+      name: <init>
+      desc: ()V
+      postHook: checkMemshellInitPost
+- id: 33
+  name: io.undertow.servlet.core.ManagedServlets
+  methods:
+     - id: 0
+       name: addServlet
+       desc: (Lio/undertow/servlet/api/ServletInfo;)Lio/undertow/servlet/handlers/ServletHandler;
+       preHook: checkWildflyaddServletPre
+- id: 34
+  name: org.jboss.modules.ModuleClassLoader
+  methods:
+    - id: 0
+      name: findClass
+      desc: (Ljava/lang/String;ZZ)Ljava/lang/Class;
+      exceptionHook: processWildflyClassLoaderException

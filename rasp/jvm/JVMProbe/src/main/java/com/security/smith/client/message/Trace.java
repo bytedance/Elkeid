@@ -90,15 +90,34 @@ class StackTraceConverter extends StdConverter<StackTraceElement[], String[]> {
         if (value.length <= 2)
             return null;
 
+            /* 
         return Arrays.stream(Arrays.copyOfRange(value, 2, value.length))
                 .map(StackTraceElement::toString)
                 .toArray(String[]::new);
+                */
+
+        StackTraceElement[] elements = Arrays.copyOfRange(value, 2, value.length);
+        String[] result = new String[elements.length];
+
+        for (int i = 0; i < elements.length; i++) {
+            result[i] = elements[i].toString();
+        }
+
+        return result;
     }
 }
 
 class ArgsConverter extends StdConverter<Object[], String[]> {
     @Override
     public String[] convert(Object[] value) {
-        return Arrays.stream(value).map(String::valueOf).toArray(String[]::new);
+        //return Arrays.stream(value).map(String::valueOf).toArray(String[]::new);
+
+        String[] result = new String[value.length];
+
+        for (int i = 0; i < value.length; i++) {
+            result[i] = String.valueOf(value[i]);
+        }
+
+        return result;
     }
 }

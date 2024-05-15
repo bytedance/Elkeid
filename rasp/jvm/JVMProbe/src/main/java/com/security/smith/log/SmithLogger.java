@@ -12,18 +12,20 @@ import java.util.logging.SimpleFormatter;
 
 public class SmithLogger {
     public static Logger logger = Logger.getLogger("RASP");
+    private static FileHandler fileHandler = null;
 
-    static {
+
+    public static void loggerProberInit() {
         logger.setUseParentHandlers(false);
 
         try {
-            String filename = String.format("/tmp/JVMProbe.%d.%d.log", ProcessHelper.getCurrentPID(), Instant.now().getEpochSecond());
+            String filename = String.format("/tmp/JVMProbe.%d.log", ProcessHelper.getCurrentPID());
 
-            FileHandler handler = new FileHandler(filename, 5 * 1024 * 1024, 5);
-            logger.addHandler(handler);
+            fileHandler = new FileHandler(filename, 5 * 1024 * 1024, 5, true);
+            logger.addHandler(fileHandler);
 
             SimpleFormatter formatter = new SimpleFormatter();
-            handler.setFormatter(formatter);
+            fileHandler.setFormatter(formatter);
 
         } catch (IOException | NumberFormatException e) {
             e.printStackTrace();
@@ -37,5 +39,21 @@ public class SmithLogger {
         tr.printStackTrace(pw);
 
         logger.severe(sw.toString());
+    }
+
+    public static void loggerProberUnInit() {
+        try {
+            if (null != fileHandler) {
+                Logger logger = Logger.getLogger("RASP");
+
+                if (logger != null) {
+                    logger.removeHandler(fileHandler);
+                }
+                fileHandler.close();
+                fileHandler = null;
+            }
+        } catch (Throwable t) {
+
+        }
     }
 }

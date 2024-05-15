@@ -5,6 +5,9 @@ public class SmithMethod {
     private String name;
     private String desc;
     private boolean block;
+    private String preHook;
+    private String postHook;
+    private String exceptionHook;
 
     public int getId() {
         return id;
@@ -36,5 +39,29 @@ public class SmithMethod {
 
     public void setBlock(boolean block) {
         this.block = block;
+    }
+
+    public String getPreHook() {
+        return preHook;
+    }
+
+    public void setPreHook(String preHook) {
+        this.preHook = preHook;
+    }
+
+    public String getPostHook() {
+        return postHook;
+    }
+
+    public void setPostHook(String postHook) {
+        this.postHook = postHook;
+    }
+
+    public String getExceptionHook() {
+        return exceptionHook;
+    }
+
+    public void setExceptionHook(String exceptionHook) {
+        this.exceptionHook = exceptionHook;
     }
 }

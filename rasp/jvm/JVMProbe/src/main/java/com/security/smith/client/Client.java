@@ -14,6 +14,7 @@ import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.unix.DomainSocketAddress;
 import io.netty.channel.unix.DomainSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import io.netty.util.concurrent.GenericFutureListener;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -33,11 +34,21 @@ public class Client implements EventHandler {
     private static final String MESSAGE_DIRECTORY = "/var/run/elkeid_rasp";
 
     private Channel channel;
-    private final MessageHandler messageHandler;
-    private final EpollEventLoopGroup group;
+    private boolean stopX;
+    private MessageHandler messageHandler;
+    private EpollEventLoopGroup group;
+    private ChannelFuture cf;
+    private GenericFutureListener<ChannelFuture> connectListener = (ChannelFuture f) -> {
+                        if (!f.isSuccess()) {
+                            if(!stopX) {
+                                f.channel().eventLoop().schedule(this::onReconnect, RECONNECT_SCHEDULE, TimeUnit.SECONDS);
+                            }
+                        }
+                    };
 
     public Client(MessageHandler messageHandler) {
         // note: linux use epoll, mac use kqueue
+        this.stopX = false;
         this.messageHandler = messageHandler;
         this.group = new EpollEventLoopGroup(EVENT_LOOP_THREADS, new DefaultThreadFactory(getClass(), true));
     }
@@ -60,12 +71,9 @@ public class Client implements EventHandler {
                         }
                     });
 
-            channel = b.connect(new DomainSocketAddress(SOCKET_PATH))
-                    .addListener((ChannelFuture f) -> {
-                        if (!f.isSuccess()) {
-                            f.channel().eventLoop().schedule(this::onReconnect, RECONNECT_SCHEDULE, TimeUnit.SECONDS);
-                        }
-                    }).sync().channel();
+            cf = b.connect(new DomainSocketAddress(SOCKET_PATH)).addListener(connectListener);
+
+            channel = cf.sync().channel();
 
             channel.closeFuture().sync();
         } catch (Exception e) {
@@ -74,10 +82,18 @@ public class Client implements EventHandler {
     }
 
     public void stop() {
+        stopX = true;
         group.shutdownGracefully();
+        messageHandler = null;
+        group = null;
+        channel.close();
+        channel = null;
+        cf.removeListener(connectListener);
+        cf = null;
+        connectListener = null;
     }
 
-    public void write(Operate operate, Object object) {
+    public void write(int operate, Object object) {
         if (channel == null || !channel.isActive() || !channel.isWritable())
             return;
 
@@ -103,30 +119,30 @@ public class Client implements EventHandler {
     @Override
     public void onMessage(Message message) {
         switch (message.getOperate()) {
-            case EXIT:
+            case Operate.EXIT:
                 SmithLogger.logger.info("exit");
                 break;
 
-            case HEARTBEAT:
+            case Operate.HEARTBEAT:
                 SmithLogger.logger.info("heartbeat");
                 break;
 
-            case CONFIG:
+            case Operate.CONFIG:
                 SmithLogger.logger.info("config");
                 messageHandler.onConfig(message.getData().get("config").asText());
                 break;
 
-            case CONTROL:
+            case Operate.CONTROL:
                 SmithLogger.logger.info("control");
                 messageHandler.onControl(message.getData().get("action").asInt());
                 break;
 
-            case DETECT:
+            case Operate.DETECT:
                 SmithLogger.logger.info("detect");
                 messageHandler.onDetect();
                 break;
 
-            case FILTER: {
+            case Operate.FILTER: {
                 SmithLogger.logger.info("filter: " + message.getData().toString());
 
                 ObjectMapper objectMapper = new ObjectMapper()
@@ -147,7 +163,7 @@ public class Client implements EventHandler {
                 break;
             }
 
-            case BLOCK: {
+            case Operate.BLOCK: {
                 SmithLogger.logger.info("block: " + message.getData().toString());
 
                 ObjectMapper objectMapper = new ObjectMapper()
@@ -155,12 +171,13 @@ public class Client implements EventHandler {
                         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
                 try {
-                    messageHandler.onBlock(
-                            objectMapper.treeToValue(
+                    BlockConfig config =   objectMapper.treeToValue(
                                     message.getData(),
                                     BlockConfig.class
-                            )
-                    );
+                            );
+                    messageHandler.onBlock(config);
+
+                    config.removeAll();
                 } catch (JsonProcessingException e) {
                     SmithLogger.exception(e);
                 }
@@ -168,7 +185,7 @@ public class Client implements EventHandler {
                 break;
             }
 
-            case LIMIT: {
+            case Operate.LIMIT: {
                 SmithLogger.logger.info("limit: " + message.getData().toString());
 
                 ObjectMapper objectMapper = new ObjectMapper()
@@ -189,7 +206,7 @@ public class Client implements EventHandler {
                 break;
             }
 
-            case PATCH: {
+            case Operate.PATCH: {
                 SmithLogger.logger.info("patch: " + message.getData().toString());
 
                 ObjectMapper objectMapper = new ObjectMapper()
@@ -208,6 +225,42 @@ public class Client implements EventHandler {
                 }
 
                 break;
+            }
+            case Operate.CLASSFILTERSTART: {
+                 SmithLogger.logger.info("rule upload start: " + message.getData().toString());
+
+                 ObjectMapper objectMapper = new ObjectMapper();
+                objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,false);
+
+                try {
+                    Rule_Version ruleVersion = objectMapper.readValue(message.getData().toString(), Rule_Version.class);
+                    messageHandler.setRuleVersion(ruleVersion);
+                } catch (JsonProcessingException e) {
+                    SmithLogger.exception(e);
+                }
+
+                break;
+            }
+            case Operate.CLASSFILTER: {
+                 SmithLogger.logger.info("rule upload: " + message.getData().toString());
+
+                ObjectMapper objectMapper = new ObjectMapper();
+                objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,false);
+
+                try {
+                    Rule_Data ruleData = objectMapper.readValue(message.getData().toString(), Rule_Data.class);
+                    messageHandler.OnAddRule(ruleData);
+                } catch (JsonProcessingException e) {
+                    SmithLogger.exception(e);
+                }
+
+                break;
+            }
+            case Operate.CLASSFILTEREND: {
+                SmithLogger.logger.info("class filter config receive finish, start to scan all class");
+                Thread scanAllClassThread = new Thread(messageHandler::onScanAllClass);
+                scanAllClassThread.setDaemon(true);
+                scanAllClassThread.start();
             }
         }
     }
@@ -237,10 +290,14 @@ public class Client implements EventHandler {
     }
 
     static class ClientHandlerAdapter extends ChannelInboundHandlerAdapter {
-        private final EventHandler eventHandler;
+        private EventHandler eventHandler;
 
         ClientHandlerAdapter(EventHandler eventHandler) {
             this.eventHandler = eventHandler;
+        }
+
+        public void closeHandler() {
+            this.eventHandler = null;
         }
 
         @Override

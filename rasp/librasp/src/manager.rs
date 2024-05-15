@@ -7,17 +7,17 @@ use std::process::Command;
 use anyhow::{anyhow, Result, Result as AnyhowResult};
 use crossbeam::channel::Sender;
 use fs_extra::dir::{copy, create_all, CopyOptions};
-use fs_extra::file::{copy as file_copy, CopyOptions as FileCopyOptions};
+use fs_extra::file::{copy as file_copy, remove as file_remove, CopyOptions as FileCopyOptions};
 use libraspserver::proto::{PidMissingProbeConfig, ProbeConfigData};
 use log::*;
 
 use crate::cpython::{python_attach, CPythonProbe, CPythonProbeState};
 use crate::golang::{golang_attach, GolangProbe, GolangProbeState};
-use crate::jvm::{java_attach, JVMProbe, JVMProbeState};
+use crate::jvm::{java_attach, java_detach, JVMProbe, JVMProbeState};
 use crate::nodejs::{nodejs_attach, NodeJSProbe};
 use crate::php::{php_attach, PHPProbeState};
 use crate::{
-    comm::{Control, EbpfMode, ProcessMode, RASPComm, ThreadMode},
+    comm::{Control, EbpfMode, ProcessMode, RASPComm, ThreadMode, check_need_mount},
     process::ProcessInfo,
     runtime::{ProbeCopy, ProbeState, ProbeStateInspect, RuntimeInspect},
     settings,
@@ -204,7 +204,7 @@ impl RASPManager {
             serde_json::from_str(message)?;
         let mut valid_messages: Vec<libraspserver::proto::PidMissingProbeConfig> = Vec::new();
         if messages.len() <= 0 {
-            for message_type in [6, 7, 8, 9] {
+            for message_type in [6, 7, 8, 9, 12, 13, 14] {
                 messages.push(PidMissingProbeConfig {
                     message_type,
                     data: ProbeConfigData::empty(message_type)?,
@@ -212,12 +212,24 @@ impl RASPManager {
             }
         }
         for m in messages.iter() {
-            if m.data.uuid == "" {
-                valid_messages.push(PidMissingProbeConfig {
-                    message_type: m.message_type,
-                    data: ProbeConfigData::empty(m.message_type)?,
-                });
-            } else {
+            if let Some(uuid) = &m.data.uuid {
+                if uuid == "" {
+                    valid_messages.push(PidMissingProbeConfig {
+                        message_type: m.message_type,
+                        data: ProbeConfigData::empty(m.message_type)?,
+                    });
+                } else {
+                    let _ = match serde_json::to_string(&m) {
+                        Ok(s) => s,
+                        Err(e) => {
+                            warn!("failed to convert json to string: {:?} {}", m, e);
+                            continue;
+                        }
+                    };
+                    valid_messages.push(m.clone());
+                }
+            }
+            else {
                 let _ = match serde_json::to_string(&m) {
                     Ok(s) => s,
                     Err(e) => {
@@ -319,7 +331,7 @@ impl RASPManager {
         let attach_result = match runtime_info.name {
             "JVM" => match JVMProbeState::inspect_process(process_info)? {
                 ProbeState::Attached => {
-                    info!("JVM attached process");
+                    info!("JVM attached process {}", pid);
                     Ok(true)
                 }
                 ProbeState::NotAttach => {
@@ -332,6 +344,29 @@ impl RASPManager {
                         }
                     }
                     java_attach(process_info.pid)
+                }
+                ProbeState::AttachedVersionNotMatch => {
+                  match java_detach(pid) {
+                    Ok(result) => {
+                        if let Ok(true) = check_need_mount(mnt_namespace) {
+                            Self::remove_dir_from_to_dest(format!("{}/{}", root_dir.clone(), settings::RASP_JAVA_DIR()));
+                        }
+                        if self.can_copy(mnt_namespace) {
+                            for from in JVMProbe::names().0.iter() {
+                                self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
+                            }
+                            for from in JVMProbe::names().1.iter() {
+                                self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
+                            }
+                        }
+                        java_attach(pid)
+                    }
+                    Err(e) => {
+                        //process_info.tracing_state = ProbeState::Attached;
+                        Err(anyhow!(e))
+                    } 
+                  }
+
                 }
             },
             "CPython" => match CPythonProbeState::inspect_process(process_info)? {
@@ -349,6 +384,11 @@ impl RASPManager {
                         }
                     }
                     python_attach(process_info.pid)
+                }
+                ProbeState::AttachedVersionNotMatch => {
+                    let msg = format!("not support CPython update version now");
+                    error!("{}", msg);
+                    Err(anyhow!(msg))
                 }
             },
             "Golang" => match GolangProbeState::inspect_process(process_info)? {
@@ -411,6 +451,11 @@ impl RASPManager {
                         }
                     }
                 }
+                ProbeState::AttachedVersionNotMatch => {
+                    let msg = format!("not support Golang update version now");
+                    error!("{}", msg);
+                    Err(anyhow!(msg))
+                }
             },
             "NodeJS" => {
                 if self.can_copy(mnt_namespace) {
@@ -434,6 +479,11 @@ impl RASPManager {
                     Ok(true)
                 }
                 ProbeState::NotAttach => php_attach(process_info, runtime_info.version.clone()),
+                ProbeState::AttachedVersionNotMatch => {
+                    let msg = format!("not support PHP update version now");
+                    error!("{}", msg);
+                    Err(anyhow!(msg))
+                }
             },
             _ => {
                 let msg = format!("can not attach to runtime: `{}`", runtime_info.name);
@@ -445,6 +495,32 @@ impl RASPManager {
             Ok(success) => {
                 if !success {
                     let msg = format!("attach failed: {:?}", process_info);
+                    error!("{}", msg);
+                    Err(anyhow!(msg))
+                } else {
+                    Ok(())
+                }
+            }
+            Err(e) => Err(anyhow!(e)),
+        }
+    }
+
+    pub fn detach(&mut self, process_info: &ProcessInfo) -> Result<()>  {
+        if let Some(runtime) = process_info.runtime.clone() {
+            if runtime.name != "JVM" {
+                let msg = "attaching to not support runtime process";
+                error!("{}, runtime: {}", msg, runtime);
+                return Err(anyhow!(msg));
+            }
+        } else {
+            let msg = "attaching to unknow runtime process";
+            error!("{}", msg);
+            return Err(anyhow!(msg));
+        }
+        match java_detach(process_info.pid) {
+            Ok(success) => {
+                if !success {
+                    let msg = format!("detach failed: {:?}", process_info);
                     error!("{}", msg);
                     Err(anyhow!(msg))
                 } else {
@@ -628,6 +704,25 @@ impl RASPManager {
             }
         };
     }
+
+    pub fn remove_dir_from_to_dest(dest_root: String) -> AnyhowResult<()> {
+        if Path::new(&dest_root).exists() {
+            return match std::fs::remove_dir_all(dest_root.clone()) {
+                Ok(_) => {
+                    info!("remove file: {}", dest_root);
+                    Ok(())
+                }
+                Err(e) => {
+                    warn!("can not remove: {}", e);
+                    Err(anyhow!(
+                        "remove failed: dir {}, err: {}",
+                        dest_root.clone(), e))
+                }
+            }
+        }
+        return Ok(());
+    }
+
     pub fn copy_dir_from_to_dest(&self, from: String, dest_root: String) -> AnyhowResult<()> {
         let target = format!("{}{}", dest_root, from);
         if Path::new(&target).exists() {
@@ -722,7 +817,7 @@ impl MntNamespaceTracer {
         None
     }
     pub fn server_state_on(&mut self, mnt_namespace: String) {
-        if let Some(mut value) = self.tracer.get_mut(&mnt_namespace) {
+        if let Some(value) = self.tracer.get_mut(&mnt_namespace) {
             value.1 = true
         }
     }

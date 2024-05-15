@@ -193,17 +193,8 @@ impl RASPComm for ThreadMode {
     ) -> AnyhowResult<()> {
         match check_need_mount(_mnt_namespace) {
             Ok(same_ns) => {
-                if same_ns{
-                    self.using_mount = false;
-                    info!(
-                        "process {} namespace as same as root, so no need to mount, using_mount : {}", pid, self.using_mount
-                    );
-                } else {
-                    self.using_mount = true;
-                    info!(
-                        "process {} namespace are not same as root, so need to mount", pid
-                    );
-                }
+                self.using_mount = same_ns;
+                info!("process {} namespace using_mount : {}", pid, self.using_mount);
             }
             Err(e) => {
                 warn!(
@@ -296,13 +287,13 @@ fn mount(pid: i32, from: &str, to: &str) -> AnyhowResult<()> {
     };
 }
 
-fn check_need_mount(pid_mntns: &String) -> AnyhowResult<bool> {
+pub fn check_need_mount(pid_mntns: &String) -> AnyhowResult<bool> {
     let root_mnt = std::fs::read_link("/proc/1/ns/mnt")?;
     debug!(
         "pid namespace && root namespace : {} && {}",
         pid_mntns, root_mnt.display()
     );
-    Ok(&root_mnt.display().to_string() == pid_mntns)
+    Ok(&root_mnt.display().to_string() != pid_mntns)
 }
 
 fn resolve_mount_path(path: String, pid: i32) -> String {
