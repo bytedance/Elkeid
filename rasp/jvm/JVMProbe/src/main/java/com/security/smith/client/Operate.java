@@ -11,12 +11,12 @@ public class Operate {
     public static final int BLOCK = 7;
     public static final int LIMIT = 8;
     public static final int PATCH = 9;
-    public static final int SCANCLASS = 10;             // 实时扫描
-    public static final int SCANALLCLASS = 11;          // 全量扫描
-    public static final int CLASSFILTERSTART = 12;      // 开始清缓存
-    public static final int CLASSFILTER = 13;           // 更新缓存
-    public static final int CLASSFILTEREND = 14;        // 开始全量扫描
-    public static final int CLASSUPLOADSTART = 15;      // 开始上传class
+    public static final int SCANCLASS = 10;             // scan on time
+    public static final int SCANALLCLASS = 11;          // scan all
+    public static final int CLASSFILTERSTART = 12;      // start to receive class filter rule
+    public static final int CLASSFILTER = 13;           
+    public static final int CLASSFILTEREND = 14;        // clas fiter rule end
+    public static final int CLASSUPLOADSTART = 15;      // start to send class
     public static final int CLASSUPLOAD = 16;
-    public static final int CLASSUPLOADEND = 17;        // 结束上传class
+    public static final int CLASSUPLOADEND = 17;        // end to send class
 }
