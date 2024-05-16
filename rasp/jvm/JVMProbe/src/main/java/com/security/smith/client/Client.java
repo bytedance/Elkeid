@@ -20,7 +20,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+
+import com.google.gson.Gson;
 
 interface EventHandler {
     void onReconnect();
@@ -145,18 +148,11 @@ public class Client implements EventHandler {
             case Operate.FILTER: {
                 SmithLogger.logger.info("filter: " + message.getData().toString());
 
-                ObjectMapper objectMapper = new ObjectMapper()
-                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
                 try {
-                    messageHandler.onFilter(
-                            objectMapper.treeToValue(
-                                    message.getData(),
-                                    FilterConfig.class
-                            )
-                    );
-                } catch (JsonProcessingException e) {
+                    Gson gson = new Gson();
+                    FilterConfig config = gson.fromJson(message.getData().toString(), FilterConfig.class);
+                    messageHandler.onFilter(config);
+                } catch (Exception e) {
                     SmithLogger.exception(e);
                 }
 
@@ -166,19 +162,11 @@ public class Client implements EventHandler {
             case Operate.BLOCK: {
                 SmithLogger.logger.info("block: " + message.getData().toString());
 
-                ObjectMapper objectMapper = new ObjectMapper()
-                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
                 try {
-                    BlockConfig config =   objectMapper.treeToValue(
-                                    message.getData(),
-                                    BlockConfig.class
-                            );
+                    Gson gson = new Gson();
+                    BlockConfig config = gson.fromJson(message.getData().toString(), BlockConfig.class);
                     messageHandler.onBlock(config);
-
-                    config.removeAll();
-                } catch (JsonProcessingException e) {
+                } catch (Exception e) {
                     SmithLogger.exception(e);
                 }
 
@@ -188,18 +176,11 @@ public class Client implements EventHandler {
             case Operate.LIMIT: {
                 SmithLogger.logger.info("limit: " + message.getData().toString());
 
-                ObjectMapper objectMapper = new ObjectMapper()
-                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
                 try {
-                    messageHandler.onLimit(
-                            objectMapper.treeToValue(
-                                    message.getData(),
-                                    LimitConfig.class
-                            )
-                    );
-                } catch (JsonProcessingException e) {
+                    Gson gson = new Gson();
+                    LimitConfig config = gson.fromJson(message.getData().toString(), LimitConfig.class);
+                    messageHandler.onLimit(config);
+                } catch (Exception e) {
                     SmithLogger.exception(e);
                 }
 
@@ -209,18 +190,11 @@ public class Client implements EventHandler {
             case Operate.PATCH: {
                 SmithLogger.logger.info("patch: " + message.getData().toString());
 
-                ObjectMapper objectMapper = new ObjectMapper()
-                        .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
                 try {
-                    messageHandler.onPatch(
-                            objectMapper.treeToValue(
-                                    message.getData(),
-                                    PatchConfig.class
-                            )
-                    );
-                } catch (JsonProcessingException e) {
+                    Gson gson = new Gson();
+                    PatchConfig config = gson.fromJson(message.getData().toString(), PatchConfig.class);
+                    messageHandler.onPatch(config);
+                } catch (Exception e) {
                     SmithLogger.exception(e);
                 }
 
@@ -229,13 +203,11 @@ public class Client implements EventHandler {
             case Operate.CLASSFILTERSTART: {
                  SmithLogger.logger.info("rule upload start: " + message.getData().toString());
 
-                 ObjectMapper objectMapper = new ObjectMapper();
-                objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,false);
-
                 try {
-                    Rule_Version ruleVersion = objectMapper.readValue(message.getData().toString(), Rule_Version.class);
+                    Gson gson = new Gson();
+                    Rule_Version ruleVersion = gson.fromJson(message.getData().toString(), Rule_Version.class);
                     messageHandler.setRuleVersion(ruleVersion);
-                } catch (JsonProcessingException e) {
+                } catch (Exception e) {
                     SmithLogger.exception(e);
                 }
 
@@ -244,13 +216,11 @@ public class Client implements EventHandler {
             case Operate.CLASSFILTER: {
                  SmithLogger.logger.info("rule upload: " + message.getData().toString());
 
-                ObjectMapper objectMapper = new ObjectMapper();
-                objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,false);
-
                 try {
-                    Rule_Data ruleData = objectMapper.readValue(message.getData().toString(), Rule_Data.class);
+                    Gson gson = new Gson();
+                    Rule_Data ruleData = gson.fromJson(message.getData().toString(), Rule_Data.class);
                     messageHandler.OnAddRule(ruleData);
-                } catch (JsonProcessingException e) {
+                } catch (Exception e) {
                     SmithLogger.exception(e);
                 }
 

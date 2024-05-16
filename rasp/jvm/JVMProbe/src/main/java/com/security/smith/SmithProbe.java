@@ -4,8 +4,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.lmax.disruptor.EventHandler;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.StringReader;
+import com.esotericsoftware.yamlbeans.YamlReader;
 
 import com.lmax.disruptor.dsl.Disruptor;
+import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.util.DaemonThreadFactory;
 import com.security.smith.asm.SmithClassVisitor;
 import com.security.smith.asm.SmithClassWriter;
@@ -175,18 +180,27 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         heartbeat = new Heartbeat();
 
         client = new Client(this);
+
+        disruptor = new Disruptor<>(new EventFactory<Trace>() {
+            @Override
+            public Trace newInstance() {
+                return new Trace();
+            }
+        }, TRACE_BUFFER_SIZE, DaemonThreadFactory.INSTANCE);
        
-        disruptor = new Disruptor<>(Trace::new, TRACE_BUFFER_SIZE, DaemonThreadFactory.INSTANCE);
         rulemgr = new Rule_Mgr();
         ruleconfig = new Rule_Config(rulemgr);
 
-        ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
+        smithProxy = new SmithProbeProxy();
+
         InputStream inputStream = getResourceAsStream("class.yaml");
 
         if(inputStream != null) {
             SmithLogger.logger.info("find class.yaml");
             try {
-                for (SmithClass smithClass : objectMapper.readValue(inputStream, SmithClass[].class)) {
+                Reader xreader = new InputStreamReader(inputStream);
+                YamlReader yamlReader = new YamlReader(xreader);
+                for (SmithClass smithClass : yamlReader.read(SmithClass[].class)) {
                     smithClasses.put(smithClass.getName(), smithClass);
                 }
             } catch (IOException e) {
@@ -196,10 +210,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         else {
             SmithLogger.logger.info("not find class.yaml");
         }
-        
-        //smithProxy = SmithProbeProxy.getInstance();
-        smithProxy = new SmithProbeProxy();
-        
+
         SmithLogger.logger.info("probe init leave");
     }
 
@@ -286,7 +297,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         
         smithProxy.uninit();
         smithProxy = null;
-        //SmithProbeProxy.delInstance();
 
         disruptor.shutdown();
 
@@ -334,7 +344,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
     private void reloadClasses(Collection<String> classes) {
         Class<?>[] loadedClasses = inst.getAllLoadedClasses();
-        //Class<?>[] cls = Arrays.stream(loadedClasses).filter(c -> classes.contains(c.getName())).toArray(Class<?>[]::new);
 
         List<Class<?>> resultList = new ArrayList<>();
         for (Class<?> loadedClass : loadedClasses) {
@@ -596,7 +605,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
 
             classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);  
-
+ 
             return classWriter.toByteArray();
         } catch (Exception e) {
             SmithLogger.exception(e);
@@ -613,12 +622,12 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
         smithClasses.clear();
 
-        ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
-
         try {
-            for (SmithClass smithClass : objectMapper.readValue(config, SmithClass[].class))
+            YamlReader yamlReader = new YamlReader(new StringReader(config));
+            for (SmithClass smithClass : yamlReader.read(SmithClass[].class)) {
                 smithClasses.put(smithClass.getName(), smithClass);
-        } catch (JsonProcessingException e) {
+            }
+        } catch (IOException e) {
             SmithLogger.exception(e);
         }
 

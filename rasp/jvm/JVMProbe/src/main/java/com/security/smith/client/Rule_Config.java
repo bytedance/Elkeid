@@ -9,10 +9,10 @@ import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
 
 public class Rule_Config {
-    private static ObjectMapper m_objectMapper = new ObjectMapper();
-    private static Rule_Json m_Rule_Json;
+    private ObjectMapper m_objectMapper = new ObjectMapper();
+    private Rule_Json m_Rule_Json;
 
-    private static Rule_Mgr  m_Rule_Mgr;
+    private Rule_Mgr  m_Rule_Mgr;
 
     public Rule_Config() {
         m_Rule_Json = null;
@@ -24,11 +24,11 @@ public class Rule_Config {
         m_Rule_Mgr = RuleMgr;
     }
 
-    public static void setRuleMgr(Rule_Mgr RuleMgr) {
+    public void setRuleMgr(Rule_Mgr RuleMgr) {
         m_Rule_Mgr = RuleMgr;
     }
 
-    public static boolean setVersion(int rule_version) {
+    public boolean setVersion(int rule_version) {
         if(m_Rule_Mgr == null) {
             return false;
         }
@@ -39,7 +39,7 @@ public class Rule_Config {
         return true;
     }
 
-    public static void destry() {
+    public void destry() {
         try {
             m_Rule_Json = null;
             m_objectMapper = null;
@@ -49,7 +49,7 @@ public class Rule_Config {
         }
     }
 
-    public static void printRule(Rule_Scanner RuleScanner) {
+    public void printRule(Rule_Scanner RuleScanner) {
         System.out.println("Add RuleItem:" + RuleScanner);
         System.out.println("ruleId:" + RuleScanner.m_ruleId);
         System.out.println("virusName:" + RuleScanner.m_virusName);
@@ -60,7 +60,7 @@ public class Rule_Config {
         System.out.println("parentClassName:" + RuleScanner.m_parentClassName);
     }
 
-    public static boolean addRuleData(Rule_Data ruleData) {
+    public boolean addRuleData(Rule_Data ruleData) {
         boolean bresult = false;
 
         if(m_Rule_Mgr == null) {
@@ -95,7 +95,7 @@ public class Rule_Config {
         return bresult;
     }
 
-    public static boolean setRuleConfig(String JsonRule) {
+    public boolean setRuleConfig(String JsonRule) {
         boolean bresult = false;
 
         if(m_Rule_Mgr == null) {
