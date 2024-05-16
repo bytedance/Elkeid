@@ -19,6 +19,8 @@ dependencies {
     implementation group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-yaml', version: '2.14.0'
     implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.11'
     implementation group: 'com.lmax', name: 'disruptor', version: '3.4.4'
+    implementation 'com.google.code.gson:gson:2.8.9'
+    implementation 'com.esotericsoftware.yamlbeans:yamlbeans:1.14'
     api group: 'org.javassist', name: 'javassist', version: '3.29.0-GA'
 }
 
@@ -45,6 +47,8 @@ shadowJar {
     relocate 'org.apache.commons', 'rasp.org.apache.commons'
     relocate 'org.yaml.snakeyaml', 'rasp.org.yaml.snakeyaml'
     relocate 'com.lmax.disruptor', 'rasp.com.lmax.disruptor'
+    relocate 'com.google','rasp.com.google'
+    relocate 'com.esotericsoftware', 'rasp.com.esotericsoftware'
     relocate 'com.fasterxml.jackson', 'rasp.com.fasterxml.jackson'
     relocate 'javassist', 'rasp.javassist'
     relocate 'META-INF/native/libnetty', 'META-INF/native/librasp_netty'
