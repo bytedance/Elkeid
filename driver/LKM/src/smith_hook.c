@@ -14,7 +14,12 @@
 #include <linux/moduleparam.h>
 #include <linux/netfilter.h>
 #include <linux/netfilter_ipv4.h>
+
+#if IS_ENABLED(CONFIG_IPV6)
+#include <linux/ipv6.h>
+#include <net/ipv6.h> /* ipv6_addr_any */
 #include <linux/netfilter_ipv6.h>
+#endif
 
 #define EXIT_PROTECT 0
 #define SANDBOX 0
@@ -55,65 +60,53 @@ SMITH_HOOK(KILL, 0);
 SMITH_HOOK(RM, 0);
 SMITH_HOOK(EXIT, 0);
 
-int FAKE_SLEEP = 0;
-int FAKE_RM = 0;
+static int FAKE_SLEEP = 0;
+static int FAKE_RM = 0;
 
-int PID_TREE_LIMIT = 12;
-int PID_TREE_LIMIT_LOW = 8;
-int EXECVE_GET_SOCK_PID_LIMIT = 4;
-int EXECVE_GET_SOCK_FD_LIMIT = 12;  /* maximum fd numbers to be queried */
+static int PID_TREE_LIMIT = 12;
+static int PID_TREE_LIMIT_LOW = 8;
+static int EXECVE_GET_SOCK_PID_LIMIT = 4;
+static int EXECVE_GET_SOCK_FD_LIMIT = 12;  /* maximum fd numbers to be queried */
 
-char connect_syscall_kprobe_state = 0x0;
-char execve_kretprobe_state = 0x0;
-char bind_kprobe_state = 0x0;
-char compat_execve_kretprobe_state = 0x0;
-char create_file_kprobe_state = 0x0;
-char ptrace_kprobe_state = 0x0;
-char do_init_module_kprobe_state = 0x0;
-char update_cred_kprobe_state = 0x0;
-char ip4_datagram_connect_kprobe_state = 0x0;
-char ip6_datagram_connect_kprobe_state = 0x0;
-char tcp_v4_connect_kprobe_state = 0x0;
-char tcp_v6_connect_kprobe_state = 0x0;
-char mprotect_kprobe_state = 0x0;
-char mount_kprobe_state = 0x0;
-char rename_kprobe_state = 0x0;
-char link_kprobe_state = 0x0;
-char setsid_kprobe_state = 0x0;
-char prctl_kprobe_state = 0x0;
-char memfd_create_kprobe_state = 0x0;
-char accept_kretprobe_state = 0x0;
-char accept4_kretprobe_state = 0x0;
-char open_kprobe_state = 0x0;
-char openat_kprobe_state = 0x0;
-char nanosleep_kprobe_state = 0x0;
-char kill_kprobe_state = 0x0;
-char tkill_kprobe_state = 0x0;
-char exit_kprobe_state = 0x0;
-char exit_group_kprobe_state = 0x0;
-char security_path_rmdir_kprobe_state = 0x0;
-char security_path_unlink_kprobe_state = 0x0;
-char call_usermodehelper_exec_kprobe_state = 0x0;
-char inode_permission_kprobe_state = 0x0;
-char write_kprobe_state = 0x0;
+static char connect_syscall_kprobe_state = 0x0;
+static char execve_kretprobe_state = 0x0;
+static char bind_kprobe_state = 0x0;
+static char compat_execve_kretprobe_state = 0x0;
+static char create_file_kprobe_state = 0x0;
+static char ptrace_kprobe_state = 0x0;
+static char do_init_module_kprobe_state = 0x0;
+static char update_cred_kprobe_state = 0x0;
+static char ip4_datagram_connect_kprobe_state = 0x0;
+static char ip6_datagram_connect_kprobe_state = 0x0;
+static char tcp_v4_connect_kprobe_state = 0x0;
+static char tcp_v6_connect_kprobe_state = 0x0;
+static char mprotect_kprobe_state = 0x0;
+static char mount_kprobe_state = 0x0;
+static char rename_kprobe_state = 0x0;
+static char link_kprobe_state = 0x0;
+static char setsid_kprobe_state = 0x0;
+static char prctl_kprobe_state = 0x0;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
+static char memfd_create_kprobe_state = 0x0;
+#endif
+static char accept_kretprobe_state = 0x0;
+static char accept4_kretprobe_state = 0x0;
+static char open_kprobe_state = 0x0;
+static char openat_kprobe_state = 0x0;
+static char nanosleep_kprobe_state = 0x0;
+static char kill_kprobe_state = 0x0;
+static char tkill_kprobe_state = 0x0;
+static char exit_kprobe_state = 0x0;
+static char exit_group_kprobe_state = 0x0;
+static char security_path_rmdir_kprobe_state = 0x0;
+static char security_path_unlink_kprobe_state = 0x0;
+static char call_usermodehelper_exec_kprobe_state = 0x0;
+static char write_kprobe_state = 0x0;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-char execveat_kretprobe_state = 0x0;
-char compat_execveat_kretprobe_state = 0x0;
+static char execveat_kretprobe_state = 0x0;
+static char compat_execveat_kretprobe_state = 0x0;
 #endif
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)
-struct user_arg_ptr {
-#ifdef CONFIG_COMPAT
-	bool is_compat;
-#endif
-	union {
-		const char __user *const __user *native;
-#ifdef CONFIG_COMPAT
-		const compat_uptr_t __user *compat;
-#endif
-	} ptr;
-};
 
 #if EXIT_PROTECT == 1
 void exit_protect_action(void)
@@ -122,47 +115,55 @@ void exit_protect_action(void)
 }
 #endif
 
-const char __user *get_user_arg_ptr(struct user_arg_ptr argv, int nr)
+static struct task_struct *smith_get_task_struct(struct task_struct *tsk)
 {
-	const char __user *native;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
+    if (tsk && refcount_inc_not_zero(&tsk->usage))
+#else
+    if (tsk && atomic_inc_not_zero((atomic_t *)&tsk->usage))
+#endif
+        return tsk;
+    return NULL;
+}
 
-#ifdef CONFIG_COMPAT
-	if (argv.is_compat) {
-		compat_uptr_t compat;
-
-		if (smith_get_user(compat, argv.ptr.compat + nr))
-		    return ERR_PTR(-EFAULT);
-
-		return compat_ptr(compat);
-	}
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
+static void (*__smith_put_task_struct)(struct task_struct *t);
+static void smith_put_task_struct(struct task_struct *t)
+{
+	if (atomic_dec_and_test(&t->usage))
+		__smith_put_task_struct(t);
+}
+#else
+#define smith_put_task_struct(tsk)  put_task_struct(tsk)
 #endif
 
-	if (smith_get_user(native, argv.ptr.native + nr))
-	    return ERR_PTR(-EFAULT);
+unsigned int ROOT_PID_NS_INUM;
 
-	return native;
-}
+static inline void __init_root_pid_ns_inum(void) {
+    struct pid *pid_struct;
+    struct task_struct *task;
 
-//count execve argv num
-int count(struct user_arg_ptr argv, int max)
-{
-	int i = 0;
-	if (argv.ptr.native != NULL) {
-		for (;;) {
-			const char __user *p = get_user_arg_ptr(argv, i);
-			if (!p)
-				break;
-			if (IS_ERR(p))
-				return -EFAULT;
-			if (++i >= max)
-				break;
-			if (fatal_signal_pending(current))
-				return -ERESTARTNOHAND;
-		}
-	}
-	return i;
+    pid_struct = find_get_pid(1);
+    task = pid_task(pid_struct,PIDTYPE_PID);
+
+    smith_get_task_struct(task);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
+    ROOT_PID_NS_INUM = task->nsproxy->pid_ns_for_children->ns.inum;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0)
+    ROOT_PID_NS_INUM = task->nsproxy->pid_ns_for_children->proc_inum;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
+    ROOT_PID_NS_INUM = task->nsproxy->pid_ns->proc_inum;
+#else
+    /*
+     * For kernels < 3.8.0, id for pid namespaces isn't defined.
+     * So here we are using fixed values, no emulating any more,
+     * previously we were using image file's inode number.
+     */
+    ROOT_PID_NS_INUM = 0xEFFFFFFCU /* PROC_PID_INIT_INO */;
+#endif
+    smith_put_task_struct(task);
+    put_pid(pid_struct);
 }
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0) */
 
 /*
  * delayed put_files_struct
@@ -171,7 +172,6 @@ int count(struct user_arg_ptr argv, int max)
 static void (*put_files_struct_sym) (struct files_struct * files);
 
 struct delayed_put_node {
-    struct memcache_node cache;
     struct delayed_put_node *next;
     union {
         struct file *filp;
@@ -181,26 +181,30 @@ struct delayed_put_node {
     uint32_t type:8;  /* 0: file, 1: files */
 };
 
-struct memcache_head g_delayed_put_root;
+static struct memcache_head g_delayed_put_root;
+static atomic_t g_delayed_put_active; /* active nodes */
 
 static struct delayed_put_node *smith_alloc_delayed_put_node(void)
 {
-    struct memcache_node *mnod;
+    struct delayed_put_node *dnod;
 
-    mnod = memcache_pop(&g_delayed_put_root);
-    if (mnod) {
-        struct delayed_put_node *dnod;
-        dnod = container_of(mnod, struct delayed_put_node, cache);
+    dnod = memcache_pop(&g_delayed_put_root);
+    if (dnod) {
         dnod->flag_pool = 1;
-        return dnod;
+    } else {
+        dnod = smith_kzalloc(sizeof(struct delayed_put_node), GFP_ATOMIC);
     }
-    return smith_kzalloc(sizeof(struct delayed_put_node), GFP_ATOMIC);
+
+    return dnod;
 }
 
 static void smith_free_delayed_put_node(struct delayed_put_node *dnod)
 {
+    if (!dnod)
+        return;
+
     if (dnod->flag_pool)
-        memcache_push(&dnod->cache, &g_delayed_put_root);
+        memcache_push(dnod, &g_delayed_put_root);
     else
         smith_kfree(dnod);
 }
@@ -227,6 +231,7 @@ static struct delayed_put_node *smith_deref_head_node(void)
         else if (0 == dnod->type)
             fput(dnod->filp);
         smith_free_delayed_put_node(dnod);
+        atomic_dec(&g_delayed_put_active);
     }
 
     return dnod;
@@ -259,15 +264,17 @@ static int __init smith_start_delayed_put(void)
     g_delayed_put_thread = kthread_create(smith_delayed_put_worker, 0, "elkeid - dput");
     if (IS_ERR(g_delayed_put_thread)) {
         int rc = g_delayed_put_thread ? PTR_ERR(g_delayed_put_thread) : -ENOMEM;
-        printk("smith_start_delayed_put: failed creating dealyed_fput worker: %d\n", rc);
+        printk("smith_start_delayed_put: failed creating delayed_fput worker: %d\n", rc);
         return rc;
     }
 
     /* initialize memory cache for dnod, errors to be ignored,
        if fails, new node will be allocated from system slab */
-    memcache_init_pool(&g_delayed_put_root, nobjs * num_possible_cpus(),
-                       sizeof(struct delayed_put_node), 0, NULL, NULL);
+    memcache_init(&g_delayed_put_root, nobjs * num_possible_cpus(),
+                  sizeof(struct delayed_put_node), 0, NULL, NULL, NULL);
 
+    /* wake up delayed-put worker thread */
+    wake_up_process(g_delayed_put_thread);
     return 0;
 }
 
@@ -282,11 +289,15 @@ static void smith_stop_delayed_put(void)
     while (g_delayed_put_queue)
         smith_deref_head_node();
 
-    memcache_fini(&g_delayed_put_root, NULL, NULL);
+    memcache_fini(&g_delayed_put_root);
 }
 
 static void smith_insert_delayed_put_node(struct delayed_put_node *dnod)
 {
+    if (!dnod)
+        return;
+
+    atomic_inc(&g_delayed_put_active);
     /* attach dnod to deayed_fput_queue */
     spin_lock(&g_delayed_put_lock);
     dnod->next = g_delayed_put_queue;
@@ -305,6 +316,10 @@ static void smith_fput(struct file *filp)
 {
     struct delayed_put_node *dnod;
 
+    /* just deref the reference of file structure */
+    if (atomic_long_add_unless(&filp->f_count, -1, 1))
+        return;
+
     /* just loop until we get a new recrod */
     do {
         dnod = smith_alloc_delayed_put_node();
@@ -321,6 +336,10 @@ static void smith_fput(struct file *filp)
 static void smith_put_files_struct(struct files_struct *files)
 {
     struct delayed_put_node *dnod;
+
+    /* just deref the reference of files_table */
+    if (atomic_add_unless(&files->count, -1, 1))
+        return;
 
     /* just loop until we get a new recrod */
     do {
@@ -351,12 +370,12 @@ static struct files_struct *smith_get_files_struct(struct task_struct *task)
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
-#define smith_lookup_fd          files_lookup_fd_rcu
+#define smith_lookup_fd          files_lookup_fd_raw
 #else
 #define smith_lookup_fd          fcheck_files
 #endif
 
-struct file *smith_fget_raw(unsigned int fd)
+static struct file *smith_fget_raw(unsigned int fd)
 {
 	struct file *file;
 	struct files_struct *files;
@@ -374,8 +393,95 @@ struct file *smith_fget_raw(unsigned int fd)
 	}
 	rcu_read_unlock();
 
-	smith_put_files_struct(files);
+	/* it's safe to call put_files_struct for current */
+	put_files_struct_sym(files);
 	return file;
+}
+
+
+static char *smith_d_path(const struct path *path, char *buf, int buflen)
+{
+    char *name = DEFAULT_RET_STR;
+    if (buf) {
+        name = d_path(path, buf, buflen);
+        if (IS_ERR(name))
+            name = NAME_TOO_LONG;
+    }
+    return name;
+}
+
+/* only inc f_count when it's not 0 to avoid races upon exe_file */
+#define smith_get_file(x) atomic_long_inc_not_zero(&(x)->f_count)
+
+/*
+ * query task's executable image file, with mmap lock avoided, just because
+ * mmput() could lead resched() (since it's calling might_sleep() interally)
+ *
+ * there could be races on mm->exe_file, but we could assure we can always
+ * get a valid filp or NULL
+ */
+static struct file *smith_get_task_exe_file(struct task_struct *task)
+{
+    struct file *exe = NULL;
+
+    /*
+     * get_task_mm/mmput must be avoided here
+     *
+     * mmput would put current task to sleep, which violates kprobe. or
+     * use mmput_async instead, but it's only available for after 4.7.0
+     * (and CONFIG_MMU is enabled)
+     */
+    task_lock(task);
+    if (task->mm && task->mm->exe_file) {
+        exe = task->mm->exe_file;
+        if (!smith_get_file(exe))
+            exe = NULL;
+    }
+    task_unlock(task);
+
+    return exe;
+}
+
+// get full path of current task's executable image
+static char *smith_get_exe_file(char *buffer, int size)
+{
+    char *exe_file_str = DEFAULT_RET_STR;
+    struct file *exe;
+
+    if (!buffer || !current->mm)
+        return exe_file_str;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0)
+    /*
+     * 1) performance improvement for kernels >=4.1: use get_mm_exe_file instead
+     *    get_mm_exe_file internally uses rcu lock (with semaphore locks killed)
+     * 2) it's safe to directly access current->mm under current's own context
+     * 3) get_mm_exe_file() is no longer exported after kernel 5.15
+     */
+    exe = get_mm_exe_file(current->mm);
+#else
+    exe = smith_get_task_exe_file(current);
+#endif
+    if (exe) {
+        exe_file_str = smith_d_path(&exe->f_path, buffer, size);
+        fput(exe);
+    }
+
+    return exe_file_str;
+}
+
+static char *smith_query_exe_path(char **alloc, int len, int min)
+{
+    char *buffer = NULL;
+
+    while (len >= min) {
+        buffer = smith_kzalloc(len, GFP_ATOMIC);
+        if (buffer)
+            break;
+        len = len / 2;
+    }
+    *alloc = buffer;
+    return smith_get_exe_file(buffer, len);
 }
 
 /*
@@ -401,15 +507,22 @@ static void smith_init_get_seconds(void)
 }
 #endif /* >= 5.11.0 */
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
-void (*__smith_put_task_struct)(struct task_struct *tsk);
-#endif
-
 static const struct cred *(*get_task_cred_sym) (struct task_struct *);
+
+static ssize_t (*smith_strscpy)(char *dest, const char *src, size_t count);
 
 static int __init kernel_symbols_init(void)
 {
-    void *ptr = (void *)smith_kallsyms_lookup_name("put_files_struct");
+    void *ptr;
+
+    ptr = (void *)smith_kallsyms_lookup_name("strscpy");
+    if (!ptr)
+        ptr = (void *)smith_kallsyms_lookup_name("strlcpy");
+    if (!ptr)
+        return -ENODEV;
+    smith_strscpy = ptr;
+
+    ptr = (void *)smith_kallsyms_lookup_name("put_files_struct");
     if (!ptr)
         return -ENODEV;
     put_files_struct_sym = ptr;
@@ -531,9 +644,10 @@ static char *smith_get_pid_tree(int limit)
 }
 
 //get task tree first AF_INET/AF_INET6 socket info
-void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
-                        __be32 * dip4, struct in6_addr *dip6, int *dport,
-                        pid_t * socket_pid, int *sa_family)
+static void
+get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
+                   __be32 * dip4, struct in6_addr *dip6, int *dport,
+                   pid_t * socket_pid, int *sa_family)
 {
     struct task_struct *task = current;
     int it = 0;
@@ -614,7 +728,10 @@ void get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
                 sockfd_put(socket);
             }
         }
-        smith_put_files_struct(files);
+        if (task == current)
+            put_files_struct_sym(files);
+        else
+            smith_put_files_struct(files);
 
         if (socket_check) {
             *socket_pid = task->pid;
@@ -687,6 +804,113 @@ struct update_cred_data {
 #endif
 };
 
+
+/*
+ * Our own implementation of kernel_getsockname and kernel_getpeername,
+ * resuing codes logic of kernel inet_getname and inet6_getname.
+ *
+ * From 5.15.3 inet_getname and inet6_getname will call lock_sock for
+ * lock acquisition, and then lock_sock would lead possible reschedule,
+ * which violates the requirement of atomic context for kprobe/ketprobe.
+ *
+ * Interfaces of kernel_getsockname and kernel_getpeername are changed
+ * after 4.17.0, then we'll use our own routines to keep things simple.
+ */
+
+#define SMITH_DECLARE_SOCKADDR(type, dst, src)	\
+	type dst = (type)(src)
+
+static int smith_get_sock_v4(struct socket *sock, struct sockaddr *sa)
+{
+    struct sock *sk	= sock->sk;
+    struct inet_sock *inet = inet_sk(sk);
+    SMITH_DECLARE_SOCKADDR(struct sockaddr_in *, sin, sa);
+
+    sin->sin_family = AF_INET;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
+    sin->sin_port = inet->inet_sport;
+    if (inet->inet_rcv_saddr)
+        sin->sin_addr.s_addr = inet->inet_rcv_saddr;
+    else
+        sin->sin_addr.s_addr = inet->inet_saddr;
+#else
+    sin->sin_port = inet->sport;
+    sin->sin_addr.s_addr = inet->saddr;
+#endif
+
+    return sizeof(*sin);
+}
+
+static int smith_get_peer_v4(struct socket *sock, struct sockaddr *sa)
+{
+    struct sock *sk	= sock->sk;
+    struct inet_sock *inet = inet_sk(sk);
+    SMITH_DECLARE_SOCKADDR(struct sockaddr_in *, sin, sa);
+
+    sin->sin_family = AF_INET;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
+    sin->sin_port = inet->inet_dport;
+    sin->sin_addr.s_addr = inet->inet_daddr;
+#else
+    sin->sin_port = inet->dport;
+    sin->sin_addr.s_addr = inet->daddr;
+#endif
+    return sizeof(*sin);
+}
+
+#if IS_ENABLED(CONFIG_IPV6)
+static int smith_get_sock_v6(struct socket *sock, struct sockaddr *sa)
+{
+    struct sockaddr_in6 *sin = (struct sockaddr_in6 *)sa;
+    struct sock *sk = sock->sk;
+    struct inet_sock *inet = inet_sk(sk);
+    struct ipv6_pinfo *np = inet6_sk(sk);
+    const struct in6_addr *in6;
+
+    in6 = inet6_rcv_saddr(sk);
+    if (in6 && !ipv6_addr_any(in6))
+        memcpy(&sin->sin6_addr, in6, sizeof(sin->sin6_addr));
+    else if (np)
+        memcpy(&sin->sin6_addr, &np->saddr, sizeof(sin->sin6_addr));
+    else
+        memset(&sin->sin6_addr, 0, sizeof(sin->sin6_addr));
+
+    sin->sin6_family = AF_INET6;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
+    sin->sin6_port = inet->inet_sport;
+#else
+    sin->sin6_port = inet->sport;
+#endif
+
+    return sizeof(*sin);
+}
+
+static int smith_get_peer_v6(struct socket *sock, struct sockaddr *sa)
+{
+    struct sockaddr_in6 *sin = (struct sockaddr_in6 *)sa;
+    struct sock *sk = sock->sk;
+    struct inet_sock *inet = inet_sk(sk);
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(IPV6_SUPPORT)
+    memcpy(&sin->sin6_addr, &sk->sk_v6_daddr, sizeof(sin->sin6_addr));
+#else
+    struct ipv6_pinfo *np = inet6_sk(sk);
+    if (np)
+        memcpy(&sin->sin6_addr, &np->daddr, sizeof(sin->sin6_addr));
+    else
+        memset(&sin->sin6_addr, 0, sizeof(sin->sin6_addr));
+#endif
+
+    sin->sin6_family = AF_INET6;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
+    sin->sin6_port = inet->inet_dport;
+#else
+    sin->sin6_port = inet->dport;
+#endif
+    return sizeof(*sin);
+}
+#endif
+
 /*
  * Workaround for kretprobe BUG (fixed in 3.2.6):
  *
@@ -694,7 +918,7 @@ struct update_cred_data {
  */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 6)
 
-int bind_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int bind_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     struct bind_data *data = (struct bind_data *)ri->data;
     struct sockaddr_storage address;
@@ -722,7 +946,7 @@ int bind_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 
 #else
 
-int bind_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int bind_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     struct bind_data *data = (struct bind_data *)ri->data;
     struct sockaddr_storage address;
@@ -751,7 +975,7 @@ int bind_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 
 #endif
 
-int bind_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int bind_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     int retval, sa_family, sport;
 
@@ -809,7 +1033,7 @@ int bind_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     return 0;
 }
 
-int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     int err, fd;
     int dport = 0, sport = 0, retval, sa_family;
@@ -924,7 +1148,7 @@ int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     return 0;
 }
 
-int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     int retval, dport = 0, sport = 0;
 
@@ -1020,8 +1244,8 @@ int connect_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
  */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 6)
 
-int accept_entry_handler(struct kretprobe_instance *ri,
-                         struct pt_regs *regs)
+static int accept_entry_handler(struct kretprobe_instance *ri,
+                                struct pt_regs *regs)
 {
     struct accept_data *data;
     struct sockaddr *dirp;
@@ -1035,8 +1259,8 @@ int accept_entry_handler(struct kretprobe_instance *ri,
     return 0;
 }
 
-int accept4_entry_handler(struct kretprobe_instance *ri,
-                          struct pt_regs *regs)
+static int accept4_entry_handler(struct kretprobe_instance *ri,
+                                 struct pt_regs *regs)
 {
     struct accept_data *data;
     struct sockaddr *dirp;
@@ -1052,8 +1276,8 @@ int accept4_entry_handler(struct kretprobe_instance *ri,
 
 #else
 
-int accept_entry_handler(struct kretprobe_instance *ri,
-                         struct pt_regs *regs)
+static int accept_entry_handler(struct kretprobe_instance *ri,
+                                struct pt_regs *regs)
 {
     struct accept_data *data;
 
@@ -1063,8 +1287,8 @@ int accept_entry_handler(struct kretprobe_instance *ri,
     return 0;
 }
 
-int accept4_entry_handler(struct kretprobe_instance *ri,
-                          struct pt_regs *regs)
+static int accept4_entry_handler(struct kretprobe_instance *ri,
+                                 struct pt_regs *regs)
 {
     struct accept_data *data;
 
@@ -1075,29 +1299,13 @@ int accept4_entry_handler(struct kretprobe_instance *ri,
 }
 #endif
 
-static int smith_sock_getname(struct socket *s, struct sockaddr *sa, int *l, int peer)
-{
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
-    if (peer)
-        return kernel_getpeername(s, sa);
-    else
-        return kernel_getsockname(s, sa);
-#else
-    if (peer)
-        return kernel_getpeername(s, sa, l);
-    else
-        return kernel_getsockname(s, sa, l);
-#endif
-}
-
-int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     struct accept_data *data;
     struct socket *sock = NULL;
 
-    int sport = 0;
-    int dport = 0;
-    int retval, addrlen = 0, err = 0;
+    int sport, dport;
+    int retval, err = 0;
 
     char *exe_path = DEFAULT_RET_STR;
     char *buffer = NULL;
@@ -1111,35 +1319,39 @@ int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
     exe_path = smith_get_exe_file(buffer, PATH_MAX);
 
-    if (smith_sock_getname(sock, &data->sa, &addrlen, 0) < 0)
-        goto out;
-
     //only get AF_INET/AF_INET6 accept info
-    if (data->si4.sin_family == AF_INET) {
-        __be32 sip4 = 0;
-        __be32 dip4 = data->si4.sin_addr.s_addr;
+    if (sock->sk->sk_family == AF_INET) {
+        __be32 sip4, dip4;
+
+        if (smith_get_sock_v4(sock, &data->sa) < 0)
+            goto out;
+        dip4 = data->si4.sin_addr.s_addr;
         dport = ntohs(data->si4.sin_port);
 
-        if (smith_sock_getname(sock, &data->sa, &addrlen, 1) < 0)
+        if (smith_get_peer_v4(sock, &data->sa) < 0)
             goto out;
-        sip4 = (data->si4.sin_addr.s_addr);
+        sip4 = data->si4.sin_addr.s_addr;
         sport = ntohs(data->si4.sin_port);
         accept_print(dport, dip4, exe_path, sip4, sport, retval);
         // printk("accept4_handler: %d.%d.%d.%d/%d -> %d.%d.%d.%d/%d rc=%d\n",
         //         NIPQUAD(sip4), sport, NIPQUAD(dip4), dport, retval);
     }
 #if IS_ENABLED(CONFIG_IPV6)
-    else if (data->si4.sin_family == AF_INET6) {
-        struct in6_addr *sip6;
-        struct in6_addr dip6 = data->si6.sin6_addr;
+    else if (sock->sk->sk_family == AF_INET6) {
+        struct in6_addr *sip6, dip6;
+
+        if (smith_get_sock_v6(sock, &data->sa) < 0)
+            goto out;
+        dip6 = data->si6.sin6_addr;
         dport = ntohs(data->si6.sin6_port);
 
-        if (smith_sock_getname(sock, &data->sa, &addrlen, 1) < 0)
+        if (smith_get_peer_v6(sock, &data->sa) < 0)
             goto out;
         sport = ntohs(data->si6.sin6_port);
         sip6 = &(data->si6.sin6_addr);
         accept6_print(dport, &dip6, exe_path, sip6, sport, retval);
-        // printk("accept6_handler: %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d -> %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d rc=%d\n",
+        // printk("accept6_handler: %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d"
+        //        " -> %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d rc=%d\n",
         //         NIP6(*sip6), sport, NIP6(dip6), dport, retval);
     }
 #endif
@@ -1152,21 +1364,7 @@ out:
     return 0;
 }
 
-char *smith_query_exe_path(char **alloc, int len, int min)
-{
-    char *buffer = NULL;
-
-    while (len >= min) {
-        buffer = smith_kzalloc(len, GFP_ATOMIC);
-        if (buffer)
-            break;
-        len = len / 2;
-    }
-    *alloc = buffer;
-    return smith_get_exe_file(buffer, len);
-}
-
-int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int execve_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     int sa_family = -1, dport = 0, sport = 0;
     int rc = regs_return_value(regs);
@@ -1293,9 +1491,64 @@ release_data:
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)
+
+struct user_arg_ptr {
+#ifdef CONFIG_COMPAT
+	bool is_compat;
+#endif
+	union {
+		const char __user *const __user *native;
+#ifdef CONFIG_COMPAT
+		const compat_uptr_t __user *compat;
+#endif
+	} ptr;
+};
+
+static const char __user *get_user_arg_ptr(struct user_arg_ptr argv, int nr)
+{
+	const char __user *native;
+
+#ifdef CONFIG_COMPAT
+	if (argv.is_compat) {
+		compat_uptr_t compat;
+
+		if (smith_get_user(compat, argv.ptr.compat + nr))
+		    return ERR_PTR(-EFAULT);
+
+		return compat_ptr(compat);
+	}
+#endif
+
+	if (smith_get_user(native, argv.ptr.native + nr))
+	    return ERR_PTR(-EFAULT);
+
+	return native;
+}
+
+//count execve argv num
+static int execve_count_args(struct user_arg_ptr argv, int max)
+{
+	int i = 0;
+	if (argv.ptr.native != NULL) {
+		for (;;) {
+			const char __user *p = get_user_arg_ptr(argv, i);
+			if (!p)
+				break;
+			if (IS_ERR(p))
+				return -EFAULT;
+			if (++i >= max)
+				break;
+			if (fatal_signal_pending(current))
+				return -ERESTARTNOHAND;
+		}
+	}
+	return i;
+}
+
 //get execve syscall argv/LD_PRELOAD && SSH_CONNECTION env info
-void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
-		     struct execve_data *data)
+static void get_execve_data(struct user_arg_ptr argv_ptr,
+                            struct user_arg_ptr env_ptr,
+		                    struct execve_data *data)
 {
 	int argv_len = 0, argv_res_len = 0, i = 0, len = 0, offset = 0;
 	int env_len = 0, free_argv = 0, res = 0;
@@ -1307,8 +1560,8 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 	char *ld_preload = NULL;
 	const char __user *native;
 
-	env_len = count(env_ptr, MAX_ARG_STRINGS);
-	argv_len = count(argv_ptr, SMITH_MAX_ARG_STRINGS);
+	env_len = execve_count_args(env_ptr, MAX_ARG_STRINGS);
+	argv_len = execve_count_args(argv_ptr, SMITH_MAX_ARG_STRINGS);
 	argv_res_len = 256 * argv_len;
 
 	if (argv_len > 0) {
@@ -1416,13 +1669,17 @@ void get_execve_data(struct user_arg_ptr argv_ptr, struct user_arg_ptr env_ptr,
 }
 
 #ifdef CONFIG_COMPAT
-int compat_execve_entry_handler(struct kretprobe_instance *ri,
+static int compat_execve_entry_handler(
+                  struct kretprobe_instance *ri,
 			      struct pt_regs *regs)
 {
 	struct user_arg_ptr argv_ptr;
 	struct user_arg_ptr env_ptr;
 	struct execve_data *data;
 	data = (struct execve_data *)ri->data;
+
+    memset(&argv_ptr, 0, sizeof(argv_ptr));
+    memset(&env_ptr, 0, sizeof(env_ptr));
 
 	argv_ptr.is_compat = true;
 	argv_ptr.ptr.compat = (const compat_uptr_t __user *)p_get_arg2_syscall(regs);
@@ -1434,13 +1691,17 @@ int compat_execve_entry_handler(struct kretprobe_instance *ri,
 	return 0;
 }
 
-int compat_execveat_entry_handler(struct kretprobe_instance *ri,
+static int compat_execveat_entry_handler(
+                struct kretprobe_instance *ri,
 				struct pt_regs *regs)
 {
 	struct user_arg_ptr argv_ptr;
 	struct user_arg_ptr env_ptr;
 	struct execve_data *data;
 	data = (struct execve_data *)ri->data;
+
+    memset(&argv_ptr, 0, sizeof(argv_ptr));
+    memset(&env_ptr, 0, sizeof(env_ptr));
 
 	argv_ptr.is_compat = true;
 	argv_ptr.ptr.compat = (const compat_uptr_t __user *)p_get_arg3_syscall(regs);
@@ -1453,12 +1714,15 @@ int compat_execveat_entry_handler(struct kretprobe_instance *ri,
 }
 #endif
 
-int execveat_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int execveat_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
 	struct user_arg_ptr argv_ptr;
 	struct user_arg_ptr env_ptr;
 	struct execve_data *data;
 	data = (struct execve_data *)ri->data;
+
+    memset(&argv_ptr, 0, sizeof(argv_ptr));
+    memset(&env_ptr, 0, sizeof(env_ptr));
 
 	argv_ptr.ptr.native = (const char *const *)p_get_arg3_syscall(regs);
 	env_ptr.ptr.native = (const char *const *)p_get_arg4_syscall(regs);
@@ -1467,12 +1731,15 @@ int execveat_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 	return 0;
 }
 
-int execve_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int execve_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
 	struct user_arg_ptr argv_ptr;
 	struct user_arg_ptr env_ptr;
 	struct execve_data *data;
 	data = (struct execve_data *)ri->data;
+
+    memset(&argv_ptr, 0, sizeof(argv_ptr));
+    memset(&env_ptr, 0, sizeof(env_ptr));
 
 	argv_ptr.ptr.native = (const char *const *)p_get_arg2_syscall(regs);
 	env_ptr.ptr.native = (const char *const *)p_get_arg3_syscall(regs);
@@ -1506,7 +1773,7 @@ static int execve_count(char __user * __user * argv, int max)
 }
 
 //get execve syscall argv/LD_PRELOAD && SSH_CONNECTION env info
-void get_execve_data(char **argv, char **env, struct execve_data *data)
+static void get_execve_data(char **argv, char **env, struct execve_data *data)
 {
     int argv_len = 0, argv_res_len = 0, i = 0, len = 0, offset = 0, res = 0;
     int env_len = 0, free_argv = 0, ssh_connection_flag = 0, ld_preload_flag = 0;
@@ -1627,7 +1894,8 @@ void get_execve_data(char **argv, char **env, struct execve_data *data)
     data->free_argv = free_argv;
 }
 
-int compat_execve_entry_handler(struct kretprobe_instance *ri,
+static int compat_execve_entry_handler(
+                              struct kretprobe_instance *ri,
                               struct pt_regs *regs)
 {
     struct execve_data *data;
@@ -1639,7 +1907,8 @@ int compat_execve_entry_handler(struct kretprobe_instance *ri,
     return 0;
 }
 
-int execve_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int execve_entry_handler(struct kretprobe_instance *ri,
+                                struct pt_regs *regs)
 {
     struct execve_data *data;
     char **argv = (char **)p_get_arg2_syscall(regs);
@@ -1652,7 +1921,7 @@ int execve_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 #endif
 
 //get create file info
-int security_inode_create_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int security_inode_create_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     int sa_family = -1;
     int dport = 0, sport = 0;
@@ -1688,7 +1957,7 @@ int security_inode_create_pre_handler(struct kprobe *p, struct pt_regs *regs)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
         pathstr = dentry_path_raw(file, pname_buf, PATH_MAX);
 #else
-        pathstr = __dentry_path(file, pname_buf, PATH_MAX);
+        pathstr = smith_dentry_path(file, pname_buf, PATH_MAX);
 #endif
 
         if(!IS_ERR_OR_NULL(file->d_sb))
@@ -1727,7 +1996,7 @@ out:
     return 0;
 }
 
-int ptrace_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int ptrace_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     long request;
     request = (long)p_get_arg1_syscall(regs);
@@ -1788,113 +2057,6 @@ struct smith_ip_addr {
         };
     };
 };
-
-/*
- * Our own implementation of kernel_getsockname and kernel_getpeername,
- * resuing codes logic of kernel inet_getname and inet6_getname.
- *
- * From 5.15.3 inet_getname and inet6_getname will call lock_sock for
- * lock acquisition, and then lock_sock would lead possible reschedule,
- * which violates the requirement of atomic context for kprobe/ketprobe.
- *
- * Interfaces of kernel_getsockname and kernel_getpeername are changed
- * after 4.17.0, then we'll use our own routines to keep things simple.
- */
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
-
-static int smith_get_sock_v4(struct socket *sock, struct sockaddr *sa)
-{
-    struct sock *sk	= sock->sk;
-    struct inet_sock *inet = inet_sk(sk);
-    DECLARE_SOCKADDR(struct sockaddr_in *, sin, sa);
-    __be32 addr;
-
-    sin->sin_family = AF_INET;
-    addr = inet->inet_rcv_saddr;
-    if (!addr)
-        addr = inet->inet_saddr;
-    sin->sin_port = inet->inet_sport;
-    sin->sin_addr.s_addr = addr;
-    return sizeof(*sin);
-}
-
-static int smith_get_peer_v4(struct socket *sock, struct sockaddr *sa)
-{
-    struct sock *sk	= sock->sk;
-    struct inet_sock *inet = inet_sk(sk);
-    DECLARE_SOCKADDR(struct sockaddr_in *, sin, sa);
-
-    sin->sin_family = AF_INET;
-    if (!inet->inet_dport ||
-        (((1 << sk->sk_state) & (TCPF_CLOSE | TCPF_SYN_SENT))))
-        return -ENOTCONN;
-    sin->sin_port = inet->inet_dport;
-    sin->sin_addr.s_addr = inet->inet_daddr;
-    return sizeof(*sin);
-}
-
-#if IS_ENABLED(CONFIG_IPV6)
-static int smith_get_sock_v6(struct socket *sock, struct sockaddr *sa)
-{
-    struct sockaddr_in6 *sin = (struct sockaddr_in6 *)sa;
-    struct sock *sk = sock->sk;
-    struct inet_sock *inet = inet_sk(sk);
-    struct ipv6_pinfo *np = inet6_sk(sk);
-
-    sin->sin6_family = AF_INET6;
-    if (ipv6_addr_any(&sk->sk_v6_rcv_saddr))
-        sin->sin6_addr = np->saddr;
-    else
-        sin->sin6_addr = sk->sk_v6_rcv_saddr;
-    sin->sin6_port = inet->inet_sport;
-    return sizeof(*sin);
-}
-
-static int smith_get_peer_v6(struct socket *sock, struct sockaddr *sa)
-{
-    struct sockaddr_in6 *sin = (struct sockaddr_in6 *)sa;
-    struct sock *sk = sock->sk;
-    struct inet_sock *inet = inet_sk(sk);
-
-    sin->sin6_family = AF_INET6;
-    if (!inet->inet_dport)
-        return -ENOTCONN;
-    if ((1 << sk->sk_state) & (TCPF_CLOSE | TCPF_SYN_SENT))
-        return -ENOTCONN;
-    sin->sin6_port = inet->inet_dport;
-    sin->sin6_addr = sk->sk_v6_daddr;
-    return sizeof(*sin);
-}
-#endif
-
-#else /* < 4.17.0 */
-
-static int smith_get_sock_v4(struct socket *sock, struct sockaddr *sa)
-{
-    int len = 0;
-    return kernel_getsockname(sock, sa, &len);
-}
-static int smith_get_peer_v4(struct socket *sock, struct sockaddr *sa)
-{
-    int len = 0;
-    return kernel_getpeername(sock, sa, &len);
-}
-
-#if IS_ENABLED(CONFIG_IPV6)
-static int smith_get_sock_v6(struct socket *sock, struct sockaddr *sa)
-{
-    int len = 0;
-    return kernel_getsockname(sock, sa, &len);
-}
-static int smith_get_peer_v6(struct socket *sock, struct sockaddr *sa)
-{
-    int len = 0;
-    return kernel_getpeername(sock, sa, &len);
-}
-#endif
-
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0) */
 
 static int smith_query_ip_addr(struct socket *sock, struct smith_ip_addr *addr)
 {
@@ -2074,7 +2236,7 @@ static int smith_process_dns(struct smith_ip_addr *addr, unsigned char *recv_dat
 #define SMITH_DNS_THRESHOLD    (10)     /* threshold: 2^10 = 1024 ops/s */
 #define SMITH_DNS_INTERVALS    (60)     /* 60 seconds */
 
-struct smith_dns_threshold {
+static struct smith_dns_threshold {
     atomic_t armed ____cacheline_aligned_in_smp;  /* dns process enabled */
     atomic_t ops ____cacheline_aligned_in_smp;    /* udp traffic count */
     uint64_t start ____cacheline_aligned_in_smp;  /* start time stamp of counting */
@@ -2449,7 +2611,7 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
 #endif /* BITS_PER_LONG == 64 */
 }
 
-struct smith_tracepoint {
+static struct smith_tracepoint {
     const char *name;
     void *handler;
     void *data;
@@ -2779,7 +2941,7 @@ module_param_call(psad_switch, smith_set_nf_psad_switch, param_get_bool, &g_nf_p
 #endif
 MODULE_PARM_DESC(psad_switch, "Set to 1 to enable detection of port-scanning, 0 otherwise");
 
-int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     int target_pid = -1;
     unsigned long prot;
@@ -2809,7 +2971,7 @@ int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
             rcu_read_lock();
             if (!IS_ERR_OR_NULL(vma->vm_mm)) {
                 if (!IS_ERR_OR_NULL(&vma->vm_mm->exe_file)) {
-                    if (get_file_rcu(vma->vm_mm->exe_file)) {
+                    if (smith_get_file(vma->vm_mm->exe_file)) {
                         file_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
                         file_path = smith_d_path(&vma->vm_mm->exe_file->f_path, file_buf, PATH_MAX);
                         smith_fput(vma->vm_mm->exe_file);
@@ -2821,9 +2983,8 @@ int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
             }
 
             if (!IS_ERR_OR_NULL(vma->vm_file)) {
-                if (get_file_rcu(vma->vm_file)) {
-                    vm_file_buff =
-                            smith_kzalloc(PATH_MAX, GFP_ATOMIC);
+                if (smith_get_file(vma->vm_file)) {
+                    vm_file_buff = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
                     vm_file_path = smith_d_path(&vma->vm_file->f_path, vm_file_buff, PATH_MAX);
                     smith_fput(vma->vm_file);
                 }
@@ -2849,10 +3010,10 @@ int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
     return 0;
 }
 
-int call_usermodehelper_exec_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int call_usermodehelper_exec_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     int wait = 0, argv_res_len = 0, argv_len = 0;
-    int offset = 0, res = 0, free_argv = 0, i;
+    int offset = 0, free_argv = 0, i;
     void *si_tmp;
     const char *path;
     char **argv;
@@ -2889,8 +3050,12 @@ int call_usermodehelper_exec_pre_handler(struct kprobe *p, struct pt_regs *regs)
         } else {
             free_argv = 1;
             for (i = 0; offset < argv_res_len && i < argv_len; i++) {
-                res = argv_res_len - offset;
-                offset += strlcpy(argv_res + offset, argv[i], res) + 1;
+                int res = argv_res_len - offset, ret;
+                ret = smith_strscpy(argv_res + offset, argv[i], res);
+                if (ret < 0)
+                    offset += res;
+                else
+                    offset += ret + 1;
                 *(argv_res + offset - 1) = ' ';
             }
             *(argv_res + offset) = '\0';
@@ -2907,7 +3072,7 @@ int call_usermodehelper_exec_pre_handler(struct kprobe *p, struct pt_regs *regs)
     return 0;
 }
 
-void rename_and_link_handler(int type, char * oldori, char * newori, char * s_id)
+static void rename_and_link_handler(int type, char * oldori, char * newori, char * s_id)
 {
     char *buffer = NULL;
     char *exe_path = DEFAULT_RET_STR;
@@ -2927,7 +3092,7 @@ out_free:
         smith_kfree(buffer);
 }
 
-int rename_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int rename_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     char *old_path_str = DEFAULT_RET_STR;
     char *new_path_str = DEFAULT_RET_STR;
@@ -2952,7 +3117,7 @@ int rename_pre_handler(struct kprobe *p, struct pt_regs *regs)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
         old_path_str = dentry_path_raw(old_dentry, old_buf, PATH_MAX);
 #else
-        old_path_str = __dentry_path(old_dentry, old_buf, PATH_MAX);
+        old_path_str = smith_dentry_path(old_dentry, old_buf, PATH_MAX);
 #endif
     }
 
@@ -2960,7 +3125,7 @@ int rename_pre_handler(struct kprobe *p, struct pt_regs *regs)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
         new_path_str = dentry_path_raw(new_dentry, new_buf, PATH_MAX);
 #else
-        new_path_str = __dentry_path(new_dentry, new_buf, PATH_MAX);
+        new_path_str = smith_dentry_path(new_dentry, new_buf, PATH_MAX);
 #endif
     }
 
@@ -2984,7 +3149,7 @@ int rename_pre_handler(struct kprobe *p, struct pt_regs *regs)
     return 0;
 }
 
-int link_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int link_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     char *old_path_str = DEFAULT_RET_STR;
     char *new_path_str = DEFAULT_RET_STR;
@@ -3009,7 +3174,7 @@ int link_pre_handler(struct kprobe *p, struct pt_regs *regs)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
         old_path_str = dentry_path_raw(old_dentry, old_buf, PATH_MAX);
 #else
-        old_path_str = __dentry_path(old_dentry, old_buf, PATH_MAX);
+        old_path_str = smith_dentry_path(old_dentry, old_buf, PATH_MAX);
 #endif
     }
 
@@ -3017,7 +3182,7 @@ int link_pre_handler(struct kprobe *p, struct pt_regs *regs)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
         new_path_str = dentry_path_raw(new_dentry, new_buf, PATH_MAX);
 #else
-        new_path_str = __dentry_path(new_dentry, new_buf, PATH_MAX);
+        new_path_str = smith_dentry_path(new_dentry, new_buf, PATH_MAX);
 #endif
     }
 
@@ -3041,7 +3206,7 @@ int link_pre_handler(struct kprobe *p, struct pt_regs *regs)
     return 0;
 }
 
-int setsid_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int setsid_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     char *exe_path = DEFAULT_RET_STR;
     char *buffer = NULL;
@@ -3060,7 +3225,7 @@ out:
     return 0;
 }
 
-int prctl_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int prctl_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     char *exe_path = DEFAULT_RET_STR;
     char *buffer = NULL;
@@ -3119,7 +3284,7 @@ out:
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
-int memfd_create_kprobe_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int memfd_create_kprobe_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     int len;
     unsigned long flags;
@@ -3163,7 +3328,7 @@ out:
 }
 #endif
 
-int open_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int open_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     int filename_len = 0;
 
@@ -3205,13 +3370,13 @@ out:
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0)
-struct inode *file_inode(struct file * f)
+static struct inode *file_inode(struct file * f)
 {
     return f->f_path.dentry->d_inode;
 }
 #endif
 
-int write_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int write_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     struct file *file;
     const char __user *buf;
@@ -3255,7 +3420,7 @@ out:
     return 0;
 }
 
-int openat_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int openat_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     int filename_len = 0;
 
@@ -3296,7 +3461,7 @@ int openat_pre_handler(struct kprobe *p, struct pt_regs *regs)
     return 0;
 }
 
-int mount_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int mount_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     unsigned long flags = 0;
 
@@ -3342,7 +3507,7 @@ int mount_pre_handler(struct kprobe *p, struct pt_regs *regs)
     return 0;
 }
 
-int nanosleep_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int nanosleep_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     char *exe_path = DEFAULT_RET_STR;
     char *buffer = NULL;
@@ -3384,7 +3549,7 @@ int nanosleep_pre_handler(struct kprobe *p, struct pt_regs *regs)
     return 0;
 }
 
-void kill_and_tkill_handler(int type, pid_t pid, int sig)
+static void kill_and_tkill_handler(int type, pid_t pid, int sig)
 {
     char *exe_path = DEFAULT_RET_STR;
     char *buffer = NULL;
@@ -3402,7 +3567,7 @@ void kill_and_tkill_handler(int type, pid_t pid, int sig)
     return;
 }
 
-int kill_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int kill_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     pid_t pid = (pid_t)p_get_arg1_syscall(regs);
     int sig = (int)p_get_arg2_syscall(regs);
@@ -3410,7 +3575,7 @@ int kill_pre_handler(struct kprobe *p, struct pt_regs *regs)
     return 0;
 }
 
-int tkill_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int tkill_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     pid_t pid = (pid_t)p_get_arg1_syscall(regs);
     int sig = (int)p_get_arg2_syscall(regs);
@@ -3418,7 +3583,7 @@ int tkill_pre_handler(struct kprobe *p, struct pt_regs *regs)
     return 0;
 }
 
-void delete_file_handler(int type, char *path)
+static void delete_file_handler(int type, char *path)
 {
     char *buffer = NULL;
     char *exe_path = DEFAULT_RET_STR;
@@ -3435,7 +3600,7 @@ void delete_file_handler(int type, char *path)
         smith_kfree(buffer);
 }
 
-int security_path_rmdir_pre_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int security_path_rmdir_pre_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     char *pname_buf = NULL;
     char *pathstr = DEFAULT_RET_STR;
@@ -3460,7 +3625,7 @@ int security_path_rmdir_pre_handler(struct kretprobe_instance *ri, struct pt_reg
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
         pathstr = dentry_path_raw(de, pname_buf, PATH_MAX);
 #else
-        pathstr = __dentry_path(de, pname_buf, PATH_MAX);
+        pathstr = smith_dentry_path(de, pname_buf, PATH_MAX);
 #endif
 
         if (IS_ERR(pathstr))
@@ -3475,7 +3640,7 @@ int security_path_rmdir_pre_handler(struct kretprobe_instance *ri, struct pt_reg
     return 0;
 }
 
-int rm_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int rm_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     int uid = 0;
     uid = __get_current_uid();
@@ -3490,7 +3655,7 @@ int rm_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     return 0;
 }
 
-int security_path_unlink_pre_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int security_path_unlink_pre_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     char *pname_buf = NULL;
     char *pathstr = DEFAULT_RET_STR;
@@ -3515,7 +3680,7 @@ int security_path_unlink_pre_handler(struct kretprobe_instance *ri, struct pt_re
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 38)
         pathstr = dentry_path_raw(de, pname_buf, PATH_MAX);
 #else
-        pathstr = __dentry_path(de, pname_buf, PATH_MAX);
+        pathstr = smith_dentry_path(de, pname_buf, PATH_MAX);
 #endif
         if (IS_ERR(pathstr))
             pathstr = DEFAULT_RET_STR;
@@ -3529,7 +3694,7 @@ int security_path_unlink_pre_handler(struct kretprobe_instance *ri, struct pt_re
     return 0;
 }
 
-void exit_handler(int type)
+static void exit_handler(int type)
 {
     char *exe_path = DEFAULT_RET_STR;
     char *buffer = NULL;
@@ -3547,19 +3712,19 @@ void exit_handler(int type)
     return;
 }
 
-int exit_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int exit_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     exit_handler(1);
     return 0;
 }
 
-int exit_group_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int exit_group_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     exit_handler(0);
     return 0;
 }
 
-int do_init_module_pre_handler(struct kprobe *p, struct pt_regs *regs)
+static int do_init_module_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     char *pid_tree = NULL;
     char *buffer = NULL;
@@ -3596,7 +3761,7 @@ int do_init_module_pre_handler(struct kprobe *p, struct pt_regs *regs)
     return 0;
 }
 
-int update_cred_entry_handler(struct kretprobe_instance *ri,
+static int update_cred_entry_handler(struct kretprobe_instance *ri,
                               struct pt_regs *regs)
 {
     struct update_cred_data *data;
@@ -3605,7 +3770,7 @@ int update_cred_entry_handler(struct kretprobe_instance *ri,
     return 0;
 }
 
-int update_cred_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int update_cred_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
     int now_uid;
     int retval;
@@ -3638,7 +3803,7 @@ int update_cred_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
     return 0;
 }
 
-int smith_usb_ncb(struct notifier_block *nb, unsigned long val, void *priv)
+static int smith_usb_ncb(struct notifier_block *nb, unsigned long val, void *priv)
 {
     char *exe_path = DEFAULT_RET_STR;
     char *buffer = NULL;
@@ -3664,7 +3829,7 @@ int smith_usb_ncb(struct notifier_block *nb, unsigned long val, void *priv)
     return NOTIFY_OK;
 }
 
-int connect_syscall_entry_handler(struct kretprobe_instance *ri,
+static int connect_syscall_entry_handler(struct kretprobe_instance *ri,
                                   struct pt_regs *regs)
 {
     struct connect_syscall_data *data;
@@ -3674,7 +3839,7 @@ int connect_syscall_entry_handler(struct kretprobe_instance *ri,
     return 0;
 }
 
-int tcp_v4_connect_entry_handler(struct kretprobe_instance *ri,
+static int tcp_v4_connect_entry_handler(struct kretprobe_instance *ri,
                                  struct pt_regs *regs)
 {
     struct connect_data *data;
@@ -3687,7 +3852,7 @@ int tcp_v4_connect_entry_handler(struct kretprobe_instance *ri,
 }
 
 #if IS_ENABLED(CONFIG_IPV6)
-int tcp_v6_connect_entry_handler(struct kretprobe_instance *ri,
+static int tcp_v6_connect_entry_handler(struct kretprobe_instance *ri,
 				 struct pt_regs *regs)
 {
 	struct connect_data *data;
@@ -3700,7 +3865,7 @@ int tcp_v6_connect_entry_handler(struct kretprobe_instance *ri,
 }
 #endif
 
-int ip4_datagram_connect_entry_handler(struct kretprobe_instance *ri,
+static int ip4_datagram_connect_entry_handler(struct kretprobe_instance *ri,
                                        struct pt_regs *regs)
 {
     struct connect_data *data;
@@ -3713,7 +3878,7 @@ int ip4_datagram_connect_entry_handler(struct kretprobe_instance *ri,
 }
 
 #if IS_ENABLED(CONFIG_IPV6)
-int ip6_datagram_connect_entry_handler(struct kretprobe_instance *ri,
+static int ip6_datagram_connect_entry_handler(struct kretprobe_instance *ri,
 				       struct pt_regs *regs)
 {
 	struct connect_data *data;
@@ -3727,7 +3892,7 @@ int ip6_datagram_connect_entry_handler(struct kretprobe_instance *ri,
 #endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-struct kretprobe execveat_kretprobe = {
+static struct kretprobe execveat_kretprobe = {
 	    .kp.symbol_name = P_GET_SYSCALL_NAME(execveat),
 	    .entry_handler = execveat_entry_handler,
 	    .data_size = sizeof(struct execve_data),
@@ -3735,7 +3900,7 @@ struct kretprobe execveat_kretprobe = {
 };
 #endif
 
-struct kretprobe execve_kretprobe = {
+static struct kretprobe execve_kretprobe = {
         .kp.symbol_name = P_GET_SYSCALL_NAME(execve),
         .entry_handler = execve_entry_handler,
         .data_size = sizeof(struct execve_data),
@@ -3743,7 +3908,7 @@ struct kretprobe execve_kretprobe = {
 };
 
 #ifdef CONFIG_COMPAT
-struct kretprobe compat_execve_kretprobe = {
+static struct kretprobe compat_execve_kretprobe = {
 	    .kp.symbol_name = P_GET_COMPAT_SYSCALL_NAME(execve),
 	    .entry_handler = compat_execve_entry_handler,
 	    .data_size = sizeof(struct execve_data),
@@ -3751,7 +3916,7 @@ struct kretprobe compat_execve_kretprobe = {
 };
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0)
-struct kretprobe compat_execveat_kretprobe = {
+static struct kretprobe compat_execveat_kretprobe = {
 	    .kp.symbol_name = P_GET_COMPAT_SYSCALL_NAME(execveat),
 	    .entry_handler = compat_execveat_entry_handler,
 	    .data_size = sizeof(struct execve_data),
@@ -3760,40 +3925,40 @@ struct kretprobe compat_execveat_kretprobe = {
 #endif /* >= 3.19.0 */
 #endif /* CONFIG_COMPAT */
 
-struct kprobe call_usermodehelper_exec_kprobe = {
+static struct kprobe call_usermodehelper_exec_kprobe = {
         .symbol_name = "call_usermodehelper_exec",
         .pre_handler = call_usermodehelper_exec_pre_handler,
 };
 
-struct kprobe mount_kprobe = {
+static struct kprobe mount_kprobe = {
         .symbol_name = "security_sb_mount",
         .pre_handler = mount_pre_handler,
 };
 
-struct kprobe rename_kprobe = {
+static struct kprobe rename_kprobe = {
         .symbol_name = "security_inode_rename",
         .pre_handler = rename_pre_handler,
 };
 
-struct kprobe link_kprobe = {
+static struct kprobe link_kprobe = {
         .symbol_name = "security_inode_link",
         .pre_handler = link_pre_handler,
 };
 
-struct kprobe ptrace_kprobe = {
+static struct kprobe ptrace_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(ptrace),
         .pre_handler = ptrace_pre_handler,
 };
 
 #if IS_ENABLED(CONFIG_IPV6)
-struct kretprobe ip6_datagram_connect_kretprobe = {
+static struct kretprobe ip6_datagram_connect_kretprobe = {
 	    .kp.symbol_name = "ip6_datagram_connect",
 	    .data_size = sizeof(struct connect_data),
 	    .handler = connect_handler,
 	    .entry_handler = ip6_datagram_connect_entry_handler,
 };
 
-struct kretprobe tcp_v6_connect_kretprobe = {
+static struct kretprobe tcp_v6_connect_kretprobe = {
 	    .kp.symbol_name = "tcp_v6_connect",
 	    .data_size = sizeof(struct connect_data),
 	    .handler = connect_handler,
@@ -3801,134 +3966,134 @@ struct kretprobe tcp_v6_connect_kretprobe = {
 };
 #endif
 
-struct kretprobe ip4_datagram_connect_kretprobe = {
+static struct kretprobe ip4_datagram_connect_kretprobe = {
         .kp.symbol_name = "ip4_datagram_connect",
         .data_size = sizeof(struct connect_data),
         .handler = connect_handler,
         .entry_handler = ip4_datagram_connect_entry_handler,
 };
 
-struct kretprobe tcp_v4_connect_kretprobe = {
+static struct kretprobe tcp_v4_connect_kretprobe = {
         .kp.symbol_name = "tcp_v4_connect",
         .data_size = sizeof(struct connect_data),
         .handler = connect_handler,
         .entry_handler = tcp_v4_connect_entry_handler,
 };
 
-struct kretprobe connect_syscall_kretprobe = {
+static struct kretprobe connect_syscall_kretprobe = {
         .kp.symbol_name = P_GET_SYSCALL_NAME(connect),
         .data_size = sizeof(struct connect_syscall_data),
         .handler = connect_syscall_handler,
         .entry_handler = connect_syscall_entry_handler,
 };
 
-struct kretprobe accept_kretprobe = {
+static struct kretprobe accept_kretprobe = {
         .kp.symbol_name = P_GET_SYSCALL_NAME(accept),
         .data_size = sizeof(struct accept_data),
         .handler = accept_handler,
         .entry_handler = accept_entry_handler,
 };
 
-struct kretprobe accept4_kretprobe = {
+static struct kretprobe accept4_kretprobe = {
         .kp.symbol_name = P_GET_SYSCALL_NAME(accept4),
         .data_size = sizeof(struct accept_data),
         .handler = accept_handler,
         .entry_handler = accept4_entry_handler,
 };
 
-struct kprobe do_init_module_kprobe = {
+static struct kprobe do_init_module_kprobe = {
         .symbol_name = "do_init_module",
         .pre_handler = do_init_module_pre_handler,
 };
 
-struct kretprobe update_cred_kretprobe = {
+static struct kretprobe update_cred_kretprobe = {
         .kp.symbol_name = "commit_creds",
         .data_size = sizeof(struct update_cred_data),
         .handler = update_cred_handler,
         .entry_handler = update_cred_entry_handler,
 };
 
-struct kprobe security_inode_create_kprobe = {
+static struct kprobe security_inode_create_kprobe = {
         .symbol_name = "security_inode_create",
         .pre_handler = security_inode_create_pre_handler,
 };
 
-struct kretprobe bind_kretprobe = {
+static struct kretprobe bind_kretprobe = {
         .kp.symbol_name = P_GET_SYSCALL_NAME(bind),
         .data_size = sizeof(struct bind_data),
         .handler = bind_handler,
         .entry_handler = bind_entry_handler,
 };
 
-struct kprobe mprotect_kprobe = {
+static struct kprobe mprotect_kprobe = {
         .symbol_name = "security_file_mprotect",
         .pre_handler = mprotect_pre_handler,
 };
 
-struct kprobe setsid_kprobe = {
+static struct kprobe setsid_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(setsid),
         .pre_handler = setsid_pre_handler,
 };
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
-struct kprobe memfd_create_kprobe = {
+static struct kprobe memfd_create_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(memfd_create),
         .pre_handler = memfd_create_kprobe_pre_handler,
 };
 #endif
 
-struct kprobe prctl_kprobe = {
+static struct kprobe prctl_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(prctl),
         .pre_handler = prctl_pre_handler,
 };
 
-struct kprobe open_kprobe = {
+static struct kprobe open_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(open),
         .pre_handler = open_pre_handler,
 };
 
-struct kprobe openat_kprobe = {
+static struct kprobe openat_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(openat),
         .pre_handler = openat_pre_handler,
 };
 
-struct kprobe kill_kprobe = {
+static struct kprobe kill_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(kill),
         .pre_handler = kill_pre_handler,
 };
 
-struct kprobe tkill_kprobe = {
+static struct kprobe tkill_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(tkill),
         .pre_handler = tkill_pre_handler,
 };
 
-struct kprobe nanosleep_kprobe = {
+static struct kprobe nanosleep_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(nanosleep),
         .pre_handler = nanosleep_pre_handler,
 };
 
-struct kprobe write_kprobe = {
+static struct kprobe write_kprobe = {
         .symbol_name = "vfs_write",
         .pre_handler = write_pre_handler,
 };
 
-struct kprobe exit_kprobe = {
+static struct kprobe exit_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(exit),
         .pre_handler = exit_pre_handler,
 };
 
-struct kprobe exit_group_kprobe = {
+static struct kprobe exit_group_kprobe = {
         .symbol_name = P_GET_SYSCALL_NAME(exit_group),
         .pre_handler = exit_group_pre_handler,
 };
 
-struct kretprobe security_path_rmdir_kprobe = {
+static struct kretprobe security_path_rmdir_kprobe = {
         .kp.symbol_name = "security_path_rmdir",
         .handler = rm_handler,
         .entry_handler = security_path_rmdir_pre_handler,
 };
 
-struct kretprobe security_path_unlink_kprobe = {
+static struct kretprobe security_path_unlink_kprobe = {
         .kp.symbol_name = "security_path_unlink",
         .handler = rm_handler,
         .entry_handler = security_path_unlink_pre_handler,
@@ -3959,7 +4124,7 @@ static void smith_unregister_kretprobe(struct kretprobe *kr)
     kr->kp.addr = NULL;
 }
 
-int register_bind_kprobe(void)
+static int register_bind_kprobe(void)
 {
     int ret;
     ret = smith_register_kretprobe(&bind_kretprobe);
@@ -3970,12 +4135,12 @@ int register_bind_kprobe(void)
     return ret;
 }
 
-void unregister_bind_kprobe(void)
+static void unregister_bind_kprobe(void)
 {
     smith_unregister_kretprobe(&bind_kretprobe);
 }
 
-int register_call_usermodehelper_exec_kprobe(void)
+static int register_call_usermodehelper_exec_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&call_usermodehelper_exec_kprobe);
@@ -3986,12 +4151,12 @@ int register_call_usermodehelper_exec_kprobe(void)
     return ret;
 }
 
-void unregister_call_usermodehelper_exec_kprobe(void)
+static void unregister_call_usermodehelper_exec_kprobe(void)
 {
     unregister_kprobe(&call_usermodehelper_exec_kprobe);
 }
 
-int register_rename_kprobe(void)
+static int register_rename_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&rename_kprobe);
@@ -4002,12 +4167,12 @@ int register_rename_kprobe(void)
     return ret;
 }
 
-void unregister_rename_kprobe(void)
+static void unregister_rename_kprobe(void)
 {
     unregister_kprobe(&rename_kprobe);
 }
 
-int register_exit_kprobe(void)
+static int register_exit_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&exit_kprobe);
@@ -4018,12 +4183,12 @@ int register_exit_kprobe(void)
     return ret;
 }
 
-void unregister_exit_kprobe(void)
+static void unregister_exit_kprobe(void)
 {
     unregister_kprobe(&exit_kprobe);
 }
 
-int register_exit_group_kprobe(void)
+static int register_exit_group_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&exit_group_kprobe);
@@ -4034,12 +4199,12 @@ int register_exit_group_kprobe(void)
     return ret;
 }
 
-void unregister_exit_group_kprobe(void)
+static void unregister_exit_group_kprobe(void)
 {
     unregister_kprobe(&exit_group_kprobe);
 }
 
-int register_link_kprobe(void)
+static int register_link_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&link_kprobe);
@@ -4050,12 +4215,12 @@ int register_link_kprobe(void)
     return ret;
 }
 
-void unregister_link_kprobe(void)
+static void unregister_link_kprobe(void)
 {
     unregister_kprobe(&link_kprobe);
 }
 
-int register_execve_kprobe(void)
+static int register_execve_kprobe(void)
 {
     int ret;
     ret = smith_register_kretprobe(&execve_kretprobe);
@@ -4066,7 +4231,7 @@ int register_execve_kprobe(void)
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-int register_execveat_kprobe(void)
+static int register_execveat_kprobe(void)
 {
 	int ret;
 	ret = smith_register_kretprobe(&execveat_kretprobe);
@@ -4078,7 +4243,7 @@ int register_execveat_kprobe(void)
 #endif
 
 #ifdef CONFIG_COMPAT
-int register_compat_execve_kprobe(void)
+static int register_compat_execve_kprobe(void)
 {
 	int ret;
 	ret = smith_register_kretprobe(&compat_execve_kretprobe);
@@ -4088,13 +4253,13 @@ int register_compat_execve_kprobe(void)
 	return ret;
 }
 
-void unregister_compat_execve_kprobe(void)
+static void unregister_compat_execve_kprobe(void)
 {
 	smith_unregister_kretprobe(&compat_execve_kretprobe);
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-int register_compat_execveat_kprobe(void)
+static int register_compat_execveat_kprobe(void)
 {
 	int ret;
 	ret = smith_register_kretprobe(&compat_execveat_kretprobe);
@@ -4104,26 +4269,26 @@ int register_compat_execveat_kprobe(void)
 	return ret;
 }
 
-void unregister_compat_execveat_kprobe(void)
+static void unregister_compat_execveat_kprobe(void)
 {
 	smith_unregister_kretprobe(&compat_execveat_kretprobe);
 }
 #endif
 #endif
 
-void unregister_execve_kprobe(void)
+static void unregister_execve_kprobe(void)
 {
     smith_unregister_kretprobe(&execve_kretprobe);
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-void unregister_execveat_kprobe(void)
+static void unregister_execveat_kprobe(void)
 {
 	smith_unregister_kretprobe(&execveat_kretprobe);
 }
 #endif
 
-int register_ptrace_kprobe(void)
+static int register_ptrace_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&ptrace_kprobe);
@@ -4134,13 +4299,13 @@ int register_ptrace_kprobe(void)
     return ret;
 }
 
-void unregister_ptrace_kprobe(void)
+static void unregister_ptrace_kprobe(void)
 {
     unregister_kprobe(&ptrace_kprobe);
 }
 
 #if IS_ENABLED(CONFIG_IPV6)
-int register_ip6_datagram_connect_kprobe(void)
+static int register_ip6_datagram_connect_kprobe(void)
 {
 	int ret;
 	ret = smith_register_kretprobe(&ip6_datagram_connect_kretprobe);
@@ -4151,12 +4316,12 @@ int register_ip6_datagram_connect_kprobe(void)
 	return ret;
 }
 
-void unregister_ip6_datagram_connect_kprobe(void)
+static void unregister_ip6_datagram_connect_kprobe(void)
 {
 	smith_unregister_kretprobe(&ip6_datagram_connect_kretprobe);
 }
 
-int register_tcp_v6_connect_kprobe(void)
+static int register_tcp_v6_connect_kprobe(void)
 {
 	int ret;
 	ret = smith_register_kretprobe(&tcp_v6_connect_kretprobe);
@@ -4167,13 +4332,13 @@ int register_tcp_v6_connect_kprobe(void)
 	return ret;
 }
 
-void unregister_tcp_v6_connect_kprobe(void)
+static void unregister_tcp_v6_connect_kprobe(void)
 {
 	smith_unregister_kretprobe(&tcp_v6_connect_kretprobe);
 }
 #endif
 
-int register_ip4_datagram_connect_kprobe(void)
+static int register_ip4_datagram_connect_kprobe(void)
 {
     int ret;
     ret = smith_register_kretprobe(&ip4_datagram_connect_kretprobe);
@@ -4184,12 +4349,12 @@ int register_ip4_datagram_connect_kprobe(void)
     return ret;
 }
 
-void unregister_ip4_datagram_connect_kprobe(void)
+static void unregister_ip4_datagram_connect_kprobe(void)
 {
     smith_unregister_kretprobe(&ip4_datagram_connect_kretprobe);
 }
 
-int register_tcp_v4_connect_kprobe(void)
+static int register_tcp_v4_connect_kprobe(void)
 {
     int ret;
     ret = smith_register_kretprobe(&tcp_v4_connect_kretprobe);
@@ -4200,12 +4365,12 @@ int register_tcp_v4_connect_kprobe(void)
     return ret;
 }
 
-void unregister_tcp_v4_connect_kprobe(void)
+static void unregister_tcp_v4_connect_kprobe(void)
 {
     smith_unregister_kretprobe(&tcp_v4_connect_kretprobe);
 }
 
-int register_connect_syscall_kprobe(void)
+static int register_connect_syscall_kprobe(void)
 {
     int ret;
     ret = smith_register_kretprobe(&connect_syscall_kretprobe);
@@ -4216,12 +4381,12 @@ int register_connect_syscall_kprobe(void)
     return ret;
 }
 
-void unregister_connect_syscall_kprobe(void)
+static void unregister_connect_syscall_kprobe(void)
 {
     smith_unregister_kretprobe(&connect_syscall_kretprobe);
 }
 
-int register_accept_kprobe(void)
+static int register_accept_kprobe(void)
 {
     int ret;
     ret = smith_register_kretprobe(&accept_kretprobe);
@@ -4232,12 +4397,12 @@ int register_accept_kprobe(void)
     return ret;
 }
 
-void unregister_accept_kprobe(void)
+static void unregister_accept_kprobe(void)
 {
     smith_unregister_kretprobe(&accept_kretprobe);
 }
 
-int register_accept4_kprobe(void)
+static int register_accept4_kprobe(void)
 {
     int ret;
     ret = smith_register_kretprobe(&accept4_kretprobe);
@@ -4248,12 +4413,12 @@ int register_accept4_kprobe(void)
     return ret;
 }
 
-void unregister_accept4_kprobe(void)
+static void unregister_accept4_kprobe(void)
 {
     smith_unregister_kretprobe(&accept4_kretprobe);
 }
 
-int register_create_file_kprobe(void)
+static int register_create_file_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&security_inode_create_kprobe);
@@ -4263,12 +4428,12 @@ int register_create_file_kprobe(void)
     return ret;
 }
 
-void unregister_create_file_kprobe(void)
+static void unregister_create_file_kprobe(void)
 {
     unregister_kprobe(&security_inode_create_kprobe);
 }
 
-int register_mount_kprobe(void)
+static int register_mount_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&mount_kprobe);
@@ -4278,12 +4443,12 @@ int register_mount_kprobe(void)
     return ret;
 }
 
-void unregister_mount_kprobe(void)
+static void unregister_mount_kprobe(void)
 {
     unregister_kprobe(&mount_kprobe);
 }
 
-int register_do_init_module_kprobe(void)
+static int register_do_init_module_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&do_init_module_kprobe);
@@ -4294,12 +4459,12 @@ int register_do_init_module_kprobe(void)
     return ret;
 }
 
-void unregister_do_init_module_kprobe(void)
+static void unregister_do_init_module_kprobe(void)
 {
     unregister_kprobe(&do_init_module_kprobe);
 }
 
-int register_setsid_kprobe(void)
+static int register_setsid_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&setsid_kprobe);
@@ -4310,13 +4475,13 @@ int register_setsid_kprobe(void)
     return ret;
 }
 
-void unregister_setsid_kprobe(void)
+static void unregister_setsid_kprobe(void)
 {
     unregister_kprobe(&setsid_kprobe);
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
-int register_memfd_create_kprobe(void)
+static int register_memfd_create_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&memfd_create_kprobe);
@@ -4327,13 +4492,13 @@ int register_memfd_create_kprobe(void)
     return ret;
 }
 
-void unregister_memfd_create_kprobe(void)
+static void unregister_memfd_create_kprobe(void)
 {
     unregister_kprobe(&memfd_create_kprobe);
 }
 #endif
 
-int register_prctl_kprobe(void)
+static int register_prctl_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&prctl_kprobe);
@@ -4344,12 +4509,12 @@ int register_prctl_kprobe(void)
     return ret;
 }
 
-void unregister_prctl_kprobe(void)
+static void unregister_prctl_kprobe(void)
 {
     unregister_kprobe(&prctl_kprobe);
 }
 
-int register_update_cred_kprobe(void)
+static int register_update_cred_kprobe(void)
 {
     int ret;
     ret = smith_register_kretprobe(&update_cred_kretprobe);
@@ -4359,12 +4524,12 @@ int register_update_cred_kprobe(void)
     return ret;
 }
 
-void unregister_update_cred_kprobe(void)
+static void unregister_update_cred_kprobe(void)
 {
     smith_unregister_kretprobe(&update_cred_kretprobe);
 }
 
-int register_mprotect_kprobe(void)
+static int register_mprotect_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&mprotect_kprobe);
@@ -4374,12 +4539,12 @@ int register_mprotect_kprobe(void)
     return ret;
 }
 
-void unregister_mprotect_kprobe(void)
+static void unregister_mprotect_kprobe(void)
 {
     unregister_kprobe(&mprotect_kprobe);
 }
 
-int register_open_kprobe(void)
+static int register_open_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&open_kprobe);
@@ -4389,12 +4554,12 @@ int register_open_kprobe(void)
     return ret;
 }
 
-void unregister_open_kprobe(void)
+static void unregister_open_kprobe(void)
 {
     unregister_kprobe(&open_kprobe);
 }
 
-int register_openat_kprobe(void)
+static int register_openat_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&openat_kprobe);
@@ -4404,12 +4569,12 @@ int register_openat_kprobe(void)
     return ret;
 }
 
-void unregister_openat_kprobe(void)
+static void unregister_openat_kprobe(void)
 {
     unregister_kprobe(&openat_kprobe);
 }
 
-int register_nanosleep_kprobe(void)
+static int register_nanosleep_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&nanosleep_kprobe);
@@ -4419,12 +4584,12 @@ int register_nanosleep_kprobe(void)
     return ret;
 }
 
-void unregister_nanosleep_kprobe(void)
+static void unregister_nanosleep_kprobe(void)
 {
     unregister_kprobe(&nanosleep_kprobe);
 }
 
-int register_security_path_rmdir_kprobe(void)
+static int register_security_path_rmdir_kprobe(void)
 {
     int ret;
     ret = smith_register_kretprobe(&security_path_rmdir_kprobe);
@@ -4434,12 +4599,12 @@ int register_security_path_rmdir_kprobe(void)
     return ret;
 }
 
-void unregister_security_path_rmdir_kprobe(void)
+static void unregister_security_path_rmdir_kprobe(void)
 {
     smith_unregister_kretprobe(&security_path_rmdir_kprobe);
 }
 
-int register_security_path_unlink_kprobe(void)
+static int register_security_path_unlink_kprobe(void)
 {
     int ret;
     ret = smith_register_kretprobe(&security_path_unlink_kprobe);
@@ -4449,12 +4614,12 @@ int register_security_path_unlink_kprobe(void)
     return ret;
 }
 
-void unregister_security_path_unlink_kprobe(void)
+static void unregister_security_path_unlink_kprobe(void)
 {
     smith_unregister_kretprobe(&security_path_unlink_kprobe);
 }
 
-int register_kill_kprobe(void)
+static int register_kill_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&kill_kprobe);
@@ -4464,12 +4629,12 @@ int register_kill_kprobe(void)
     return ret;
 }
 
-void unregister_kill_kprobe(void)
+static void unregister_kill_kprobe(void)
 {
     unregister_kprobe(&kill_kprobe);
 }
 
-int register_tkill_kprobe(void)
+static int register_tkill_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&tkill_kprobe);
@@ -4479,12 +4644,12 @@ int register_tkill_kprobe(void)
     return ret;
 }
 
-void unregister_tkill_kprobe(void)
+static void unregister_tkill_kprobe(void)
 {
     unregister_kprobe(&tkill_kprobe);
 }
 
-int register_write_kprobe(void)
+static int register_write_kprobe(void)
 {
     int ret;
     ret = register_kprobe(&write_kprobe);
@@ -4494,7 +4659,7 @@ int register_write_kprobe(void)
     return ret;
 }
 
-void unregister_write_kprobe(void)
+static void unregister_write_kprobe(void)
 {
     unregister_kprobe(&write_kprobe);
 }
@@ -4732,23 +4897,25 @@ static void __init install_kprobe(void)
         if (ret < 0)
             printk(KERN_INFO "[ELKEID] connect register_kprobe failed, returned %d\n", ret);
 
-//            ret = register_tcp_v4_connect_kprobe();
-//            if (ret < 0)
-//                printk(KERN_INFO "[ELKEID] connect register_kprobe failed, returned %d\n", ret);
-//
-//            ret = register_ip4_datagram_connect_kprobe();
-//            if (ret < 0) {
-//                printk(KERN_INFO "[ELKEID] ip4_datagram_connect register_kprobe failed, returned %d\n", ret);
-//
-//    #if IS_ENABLED(CONFIG_IPV6)
-//            ret = register_tcp_v6_connect_kprobe();
-//            if (ret < 0) {
-//                printk(KERN_INFO "[ELKEID] tcp_v6_connect register_kprobe failed, returned %d\n", ret);
-//
-//            ret = register_ip6_datagram_connect_kprobe();
-//            if (ret < 0) {
-//                printk(KERN_INFO "[ELKEID] ip6_datagram_connect register_kprobe failed, returned %d\n", ret);
-//    #endif
+        if (!connect_syscall_kprobe_state) {
+            ret = register_tcp_v4_connect_kprobe();
+            if (ret < 0)
+                printk(KERN_INFO "[ELKEID] connect register_kprobe failed, returned %d\n", ret);
+
+            ret = register_ip4_datagram_connect_kprobe();
+            if (ret < 0)
+                printk(KERN_INFO "[ELKEID] ip4_datagram_connect register_kprobe failed, returned %d\n", ret);
+
+#if IS_ENABLED(CONFIG_IPV6)
+            ret = register_tcp_v6_connect_kprobe();
+            if (ret < 0)
+                printk(KERN_INFO "[ELKEID] tcp_v6_connect register_kprobe failed, returned %d\n", ret);
+
+            ret = register_ip6_datagram_connect_kprobe();
+            if (ret < 0)
+                printk(KERN_INFO "[ELKEID] ip6_datagram_connect register_kprobe failed, returned %d\n", ret);
+#endif
+        }
     }
 
     if (MPROTECT_HOOK == 1) {
@@ -4848,14 +5015,23 @@ static void __init install_kprobe(void)
     }
 }
 
+#define SMITH_SRCID(name)                           \
+    #name;                                          \
+    static char *sid_##name = #name;                \
+    module_param(sid_##name, charp, S_IRUSR|S_IRGRP|S_IROTH)
+
+/* latest commit id */
+static char *smith_srcid = SMITH_SRCID(05c8e8cf352ee91fd3dcd89354fec3cc8fa3129c);
+
 static int __init kprobe_hook_init(void)
 {
     int ret;
 
 #if defined(MODULE)
-    printk(KERN_INFO "[ELKEID] loading kmod %s (%s).\n",
-           THIS_MODULE->name, THIS_MODULE->version);
+    printk(KERN_INFO "[ELKEID] kmod: %s (%s / %s) loaded\n",
+           THIS_MODULE->name, THIS_MODULE->version, THIS_MODULE->srcversion);
 #endif
+    printk(KERN_INFO "[ELKEID] srcid: %s\n", smith_srcid);
 
     ret = kernel_symbols_init();
     if (ret)

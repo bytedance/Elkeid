@@ -463,6 +463,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 } catch(Exception e) {
                     // SmithLogger.exception(e);
                 }
+
                 String superClassName = superClass != null ? superClass.getName() : "";
                 classFilter.setParentClassName(superClassName);
         
@@ -604,19 +605,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
 
             classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);  
-
-            /* 
-            byte[] bytecode = classWriter.toByteArray();
-
-            String filePath = "/tmp/"+classType.getClassName()+".class";
-            try (FileOutputStream fos = new FileOutputStream(filePath)) {
-                fos.write(bytecode);
-                System.out.println("bytecode to save file success: " + filePath);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            */
-
+ 
             return classWriter.toByteArray();
         } catch (Exception e) {
             SmithLogger.exception(e);
@@ -820,7 +809,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
 
     
-    /* 全量扫描 */
+    /* scan all class */
     @Override
     public void onScanAllClass() {
         if (scanswitch == false) {
@@ -894,11 +883,11 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         int length = data.length;
         ClassUpload classUpload = new ClassUpload();
         classUpload.setTransId(transId);
-        // TODO 第一版先不分包，看下性能
+        // TODO
         // client.write(Operate.CLASSDUMP, classUpload);
-        // 发送文件内容分包给服务器
-        // int packetSize = 1024; // 每个包的大小
-        // int totalPackets = (data.length + packetSize - 1) / packetSize; // 总包数
+
+        // int packetSize = 1024; 
+        // int totalPackets = (data.length + packetSize - 1) / packetSize;
         //for (int i = 0; i < totalPackets; i++) {
             //int offset = i * packetSize;
             classUpload.setByteTotalLength(length);

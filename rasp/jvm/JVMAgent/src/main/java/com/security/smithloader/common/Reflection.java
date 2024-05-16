@@ -5,16 +5,16 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 /**
- * 反射工具类
+ * Reflection utils
  */
 public class Reflection {
 
     /**
-     * 反射获取对象的field
+     * get object field
      *
-     * @param object    对象
-     * @param fieldName 字段名称
-     * @return 值
+     * @param object
+     * @param fieldName
+     * @return Object
      */
     public static Object getField(Object object, String fieldName) {
         try {
@@ -28,11 +28,11 @@ public class Reflection {
     }
 
     /**
-     * 反射获取对象父类的field
+     * get super class field
      *
-     * @param object    对象
-     * @param fieldName 字段名称
-     * @return 值
+     * @param object
+     * @param fieldName
+     * @return Object
      */
     public static Object getSuperField(Object object, String fieldName) {
         try {
@@ -48,11 +48,11 @@ public class Reflection {
 
 
     /**
-     * 反射获取对象父类的父类的field
+     * get super super class field
      *
-     * @param object    对象
-     * @param fieldName 字段名称
-     * @return 值
+     * @param object
+     * @param fieldName
+     * @return Object
      */
     public static Object getSuperParentField(Object object, String fieldName) {
         try {
@@ -67,11 +67,11 @@ public class Reflection {
     }
 
     /**
-     * 反射获取对象的field
+     * get Object static field
      *
-     * @param clazz   Class
-     * @param fieldName 字段名称
-     * @return 值
+     * @param clazz
+     * @param fieldName
+     * @return Object
      */
     public static Object getStaticField(Class<?> clazz, String fieldName) {
         try {
@@ -85,12 +85,12 @@ public class Reflection {
     }
 
     /**
-     * 反射调用类的静态方法
+     * get object static method
      *
      * @param clazz      Class
-     * @param methodName 类的方法名称
-     * @param argTypes   参数类型
-     * @param args       参数
+     * @param methodName
+     * @param argTypes 
+     * @param args       
      * @return Object
      */
     public static Object invokeStaticMethod(Class<?> clazz, String methodName, Class<?>[] argTypes, Object... args) {
@@ -105,12 +105,12 @@ public class Reflection {
     }
 
     /**
-     * 反射调用类的方法
+     * get object method
      *
-     * @param object     类的对象
-     * @param methodName 类的方法名称
-     * @param argTypes   参数类型
-     * @param args       参数
+     * @param object
+     * @param methodName
+     * @param argTypes
+     * @param args       
      * @return Object
      */
     public static Object invokeMethod(Object object, String methodName, Class<?>[] argTypes, Object... args) {
@@ -130,12 +130,12 @@ public class Reflection {
     }
 
     /**
-     * 反射调用父类的方法
+     * get super 
      *
-     * @param object     类的对象
-     * @param methodName 类的方法名称
-     * @param argTypes   参数类型
-     * @param args       参数
+     * @param object
+     * @param methodName
+     * @param argTypes 
+     * @param args     
      * @return Object
      */
     public static Object invokeSuperMethod(Object object, String methodName, Class<?>[] argTypes, Object... args) {

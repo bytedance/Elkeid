@@ -105,15 +105,6 @@ public class Client implements EventHandler {
 
         Message message = new Message();
 
-        // try {
-        //     if (operate == Operate.CLASSUPLOAD) {
-        //         Thread.sleep(1000);
-        //     }
-            
-        // } catch (Exception e) {
-        //     // TODO: handle exception
-        // }
-
         message.setOperate(operate);
         message.setData(objectMapper.valueToTree(object));
 

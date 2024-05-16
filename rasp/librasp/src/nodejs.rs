@@ -8,6 +8,7 @@ use crate::settings;
 use anyhow::{anyhow, Result};
 use log::*;
 use regex::Regex;
+use wait_timeout::ChildExt;
 
 pub struct NodeJSProbe {}
 
@@ -58,49 +59,53 @@ pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str) -> Result<
         nspid_string.as_str(),
         require_module.as_str(),
     ];
-    match Command::new(nsenter)
-        .args(&args)
-        .stderr(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-    {
-        Ok(c) => match c.wait_with_output() {
-            Ok(out) => {
-                if out.status.success() {
-                    sleep(Duration::from_secs(1));
-                    return Ok(true);
-                }
-                match out.status.code() {
-                    Some(n) => {
-                        let stdout = match std::str::from_utf8(&out.stdout) {
-                            Ok(s) => s,
-                            Err(_) => "unknow stdout",
-                        };
-                        let stderr = match std::str::from_utf8(&out.stderr) {
-                            Ok(s) => s,
-                            Err(_) => "unknow stderr",
-                        };
+    let mut child = Command::new(nsenter)
+    .args(&args)
+    .stderr(Stdio::piped())
+    .stdout(Stdio::piped())
+    .spawn()?;
 
-                        let output = format!("{}\n{}", stdout, stderr);
-                        // port
-                        if n == 1 {
-                            sleep(Duration::from_secs(1));
-                            error!("can not attach nodejs");
-                            return Err(anyhow!(output));
-                        }
-                        return Err(anyhow!("return code: {} {}", n, output));
-                    }
-                    None => return Err(anyhow!("no return code founded")),
-                }
+    let timeout = Duration::from_secs(30);
+
+    match child.wait_timeout(timeout).unwrap() {
+        Some(status) => {
+            let out = child.wait_with_output()?;
+
+            if status.success() {
+                sleep(Duration::from_secs(1));
+                return Ok(true);
             }
-            Err(e) => {
-                return Err(anyhow!(e));
+
+            match status.code() {
+                Some(n) => {
+                    let stdout = match std::str::from_utf8(&out.stdout) {
+                        Ok(s) => s,
+                        Err(_) => "unknow stdout",
+                    };
+                    let stderr = match std::str::from_utf8(&out.stderr) {
+                        Ok(s) => s,
+                        Err(_) => "unknow stderr",
+                    };
+                    
+                    let output = format!("{}\n{}", stdout, stderr);
+                    // port
+                    if n == 1 {
+                        sleep(Duration::from_secs(1));
+                        error!("can not attach nodejs, exit code: {}, output: {}", n, output);
+                        return Err(anyhow!(output));
+                    }
+                    return Err(anyhow!("return code: {} {}", n, output));
+                }
+                None => return Err(anyhow!("no return code founded")),
             }
         },
-        Err(e) => {
-            return Err(anyhow!(e));
+        None => {
+            // child hasn't exited yet within 30s, kill the child process
+            child.kill()?;
+            child.wait()?;
+            return Err(anyhow!("command execution timeout"));
         }
-    };
+    }
 }
 
 pub fn nodejs_version(pid: i32, nodejs_bin_path: &String) -> Result<(u32, u32, String)> {

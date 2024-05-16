@@ -26,6 +26,7 @@
 #include <linux/oom.h>
 #include <linux/kernel.h>
 
+#include "../include/util.h"
 #include "../include/trace_buffer.h"
 
 /* kernel has READ_ONCE defined since 3.18.13 */
@@ -630,7 +631,7 @@ static inline bool __tb_time_read(tb_time_t *t, u64 *ret, unsigned long *cnt)
 	*cnt = tb_time_cnt(top);
 
 	/* If top, msb or bottom counts don't match, this interrupted a write */
-	if (*cnt != tb_time_cnt(msb) || *cnt != tb_time_cnt(bottom)
+	if (*cnt != tb_time_cnt(msb) || *cnt != tb_time_cnt(bottom))
 		return false;
 
 	/* The shift to msb will lose its cnt bits */
@@ -685,7 +686,7 @@ tb_time_read_cmpxchg(local_t *l, unsigned long expect, unsigned long set)
 	unsigned long ret;
 
 	ret = local_cmpxchg(l, expect, set);
-	return ret == expect
+	return ret == expect;
 }
 
 #else /* 64 bits */
@@ -2861,55 +2862,6 @@ tb_recursive_unlock(struct tb_per_cpu *cpu_ring)
 		cpu_ring->current_context - (1 << cpu_ring->nest);
 }
 
-/* The recursive locking above uses 5 bits */
-#define NESTED_BITS 5
-
-/**
- * tb_nest_start - Allow to trace while nested
- * @buffer: The ring buffer to modify
- *
- * The ring buffer has a safety mechanism to prevent recursion.
- * But there may be a case where a trace needs to be done while
- * tracing something else. In this case, calling this function
- * will allow this function to nest within a currently active
- * tb_lock_reserve().
- *
- * Call this function before calling another tb_lock_reserve() and
- * call tb_nest_end() after the nested tb_unlock_commit().
- */
-void tb_nest_start(struct tb_ring *buffer)
-{
-	struct tb_per_cpu *cpu_ring;
-	int cpu;
-
-	/* Enabled by tb_nest_end() */
-	preempt_disable_notrace();
-	cpu = raw_smp_processor_id();
-	cpu_ring = buffer->buffers[cpu];
-	/* This is the shift value for the above recursive locking */
-	cpu_ring->nest += NESTED_BITS;
-}
-
-/**
- * tb_nest_end - Allow to trace while nested
- * @buffer: The ring buffer to modify
- *
- * Must be called after tb_nest_start() and after the
- * tb_unlock_commit().
- */
-void tb_nest_end(struct tb_ring *buffer)
-{
-	struct tb_per_cpu *cpu_ring;
-	int cpu;
-
-	/* disabled by tb_nest_start() */
-	cpu = raw_smp_processor_id();
-	cpu_ring = buffer->buffers[cpu];
-	/* This is the shift value for the above recursive locking */
-	cpu_ring->nest -= NESTED_BITS;
-	preempt_enable_notrace();
-}
-
 /**
  * tb_unlock_commit - commit a reserved
  * @buffer: The buffer to commit to
@@ -4133,12 +4085,12 @@ static void tb_advance_reader(struct tb_per_cpu *cpu_ring)
 	cpu_ring->read_bytes += length;
 }
 
-int tb_lost_events(struct tb_per_cpu *cpu_ring)
+static int tb_lost_events(struct tb_per_cpu *cpu_ring)
 {
 	return cpu_ring->lost_events;
 }
 
-struct tb_event *
+static struct tb_event *
 tb_buffer_peek(struct tb_per_cpu *cpu_ring, u64 *ts,
 	       unsigned long *lost_events)
 {

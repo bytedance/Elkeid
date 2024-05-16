@@ -5,7 +5,7 @@ RUN yum install -y wget perl gcc make tree elfutils-libelf-devel yumdownloader g
 RUN yum groupinstall -y  "Development Tools"; 
 RUN yum install -y centos-release-scl
 RUN yum install -y devtoolset-8
-
+RUN rm -rf /root/headers || true
 RUN mkdir /root/headers
 
 ADD . /elkeid

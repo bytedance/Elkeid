@@ -23,7 +23,7 @@
 #define SZ_128K				0x00020000
 
 
-#ifdef SMITH_TRACE_SEQ
+#ifdef SMITH_TRACE_SEQ /* from kernel v3.19 */
 static inline int __trace_seq_used(struct trace_seq *s)
 {
 	return trace_seq_used(s);
@@ -48,15 +48,16 @@ static inline int __trace_seq_used(struct trace_seq *s)
 {
     return min(s->len, (unsigned int)(PAGE_SIZE - 1));
 }
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 5, 0)
+
+#ifdef SMITH_TRACE_FULL /* fromm 2.6.33 */
 static inline bool __trace_seq_has_overflowed(struct trace_seq *s)
 {
-    return s->len > PAGE_SIZE - 1;
+    return s->full || s->len > PAGE_SIZE - 1;
 }
 #else
 static inline bool __trace_seq_has_overflowed(struct trace_seq *s)
 {
-    return s->full || s->len > PAGE_SIZE - 1;
+    return s->len > PAGE_SIZE - 1;
 }
 #endif
 
@@ -70,7 +71,7 @@ static inline enum print_line_t __trace_handle_return(struct trace_seq *s)
     return __trace_seq_has_overflowed(s) ?
            TRACE_TYPE_PARTIAL_LINE : TRACE_TYPE_HANDLED;
 }
-#endif
+#endif /* SMITH_TRACE_SEQ */
 
 /*
  * The print entry - the most basic unit of tracing.

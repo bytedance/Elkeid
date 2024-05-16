@@ -4,6 +4,7 @@ CMD [ "sh", "-c", "echo start" ]
 RUN sed -i "s/enabled=0/enabled=1/g" /etc/yum.repos.d/AliYun.repo;
 RUN dnf install -y wget perl gcc make tree elfutils-libelf-devel; 
 RUN dnf groupinstall -y  "Development Tools"; 
+RUN rm -rf /root/headers || true
 RUN mkdir /root/headers
 RUN for each_tag in `dnf --showduplicates list kernel-devel | grep kernel-devel | awk -c '{print $2}'`; do dnf -y install --downloadonly --downloaddir=/root/headers kernel-devel-$each_tag.aarch64; done
 RUN rpm --force -i /root/headers/*.rpm  || true

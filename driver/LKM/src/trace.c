@@ -41,7 +41,7 @@ static ssize_t(*trace_seq_to_user_sym) (struct trace_seq * s,
 #define trace_seq_to_user_sym trace_seq_to_user
 #endif
 
-static int kallsyms_lookup_symbols(void)
+static int trace_lookup_symbols(void)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0)
     void *ptr = (void *)smith_kallsyms_lookup_name("trace_seq_to_user");
@@ -278,18 +278,18 @@ waitagain:
     mutex_lock(&access_lock);
     while (trace_next_entry_inc(iter) != NULL) {
         enum print_line_t ret;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-        int save_len = iter->seq.seq.len;
-#else
+#ifdef SMITH_TRACE_LEN
         int save_len = iter->seq.len;
+#else
+        int save_len = iter->seq.seq.len;
 #endif
         ret = print_trace_fmt_line(iter);
         if (ret == TRACE_TYPE_PARTIAL_LINE) {
             /* don't print partial lines */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-            iter->seq.seq.len = save_len;
-#else
+#ifdef SMITH_TRACE_LEN
             iter->seq.len = save_len;
+#else
+            iter->seq.seq.len = save_len;
 #endif
             break;
         }
@@ -304,7 +304,7 @@ waitagain:
     * size and we should leave by partial output condition above.
     * One of the trace_seq_* functions is not used properly.
     */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
+#ifdef SMITH_TRACE_FULL
         WARN_ONCE(iter->seq.full, "full flag set for trace id: %d", iter->ent->id);
 #endif
     }
@@ -312,10 +312,10 @@ waitagain:
 
 /* Now copy what we have to the user */
     sret = trace_seq_to_user_sym(&iter->seq, ubuf, cnt);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
-    if (iter->seq.seq.readpos >= __trace_seq_used(&iter->seq))
-#else
+#ifdef SMITH_TRACE_READPOS
     if (iter->seq.readpos >= __trace_seq_used(&iter->seq))
+#else
+    if (iter->seq.seq.readpos >= __trace_seq_used(&iter->seq))
 #endif
     trace_seq_init(&iter->seq);
 
@@ -343,7 +343,7 @@ static int trace_release_pipe(struct inode *inode, struct file *file)
     return 0;
 }
 
-long trace_ioctl_pipe(struct file *filp, unsigned int cmd, unsigned long __user arg)
+static long trace_ioctl_pipe(struct file *filp, unsigned int cmd, unsigned long __user arg)
 {
     struct print_event_iterator *iter = filp->private_data;
     long rc = -EINVAL;
@@ -399,7 +399,7 @@ static int __init print_event_init(void)
     if (num_class >= PRINT_EVENT_ID_MAX)
         return -EINVAL;
 
-    if (kallsyms_lookup_symbols())
+    if (trace_lookup_symbols())
         return -ENODEV;
 
     trace_ring = tb_alloc(RB_BUFFER_SIZE, TB_FL_OVERWRITE);

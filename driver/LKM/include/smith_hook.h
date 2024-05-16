@@ -46,10 +46,6 @@
 #include <linux/kmod.h>
 #include <linux/dcache.h>
 
-#ifndef get_file_rcu
-#define get_file_rcu(x) atomic_long_inc_not_zero(&(x)->f_count)
-#endif
-
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 1, 0)
 #define __ARG_PLACEHOLDER_1 0,
 #define config_enabled(cfg) _config_enabled(cfg)

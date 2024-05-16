@@ -37,7 +37,6 @@ public class JarUtil {
         return Base64.getDecoder().decode(base64Str);
     }
 
-    // 将字节数组转换为私钥对象
     private static PrivateKey bytesToPrivateKey(byte[] privateKeyBytes) throws Exception {
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(privateKeyBytes);
@@ -46,7 +45,7 @@ public class JarUtil {
 
     public static byte[] calculateMD5(String filePath) {
         try {
-            // 创建MessageDigest对象，指定使用MD5算法
+
             MessageDigest md = MessageDigest.getInstance("MD5");
 
             Path path = Paths.get(filePath);

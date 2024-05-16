@@ -20,7 +20,7 @@ static int _kallsyms_lookup_kprobe(struct kprobe *p, struct pt_regs *regs)
         return 0;
 }
 
-unsigned long get_kallsyms_func(void)
+static unsigned long get_kallsyms_func(void)
 {
         struct kprobe probe;
         int ret;
@@ -57,7 +57,7 @@ unsigned long smith_kallsyms_lookup_name(const char *name)
 
 #endif
 
-int prepend(char **buffer, int *buflen, const char *str, int namelen)
+static int prepend(char **buffer, int *buflen, const char *str, int namelen)
 {
     *buflen -= namelen;
     if (*buflen < 0)
@@ -67,14 +67,14 @@ int prepend(char **buffer, int *buflen, const char *str, int namelen)
     return 0;
 }
 
-int prepend_name(char **buffer, int *buflen, struct qstr *name)
+static int prepend_name(char **buffer, int *buflen, struct qstr *name)
 {
     return prepend(buffer, buflen, name->name, name->len);
 }
 
 
 //get file path from dentry struct
-char *__dentry_path(struct dentry *dentry, char *buf, int buflen)
+char *smith_dentry_path(struct dentry *dentry, char *buf, int buflen)
 {
     char *end = buf + buflen;
     char *retval;

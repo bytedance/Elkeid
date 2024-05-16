@@ -72,7 +72,7 @@ class MessageSerializer extends StdSerializer<Message> {
     public void serialize(Message value, JsonGenerator gen, SerializerProvider provider) throws IOException {
         gen.writeStartObject();
         gen.writeNumberField("message_type", value.getOperate());
-        // TODO 首包才传metadata, 把pid 相关的信息加到metadata里
+
         gen.writeNumberField("pid", pid);
         gen.writeStringField("runtime", "JVM");
         gen.writeStringField("runtime_version", jvmVersion);

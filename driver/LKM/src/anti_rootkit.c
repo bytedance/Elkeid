@@ -25,8 +25,19 @@
 static int (*ckt) (unsigned long addr) = NULL;
 
 #ifdef CONFIG_X86
-#include <asm/unistd.h>
-static unsigned long *idt = NULL;
+#include <asm/unistd.h> /* IDT_ENTRIES */
+#include <asm/desc_defs.h> /* idt: gate_desc */
+static gate_desc *idt = NULL;
+
+static inline unsigned long get_isr_addr(const gate_desc *g)
+{
+#ifdef CONFIG_X86_64
+	return g->offset_low | ((unsigned long)g->offset_middle << 16) |
+		((unsigned long) g->offset_high << 32);
+#else
+	return g->offset_low | ((unsigned long)g->offset_middle << 16);
+#endif
+}
 #endif
 
 static unsigned long *sct = NULL;
@@ -103,7 +114,6 @@ static void analyze_syscalls(void)
 	if (!sct || !ckt)
 		return;
 
-	
 	for (i = 0; i < NR_syscalls; i++) {
 		const char *mod_name = "-1";
 		addr = sct[i];
@@ -132,6 +142,7 @@ static void analyze_syscalls(void)
 static void analyze_interrupts(void)
 {
 #ifdef CONFIG_X86
+
 	int i;
 	unsigned long addr;
 	struct module *mod;
@@ -142,8 +153,8 @@ static void analyze_interrupts(void)
 	for (i = 0; i < IDT_ENTRIES; i++) {
 		const char *mod_name = "-1"; 
 
-		addr = idt[i];
-		if (!ckt(addr)) {
+		addr = get_isr_addr(&idt[i]);
+		if (addr && !ckt(addr)) {
 			module_list_lock();
 
 			mod = get_module_from_addr(addr);

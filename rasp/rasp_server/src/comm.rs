@@ -22,10 +22,16 @@ use tokio::sync::RwLock;
 use tokio::time::sleep;
 
 pub fn clean_bind_addr(addr: &str) -> Result<(), String> {
-    if Path::new(addr.clone()).exists() {
-        match fs::remove_file(addr.clone()) {
-            Ok(_) => {}
-            Err(e) => return Err(e.to_string()),
+    let path = Path::new(addr.clone());
+    if path.exists() {
+        if path.is_dir() {
+            if let Err(err) = fs::remove_dir_all(path) {
+                return Err(format!("Failed to delete directory: {}", err));
+            }
+        } else {
+            if let Err(err) = fs::remove_file(path) {
+                return Err(format!("Failed to delete file: {}", err));
+            }
         }
     }
     if let Some(d) = Path::new(addr.clone()).parent() {
@@ -73,8 +79,16 @@ pub async fn new_pair(
 }
 
 pub async fn start_bind(sock: RASPSock) -> Result<(), String> {
-    clean_bind_addr(&sock.server_addr.clone())?;
-    info!("bind: {}", &sock.server_addr.clone());
+    match clean_bind_addr(&sock.server_addr.clone()) {
+        Ok(()) => {
+            info!("bind: {}", &sock.server_addr.clone());
+        },
+        Err(err) => {
+            error!("clean bind path err: {:?}", err);
+            return Err(format!("start_bind failed: {:?}", err));
+        },
+    }
+    
     let listener = listen(&sock.server_addr.clone())?;
     let mut pairs: Arc<RwLock<HashMap<i32, RASPPair>>> = Arc::new(RwLock::new(HashMap::new()));
     let pairs_clean = Arc::clone(&pairs);
@@ -84,12 +98,24 @@ pub async fn start_bind(sock: RASPSock) -> Result<(), String> {
     let mut checking_ctrl = sock.ctrl.clone();
     spawn(async move {
         loop {
+            if !checking_ctrl.check() {
+                info!("check sock receive signal, stop");
+                return;
+            }
             if Path::new(&server_addr).exists() {
                 sleep(Duration::from_secs(60 * 60)).await;
             } else {
                 error!("RASP ERROR: SOCK has been deleted");
-                let _ = checking_ctrl.stop();
-                break;
+
+                match clean_bind_addr(&sock.server_addr.clone()) {
+                    Ok(()) => {
+                        info!("bind: {}", &sock.server_addr.clone());
+                    },
+                    Err(err) => {
+                        error!("clean bind path err: {:?}", err);
+                    },
+                }
+                listen(&sock.server_addr.clone());
             }
         }
     });
@@ -240,6 +266,10 @@ pub async fn looping(
         drop(p)
     });
     loop {
+        if !rx_ctrl.clone().check() {
+            info!("select thread receive quit signal");
+            break;
+        }
         tokio::select! {
             x = sock_tx.recv() => {
                 match x {

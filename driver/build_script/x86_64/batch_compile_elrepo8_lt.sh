@@ -1,4 +1,5 @@
 #!/bin/bash
+rm -rf /ko_output || true
 mkdir -p /ko_output
 BUILD_VERSION=$(cat LKM/src/init.c | grep MODULE_VERSION | awk -F '"' '{print $2}')
 KO_NAME=$(grep "MODULE_NAME" ./LKM/Makefile | grep -m 1 ":=" | awk '{print $3}')
