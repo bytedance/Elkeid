@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 use std::thread;
 use std::time::Duration;
-use std::fs::{remove_file, read_link, symlink_metadata};
+use std::fs::{remove_file, read_link, symlink_metadata, create_dir_all};
 use std::os::unix::fs;
 use crossbeam::channel::{bounded, Receiver, SendError, Sender};
 use libc::{kill, killpg, SIGKILL};
@@ -221,8 +221,7 @@ impl RASPComm for ThreadMode {
                 target = resolved_path;
             }
 
-            // check socket exist
-            let _  = remove_file(target.clone());
+            make_path_exist(target.clone());
         
             match fs::symlink(self.bind_path.clone(), target.clone()) {
                 Ok(()) => {
@@ -285,6 +284,16 @@ fn mount(pid: i32, from: &str, to: &str) -> AnyhowResult<()> {
         }
         Err(e) => Err(anyhow!("can not mount: {}", e)),
     };
+}
+
+pub fn make_path_exist(path: String) -> AnyhowResult<()> {
+    // check socket exist or path not exist
+    let _ = remove_file(path.clone());
+    let current_path = std::path::Path::new(&path).parent().unwrap();
+    if !current_path.exists() {
+        create_dir_all(&current_path)?;
+    }
+    Ok(())
 }
 
 pub fn check_need_mount(pid_mntns: &String) -> AnyhowResult<bool> {
