@@ -1,9 +1,9 @@
 package com.security.smith.client;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import com.security.smith.client.message.*;
 import com.security.smith.common.ProcessHelper;
 import com.security.smith.log.SmithLogger;
@@ -22,8 +22,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-
-import com.google.gson.Gson;
+import java.nio.charset.StandardCharsets;
+import java.util.stream.Collectors;
 
 interface EventHandler {
     void onReconnect();
@@ -97,16 +97,16 @@ public class Client implements EventHandler {
     }
 
     public void write(int operate, Object object) {
-        if (channel == null || !channel.isActive() || !channel.isWritable())
-            return;
+       if (channel == null || !channel.isActive() || !channel.isWritable())
+        return;
 
-        ObjectMapper objectMapper = new ObjectMapper()
-                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+        Gson gson = new Gson();
 
         Message message = new Message();
-
         message.setOperate(operate);
-        message.setData(objectMapper.valueToTree(object));
+
+        JsonElement jsonElement = gson.toJsonTree(object);
+        message.setData(jsonElement);
 
         channel.writeAndFlush(message);
     }
@@ -132,12 +132,22 @@ public class Client implements EventHandler {
 
             case Operate.CONFIG:
                 SmithLogger.logger.info("config");
-                messageHandler.onConfig(message.getData().get("config").asText());
+                JsonElement configElement = message.getData().getAsJsonObject().get("config");
+                if (configElement != null && configElement.isJsonPrimitive()) {
+                    String config = configElement.getAsString();
+                    messageHandler.onConfig(config);
+                } 
+                //messageHandler.onConfig(message.getData().get("config").asText());
                 break;
 
             case Operate.CONTROL:
                 SmithLogger.logger.info("control");
-                messageHandler.onControl(message.getData().get("action").asInt());
+                JsonElement actionElement = message.getData().getAsJsonObject().get("action");
+                if (actionElement != null && actionElement.isJsonPrimitive() && actionElement.getAsJsonPrimitive().isNumber()) {
+                    int action = actionElement.getAsInt();
+                    messageHandler.onControl(action);
+                } 
+                //messageHandler.onControl(message.getData().get("action").asInt());
                 break;
 
             case Operate.DETECT:
@@ -245,13 +255,20 @@ public class Client implements EventHandler {
 
         SmithLogger.logger.info("read message file: " + path);
 
-        ObjectMapper objectMapper = new ObjectMapper()
-                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
         try {
-            for (Message message : objectMapper.readValue(path.toFile(), Message[].class))
-                onMessage(message);
+             String json = Files.lines(path, StandardCharsets.UTF_8)
+                .collect(Collectors.joining("\n"));
+            JsonElement jsonElement = JsonParser.parseString(json);
+            
+            if (jsonElement.isJsonArray()) {
+                JsonArray jsonArray = jsonElement.getAsJsonArray();
+                for (JsonElement element : jsonArray) {
+                    if (element.isJsonObject()) {
+                        Message message = new Gson().fromJson(element, Message.class);
+                        onMessage(message);
+                    }
+                }
+            }
 
             Files.delete(path);
         } catch (IOException e) {

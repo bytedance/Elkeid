@@ -1,11 +1,8 @@
 package com.security.smith.client.message;
 
-
+import com.google.gson.annotations.SerializedName;
 import java.time.Instant;
 import java.util.UUID;
-
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-
 
 public class ClassFilter {
     private String transId = null;
@@ -16,7 +13,7 @@ public class ClassFilter {
     private String parentClassName = "";
     private String parentClassLoaderName = "";
     private long ruleId;
-    @JsonSerialize(converter = StackTraceConverter.class)
+    @SerializedName("stackTrace")
     private StackTraceElement[] stackTrace = {};
 
     public String getTransId() {
@@ -27,7 +24,7 @@ public class ClassFilter {
         UUID uniqueId = UUID.randomUUID();
         transId = uniqueId.toString().replace("-", "");
     }
-    
+
     public String getClassName() {
         return className;
     }
@@ -51,6 +48,7 @@ public class ClassFilter {
     public void setInterfacesName(String interfacesName) {
         this.interfacesName = interfacesName;
     }
+
     public String getClassLoaderName() {
         return classLoaderName;
     }
@@ -58,7 +56,6 @@ public class ClassFilter {
     public void setClassLoaderName(String classLoaderName) {
         this.classLoaderName = classLoaderName;
     }
-
 
     public String getParentClassName() {
         return parentClassName;
@@ -91,6 +88,7 @@ public class ClassFilter {
     public void setStackTrace(StackTraceElement[] stackTrace) {
         this.stackTrace = stackTrace;
     }
+
     @Override
     public String toString() {
         return "{" +
@@ -105,5 +103,4 @@ public class ClassFilter {
                 ", timestamp: " + Instant.now().getEpochSecond() +
                 '}';
     }
-
 }

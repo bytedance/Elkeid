@@ -1,8 +1,5 @@
 package com.security.smith;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.lmax.disruptor.EventHandler;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -56,6 +53,11 @@ import java.util.stream.Collectors;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.security.smith.client.message.*;
+
 
 class DetectTimerTask extends TimerTask {
         private boolean isCancel = false;
@@ -334,6 +336,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         inst = null;
         ourInstance = null;
 
+        MessageEncoder.delInstance();
+        MessageSerializer.delInstance();
+        MessageDecoder.delInstance();
+
         SmithLogger.logger.info("probe uninit leave");
         SmithLogger.loggerProberUnInit();
     }
@@ -367,7 +373,13 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         Filter filter = filters.get(new ImmutablePair<>(trace.getClassID(), trace.getMethodID()));
 
         if (filter == null) {
-            client.write(Operate.TRACE, trace);
+                Gson gson = new GsonBuilder()
+                .registerTypeAdapter(Trace.class, new TraceSerializer())
+                .registerTypeAdapter(Trace.class, new TraceDeserializer())
+                .create();
+            String json = gson.toJson(trace);
+
+            client.write(Operate.TRACE, json);
             return;
         }
 
@@ -382,7 +394,13 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         if (exclude.length > 0 && Arrays.stream(exclude).anyMatch(pred))
             return;
 
-        client.write(Operate.TRACE, trace);
+        Gson gson = new GsonBuilder()
+            .registerTypeAdapter(Trace.class, new TraceSerializer())
+            .registerTypeAdapter(Trace.class, new TraceDeserializer())
+            .create();
+        String json = gson.toJson(trace);
+
+        client.write(Operate.TRACE, json);
     }
 
     public void printClassfilter(ClassFilter data) {

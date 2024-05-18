@@ -408,7 +408,7 @@ public class SmithProbeProxy {
     public  void onTimer() {
         Heartbeat heartbeat = SmithProbeObj.getHeartbeat();
         if (client != null)
-            client.write(Operate.HEARTBEAT, heartbeat);
+            client.write(Operate.HEARTBEAT, heartbeat.toJson());
 
         Map<Pair<Integer, Integer>, Integer> limits = SmithProbeObj.getLimits();
 
