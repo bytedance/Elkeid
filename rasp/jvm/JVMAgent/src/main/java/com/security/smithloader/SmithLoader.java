@@ -12,9 +12,11 @@ import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 
 public class SmithLoader extends ClassLoader {
+      private File file;
       private JarFile jarFile;
     public SmithLoader(String jarFilePath, ClassLoader parent) throws IOException {
-        this.jarFile = new JarFile(new File(jarFilePath));
+        file = new File(jarFilePath);
+        this.jarFile = new JarFile(file);
     }
 
     @Override
@@ -68,6 +70,7 @@ public class SmithLoader extends ClassLoader {
     @Override
     protected void finalize() throws Throwable {
         try {
+            jarFile.close();
             jarFile = null;
         } finally {
             super.finalize();

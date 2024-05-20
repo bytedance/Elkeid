@@ -4,6 +4,8 @@ import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
+import javax.management.openmbean.CompositeDataInvocationHandler;
+
 import com.security.smithloader.MemCheck;
 import com.security.smithloader.common.JarUtil;
 import com.security.smithloader.common.ParseParameter;
@@ -13,11 +15,16 @@ import com.security.smithloader.log.SmithAgentLogger;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.concurrent.Callable;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class SmithAgent {
     private static ReentrantLock    xLoaderLock = new ReentrantLock();
-    private static SmithLoader      xLoader = null;
+    private static Object           xLoader = null;
     private static Class<?>         SmithProberClazz = null;
     private static Object           SmithProberObj = null;
     private static Object           SmithProberProxyObj = null;
@@ -26,6 +33,7 @@ public class SmithAgent {
     private static String probeVersion;
     private static String checksumStr;
     private static String proberPath;
+    private static Instrumentation instrumentation = null;
 
     public static Object getClassLoader() {
         return xLoader;
@@ -73,9 +81,14 @@ public class SmithAgent {
         SmithAgentLogger.logger.info("loadSmithProber Entry");
 
         try {
-            xLoader = new SmithLoader(proberPath, null);
-            SmithProberClazz = xLoader.loadClass("com.security.smith.SmithProbe");
-            
+            Class<?> smithLoaderClazz = ClassLoader.getSystemClassLoader().loadClass("com.security.smithloader.SmithLoader");
+            Constructor<?> xconstructor = smithLoaderClazz.getConstructor(String.class, ClassLoader.class);
+            xLoader = xconstructor.newInstance(proberPath,null);
+
+            String smithProbeClassName = "com.security.smith.SmithProbe";
+            Class<?>[]  loadclassargType = new Class[]{String.class};
+            SmithProberClazz = (Class<?>)Reflection.invokeMethod(xLoader,"loadClass", loadclassargType,smithProbeClassName);
+
             Class<?>[] emptyArgTypes = new Class[]{};
             if (SmithProberClazz != null) {
                 Constructor<?> constructor = SmithProberClazz.getDeclaredConstructor();
@@ -182,6 +195,47 @@ public class SmithAgent {
 
         return null;
     }
+     private static class MyCallable implements Callable<String> {
+        @Override
+        public String call() throws Exception {
+             xLoaderLock.lock();
+                try {
+                    if(xLoader != null) {
+                        String agent = System.getProperty("rasp.probe");
+
+                        if(unLoadSmithProber()) {
+                            System.setProperty("smith.status", "detach");
+                        }
+                        if (agent != null) {
+                            System.clearProperty("rasp.probe");
+                        }
+                        xLoader = null;
+                        SmithProberObj = null;
+                        SmithProberClazz = null;
+                    }
+    
+                    System.setProperty("smith.rasp", "");
+                    if (!checkMemoryAvailable()) {
+                        System.setProperty("smith.status",  "memory not enough");
+                        SmithAgentLogger.logger.warning("checkMemory failed");
+                    } else {
+                        if(!loadSmithProber(proberPath,instrumentation)) {
+                            System.setProperty("smith.status",proberPath + " loading fail");
+                            SmithAgentLogger.logger.warning(proberPath + " loading fail!");
+                        }
+                        else {
+                            System.setProperty("smith.rasp", probeVersion+"-"+checksumStr);
+                            System.setProperty("smith.status", "attach");
+                            System.setProperty("rasp.probe", "smith");
+                        }
+                    }
+                }
+                finally {
+                    xLoaderLock.unlock();
+                }
+            return "SmithProbeLoader";
+        }
+    }
 
     public static void premain(String agentArgs, Instrumentation inst) {
         agentmain(agentArgs, inst);
@@ -196,6 +250,9 @@ public class SmithAgent {
         StringBuilder checksumStr_sb = new StringBuilder();
         StringBuilder proberPath_sb = new StringBuilder();
         String cmd = "";
+
+        System.out.println("getContextClassLoader:"+Thread.currentThread().getContextClassLoader());
+        System.out.println("ClassLoader.getSystemClassLoader:"+ClassLoader.getSystemClassLoader());
 
         if(ParseParameter.parseParameter(agentArgs,cmd_sb,checksumStr_sb,proberPath_sb)) {
             cmd = cmd_sb.toString();
@@ -216,62 +273,34 @@ public class SmithAgent {
                     return ;
                 }
                 */
-                
 
-                try {
-                    inst.appendToBootstrapClassLoaderSearch(new JarFile(proberPath));
-                }
-                catch(Exception e) {
-                    SmithAgentLogger.exception(e);
+                if(instrumentation == null) {
+                    instrumentation = inst;
                 }
 
                 probeVersion = getProberVersion(proberPath);
                 SmithAgentLogger.logger.info("proberVersion:" + probeVersion);
 
-                xLoaderLock.lock();
-                try {
-                    if(xLoader != null) {
-                        if(unLoadSmithProber()) {
-                            System.setProperty("smith.status", "detach");
-                        }
-                        if (agent != null) {
-                            System.clearProperty("rasp.probe");
-                        }
-                        xLoader = null;
-                        SmithProberObj = null;
-                        SmithProberClazz = null;
-                    }
-    
-                    System.setProperty("smith.rasp", "");
-                    if (!checkMemoryAvailable()) {
-                        System.setProperty("smith.status",  "memory not enough");
-                        SmithAgentLogger.logger.warning("checkMemory failed");
-                    } else {
-                        if(!loadSmithProber(proberPath,inst)) {
-                            System.setProperty("smith.status",proberPath + " loading fail");
-                            SmithAgentLogger.logger.warning(proberPath + " loading fail!");
-                        }
-                        else {
-                            System.setProperty("smith.rasp", probeVersion+"-"+checksumStr);
-                            System.setProperty("smith.status", "attach");
-                            System.setProperty("rasp.probe", "smith");
-                        }
-                    }
-                }
-                finally {
-                    xLoaderLock.unlock();
-                }
+                 Callable<String> callable = new MyCallable();
+
+                FutureTask<String> futureTask = new FutureTask<>(callable);
+                Thread newThread = new Thread(futureTask, "SmithProbeLoader Thread");
+                newThread.setContextClassLoader(ClassLoader.getSystemClassLoader());
+                newThread.start();
             }
             else if(cmd.equals("detach")) {
                 xLoaderLock.lock();
                 try {
                     if(xLoader != null) {
                         if(unLoadSmithProber()) {
+                            SmithAgentLogger.logger.warning("SmithProber detach success!");
                             System.setProperty("smith.status", "detach");
                         }
                         else {
                             System.setProperty("smith.status", "prober unload fail");
                         }
+                        Class<?>[] emptyArgTypes = new Class[]{};
+                        Reflection.invokeMethod(xLoader,"clearAssertionStatus",emptyArgTypes);
                         xLoader = null;
                         SmithProberObj = null;
                         SmithProberClazz = null;
