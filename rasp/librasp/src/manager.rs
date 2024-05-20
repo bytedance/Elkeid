@@ -346,26 +346,44 @@ impl RASPManager {
                     java_attach(process_info.pid)
                 }
                 ProbeState::AttachedVersionNotMatch => {
-                  match java_detach(pid) {
-                    Ok(result) => {
-                        if let Ok(true) = check_need_mount(mnt_namespace) {
-                            Self::remove_dir_from_to_dest(format!("{}{}", root_dir.clone(), settings::RASP_JAVA_DIR()));
-                        }
-                        if self.can_copy(mnt_namespace) {
-                            for from in JVMProbe::names().0.iter() {
-                                self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
-                            }
-                            for from in JVMProbe::names().1.iter() {
-                                self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
+                    let mut diff_ns:bool = false;
+                    match check_need_mount(mnt_namespace) {
+                        Ok(value) => {
+                            diff_ns = value;
+                            if diff_ns {
+                                let to = format!("{}{}",root_dir.clone(), settings::RASP_JAVA_AGENT_BIN());
+                                self.copy_file_from_to_dest(settings::RASP_JAVA_AGENT_BIN(), root_dir.clone());
+                                info!("copy from SmithAgent.jar to {}", to.clone());
                             }
                         }
-                        java_attach(pid)
+                        Err(e) => {
+                            warn!(
+                                "check_need_mount failed, {}", e
+                            );
+                        }
+                        
                     }
-                    Err(e) => {
-                        //process_info.tracing_state = ProbeState::Attached;
-                        Err(anyhow!(e))
-                    } 
-                  }
+                    
+                    match java_detach(pid) {
+                        Ok(result) => {
+                            if diff_ns {
+                                Self::remove_dir_from_to_dest(format!("{}{}", root_dir.clone(), settings::RASP_JAVA_DIR()));
+                            }
+                            if self.can_copy(mnt_namespace) {
+                                for from in JVMProbe::names().0.iter() {
+                                    self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
+                                }
+                                for from in JVMProbe::names().1.iter() {
+                                    self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
+                                }
+                            }
+                            java_attach(pid)
+                        }
+                        Err(e) => {
+                            //process_info.tracing_state = ProbeState::Attached;
+                            Err(anyhow!(e))
+                        } 
+                    }
 
                 }
             },
