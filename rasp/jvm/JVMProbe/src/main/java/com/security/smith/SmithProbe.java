@@ -173,7 +173,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
 
     public void init() {
-        System.out.println("fuck fuck fuck smithprobe");
         SmithLogger.loggerProberInit();
         SmithLogger.logger.info("probe init enter");
         smithClasses = new ConcurrentHashMap<>();
