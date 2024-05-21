@@ -59,19 +59,6 @@ public class SmithLoader extends ClassLoader {
             if(zEntry == null) {
                 throw new IOException("class not found");
             }
-/* 
-            InputStream inputStream = jarFile.getInputStream(zEntry);
-            if(inputStream == null) {
-                throw new IOException("class not found");
-            }
-
-            bytes = new byte[inputStream.available()];
-
-            int bytesRead = inputStream.read(bytes);
-            if (bytesRead != bytes.length) {
-                throw new IOException("get byte array fail");
-            }
-            */
 
             try (InputStream inputStream = jarFile.getInputStream(zEntry)) {
                 data = readAllBytes(inputStream);
