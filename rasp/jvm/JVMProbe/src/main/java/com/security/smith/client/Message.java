@@ -11,7 +11,6 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
-import com.security.smith.common.ProcessHelper;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
@@ -25,7 +24,7 @@ import java.util.List;
 
 @JsonSerialize(using = MessageSerializer.class)
 @JsonDeserialize(using = MessageDeserializer.class)
-class Message {
+public class Message {
     static final int PROTOCOL_HEADER_SIZE = 4;
     static final int MAX_PAYLOAD_SIZE = 10240;
 
@@ -49,41 +48,6 @@ class Message {
     }
 }
 
-class MessageSerializer extends StdSerializer<Message> {
-    static private final int pid;
-    static private final String jvmVersion;
-    static private final String probeVersion;
-
-    static {
-        pid = ProcessHelper.getCurrentPID();
-        jvmVersion = ManagementFactory.getRuntimeMXBean().getSpecVersion();
-        probeVersion = MessageSerializer.class.getPackage().getImplementationVersion();
-    }
-
-    protected MessageSerializer() {
-        super(Message.class);
-    }
-
-    protected MessageSerializer(Class<Message> t) {
-        super(t);
-    }
-
-    @Override
-    public void serialize(Message value, JsonGenerator gen, SerializerProvider provider) throws IOException {
-        gen.writeStartObject();
-        gen.writeNumberField("message_type", value.getOperate());
-
-        gen.writeNumberField("pid", pid);
-        gen.writeStringField("runtime", "JVM");
-        gen.writeStringField("runtime_version", jvmVersion);
-        gen.writeStringField("probe_version", probeVersion);
-        gen.writeNumberField("time", Instant.now().getEpochSecond());
-
-        gen.writeObjectField("data", value.getData());
-
-        gen.writeEndObject();
-    }
-}
 
 class MessageDeserializer extends StdDeserializer<Message> {
     protected MessageDeserializer() {

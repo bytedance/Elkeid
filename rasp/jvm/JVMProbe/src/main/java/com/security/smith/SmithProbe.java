@@ -145,6 +145,8 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     private Timer smithproxyTimer;
     private DetectTimerTask detectTimerTask;
     private SmithproxyTimerTask smithproxyTimerTask;
+    private String proberVersion;
+    private String proberPath;
 
     public SmithProbe() {
         disable = false;
@@ -166,6 +168,15 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     public InputStream getResourceAsStream(String name) {
         Class<?>[] strArgTypes = new Class[]{String.class};
         return (InputStream)Reflection.invokeMethod(xClassLoaderObj,"getResourceAsStream", strArgTypes,name);
+    }
+
+    public void setProbeVersion(String proberVer) {
+        proberVersion = proberVer;
+        MessageSerializer.setProbeVersion(proberVer);
+    }
+
+    public void setProbePath(String proberPath) {
+        this.proberPath = proberPath;
     }
 
     public void init() {
@@ -333,6 +344,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         heartbeat = null;
         inst = null;
         ourInstance = null;
+        proberVersion = null;
+        proberPath = null;
+        MessageSerializer.delInstance();
 
         SmithLogger.logger.info("probe uninit leave");
         SmithLogger.loggerProberUnInit();

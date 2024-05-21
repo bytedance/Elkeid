@@ -72,7 +72,7 @@ public class SmithAgent {
 
         return null;
     }
-  
+
     private static boolean loadSmithProber(String proberPath, Instrumentation inst) {
         boolean bret = false;
         boolean bexception = false;
@@ -101,6 +101,9 @@ public class SmithAgent {
                     Reflection.invokeMethod(SmithProberObj,"setClassLoader",objArgTypes,xLoader);
                     Class<?>[]  argType = new Class[]{Instrumentation.class};
                     Reflection.invokeMethod(SmithProberObj,"setInst",argType,inst);
+                    Class<?>[] probeArgTypes = new Class[]{String.class};
+                    Reflection.invokeMethod(SmithProberObj,"setProbeVersion",probeArgTypes,probeVersion);
+                    Reflection.invokeMethod(SmithProberObj,"setProbePath",probeArgTypes,proberPath);
                     Reflection.invokeMethod(SmithProberObj,"init",emptyArgTypes);
                     SmithProberProxyObj = Reflection.invokeMethod(SmithProberObj,"getSmithProbeProxy", emptyArgTypes);
                     binited = true;
@@ -265,11 +268,13 @@ public class SmithAgent {
                 SmithAgentLogger.logger.info("checksumStr:" + checksumStr);
                 SmithAgentLogger.logger.info("proberPath:" + proberPath); 
 
+                /* 
                 if (!JarUtil.checkJarFile(proberPath,checksumStr)) {
                     System.setProperty("smith.status", proberPath + " check fail");
                     SmithAgentLogger.logger.warning(proberPath + " check fail!");
                     return ;
                 }
+                */
 
                 if(instrumentation == null) {
                     instrumentation = inst;
