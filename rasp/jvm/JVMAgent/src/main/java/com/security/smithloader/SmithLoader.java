@@ -2,6 +2,7 @@ package com.security.smithloader;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.Enumeration;
@@ -12,9 +13,11 @@ import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 
 public class SmithLoader extends ClassLoader {
+      private File file;
       private JarFile jarFile;
     public SmithLoader(String jarFilePath, ClassLoader parent) throws IOException {
-        this.jarFile = new JarFile(new File(jarFilePath));
+        file = new File(jarFilePath);
+        this.jarFile = new JarFile(file);
     }
 
     @Override
@@ -32,13 +35,24 @@ public class SmithLoader extends ClassLoader {
         } catch (ClassNotFoundException e) {
             // If the class is not found in JAR file,try to load from parent class loader
             return super.findClass(name);
+            //throw e;
         }
 
         return null;
     }
 
+    private byte[] readAllBytes(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        byte[] buffer = new byte[4096];
+        int bytesRead;
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            outputStream.write(buffer, 0, bytesRead);
+        }
+        return outputStream.toByteArray();
+    }
+
     private byte[] loadClassData(String className) throws IOException {
-        byte[] bytes = null;
+        byte[] data = null;
 
         try {
             ZipEntry zEntry = jarFile.getEntry(className);
@@ -46,28 +60,22 @@ public class SmithLoader extends ClassLoader {
                 throw new IOException("class not found");
             }
 
-            InputStream inputStream = jarFile.getInputStream(zEntry);
-            if(inputStream == null) {
-                throw new IOException("class not found");
-            }
-
-            bytes = new byte[inputStream.available()];
-
-            int bytesRead = inputStream.read(bytes);
-            if (bytesRead != bytes.length) {
-                throw new IOException("get byte array fail");
+            try (InputStream inputStream = jarFile.getInputStream(zEntry)) {
+                data = readAllBytes(inputStream);
+                inputStream.close();
             }
         }
         catch(Exception e) {
             throw e;
         }
 
-        return bytes;
+        return data;
     }
 
     @Override
     protected void finalize() throws Throwable {
         try {
+            jarFile.close();
             jarFile = null;
         } finally {
             super.finalize();
