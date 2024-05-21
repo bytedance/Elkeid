@@ -2,6 +2,7 @@ package com.security.smithloader;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.Enumeration;
@@ -34,20 +35,31 @@ public class SmithLoader extends ClassLoader {
         } catch (ClassNotFoundException e) {
             // If the class is not found in JAR file,try to load from parent class loader
             return super.findClass(name);
+            //throw e;
         }
 
         return null;
     }
 
+    private byte[] readAllBytes(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        byte[] buffer = new byte[4096];
+        int bytesRead;
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            outputStream.write(buffer, 0, bytesRead);
+        }
+        return outputStream.toByteArray();
+    }
+
     private byte[] loadClassData(String className) throws IOException {
-        byte[] bytes = null;
+        byte[] data = null;
 
         try {
             ZipEntry zEntry = jarFile.getEntry(className);
             if(zEntry == null) {
                 throw new IOException("class not found");
             }
-
+/* 
             InputStream inputStream = jarFile.getInputStream(zEntry);
             if(inputStream == null) {
                 throw new IOException("class not found");
@@ -59,12 +71,18 @@ public class SmithLoader extends ClassLoader {
             if (bytesRead != bytes.length) {
                 throw new IOException("get byte array fail");
             }
+            */
+
+            try (InputStream inputStream = jarFile.getInputStream(zEntry)) {
+                data = readAllBytes(inputStream);
+                inputStream.close();
+            }
         }
         catch(Exception e) {
             throw e;
         }
 
-        return bytes;
+        return data;
     }
 
     @Override

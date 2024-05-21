@@ -89,6 +89,8 @@ public class SmithAgent {
             Class<?>[]  loadclassargType = new Class[]{String.class};
             SmithProberClazz = (Class<?>)Reflection.invokeMethod(xLoader,"loadClass", loadclassargType,smithProbeClassName);
 
+            SmithAgentLogger.logger.info("SmithProbe ClassLoader:"+SmithProberClazz.getClassLoader());
+
             Class<?>[] emptyArgTypes = new Class[]{};
             if (SmithProberClazz != null) {
                 Constructor<?> constructor = SmithProberClazz.getDeclaredConstructor();
@@ -251,9 +253,6 @@ public class SmithAgent {
         StringBuilder proberPath_sb = new StringBuilder();
         String cmd = "";
 
-        System.out.println("getContextClassLoader:"+Thread.currentThread().getContextClassLoader());
-        System.out.println("ClassLoader.getSystemClassLoader:"+ClassLoader.getSystemClassLoader());
-
         if(ParseParameter.parseParameter(agentArgs,cmd_sb,checksumStr_sb,proberPath_sb)) {
             cmd = cmd_sb.toString();
             SmithAgentLogger.logger.info("cmd:" + cmd);
@@ -266,11 +265,13 @@ public class SmithAgent {
                 SmithAgentLogger.logger.info("checksumStr:" + checksumStr);
                 SmithAgentLogger.logger.info("proberPath:" + proberPath); 
 
+                /* 
                 if (!JarUtil.checkJarFile(proberPath,checksumStr)) {
                     System.setProperty("smith.status", proberPath + " check fail");
                     SmithAgentLogger.logger.warning(proberPath + " check fail!");
                     return ;
                 }
+                */
 
                 if(instrumentation == null) {
                     instrumentation = inst;

@@ -607,7 +607,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);  
  
             return classWriter.toByteArray();
-        } catch (Exception e) {
+        } catch (Throwable e) {
             SmithLogger.exception(e);
         }
 
