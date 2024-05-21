@@ -11,13 +11,17 @@ import com.security.smith.client.MessageSerializer;
 import com.security.smith.client.MessageDeserializer;
 
 public class MessageEncoder extends MessageToByteEncoder<Object> {
-    private static Gson gson = new GsonBuilder()
-    .registerTypeAdapter(Message.class, new MessageSerializer())
-    .registerTypeAdapter(Message.class, new MessageDeserializer())
-    .create();
+    private static Gson gson = null;
 
     public static void delInstance() {
         gson = null;
+    }
+
+    public static void initInstance() {
+        gson = new GsonBuilder()
+            .registerTypeAdapter(Message.class, new MessageSerializer())
+            .registerTypeAdapter(Message.class, new MessageDeserializer())
+            .create();
     }
 
     @Override

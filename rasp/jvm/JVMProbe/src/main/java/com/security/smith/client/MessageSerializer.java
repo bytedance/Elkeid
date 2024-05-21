@@ -18,15 +18,15 @@ public class MessageSerializer implements  JsonSerializer<Message> {
     static private String jvmVersion;
     static private String probeVersion;
 
-    static {
-        pid = ProcessHelper.getCurrentPID();
-        jvmVersion = ManagementFactory.getRuntimeMXBean().getSpecVersion();
-        probeVersion = MessageSerializer.class.getPackage().getImplementationVersion();
-    }
-
     public static void delInstance() {
         jvmVersion = null;
         probeVersion = null;
+    }
+
+    public static void initInstance() {
+        pid = ProcessHelper.getCurrentPID();
+        jvmVersion = ManagementFactory.getRuntimeMXBean().getSpecVersion();
+        probeVersion = MessageSerializer.class.getPackage().getImplementationVersion();
     }
 
     @Override

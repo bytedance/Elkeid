@@ -58,6 +58,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.security.smith.client.message.*;
 
+import java.io.File;
+import java.io.FileOutputStream;
 
 class DetectTimerTask extends TimerTask {
         private boolean isCancel = false;
@@ -171,6 +173,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
 
     public void init() {
+        System.out.println("fuck fuck fuck smithprobe");
         SmithLogger.loggerProberInit();
         SmithLogger.logger.info("probe init enter");
         smithClasses = new ConcurrentHashMap<>();
@@ -178,6 +181,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         filters = new ConcurrentHashMap<>();
         blocks = new ConcurrentHashMap<>();
         limits = new ConcurrentHashMap<>();
+
+        MessageEncoder.initInstance();
+        MessageSerializer.initInstance();
+        MessageDecoder.initInstance();
 
         heartbeat = new Heartbeat();
 
@@ -621,11 +628,11 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     methodMap
             );
 
-
             classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);  
- 
+
             return classWriter.toByteArray();
-        } catch (Exception e) {
+        }
+        catch(Throwable e) {
             SmithLogger.exception(e);
         }
 

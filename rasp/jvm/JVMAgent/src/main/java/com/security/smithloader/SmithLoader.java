@@ -33,7 +33,7 @@ public class SmithLoader extends ClassLoader {
             }
         } catch (ClassNotFoundException e) {
             // If the class is not found in JAR file,try to load from parent class loader
-            return super.findClass(name);
+            throw e;
         }
 
         return null;

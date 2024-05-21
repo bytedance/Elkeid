@@ -14,13 +14,17 @@ import java.io.IOException;
 import java.util.List;
 
 public class MessageDecoder extends ReplayingDecoder<Void> {
-    private static Gson gson = new GsonBuilder()
-    .registerTypeAdapter(Message.class, new MessageSerializer())
-    .registerTypeAdapter(Message.class, new MessageDeserializer())
-    .create();
+    private static Gson gson = null;
 
     public static void delInstance() {
         gson = null;
+    }
+
+    public static void initInstance() {
+        gson = new GsonBuilder()
+            .registerTypeAdapter(Message.class, new MessageSerializer())
+            .registerTypeAdapter(Message.class, new MessageDeserializer())
+            .create();
     }
 
     @Override
@@ -33,8 +37,6 @@ public class MessageDecoder extends ReplayingDecoder<Void> {
         in.readBytes(buffer);
 
         String msg = new String(buffer);
-        System.out.println("msg:"+msg);
-
         Message message = gson.fromJson(msg,Message.class);
         if (message != null)
             out.add(message);
