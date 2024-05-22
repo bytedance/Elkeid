@@ -366,9 +366,6 @@ impl RASPManager {
                     
                     match java_detach(pid) {
                         Ok(result) => {
-                            if diff_ns {
-                                Self::remove_dir_from_to_dest(format!("{}{}", root_dir.clone(), settings::RASP_JAVA_DIR()));
-                            }
                             if self.can_copy(mnt_namespace) {
                                 for from in JVMProbe::names().0.iter() {
                                     self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
