@@ -43,6 +43,10 @@ public class SmithAgent {
         return SmithProberProxyObj;
     }
 
+    public static Object getSmithProbe() {
+        return SmithProberObj;
+    }
+
     public static void PreProxy(Object MethodNameObj,int classID, int methodID, Object[] args) {
 
         if(SmithProberProxyObj != null) {
@@ -68,6 +72,17 @@ public class SmithAgent {
             String MethodName = (String)MethodNameObj;
             Class<?>[]  argType = new Class[]{int.class,int.class,Object[].class,Object.class};
             return Reflection.invokeMethod(SmithProberProxyObj,MethodName,argType,classID,methodID,args,exceptionObject);
+        }
+
+        return null;
+    }
+
+    public static Object PassProxyToProbe(Object Obj,Object MethodNameObj,int functionID, Object[] args) {
+
+          if(Obj != null) {
+            String MethodName = (String)MethodNameObj;
+            Class<?>[]  argType = new Class[]{int.class,int.class,Object[].class};
+            return Reflection.invokeMethod(Obj,MethodName,argType,functionID,args);
         }
 
         return null;
@@ -268,13 +283,11 @@ public class SmithAgent {
                 SmithAgentLogger.logger.info("checksumStr:" + checksumStr);
                 SmithAgentLogger.logger.info("proberPath:" + proberPath); 
 
-                /* 
                 if (!JarUtil.checkJarFile(proberPath,checksumStr)) {
                     System.setProperty("smith.status", proberPath + " check fail");
                     SmithAgentLogger.logger.warning(proberPath + " check fail!");
                     return ;
                 }
-                */
 
                 if(instrumentation == null) {
                     instrumentation = inst;
