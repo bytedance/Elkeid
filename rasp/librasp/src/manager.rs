@@ -531,12 +531,14 @@ impl RASPManager {
     ) -> AnyhowResult<()> {
         info!("create rasp runtime path: {}", rasp_runtime_path);
         // dose Agent create `agent_runtime_path`?
-        if !Path::new(agent_runtime_path).exists() {
-            return Err(anyhow!(
-                "can not found agent runtime path: {}",
-                agent_runtime_path
-            ));
-        }
+        // /var/run/elkeid-agent cannot find who create, so just create the dir
+        // if !Path::new(agent_runtime_path).exists() {
+
+        //     return Err(anyhow!(
+        //         "can not found agent runtime path: {}",
+        //         agent_runtime_path
+        //     ));
+        // }
         let rasp_runtime_path_full = format!("{}{}", agent_runtime_path, rasp_runtime_path);
         let path = Path::new(&rasp_runtime_path_full);
         if path.exists() {
