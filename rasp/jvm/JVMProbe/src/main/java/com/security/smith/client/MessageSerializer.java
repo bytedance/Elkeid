@@ -16,7 +16,6 @@ public class MessageSerializer extends StdSerializer<Message> {
     static {
         pid = ProcessHelper.getCurrentPID();
         jvmVersion = ManagementFactory.getRuntimeMXBean().getSpecVersion();
-        probeVersion = MessageSerializer.class.getPackage().getImplementationVersion();
     } 
 
     public static void setProbeVersion(String probeVer) {
