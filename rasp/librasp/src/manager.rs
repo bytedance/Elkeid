@@ -352,8 +352,9 @@ impl RASPManager {
                             diff_ns = value;
                             if diff_ns {
                                 let to = format!("{}{}",root_dir.clone(), settings::RASP_JAVA_AGENT_BIN());
+                                self.copy_file_from_to_dest(settings::RASP_JAVA_JATTACH_BIN(), root_dir.clone());
                                 self.copy_file_from_to_dest(settings::RASP_JAVA_AGENT_BIN(), root_dir.clone());
-                                info!("copy from SmithAgent.jar to {}", to.clone());
+                                info!("copy from jattach/SmithAgent.jar to {}", to.clone());
                             }
                         }
                         Err(e) => {

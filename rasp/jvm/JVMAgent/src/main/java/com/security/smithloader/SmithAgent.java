@@ -244,8 +244,9 @@ public class SmithAgent {
                             SmithAgentLogger.logger.warning(proberPath + " loading fail!");
                         }
                         else {
-                            System.setProperty("smith.rasp", probeVersion+"-"+checksumStr);
                             System.setProperty("smith.status", "attach");
+                            System.setProperty("smith.rasp", probeVersion+"-"+checksumStr);
+                            
                             System.setProperty("rasp.probe", "smith");
                         }
                     }
