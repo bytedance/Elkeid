@@ -172,7 +172,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
     public void setProbeVersion(String proberVer) {
         proberVersion = proberVer;
-        MessageSerializer.setProbeVersion(proberVer);
     }
 
     public void setProbePath(String proberPath) {
@@ -188,6 +187,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         blocks = new ConcurrentHashMap<>();
         limits = new ConcurrentHashMap<>();
 
+        MessageSerializer.initInstance(proberVersion);
         heartbeat = new Heartbeat();
 
         client = new Client(this);

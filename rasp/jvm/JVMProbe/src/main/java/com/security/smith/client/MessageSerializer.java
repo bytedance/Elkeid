@@ -9,21 +9,20 @@ import java.time.Instant;
 import com.security.smith.common.ProcessHelper;
 
 public class MessageSerializer extends StdSerializer<Message> {
-    static private final int pid;
-    static private final String jvmVersion;
+    static private int pid;
+    static private String jvmVersion;
     static private String probeVersion;
 
-    static {
+    public static void initInstance(String probeVer) {
         pid = ProcessHelper.getCurrentPID();
         jvmVersion = ManagementFactory.getRuntimeMXBean().getSpecVersion();
-    } 
-
-    public static void setProbeVersion(String probeVer) {
         probeVersion = probeVer;
     }
 
     public static void delInstance() {
         probeVersion = null;
+        jvmVersion = null;
+        pid = 0;
     }
 
     protected MessageSerializer() {
