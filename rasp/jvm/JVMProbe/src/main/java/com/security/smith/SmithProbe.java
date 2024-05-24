@@ -397,6 +397,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
     @Override
     public void onPatch(PatchConfig config) {
+        if (config == null || config.getPatches() == null || config.getPatches().length == 0) {
+            SmithLogger.logger.info("patch may not be download, so not update heartbeat");
+            return ;
+        }
         for (Patch patch : config.getPatches()) {
             SmithLogger.logger.info("install patch: " + patch.getClassName());
 
