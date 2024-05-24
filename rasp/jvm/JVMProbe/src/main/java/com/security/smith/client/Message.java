@@ -47,3 +47,62 @@ public class Message {
         this.data = data;
     }
 }
+
+class MessageDeserializer extends StdDeserializer<Message> {
+    protected MessageDeserializer() {
+        super(Message.class);
+    }
+
+    protected MessageDeserializer(Class<?> vc) {
+        super(vc);
+    }
+
+    @Override
+    public Message deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+        JsonNode node = p.getCodec().readTree(p);
+
+        Message message = new Message();
+
+        message.setOperate(node.get("message_type").asInt());
+        message.setData(node.get("data"));
+
+        return message;
+    }
+}
+
+class MessageEncoder extends MessageToByteEncoder<Object> {
+    @Override
+    protected void encode(ChannelHandlerContext ctx, Object msg, ByteBuf out) throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        byte[] payload = objectMapper.writeValueAsBytes(msg);
+        int payloadSize = payload.length;
+
+        ByteBuffer buffer = ByteBuffer.allocate(payloadSize + Message.PROTOCOL_HEADER_SIZE);
+
+        buffer.putInt(payloadSize);
+        buffer.put(payload);
+
+        buffer.flip();
+
+        out.writeBytes(buffer);
+    }
+}
+
+class MessageDecoder extends ReplayingDecoder<Void> {
+    @Override
+    protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws IOException {
+        long payloadSize = in.readUnsignedInt();
+
+        if (payloadSize > Message.MAX_PAYLOAD_SIZE)
+            return;
+
+        byte[] buffer = new byte[(int) payloadSize];
+        in.readBytes(buffer);
+
+        Message message = new ObjectMapper().readValue(buffer, Message.class);
+
+        if (message != null)
+            out.add(message);
+    }
+}
