@@ -66,6 +66,13 @@ func Load(ctx context.Context, config proto.Config) (plg *Plugin, err error) {
 	logger := zap.S().With("plugin", config.Name, "pver", config.Version, "psign", config.Signature)
 	logger.Info("plugin is loading...")
 	workingDirectory := path.Join(agent.WorkingDirectory, "plugin", config.Name)
+	patternDirectory := path.Join(agent.WorkingDirectory, "plugin", "*")
+	match, err := path.Match(patternDirectory, workingDirectory);
+        if match != true {
+		logger.Warn("invalid path & name for plugin: ", config.Name)
+		return
+	}
+
 	// for compatibility
 	os.Remove(path.Join(workingDirectory, config.Name+".stderr"))
 	os.Remove(path.Join(workingDirectory, config.Name+".stdout"))
