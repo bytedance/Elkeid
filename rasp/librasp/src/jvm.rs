@@ -65,21 +65,36 @@ pub fn java_attach(pid: i32) -> Result<bool> {
         "false",
         probe_param.as_str(),
     ])) {
-        Ok((_, out, err)) => {
+        Ok((es, out, err)) => {
             if out.len() != 0 {
                 info!("{}", &out);
             }
             if err.len() != 0 {
                 info!("{}", &err);
             }
-            std::thread::sleep(Duration::from_millis(500));
-            match check_result(pid, "attach") {
-                Ok(_) => {
-                    return Ok(true);
+            let es_code = match es.code() {
+                Some(ec) => ec,
+                None => {
+                    return Err(anyhow!("get status code failed: {}", pid));
                 }
-                Err(e) => {
-                    return Err(anyhow!(e.to_string()));
+            };
+            if es_code == 0 {
+                std::thread::sleep(Duration::from_millis(500));
+                match check_result(pid, "attach") {
+                    Ok(_) => {
+                        return Ok(true);
+                    }
+                    Err(e) => {
+                        return Err(anyhow!(e.to_string()));
+                    }
                 }
+            } else {
+                let msg = format!(
+                    "jvm attach exit code {} {} {} {}",
+                    es_code, pid, &out, &err
+                );
+                error!("{}", msg);
+                Err(anyhow!("{}", msg))
             }
         }
         Err(e) => {
@@ -178,21 +193,37 @@ pub fn java_detach(pid: i32) -> Result<bool> {
         "false",
         probe_param.as_str(),
     ])) {
-        Ok((_, out, err)) => {
+        Ok((es, out, err)) => {
             if out.len() != 0 {
                 info!("{}", &out);
             }
             if err.len() != 0 {
                 info!("{}", &err);
             }
-            match check_result(pid, "detach") {
-                Ok(_) => {
-                    return Ok(true);
+            let es_code = match es.code() {
+                Some(ec) => ec,
+                None => {
+                    return Err(anyhow!("get status code failed: {}", pid));
                 }
-                Err(e) => {
-                    return Err(anyhow!(e.to_string()));
+            };
+            if es_code == 0 {
+                std::thread::sleep(Duration::from_millis(500));
+                match check_result(pid, "detach") {
+                    Ok(_) => {
+                        return Ok(true);
+                    }
+                    Err(e) => {
+                        return Err(anyhow!(e.to_string()));
+                    }
                 }
-            }
+            } else {
+                let msg = format!(
+                    "jvm detach exit code {} {} {} {}",
+                    es_code, pid, &out, &err
+                );
+                error!("{}", msg);
+                Err(anyhow!("{}", msg))
+            }      
         }
         Err(e) => {
             return Err(anyhow!(e.to_string()));
