@@ -35,15 +35,31 @@ func runServer(port int, enableSSL, enableAuth bool, certFile, keyFile string) {
 
 	ylog.Infof("RunServer", "####HTTP_LISTEN_ON:%d", port)
 	if enableSSL {
-		secCipherSuites := make([]uint16, 0, 0)
-		for _, c := range tls.CipherSuites() {
-			secCipherSuites = append(secCipherSuites, c.ID)
-		}
-
 		// 创建自定义的TLS配置
 		tlsConfig := &tls.Config{
 			// 禁用不安全的加密套件
-			CipherSuites:     secCipherSuites,
+			CipherSuites: []uint16{
+				// TLS 1.3推荐的密码套件
+				tls.TLS_AES_128_GCM_SHA256,       // 适用于需要快速性能的场景
+				tls.TLS_AES_256_GCM_SHA384,       // 提供更高级别的安全性
+				tls.TLS_CHACHA20_POLY1305_SHA256, // 现代算法，提供良好的安全性和性能
+
+				// TLS 1.2推荐的密码套件，当TLS 1.3不可用时作为备选
+				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+
+				// 如果需要兼容更旧的系统，可以添加以下套件，但请注意它们的安全性不如上述套件
+				// tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+				// tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
+
+				// 如果必须支持旧系统，可以考虑以下套件，但它们不如上述GCM套件安全
+				// tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+				// tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
+				// tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384,
+				// tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384,
+			},
 			MinVersion:       tls.VersionTLS12,
 			CurvePreferences: []tls.CurveID{tls.X25519, tls.CurveP256},
 		}
