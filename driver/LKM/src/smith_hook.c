@@ -420,10 +420,19 @@ static char *smith_d_path(const struct path *path, char *buf, int buflen)
  * there could be races on mm->exe_file, but we could assure we can always
  * get a valid filp or NULL
  */
-static struct file *smith_get_task_exe_file(struct task_struct *task)
+static struct file *smith_get_current_exe_file(void)
 {
     struct file *exe = NULL;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0)
+    /*
+     * 1) performance improvement for kernels >=4.1: use get_mm_exe_file instead
+     *    get_mm_exe_file internally uses rcu lock (with semaphore locks killed)
+     * 2) it's safe to directly access current->mm under current's own context
+     * 3) get_mm_exe_file() is no longer exported after kernel 5.15
+     */
+    exe = get_mm_exe_file(current->mm);
+#else
     /*
      * get_task_mm/mmput must be avoided here
      *
@@ -431,13 +440,14 @@ static struct file *smith_get_task_exe_file(struct task_struct *task)
      * use mmput_async instead, but it's only available for after 4.7.0
      * (and CONFIG_MMU is enabled)
      */
-    task_lock(task);
-    if (task->mm && task->mm->exe_file) {
-        exe = task->mm->exe_file;
+    task_lock(current);
+    if (current->mm && current->mm->exe_file) {
+        exe = current->mm->exe_file;
         if (!smith_get_file(exe))
             exe = NULL;
     }
-    task_unlock(task);
+    task_unlock(current);
+#endif
 
     return exe;
 }
@@ -451,17 +461,7 @@ static char *smith_get_exe_file(char *buffer, int size)
     if (!buffer || !current->mm)
         return exe_file_str;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0)
-    /*
-     * 1) performance improvement for kernels >=4.1: use get_mm_exe_file instead
-     *    get_mm_exe_file internally uses rcu lock (with semaphore locks killed)
-     * 2) it's safe to directly access current->mm under current's own context
-     * 3) get_mm_exe_file() is no longer exported after kernel 5.15
-     */
-    exe = get_mm_exe_file(current->mm);
-#else
-    exe = smith_get_task_exe_file(current);
-#endif
+    exe = smith_get_current_exe_file();
     if (exe) {
         exe_file_str = smith_d_path(&exe->f_path, buffer, size);
         fput(exe);
