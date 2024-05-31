@@ -127,3 +127,12 @@ uint64_t hash_murmur_OAAT64(char *s, int len)
     }
     return h;
 }
+
+char *smith_strcpy(char *dest, const char *src)
+{
+	char *tmp = dest;
+
+	while ((*dest++ = *src++) != '\0')
+		/* nothing */;
+	return tmp;
+}

@@ -59,6 +59,8 @@ extern u8 *smith_query_sb_uuid(struct super_block *sb);
 
 extern uint64_t hash_murmur_OAAT64(char *s, int len);
 
+extern char *smith_strcpy(char *dest, const char *src);
+
 #if defined(KGID_STRUCT_CHECK) && (!defined(KGID_CONFIG_CHECK) || \
     (defined(KGID_CONFIG_CHECK) && defined(CONFIG_UIDGID_STRICT_TYPE_CHECKS)))
 /* vanilla kernels >= 3.5.0, but ubuntu backported for 3.4 */

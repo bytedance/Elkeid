@@ -126,7 +126,7 @@
 
 #define __assign_str(item, src)	do {					\
 		__entry->__data_loc_##item = __data_offsets.item;	\
-		strcpy(__get_str(item, item),					\
+		smith_strcpy(__get_str(item, item),			\
 		       (src) ? (const char *)(src) : "(null)");		\
 	} while (0)
 

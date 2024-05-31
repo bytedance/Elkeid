@@ -1594,7 +1594,7 @@ static void get_execve_data(struct user_arg_ptr argv_ptr,
 			if (offset > 0)
 				*(argv_res + offset) = '\0';
 			else
-				strcpy(argv_res, "<FAIL>");
+				smith_strcpy(argv_res, "<FAIL>");
 			smith_strim(argv_res);
 		}
 	}
@@ -1628,14 +1628,14 @@ static void get_execve_data(struct user_arg_ptr argv_ptr,
 					if (strncmp("SSH_CONNECTION=", buf, 11) == 0) {
 					    ssh_connection_flag = 1;
 						if (free_ssh_connection == 1) {
-							strcpy(ssh_connection, buf + 15);
+							smith_strcpy(ssh_connection, buf + 15);
 						} else {
 							ssh_connection = "-1";
 						}
 					} else if (strncmp("LD_PRELOAD=", buf, 11) == 0) {
 					    ld_preload_flag = 1;
 						if (free_ld_preload == 1) {
-							strcpy(ld_preload, buf + 11);
+							smith_strcpy(ld_preload, buf + 11);
 						} else {
 							ld_preload = "-1";
 						}
@@ -1649,7 +1649,7 @@ static void get_execve_data(struct user_arg_ptr argv_ptr,
 		if (free_ssh_connection == 0)
 			ssh_connection = "-1";
 		else
-			strcpy(ssh_connection, "-1");
+			smith_strcpy(ssh_connection, "-1");
 	}
 	data->ssh_connection = ssh_connection;
 	data->free_ssh_connection = free_ssh_connection;
@@ -1658,7 +1658,7 @@ static void get_execve_data(struct user_arg_ptr argv_ptr,
 		if (free_ld_preload == 0)
 			ld_preload = "-1";
 		else
-			strcpy(ld_preload, "-1");
+			smith_strcpy(ld_preload, "-1");
 	}
 	data->ld_preload = ld_preload;
 	data->free_ld_preload = free_ld_preload;
@@ -1818,7 +1818,7 @@ static void get_execve_data(char **argv, char **env, struct execve_data *data)
             if (offset > 0)
                 *(argv_res + offset) = '\0';
             else
-                strcpy(argv_res, "<FAIL>");
+                smith_strcpy(argv_res, "<FAIL>");
             smith_strim(argv_res);
         }
     }
@@ -1854,14 +1854,14 @@ static void get_execve_data(char **argv, char **env, struct execve_data *data)
                     if (strncmp("SSH_CONNECTION=", buf, 11) == 0) {
                         ssh_connection_flag = 1;
                         if (free_ssh_connection == 1) {
-                            strcpy(ssh_connection, buf + 15);
+                            smith_strcpy(ssh_connection, buf + 15);
                         } else {
                             ssh_connection = "-1";
                         }
                     } else if (strncmp("LD_PRELOAD=", buf, 11) == 0) {
                         ld_preload_flag = 1;
                         if (free_ld_preload == 1) {
-                            strcpy(ld_preload, buf + 11);
+                            smith_strcpy(ld_preload, buf + 11);
                         } else {
                             ld_preload = "-1";
                         }
@@ -1875,7 +1875,7 @@ static void get_execve_data(char **argv, char **env, struct execve_data *data)
         if (free_ssh_connection == 0)
             ssh_connection = "-1";
         else
-            strcpy(ssh_connection, "-1");
+            smith_strcpy(ssh_connection, "-1");
     }
     data->ssh_connection = ssh_connection;
     data->free_ssh_connection = free_ssh_connection;
@@ -1884,7 +1884,7 @@ static void get_execve_data(char **argv, char **env, struct execve_data *data)
         if (free_ld_preload == 0)
             ld_preload = "-1";
         else
-            strcpy(ld_preload, "-1");
+            smith_strcpy(ld_preload, "-1");
     }
     data->ld_preload = ld_preload;
     data->free_ld_preload = free_ld_preload;
