@@ -7,6 +7,7 @@
 #include <linux/kthread.h>
 #include <linux/moduleparam.h>
 #include <linux/highmem.h>
+#include <linux/vmalloc.h>
 
 #include "../include/smith_hook.h"
 #include "../include/trace.h"
