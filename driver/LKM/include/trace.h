@@ -131,10 +131,17 @@ enum sd_xfer_typeid {
 #include "../include/anti_rootkit_print.h"
 };
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0)
+#define SMITH_NO_SANITIZE  __attribute__((no_sanitize("undefined")))
+#else
+#define SMITH_NO_SANITIZE
+#endif
+
 extern struct tb_ring *g_trace_ring;
 
 #define SD_XFER_DEFINE_N(n, p, x)                               \
     SD_XFER_DEFINE_E(n, p, x);                                  \
+    SMITH_NO_SANITIZE                                           \
     static inline int SD_XFER(n, SD_DECL_##p)                   \
     {                                                           \
         struct SD_XFER_EVENT_##n *__ev;                         \

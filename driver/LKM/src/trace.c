@@ -25,14 +25,6 @@
 extern struct tb_ring *g_trace_ring;
 
 /*
- * wrappers of trace_ringbuffer routines
- */
-static inline void *sd_memcpy(void *to, void *from, size_t len)
-{
-    return memmove(to, from, len);
-}
-
-/*
  * event format descriptions
  */
 

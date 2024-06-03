@@ -539,6 +539,19 @@ struct sd_xids {
 
 #define SD_PACK_ENTRY_XIDS(n, v)        __builtin_memcpy(&__ev->d_##n, v, sizeof(struct sd_xids))
 
+
+/*
+ * wrappers of trace_ringbuffer routines
+ */
+static inline void *sd_memcpy(void *to, void *from, size_t len)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)
+    return __memmove(to, from, len);
+#else
+    return memmove(to, from, len);
+#endif
+}
+
 #define SD_PACK_ENTRY_STR(n, s)                                         \
     do {                                                                \
         if (likely(__l_##n)) {                                          \
@@ -560,7 +573,8 @@ struct sd_xids {
     do {                                                                \
         int __l_s = (l) & SD_STR_MASK;                                  \
         if (likely(__l_s) && !IS_ERR_OR_NULL(s)) {                      \
-            memcpy(&__ev->p_data[__tr_used & SD_STRS_MASK], s, __l_s);  \
+            void *__dst_buf = &__ev->p_data[__tr_used & SD_STRS_MASK];  \
+            sd_memcpy(__dst_buf, s, __l_s);                             \
             __ev->s_##n = ((uint32_t)(__l_s)) << 16 | __tr_used;        \
             __tr_used += __l_s;                                         \
         } else {                                                        \
