@@ -278,6 +278,7 @@ public class SmithAgent {
             SmithAgentLogger.logger.info("parse parseParameter success");
 
             if(cmd.equals("attach")) {
+                AttachInfo.info();
                 checksumStr = checksumStr_sb.toString();
                 proberPath = proberPath_sb.toString();
 
