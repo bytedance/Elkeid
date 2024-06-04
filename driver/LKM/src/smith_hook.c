@@ -6563,7 +6563,7 @@ MODULE_PARM_DESC(mem_stats, "memory usage of core objects of elkeid");
     module_param(sid_##name, charp, S_IRUSR|S_IRGRP|S_IROTH)
 
 /* latest commit id */
-static char *smith_srcid = SMITH_SRCID(384f17e2d0939268b20954913e773d2ad4515d38);
+static char *smith_srcid = SMITH_SRCID(33dc65badb16f250a10ed62109a0f3b9def46ce0);
 
 static int __init kprobe_hook_init(void)
 {
