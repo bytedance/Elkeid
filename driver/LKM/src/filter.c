@@ -5,8 +5,20 @@
  * Data allowlist for hook
  */
 
-#include "../include/filter.h"
+#include <linux/mm.h>
+#include <linux/fs.h>
+#include <linux/device.h>
+#include <linux/module.h>
+#include <linux/slab.h>
+#include <linux/list.h>
+#include <linux/uaccess.h>
+#include <linux/spinlock.h>
+#include <linux/string.h>
+#include <linux/rbtree.h>
+#include <linux/namei.h>
+
 #include "../include/util.h"
+#include "../include/filter.h"
 
 
 #define ADD_EXECVE_EXE_ALLOWLIST 89         /* Y */
@@ -318,15 +330,13 @@ int execve_argv_check(char *data, int len)
     return res;
 }
 
-static ssize_t device_write(struct file *filp, const __user char *buff,
-                            size_t len, loff_t * off)
+size_t filter_process_allowlist(const __user char *buff, size_t len)
 {
+    char *data_main;
     int res;
     char flag;
-    char *data_main;
-    struct dentry *parent = NULL;
 
-    if(smith_get_user(flag, buff))
+    if (smith_get_user(flag, buff))
         return len;
 
     /* check whether length is valid */
@@ -402,13 +412,15 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
         }
     }
 
-    if(parent)
-        dput(parent);
-
     if(data_main)
         smith_kfree(data_main);
-
     return len;
+}
+
+static ssize_t device_write(struct file *filp, const __user char *buff,
+                            size_t len, loff_t * off)
+{
+    return filter_process_allowlist(buff, len);
 }
 
 static int device_mmap(struct file *filp, struct vm_area_struct *vma)

@@ -13,6 +13,7 @@
 #include "../include/util.h"
 #include "../include/trace.h"
 #include "../include/kprobe.h"
+#include "../include/filter.h"
 
 #define PROC_ENDPOINT	"elkeid-endpoint"
 
@@ -332,6 +333,13 @@ out:
     return sret;
 }
 
+/* only for allowlist handling */
+static ssize_t trace_write_pipe(struct file *filp, const char __user * ubuf,
+                               size_t cnt, loff_t * ppos)
+{
+    return filter_process_allowlist(ubuf, cnt);
+}
+
 static int trace_release_pipe(struct inode *inode, struct file *file)
 {
     struct print_event_iterator *iter = file->private_data;
@@ -367,15 +375,17 @@ static long trace_ioctl_pipe(struct file *filp, unsigned int cmd, unsigned long 
  */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
 static const struct file_operations trace_pipe_fops = {
-        .open = trace_open_pipe,
-        .read = trace_read_pipe,
-        .unlocked_ioctl = trace_ioctl_pipe,
-        .release = trace_release_pipe,
+    .open = trace_open_pipe,
+    .read = trace_read_pipe,
+    .write = trace_write_pipe,
+    .unlocked_ioctl = trace_ioctl_pipe,
+    .release = trace_release_pipe,
 };
 #else
 static const struct proc_ops trace_pipe_fops = {
     .proc_open = trace_open_pipe,
     .proc_read = trace_read_pipe,
+    .proc_write = trace_write_pipe,
     .proc_ioctl = trace_ioctl_pipe,
     .proc_release = trace_release_pipe,
 };
