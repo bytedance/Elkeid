@@ -17,6 +17,7 @@ import com.security.smith.asm.SmithClassWriter;
 import com.security.smith.client.message.*;
 import com.security.smith.common.Reflection;
 import com.security.smith.common.SmithHandler;
+import com.security.smith.log.AttachInfo;
 import com.security.smith.log.SmithLogger;
 import com.security.smith.module.Patcher;
 import com.security.smith.type.*;
@@ -179,6 +180,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
 
     public void init() {
+        AttachInfo.info();
         SmithLogger.loggerProberInit();
         SmithLogger.logger.info("probe init enter");
         smithClasses = new ConcurrentHashMap<>();
