@@ -6532,8 +6532,11 @@ static int drvstats_set_params(const char *val, K_PARAM_CONST struct kernel_para
                 smith_enum_img();
             } else if (val[i] == 'T' || val[i] == 't') {
                 smith_enum_tid();
+            } else if (val[i] != ' ' && val[i] != 0x0a) {
+                return -EINVAL;
             }
         }
+        return 0;
     }
     return -EACCES;
 }
