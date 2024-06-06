@@ -4,7 +4,6 @@ use log::*;
 use regex::Regex;
 use std::process::Command;
 use std::fs;
-use std::thread;
 use std::time::Duration;
 use crate::async_command::run_async_process;
 use crate::process::ProcessInfo;

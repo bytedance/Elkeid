@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fmt::{self, Display, Formatter};
 use std::path::PathBuf;
+use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 use log::*;
@@ -12,7 +13,7 @@ use crate::golang::golang_bin_inspect;
 use crate::jvm::vm_version;
 use crate::nodejs::nodejs_version;
 use crate::php::{inspect_phpfpm, inspect_phpfpm_version, inspect_phpfpm_zts};
-use crate::process::ProcessInfo;
+use crate::process::{ProcessInfo, count_uptime};
 use serde::{Deserialize, Serialize};
 
 const DEFAULT_JVM_FILTER_JSON_STR: &str = r#"{"exe": ["java"]}"#;
@@ -72,6 +73,14 @@ pub trait RuntimeInspect {
             };
         
         if  jvm_process_filter_check_reuslt {
+            // https://bugs.openjdk.org/browse/JDK-8292695
+            let uptime = count_uptime(process_info.start_time.unwrap()).unwrap_or(0);
+            if uptime > 0  && uptime < 5 {
+                let interval = 5 - uptime;
+                info!("JVM process {} just start, so sleep {} sec", process_info.pid, interval);
+                std::thread::sleep(Duration::from_secs(interval));
+            }
+            
             let version = match vm_version(process_info.pid) {
                 Ok(ver) => {
                     if ver < 8 {

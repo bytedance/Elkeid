@@ -2,12 +2,11 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
-use std::process::Command;
 
 use anyhow::{anyhow, Result, Result as AnyhowResult};
 use crossbeam::channel::Sender;
 use fs_extra::dir::{copy, create_all, CopyOptions};
-use fs_extra::file::{copy as file_copy, remove as file_remove, CopyOptions as FileCopyOptions};
+use fs_extra::file::{copy as file_copy, CopyOptions as FileCopyOptions};
 use libraspserver::proto::{PidMissingProbeConfig, ProbeConfigData};
 use log::*;
 
