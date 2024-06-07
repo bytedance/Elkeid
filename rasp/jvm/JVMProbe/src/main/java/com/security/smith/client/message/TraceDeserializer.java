@@ -11,8 +11,8 @@ public class TraceDeserializer implements com.google.gson.JsonDeserializer<Trace
     public Trace deserialize(JsonElement json, Type typeOfT, com.google.gson.JsonDeserializationContext context) {
         JsonObject jsonObject = json.getAsJsonObject();
         Trace trace = new Trace();
-        trace.setClassID(jsonObject.getAsJsonPrimitive("classID").getAsInt());
-        trace.setMethodID(jsonObject.getAsJsonPrimitive("methodID").getAsInt());
+        trace.setClassID(jsonObject.getAsJsonPrimitive("class_id").getAsInt());
+        trace.setMethodID(jsonObject.getAsJsonPrimitive("method_id").getAsInt());
         trace.setBlocked(jsonObject.getAsJsonPrimitive("blocked").getAsBoolean());
         trace.setPolicyID(jsonObject.getAsJsonPrimitive("policyID").getAsString());
         trace.setRet(context.deserialize(jsonObject.get("ret"), Object.class));

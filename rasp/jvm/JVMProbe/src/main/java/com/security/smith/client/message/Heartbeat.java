@@ -72,4 +72,10 @@ public class Heartbeat {
         JsonElement jsonElement = gson.toJsonTree(this);
         return jsonElement.getAsJsonObject();
     }
+
+    public JsonElement toJsonElement() {
+        Gson gson = new Gson();
+        JsonElement jsonElement = gson.toJsonTree(this);
+        return jsonElement;
+    }
 }

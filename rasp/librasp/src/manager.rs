@@ -13,7 +13,7 @@ use log::*;
 
 use crate::cpython::{python_attach, CPythonProbe, CPythonProbeState};
 use crate::golang::{golang_attach, GolangProbe, GolangProbeState};
-use crate::jvm::{java_attach, java_detach, JVMProbe, JVMProbeState};
+use crate::jvm::{copy_probe_nativelib,java_attach, java_detach, JVMProbe, JVMProbeState};
 use crate::nodejs::{nodejs_attach, NodeJSProbe};
 use crate::php::{php_attach, PHPProbeState};
 use crate::{
@@ -343,6 +343,9 @@ impl RASPManager {
                             self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
                         }
                     }
+
+                    copy_probe_nativelib(process_info.pid,root_dir.clone())?;
+
                     java_attach(process_info.pid)
                 }
                 ProbeState::AttachedVersionNotMatch => {
@@ -359,6 +362,9 @@ impl RASPManager {
                                 self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
                             }
                         }
+
+                        copy_probe_nativelib(process_info.pid,root_dir.clone())?;
+
                         java_attach(pid)
                     }
                     Err(e) => {

@@ -100,13 +100,10 @@ public class Client implements EventHandler {
        if (channel == null || !channel.isActive() || !channel.isWritable())
         return;
 
-        Gson gson = new Gson();
-
         Message message = new Message();
         message.setOperate(operate);
 
-        JsonElement jsonElement = gson.toJsonTree(object);
-        message.setData(jsonElement);
+        message.setData((JsonElement)object);
 
         channel.writeAndFlush(message);
     }
