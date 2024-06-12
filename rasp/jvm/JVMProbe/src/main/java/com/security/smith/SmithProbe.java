@@ -676,6 +676,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     classFilter.setStackTrace(Thread.currentThread().getStackTrace());
 
                     client.write(Operate.SCANCLASS, classFilter);
+                    client.write(Operate.COUNTMEMSHELL, classFilter);
                     SmithLogger.logger.info("send metadata: " + classFilter.toString());
                     sendClass(clazz, classFilter.getTransId());
 

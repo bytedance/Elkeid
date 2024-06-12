@@ -156,6 +156,7 @@ public class SmithProbeProxy {
         classFilter.setStackTrace(Thread.currentThread().getStackTrace());
         if (client != null) {
             client.write(Operate.SCANCLASS, classFilter);
+            client.write(Operate.COUNTMEMSHELL, classFilter);
             SmithLogger.logger.info("send metadata: " + classFilter.toString());
             SmithProbe.getInstance().sendClass(cla, classFilter.getTransId());
         }
@@ -255,6 +256,7 @@ public class SmithProbeProxy {
                     classFilter.setStackTrace(Thread.currentThread().getStackTrace());
                     if (client != null) {
                         client.write(Operate.SCANCLASS, classFilter);
+                        client.write(Operate.COUNTMEMSHELL, classFilter);
                         SmithLogger.logger.info("send metadata: " + classFilter.toString());
                         SmithProbe.getInstance().sendClass(clazz, classFilter.getTransId());
                     }
@@ -529,6 +531,7 @@ public class SmithProbeProxy {
                         classFilter.setStackTrace(Thread.currentThread().getStackTrace());
                         if (client != null) {
                             client.write(Operate.SCANCLASS, classFilter);
+                            client.write(Operate.COUNTMEMSHELL, classFilter);
                             SmithLogger.logger.info("send metadata: " + classFilter.toString());
                             SmithProbe.getInstance().sendClass(servletClass, classFilter.getTransId());
                         }
