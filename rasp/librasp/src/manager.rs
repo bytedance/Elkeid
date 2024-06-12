@@ -12,7 +12,7 @@ use log::*;
 
 use crate::cpython::{python_attach, CPythonProbe, CPythonProbeState};
 use crate::golang::{golang_attach, GolangProbe, GolangProbeState};
-use crate::jvm::{java_attach, java_detach, JVMProbe, JVMProbeState};
+use crate::jvm::{copy_probe_nativelib,java_attach, java_detach, JVMProbe, JVMProbeState};
 use crate::nodejs::{nodejs_attach, NodeJSProbe};
 use crate::php::{php_attach, PHPProbeState};
 use crate::{

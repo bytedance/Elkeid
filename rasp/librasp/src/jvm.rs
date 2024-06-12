@@ -1,15 +1,18 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Result, Result as AnyhowResult};
 
 use log::*;
 use regex::Regex;
 use std::process::Command;
 use std::fs;
+use std::path::Path;
+use std::path::PathBuf;
 use std::time::Duration;
 use crate::async_command::run_async_process;
 use crate::process::ProcessInfo;
 use crate::runtime::{ProbeCopy, ProbeState, ProbeStateInspect};
 use crate::settings::{self, RASP_VERSION};
 use lazy_static::lazy_static;
+use fs_extra::file::{copy as file_copy, remove as file_remove, CopyOptions as FileCopyOptions};
 
 lazy_static! {
     static ref RASP_JAVA_CHECKSUMSTR: String = {
@@ -125,7 +128,7 @@ fn get_last_filename(path: &str) -> Option<String> {
 }
 
 pub fn copy_probe_nativelib(pid:i32,dst_root:String) -> AnyhowResult<()> {
-        let java_library_path = jcmd(pid, " VM.system_properties").and_then(|output| {
+        let _ = jcmd(pid, " VM.system_properties").and_then(|output| {
         let output_str = String::from_utf8_lossy(&output);
         let lines: Vec<&str> = output_str.split("\n").collect();
         let java_library_path_line = lines.iter().find(|line| line.starts_with("java.library.path="));

@@ -65,6 +65,37 @@ pub fn RASP_JAVA_PROBE_BIN() -> String {
     format!("{}{}", RASP_LIB_DIR(), "/java/SmithProbe.jar")
 }
 
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+pub fn RASP_JAVA_NETTY_EPOLL_SO() -> String {
+    format!("{}{}", RASP_LIB_DIR(), "/java/nativelib/librasp_netty_transport_native_epoll_x86_64.so")
+}
+
+#[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+pub fn RASP_JAVA_NETTY_EPOLL_SO() -> String {
+    format!("{}{}", RASP_LIB_DIR(), "/java/nativelib/librasp_netty_transport_native_epoll_aarch_64.so")
+}
+
+#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+pub fn RASP_JAVA_NETTY_KQUEUQ_SO_MAC() -> String {
+    format!("{}{}", RASP_LIB_DIR(), "/java/nativelib/librasp_netty_transport_native_kqueue_x86_64.jnilib")
+}
+
+#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+pub fn RASP_JAVA_NETTY_DNS_SO_MAC() -> String {
+    format!("{}{}", RASP_LIB_DIR(), "/java/nativelib/librasp_netty_resolver_dns_native_macos_x86_64.jnilib")
+}
+
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+pub fn RASP_JAVA_NETTY_KQUEUQ_SO_MAC() -> String {
+    format!("{}{}", RASP_LIB_DIR(), "/java/nativelib/librasp_netty_transport_native_kqueue_aarch_64.jnilib")
+}
+
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+pub fn RASP_JAVA_NETTY_DNS_SO_MAC() -> String {
+    format!("{}{}", RASP_LIB_DIR(), "/java/nativelib/librasp_netty_resolver_dns_native_macos_aarch_64.jnilib")
+}
+
 pub fn RASP_JAVA_CHECKSUM_PATH() -> String {
     format!("{}{}", RASP_LIB_DIR(), "/java/checksum.data")
 }
