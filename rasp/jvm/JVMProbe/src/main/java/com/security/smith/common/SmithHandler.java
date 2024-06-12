@@ -10,10 +10,10 @@ import javassist.CtClass;
 
 public class SmithHandler {
     /**
-     * 查询Class的元数据信息
+     * 
      *
-     * @param clazz     Class对象
-     * @param classFilter 保存类的元数据信息
+     * @param clazz     
+     * @param classFilter
      */
     public static void queryClassFilter(Class<?> clazz, ClassFilter classFilter) {
         try {
@@ -46,10 +46,10 @@ public class SmithHandler {
     }
 
     /**
-     * 获取类的加载器名
+     * get classloader
      *
-     * @param clazz     Class对象
-     * @return String   加载器名
+     * @param clazz 
+     * @return String  
      */
     public static String getClassLoader(Class<?> clazz) {
         try {
@@ -65,10 +65,10 @@ public class SmithHandler {
     }
 
      /**
-     * 获取父类名
+     * get superclass name
      *
-     * @param clazz     Class对象
-     * @return String   父类名
+     * @param clazz     
+     * @return String   
      */
     public static String getSuperClass(Class<?> clazz) {
         try {
@@ -83,10 +83,10 @@ public class SmithHandler {
     }
 
      /**
-     * 获取类文件路径
+     * get class path
      *
-     * @param clazz     Class对象
-     * @return String   class文件路径
+     * @param clazz 
+     * @return String  
      */
     public static String getClassPath(Class<?> clazz) {
         try {
@@ -98,10 +98,10 @@ public class SmithHandler {
     }
 
      /**
-     * 获取CtClass的接口
+     * get CtClass path
      *
-     * @param cla    CtClass对象
-     * @return String   接口名
+     * @param cla      
+     * @return String
      */
     public static String getCtClassInterfaces(CtClass cla) {
         String interfacesName = "";
@@ -122,10 +122,10 @@ public class SmithHandler {
     }
 
      /**
-     * 获取CtClass的路径
+     * get class interfaces
      *
-     * @param cla      CtClass对象
-     * @return String  文件路径
+     * @param clazz   
+     * @return String  
      */
     public static String getCtClassPath(CtClass cla) {
         String path = "";
@@ -149,10 +149,10 @@ public class SmithHandler {
     }
 
      /**
-     * 获取类实现的接口名
+     * 
      *
-     * @param clazz     Class对象
-     * @return String   接口名
+     * @param clazz 
+     * @return boolean
      */
     public static String getInterfaces(Class<?> clazz) {
         String interfacesName = "";
@@ -172,9 +172,9 @@ public class SmithHandler {
     }
 
     /**
-     * 检查父类是否为特定类
+     * 
      *
-     * @param clazz     Class对象
+     * @param clazz   
      * @return boolean
      */
     public static boolean checkSuperServlet(Class<?> clazz) {
@@ -198,9 +198,9 @@ public class SmithHandler {
     }
 
     /**
-     * 检查类实现的接口是否为特定接口类
+     * 
      *
-     * @param clazz     Class对象
+     * @param clazz     
      * @return boolean
      */
     private static boolean checkServletInterface(Class<?> clazz) {
@@ -231,9 +231,9 @@ public class SmithHandler {
 	}
 
     /**
-     * 检查类是否为Proxy类
+     * 
      *
-     * @param clazz     Class对象
+     * @param clazz    
      * @return boolean
      */
     private static boolean checkProxyClazz(Class<?> clazz) {
@@ -255,10 +255,10 @@ public class SmithHandler {
 		return false;
 	}
 
-    /**
-     * 检查类是否存在磁盘上
+   /**
+     * 
      *
-     * @param clazz     Class对象
+     * @param clazz 
      * @return boolean
      */
     private static boolean checkClassIsExisted(Class<?> clazz) {
@@ -293,9 +293,9 @@ public class SmithHandler {
 	}
 
     /**
-     * 检查类是否为内存马
+     * 
      *
-     * @param clazz     Class对象
+     * @param clazz 
      * @return boolean
      */
     public static boolean checkClassMemshell(Class<?> clazz) {

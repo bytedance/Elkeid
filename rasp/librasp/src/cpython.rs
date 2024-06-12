@@ -79,7 +79,7 @@ impl CPythonRuntime {
     }
     pub fn libpython_inspect(process_info: &ProcessInfo) -> Result<Option<String>> {
         let maps = procfs::process::Process::new(process_info.pid)?.maps()?;
-        let regex_str = r"libpython(\d\.\d+)\.so";
+        let regex_str = r"libpython(\d\.\d+)[m]?\.so";
         let regex = Regex::new(regex_str)?;
         for map in maps.iter() {
             if let procfs::process::MMapPath::Path(p) = map.pathname.clone() {

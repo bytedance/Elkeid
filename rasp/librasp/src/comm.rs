@@ -6,7 +6,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 use std::thread;
 use std::time::Duration;
-
+use std::fs::{remove_file, read_link, symlink_metadata, create_dir_all};
+use std::os::unix::fs;
 use crossbeam::channel::{bounded, Receiver, SendError, Sender};
 use libc::{kill, killpg, SIGKILL};
 use log::*;
@@ -192,17 +193,8 @@ impl RASPComm for ThreadMode {
     ) -> AnyhowResult<()> {
         match check_need_mount(_mnt_namespace) {
             Ok(same_ns) => {
-                if same_ns{
-                    self.using_mount = false;
-                    info!(
-                        "process {} namespace as same as root, so no need to mount, using_mount : {}", pid, self.using_mount
-                    );
-                } else {
-                    self.using_mount = true;
-                    info!(
-                        "process {} namespace are not same as root, so need to mount", pid
-                    );
-                }
+                self.using_mount = same_ns;
+                info!("process {} namespace using_mount : {}", pid, self.using_mount);
             }
             Err(e) => {
                 warn!(
@@ -212,34 +204,34 @@ impl RASPComm for ThreadMode {
         }
         if self.using_mount {
             if let Some(bind_dir) = std::path::Path::new(&self.bind_path.clone()).parent() {
-                let bind_dir_str = bind_dir.to_str().unwrap();
-                mount(pid, bind_dir_str, bind_dir_str)?
+                    let mount_target = resolve_mount_path(bind_dir.to_string_lossy().into_owned(), pid);
+                    let bind_dir_str = bind_dir.to_str().unwrap();
+                    mount(pid, bind_dir_str, mount_target.as_str())?;
+                    info!("mount from {} to {} success", bind_dir_str, mount_target);
             }
         }
         if let Some(linking_to) = self.linking_to.clone() {
-            match std::process::Command::new(settings::RASP_NS_ENTER_BIN())
-                .args([
-                    "-t",
-                    pid.to_string().as_str(),
-                    "-m",
-                    "-i",
-                    "-n",
-                    "-p",
-                    "/bin/ln",
-                    "-sf",
-                    self.bind_path.as_str(),
-                    linking_to.as_str(),
-                ])
-                .output()
-            {
-                Ok(o) => {
-                    info!("LN {} {:?} {:?}", o.status, o.stdout, o.stderr);
+            let root_dir = format!("/proc/{}/root", pid);
+            let mut target = format!("{}{}", root_dir, linking_to);
+
+            let resolved_path = resolve_symlink_path(target.clone());
+            if !resolved_path.as_str().starts_with(&root_dir) {
+                target = format!("/proc/{}/root{}", pid ,resolved_path);
+            } else {
+                target = resolved_path;
+            }
+
+            make_path_exist(target.clone());
+
+            match fs::symlink(self.bind_path.clone(), target.clone()) {
+                Ok(()) => {
+                    info!("link {} to {} success", self.bind_path.clone(), target.clone());
                 }
-                Err(e) => {
-                    error!("LN can not run: {}", e);
-                    return Err(anyhow!("link bind path failed: {}", e));
+                Err(err) => {
+                    error!("LN can not run: {}, link from {}, to {}", err, self.bind_path.clone(), target.clone());
+                    return Err(anyhow!("link bind path failed: {}", err));
                 }
-            };
+            }
         }
         Ok(())
     }
@@ -294,13 +286,72 @@ fn mount(pid: i32, from: &str, to: &str) -> AnyhowResult<()> {
     };
 }
 
-fn check_need_mount(pid_mntns: &String) -> AnyhowResult<bool> {
+
+pub fn make_path_exist(path: String) -> AnyhowResult<()> {
+    // check socket exist or path not exist
+    let _ = remove_file(path.clone());
+    let current_path = std::path::Path::new(&path).parent().unwrap();
+    if !current_path.exists() {
+        create_dir_all(&current_path)?;
+    }
+    Ok(())
+}
+
+pub fn check_need_mount(pid_mntns: &String) -> AnyhowResult<bool> {
     let root_mnt = std::fs::read_link("/proc/1/ns/mnt")?;
     debug!(
         "pid namespace && root namespace : {} && {}",
         pid_mntns, root_mnt.display()
     );
-    Ok(&root_mnt.display().to_string() == pid_mntns)
+    Ok(&root_mnt.display().to_string() != pid_mntns)
+}
+
+fn resolve_mount_path(path: String, pid: i32) -> String {
+    let target_path = format!("/proc/{}/root{}", pid, path);
+    let current_path = std::path::Path::new(&target_path);
+    let mut find_path = current_path;
+
+    while !find_path.exists() {
+        if let Some(parent_path) = find_path.parent() {
+            find_path = parent_path;
+        }
+    }
+    if find_path.exists() {
+        if let Ok(subfix_path) = current_path.strip_prefix(find_path) {
+            let parent_resolve = resolve_symlink_path(find_path.to_string_lossy().into_owned());
+            if parent_resolve == find_path.to_string_lossy().into_owned() {
+                return path;
+            } 
+            else {
+                return format!("{}/{}", parent_resolve, subfix_path.display());
+            }
+        }
+    }
+    path
+}
+
+fn resolve_symlink_path(path: String) -> String {
+    let new_path = std::path::Path::new(&path);
+    let check_path = new_path.parent().unwrap();
+    let file_name = new_path.file_name();
+    if let Ok(metadata) = symlink_metadata(check_path) {
+        if metadata.file_type().is_symlink() {
+            if let Ok(real_path) = read_link(check_path) {
+                let mut resolved_path = real_path;
+                if !resolved_path.is_absolute() {
+                    resolved_path = check_path.parent().unwrap().join(resolved_path);
+                }
+                if resolved_path.parent().is_none() {
+                    return format!("/{}", file_name.unwrap().to_string_lossy());
+                }
+                else {
+                    return format!("{}/{}", resolved_path.to_string_lossy(), file_name.unwrap().to_string_lossy());
+                }
+            }
+        }
+    }
+
+    path
 }
 
 pub struct EbpfMode {

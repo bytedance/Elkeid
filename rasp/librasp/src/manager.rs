@@ -261,7 +261,7 @@ impl RASPManager {
         }
 
         let valid_messages_string = serde_json::to_string(&valid_messages)?;
-        self.write_message_to_config_file(pid, nspid, valid_messages_string)?;
+        //self.write_message_to_config_file(pid, nspid, valid_messages_string)?;
 
         Ok(())
     }
@@ -327,11 +327,11 @@ impl RASPManager {
         let pid = process_info.pid;
         let nspid = ProcessInfo::read_nspid(pid)?.ok_or(anyhow!("can not read nspid: {}", pid))?;
         // delete config
-        self.delete_config_file(pid, nspid)?;
+        // self.delete_config_file(pid, nspid)?;
         let attach_result = match runtime_info.name {
             "JVM" => match JVMProbeState::inspect_process(process_info)? {
                 ProbeState::Attached => {
-                    info!("JVM attached process");
+                    info!("JVM attached process {}", pid);
                     Ok(true)
                 }
                 ProbeState::NotAttach => {

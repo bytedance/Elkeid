@@ -4,6 +4,7 @@ use std::{
     thread::{sleep, Builder},
     time::Duration,
 };
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::{
     config::*,
@@ -37,10 +38,12 @@ pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
     let collect_thread_limit = settings_int("internal", "collect_thread_limit")? as usize;
     let mut collect_threads = Vec::new();
     let collect_thread_wait_message_duration = settings_int("internal", "collect_thread_wait_message_duration")? as u64;
+    let total_messages = Arc::new(AtomicU64::new(0));
     for collect_thread_n in 0..collect_thread_limit {
         let internal_message_receiver_clone = internal_message_receiver.clone();
         let mut collect_ctrl = ctrl.clone();
         let mut client_clone = client.clone();
+        let total_messages_clone = Arc::clone(&total_messages);
         let collect_thread_ = match Builder::new()
             .name(format!("collect_{}", collect_thread_n))
             .spawn(move || -> Anyhow<()> {
@@ -59,9 +62,12 @@ pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
                         info!("collect thread: {} internal message len: {}", collect_thread_n, message_queue_length)
                     }
                     let bundle: Vec<Record> = internal_message_receiver_clone.try_iter().collect();
+                    let queue_length: u64 = message_queue_length as u64;
                     debug!("sending bundle: {:?}", bundle);
                     match client_clone.send_records(&bundle) {
-                        Ok(_) => {}
+                        Ok(_) => {
+                            total_messages_clone.fetch_add(queue_length, Ordering::SeqCst);
+                        }
                         Err(e) => {
                             error!("can not send data to agent, stop the world: {}", e);
                             break;
@@ -79,6 +85,27 @@ pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
         };
         collect_threads.push(collect_thread_);
     }
+
+    let mut interval_ctrl = ctrl.clone();
+
+    let interval_thread =
+    Builder::new()
+        .name("interval".to_string())
+        .spawn(move || -> Anyhow<()> {
+            info!("starting interval thread");
+            loop {
+                if !interval_ctrl.check() {
+                    warn!("interval thread recv stop signal, quiting");
+                    break;
+                }
+                let messages = total_messages.load(Ordering::SeqCst);
+                info!("Total messages send: {}", messages);
+                sleep(Duration::from_secs(60));
+            }
+            let _ = interval_ctrl.stop();
+            Ok(())
+        })?;
+
     let (external_message_sender, external_message_receiver): (
         Sender<RASPCommand>,
         Receiver<RASPCommand>,
@@ -100,7 +127,9 @@ pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
                         Ok(m) => m,
                         Err(e) => {
                             let _ = external_ctrl.stop();
-                            return Err(anyhow!("recv failed client failed: {}", e));
+                            error!("recv failed from external client, {}, now to stop process", e);
+                            info!("Elkeid RASP STOP");
+                            std::process::exit(0);
                         }
                     };
                     let parsed_message = match parse_message(&message) {
@@ -175,9 +204,16 @@ pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
                     warn!("from internal thread report a warn: {:?}", e);
                 }
             };
-            break;
+            match interval_thread.join() {
+                Ok(_) => {}
+                Err(e) => {
+                    warn!("from interval thread report a warn: {:?}", e);
+                }
+            }
+            info!("Elkeid RASP STOP");
+            std::process::exit(1);
         }
-        sleep(Duration::from_secs(60));
+        sleep(Duration::from_secs(10));
     }
     Ok(())
 }
@@ -194,6 +230,7 @@ fn internal_main(
     let mut tracking_pids = Vec::<i32>::new();
     let (pid_sender, pid_receiver) =
         bounded(settings_int("internal", "pid_queue_length")? as usize);
+    let pid_poll_interval = settings_int("internal", "pid_poll_interval")? as u64;
     let pid_recv_thread = Builder::new()
         .name("pid_recv".to_string())
         .spawn(move || loop {
@@ -221,7 +258,7 @@ fn internal_main(
                     break;
                 };
             }
-            sleep(Duration::from_secs(60));
+            sleep(Duration::from_secs(pid_poll_interval));
         })?;
     /* consume pid then inspect runtime */
     let mut inspect_ctrl = ctrl.clone();
@@ -240,7 +277,8 @@ fn internal_main(
         .spawn(move || loop {
             debug!("inspect thread looping");
             if !inspect_ctrl.check() {
-                warn!("inspect thread recv stop signal, quiting")
+                warn!("inspect thread recv stop signal, quiting");
+                break;
             }
             let pid = match pid_receiver.try_recv() {
                 Ok(p) => p,
@@ -281,12 +319,14 @@ fn internal_main(
             process.runtime = Some(runtime.clone());
             for rt in local_filters.auto_attach_runtime.iter() {
                 if &runtime.name == rt {
-                    let _ = external_message_sender_for_inspected.send(RASPCommand {
+                    if let Err(e) = external_message_sender_for_inspected.send(RASPCommand {
                         pid: process.pid.to_string(),
                         state: "WAIT_ATTACH".to_string(),
                         runtime: runtime.to_string(),
                         probe_message: None,
-                    });
+                    }) {
+                        warn!("auto attach send command to receiver err: {}, pid: {}", e, pid);
+                    }
                     break;
                 }
             }
@@ -295,9 +335,11 @@ fn internal_main(
             let mut record = hashmap_to_record(report);
             record.data_type = report_action_data_type.clone() as i32;
             record.timestamp = time();
-            let _ = inspect_reportor.send(
+            if let  Err(e)  = inspect_reportor.send(
                 record
-            );
+            ) {
+                warn!("inspect thread send command to receiver err: {}, pid: {}", e, pid);
+            }
             (*ip).insert(pid, process);
             drop(ip);
             sleep(Duration::from_millis(100));
@@ -330,13 +372,16 @@ fn internal_main(
                 let mut record = hashmap_to_record(message);
                 record.data_type = report_heartbeat_data_type.clone() as i32;
                 record.timestamp = time();
-                let _ = reporter_sender.send(
+                if let Err(e) = reporter_sender.send(
                     record
-                );
+                ) {
+                    warn!("report thread send command to receiver err: {}, pid: {}", e, _pid);
+                }
             }
         })?;
     /* clean missing process */
     let mut cleaner_ctrl = ctrl.clone();
+    let clean_up_interval = settings_int("internal", "clean_up_interval")? as u64;
     let cleaner_thread = Builder::new()
         .name("cleaner".to_string())
         .spawn(move || loop {
@@ -344,7 +389,7 @@ fn internal_main(
             if !cleaner_ctrl.check() {
                 break;
             }
-            sleep(Duration::from_secs(60));
+            sleep(Duration::from_secs(clean_up_interval));
             let cleaning_process = cleaning_process_rw.read();
             let check_needed = (*cleaning_process).clone();
             drop(cleaning_process);
@@ -355,12 +400,14 @@ fn internal_main(
                 missing_process.len()
             );
             for pid in missing_process.iter() {
-                let _ = external_message_sender.send(RASPCommand {
+                if let Err(e) = external_message_sender.send(RASPCommand {
                     pid: pid.to_string(),
                     state: "MISSING".to_string(),
                     runtime: "".to_string(),
                     probe_message: None,
-                });
+                }) {
+                    warn!("clean thread send command to receiver err: {}, pid: {}", e, pid);
+                }
             }
         })?;
     let mut operation_ctrl = ctrl.clone();
@@ -432,10 +479,11 @@ fn internal_main(
                     let mut record = hashmap_to_record(report);
                     record.data_type = report_action_data_type.clone() as i32;
                     record.timestamp = time();
-                    let _ = operation_reporter.send(
+                    if let Err(e) = operation_reporter.send(
                         record
-                    );
-                    continue;
+                    ) {
+                        warn!("operation thread send command to receiver err: {}, pid: {}", e, process.pid);
+                    }
                 }
             };
             // update
@@ -464,12 +512,14 @@ fn internal_main(
 
     loop {
         if !ctrl.check() {
+            warn!("start to check ctrl2");
             pid_recv_thread.join().unwrap();
             inspect_thread.join().unwrap();
             cleaner_thread.join().unwrap();
             operation_thread.join().unwrap();
             reporter_thread.join().unwrap();
-            break;
+            info!("Elkeid RASP STOP");
+            std::process::exit(1);
         }
         sleep(Duration::from_secs(10));
     }

@@ -482,11 +482,14 @@ public class SmithProbeProxy {
         if(exceptionObject instanceof ClassNotFoundException) {
             String classname = (String) args[1];
 
-            if (SmithProbeProxy.class.getClassLoader() == null && (classname.startsWith("com.security.smith.") || classname.startsWith("com.alibaba.third.rasp."))) {
-                return (Object)Class.forName(classname);
-            }
+            if (((classname.startsWith("com.security.smith.") || 
+                 classname.startsWith("com.security.smithloader.") ||
+                 classname.startsWith("rasp.io")) ||
+                 classname.startsWith("rasp.org") ||
+                 classname.startsWith("rasp.com") ||
+                 classname.startsWith("rasp.javassist")))
     
-            throw (Throwable)exceptionObject;
+            return (Object)Class.forName(classname);
         }
 
         return null;

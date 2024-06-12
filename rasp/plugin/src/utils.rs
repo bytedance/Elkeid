@@ -4,6 +4,7 @@ pub use librasp::comm::Control;
 use anyhow::Result as AnyhowResult;
 use coarsetime::Clock;
 use librasp::runtime::Runtime;
+use librasp::settings::RASP_VERSION;
 use serde_json::json;
 use librasp::process::{ProcessInfo, TracingState};
 use log::error;
@@ -45,6 +46,7 @@ pub fn generate_heartbeat(watched_process: &ProcessInfo) -> HashMap<&'static str
     message.insert("missing_time", watched_process.missing_time.clone().unwrap_or("".to_string()));
     message.insert("try_attach_count", watched_process.try_attach_count.to_string());
     message.insert("attached_count", watched_process.attached_count.to_string());
+    message.insert("probe_version", RASP_VERSION.to_string());
     message.insert("uptime", match count_uptime(watched_process.start_time.unwrap_or(0 as f32)) {
         Ok(t) => t.to_string(),
         Err(e) => {

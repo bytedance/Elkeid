@@ -135,7 +135,7 @@ class SmithClient extends EventEmitter {
 
         const message = {
             'pid': process.pid,
-            'runtime': 'node.js',
+            'runtime': 'NodeJS',
             'runtime_version': process.version,
             'time': Date.now(),
             'message_type': operate,

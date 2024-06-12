@@ -46,17 +46,32 @@ pub fn java_attach(pid: i32) -> Result<bool> {
         "false",
         probe.as_str(),
     ])) {
-        Ok((_, out, err)) => {
+        Ok((es, out, err)) => {
             if out.len() != 0 {
                 info!("{}", &out);
             }
             if err.len() != 0 {
                 info!("{}", &err);
             }
-            return Ok(true);
+            let es_code = match es.code() {
+                Some(ec) => ec,
+                None => {
+                    return Err(anyhow!("get status code failed: {}", pid));
+                }
+            };
+            if es_code == 0 {
+                return Ok(true);
+            } else {
+                let msg = format!(
+                    "jvm attach exit code {} {} {} {}",
+                    es_code, pid, &out, &err
+                );
+                error!("{}", msg);
+                Err(anyhow!("{}", msg))
+            }
         }
         Err(e) => {
-            return Err(anyhow!(e.to_string()));
+            Err(anyhow!(e.to_string()))
         }
     }
 }
@@ -64,14 +79,24 @@ pub fn java_attach(pid: i32) -> Result<bool> {
 pub fn jcmd(pid: i32, cmd: &'static str) -> Result<Vec<u8>> {
     let java_attach = settings::RASP_JAVA_JATTACH_BIN();
 
-    let output = match Command::new(java_attach)
-        .args(&[pid.to_string().as_str(), "jcmd", cmd])
-        .output()
-    {
-        Ok(s) => s,
-        Err(e) => return Err(anyhow!(e.to_string())),
-    };
-    Ok(output.stdout)
+    match run_async_process(Command::new(java_attach).args(&[
+        pid.to_string().as_str(),
+        "jcmd",
+       cmd,
+    ])) {
+        Ok((_, out, err)) => {
+            // if out.len() != 0 {
+            //     info!("{}", &out);
+            // }
+            if err.len() != 0 {
+                info!("pid: {}, {}", pid, &err);
+            }
+            return Ok(out.into())
+        }
+        Err(e) => {
+            Err(anyhow!(e.to_string()))
+        }
+    }
 }
 
 pub fn vm_version(pid: i32) -> Result<i32> {

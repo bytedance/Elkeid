@@ -71,7 +71,7 @@ pub mod async_command {
                     break;
                 }
                 wait_count += 1;
-                if wait_count >= 120 {
+                if wait_count >= 60 {
                     warn!("kill child: {}", pid);
                     // send signal
                     kill_child(pid as i32);

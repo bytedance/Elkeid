@@ -4,7 +4,7 @@
 #include <zero/cache/lru.h>
 #include <zero/strings/strings.h>
 
-constexpr auto RUNTIME = "golang";
+constexpr auto RUNTIME = "Golang";
 constexpr auto PROBE_VERSION = "1.0.0";
 constexpr auto FRAME_CACHE_SIZE = 128;
 

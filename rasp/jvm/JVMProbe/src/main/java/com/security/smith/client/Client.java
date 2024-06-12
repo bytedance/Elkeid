@@ -77,7 +77,7 @@ public class Client implements EventHandler {
         group.shutdownGracefully();
     }
 
-    public void write(Operate operate, Object object) {
+    public void write(int operate, Object object) {
         if (channel == null || !channel.isActive() || !channel.isWritable())
             return;
 
@@ -86,14 +86,6 @@ public class Client implements EventHandler {
 
         Message message = new Message();
 
-        // try {
-        //     if (operate == Operate.CLASSUPLOAD) {
-        //         Thread.sleep(1000);
-        //     }
-            
-        // } catch (Exception e) {
-        //     // TODO: handle exception
-        // }
 
         message.setOperate(operate);
         message.setData(objectMapper.valueToTree(object));
@@ -112,30 +104,30 @@ public class Client implements EventHandler {
     @Override
     public void onMessage(Message message) {
         switch (message.getOperate()) {
-            case EXIT:
+            case Operate.EXIT:
                 SmithLogger.logger.info("exit");
                 break;
 
-            case HEARTBEAT:
+            case Operate.HEARTBEAT:
                 SmithLogger.logger.info("heartbeat");
                 break;
 
-            case CONFIG:
+            case Operate.CONFIG:
                 SmithLogger.logger.info("config");
                 messageHandler.onConfig(message.getData().get("config").asText());
                 break;
 
-            case CONTROL:
+            case Operate.CONTROL:
                 SmithLogger.logger.info("control");
                 messageHandler.onControl(message.getData().get("action").asInt());
                 break;
 
-            case DETECT:
+            case Operate.DETECT:
                 SmithLogger.logger.info("detect");
                 messageHandler.onDetect();
                 break;
 
-            case FILTER: {
+            case Operate.FILTER: {
                 SmithLogger.logger.info("filter: " + message.getData().toString());
 
                 ObjectMapper objectMapper = new ObjectMapper()
@@ -156,7 +148,7 @@ public class Client implements EventHandler {
                 break;
             }
 
-            case BLOCK: {
+            case Operate.BLOCK: {
                 SmithLogger.logger.info("block: " + message.getData().toString());
 
                 ObjectMapper objectMapper = new ObjectMapper()
@@ -177,7 +169,7 @@ public class Client implements EventHandler {
                 break;
             }
 
-            case LIMIT: {
+            case Operate.LIMIT: {
                 SmithLogger.logger.info("limit: " + message.getData().toString());
 
                 ObjectMapper objectMapper = new ObjectMapper()
@@ -198,7 +190,7 @@ public class Client implements EventHandler {
                 break;
             }
 
-            case PATCH: {
+            case Operate.PATCH: {
                 SmithLogger.logger.info("patch: " + message.getData().toString());
 
                 ObjectMapper objectMapper = new ObjectMapper()
@@ -218,7 +210,7 @@ public class Client implements EventHandler {
 
                 break;
             }
-            case CLASSFILTERSTART: {
+            case Operate.CLASSFILTERSTART: {
                  SmithLogger.logger.info("rule upload start: " + message.getData().toString());
 
                  ObjectMapper objectMapper = new ObjectMapper();
@@ -233,7 +225,7 @@ public class Client implements EventHandler {
 
                 break;
             }
-            case CLASSFILTER: {
+            case Operate.CLASSFILTER: {
                  SmithLogger.logger.info("rule upload: " + message.getData().toString());
 
                 ObjectMapper objectMapper = new ObjectMapper();
@@ -248,7 +240,7 @@ public class Client implements EventHandler {
 
                 break;
             }
-            case CLASSFILTEREND: {
+            case Operate.CLASSFILTEREND: {
                 SmithLogger.logger.info("class filter config receive finish, start to scan all class");
                 Thread scanAllClassThread = new Thread(messageHandler::onScanAllClass);
                 scanAllClassThread.setDaemon(true);

@@ -12,6 +12,7 @@ import com.security.smith.asm.SmithClassWriter;
 import com.security.smith.client.message.*;
 
 import com.security.smith.common.SmithHandler;
+import com.security.smith.log.AttachInfo;
 import com.security.smith.log.SmithLogger;
 import com.security.smith.module.Patcher;
 import com.security.smith.type.*;
@@ -115,8 +116,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
     public void start() {
         SmithLogger.logger.info("probe start");
+        AttachInfo.info();
 
-        System.out.println("init ClassUploadTransformer");
+        SmithLogger.logger.info("init ClassUploadTransformer");
         ClassUploadTransformer.getInstance().start(client, inst);
 
         inst.addTransformer(this, true);
@@ -288,7 +290,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 } catch(Exception e) {
                     // SmithLogger.exception(e);
                 }
-                // 获取父类名和父类加载器
+
                 String superClassName = superClass != null ? superClass.getName() : "";
                 classFilter.setParentClassName(superClassName);
         
@@ -432,7 +434,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
             classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);      
             return classWriter.toByteArray();
-        } catch (Exception e) {
+        } catch (Throwable e) {
             SmithLogger.exception(e);
         }
 
@@ -637,7 +639,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
 
     
-    /* 全量扫描 */
+    /* scan all class */
     @Override
     public void onScanAllClass() {
         if (scanswitch == false) {
@@ -724,11 +726,11 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         int length = data.length;
         ClassUpload classUpload = new ClassUpload();
         classUpload.setTransId(transId);
-        // TODO 第一版先不分包，看下性能
+
         // client.write(Operate.CLASSDUMP, classUpload);
-        // 发送文件内容分包给服务器
-        // int packetSize = 1024; // 每个包的大小
-        // int totalPackets = (data.length + packetSize - 1) / packetSize; // 总包数
+
+        // int packetSize = 1024; \
+        // int totalPackets = (data.length + packetSize - 1) / packetSize;
         //for (int i = 0; i < totalPackets; i++) {
             //int offset = i * packetSize;
             classUpload.setByteTotalLength(length);

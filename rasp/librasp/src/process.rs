@@ -319,6 +319,21 @@ impl ProcessInfo {
     }
 }
 
+pub fn count_uptime(start_time: f32) -> AnyhowResult<u64> {
+    let ticks = procfs::ticks_per_second()? as f32;
+    let boottime = procfs::boot_time_secs()?;
+    let seconds_since_boot = ((start_time / ticks) as i64) as u64;
+    let timestamp = Clock::now_since_epoch().as_secs();
+    let uptime = timestamp - seconds_since_boot - boottime;
+    if uptime <= 0 {
+        error!(
+            "uptime <=0: uptime: {} timestamp: {} seconds since boot: {} boot time: {}",
+            uptime, timestamp, seconds_since_boot, boottime
+        );
+    }
+    return Ok(uptime);
+}
+
 fn traverse_proc(pid: i32) -> AnyhowResult<Vec<i32>> {
     let mut pids = Vec::new();
     for entry in read_dir(format!("/proc/{}/root/proc", pid))? {
