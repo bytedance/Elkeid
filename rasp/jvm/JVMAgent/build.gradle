@@ -33,6 +33,5 @@ jar {
 }
 
 shadowJar {
-    relocate 'org.apache.commons', 'agent.org.apache.commons'
-    relocate 'META-INF/native/libnetty', 'META-INF/native/librasp_netty'
+    relocate 'org.apache.commons', 'rasp.org.apache.commons'
 }
