@@ -76,8 +76,8 @@ pub fn RASP_JAVA_AGENT_BIN() -> String {
 pub fn RASP_JAVA_DIR() -> String {
     format!("{}{}", RASP_LIB_DIR(), "/java")
 }
-// NodeJS
 
+// NodeJS
 pub fn RASP_NODEJS_DIR() -> String {
     format!("{}{}", RASP_LIB_DIR(), "/node")
 }
