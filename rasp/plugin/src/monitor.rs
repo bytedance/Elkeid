@@ -484,6 +484,7 @@ fn internal_main(
                     ) {
                         warn!("operation thread send command to receiver err: {}, pid: {}", e, process.pid);
                     }
+                    continue;
                 }
             };
             // update
