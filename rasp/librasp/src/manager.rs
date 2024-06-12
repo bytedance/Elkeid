@@ -343,7 +343,6 @@ impl RASPManager {
                             self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
                         }
                     }
-
                     copy_probe_nativelib(process_info.pid,root_dir.clone())?;
 
                     java_attach(process_info.pid)
@@ -362,7 +361,6 @@ impl RASPManager {
                                 self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
                             }
                         }
-
                         copy_probe_nativelib(process_info.pid,root_dir.clone())?;
 
                         java_attach(pid)

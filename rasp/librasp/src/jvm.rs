@@ -55,7 +55,6 @@ impl ProbeCopy for JVMProbe {
     }
 }
 
-
 pub struct JVMProbeNativeLib {}
 
 impl ProbeCopy for JVMProbeNativeLib {
@@ -161,7 +160,6 @@ pub fn copy_probe_nativelib(pid:i32,dst_root:String) -> AnyhowResult<()> {
                                 copy_file_probe(src_path,dst_path);
                             }
                         }
-                      
                     }
                 }
                 Err(e) => {
