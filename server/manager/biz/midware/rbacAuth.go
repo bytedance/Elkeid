@@ -155,7 +155,7 @@ func RuleIDSort(one MetaRule, other MetaRule) bool {
 func RBACAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if ACWorker == nil {
-			ylog.Debugf("RBACAuth", "ACWorker Is nil %s, all request will be passed")
+			ylog.Debugf("RBACAuth", "ACWorker Is nil, all request will be passed")
 			c.Next()
 			return
 		}
