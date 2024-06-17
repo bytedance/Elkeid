@@ -333,3 +333,23 @@
       name: findClass
       desc: (Ljava/lang/String;ZZ)Ljava/lang/Class;
       exceptionHook: processWildflyClassLoaderException
+- id: 35
+  name: com.caucho.server.http.WebSocketContextImpl
+  methods:
+    - id: 0
+      name: <init>
+      desc: (Lcom/caucho/server/http/HttpServletRequestImpl;Lcom/caucho/server/http/HttpServletResponseImpl;Lcom/caucho/websocket/WebSocketListener;Lcom/caucho/remote/websocket/FrameInputStream;)V
+      preHook: checkResinWebSocketPre
+- id: 36
+  name: javax.websocket.server.DefaultServerEndpointConfig
+  methods:
+    - id: 0
+      name: <init>
+      desc: (Ljava/lang/Class;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljavax/websocket/server/ServerEndpointConfig$Configurator;)V
+      preHook: checkWebSocketConfigPre
+- id: 37
+  name: sun.nio.ch.SocketChannelImpl
+  methods:
+    - id: 0
+      name: connect
+      desc: (Ljava/net/SocketAddress;)Z

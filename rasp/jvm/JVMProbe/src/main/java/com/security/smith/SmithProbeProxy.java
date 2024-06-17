@@ -1,6 +1,5 @@
 package com.security.smith;
                            
-import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
@@ -304,6 +303,22 @@ public class SmithProbeProxy {
         checkAddValvePre(classID, methodID, args);
     }
 
+    public void checkWebSocketPre(int classID, int methodID, Object[] args) {
+        SmithLogger.logger.info("check WebSocketPre");
+        if (args.length < 2) {
+            return;
+        }
+        try {
+            Object ws = args[1];
+            Class<?>[] emptyArgTypes = new Class[]{};
+            Class<?> endpointCla = (Class<?>)Reflection.invokeMethod(ws, "getEndpointClass", emptyArgTypes);
+            sendMetadataClass(endpointCla);
+
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+    }
+
     public  void onTimer() {
         Heartbeat heartbeat = SmithProbe.getInstance().getHeartbeat();
         if (client != null)
@@ -380,6 +395,20 @@ public class SmithProbeProxy {
 
     }
 
+    public void checkResinWebSocketPre(int classID, int methodID, Object[] args) {
+        SmithLogger.logger.info("checkResinWebSocket pre_hook call success");
+        if (args.length < 3) {
+            return;
+        }
+        try {
+            Object weblistener = args[2];
+            if (weblistener != null) {
+                sendMetadataObject(weblistener);
+            }
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+    }
      /*
      * check jetty version 9 add filter/servlet memshell
      * TODO: add url check
@@ -419,9 +448,24 @@ public class SmithProbeProxy {
     /*
      * used for listener check
      */
-    public void cehckJettyDeployPre(int classID, int methodID, Object[] args)  {
+    public void checkJettyDeployPre(int classID, int methodID, Object[] args)  {
         if (jettyDeploying != null) {
             jettyDeploying.set(true);
+        }
+    }
+
+    /* user for check ServerEndpointConfig init */
+    public void checkWebSocketConfigPre(int classID, int metodID, Object[] args) {
+        SmithLogger.logger.info("checkWebSocketConfigPre called");
+        try {
+            if (args.length < 2) {
+                return;
+            }
+            Class<?>  websocket = (Class<?>)args[0];
+            sendMetadataClass(websocket);
+
+        } catch (Exception e) {
+            SmithLogger.exception(e);
         }
     }
 
