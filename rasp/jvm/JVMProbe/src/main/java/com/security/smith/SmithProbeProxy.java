@@ -158,7 +158,7 @@ public class SmithProbeProxy {
             client.write(Operate.SCANCLASS, classFilter);
             client.write(Operate.COUNTMEMSHELL, classFilter);
             SmithLogger.logger.info("send metadata: " + classFilter.toString());
-            SmithProbe.getInstance().sendClass(cla, classFilter.getTransId());
+            // SmithProbe.getInstance().sendClass(cla, classFilter.getTransId());
         }
     }
 
@@ -258,7 +258,7 @@ public class SmithProbeProxy {
                         client.write(Operate.SCANCLASS, classFilter);
                         client.write(Operate.COUNTMEMSHELL, classFilter);
                         SmithLogger.logger.info("send metadata: " + classFilter.toString());
-                        SmithProbe.getInstance().sendClass(clazz, classFilter.getTransId());
+                        // SmithProbe.getInstance().sendClass(clazz, classFilter.getTransId());
                     }
                 } else {
                     needFoundfilterDef.set(filterdef);
@@ -533,7 +533,7 @@ public class SmithProbeProxy {
                             client.write(Operate.SCANCLASS, classFilter);
                             client.write(Operate.COUNTMEMSHELL, classFilter);
                             SmithLogger.logger.info("send metadata: " + classFilter.toString());
-                            SmithProbe.getInstance().sendClass(servletClass, classFilter.getTransId());
+                            // SmithProbe.getInstance().sendClass(servletClass, classFilter.getTransId());
                         }
                     } else {
                         SmithLogger.logger.warning("can't find "+servletName);
