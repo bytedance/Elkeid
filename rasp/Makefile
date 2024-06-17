@@ -8,7 +8,7 @@ VCPKG_OVERLAY_PORTS ?= $(abspath overlay-ports)
 
 .PHONY: all help install clean set-version agent-plugin nsenter pangolin jattach JVMProbe python-probe python-loader go-probe go-probe-ebpf node-probe php-probe librasp rasp-server NSMount
 
-all: rasp-$(VERSION).tar.gz rasp-$(VERSION)-debug.tar.gz SHA256SUMS
+all: rasp-linux-default-x86_64-$(VERSION).tar.gz rasp-linux-default-x86_64-$(VERSION)-debug.tar.gz SHA256SUMS
 
 
 help:
@@ -27,19 +27,19 @@ install: | $(OUTPUT)
 
 
 clean:
-	rm -rf $(OUTPUT) $(DEBUG_SYMBOLS) rasp-$(VERSION).tar.gz rasp-$(VERSION)-debug.tar.gz SHA256SUMS
+	rm -rf $(OUTPUT) $(DEBUG_SYMBOLS) rasp-linux-default-x86_64-$(VERSION).tar.gz rasp-linux-default-x86_64-$(VERSION)-debug.tar.gz SHA256SUMS
 
 
-rasp-$(VERSION).tar.gz: rasp-$(VERSION)-debug.tar.gz
+rasp-linux-default-x86_64-$(VERSION).tar.gz: rasp-linux-default-x86_64-$(VERSION)-debug.tar.gz
 	cd $(OUTPUT) && tar -czvf ../$@ ./*
 
 
-rasp-$(VERSION)-debug.tar.gz: | $(DEBUG_SYMBOLS)
+rasp-linux-default-x86_64-$(VERSION)-debug.tar.gz: | $(DEBUG_SYMBOLS)
 	tar -czvf $@ $(DEBUG_SYMBOLS)
 
 
-SHA256SUMS: rasp-$(VERSION).tar.gz
-	sha256sum $(OUTPUT)/rasp rasp-$(VERSION).tar.gz > $@
+SHA256SUMS: rasp-linux-default-x86_64-$(VERSION).tar.gz
+	sha256sum $(OUTPUT)/rasp rasp-linux-default-x86_64-$(VERSION).tar.gz > $@
 
 
 set-version:
