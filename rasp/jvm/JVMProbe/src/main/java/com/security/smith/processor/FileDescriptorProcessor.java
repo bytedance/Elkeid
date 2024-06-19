@@ -10,7 +10,7 @@ public class FileDescriptorProcessor {
 
         try {
             return FieldUtils.readField(object, "fd", true);
-        } catch (IllegalAccessException e) {
+        } catch (Exception e) {
             SmithLogger.exception(e);
         }
 
