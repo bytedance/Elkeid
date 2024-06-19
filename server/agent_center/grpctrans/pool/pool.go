@@ -255,7 +255,7 @@ func NewGRPCPool(config *Config) *GRPCPool {
 	go g.refreshExtraInfo(config.Interval)
 
 	//定期刷新iaas信息
-	//go g.refreshIaasInfo(config.Interval)
+	go g.refreshIaasInfo(10 * time.Minute)
 	return g
 }
 
@@ -513,22 +513,42 @@ func (g *GRPCPool) GetDynamicLimit() (val int32, lastSecond int64) {
 func (g *GRPCPool) refreshIaasInfo(interval time.Duration) {
 	for {
 		time.Sleep(interval + time.Duration(rand.Intn(30))*time.Second)
-		iaasInfos := make(map[string]string, len(g.iaasInfoMap))
-		connMap := g.connPool.Items()
-		for id := range connMap {
-			if conn, ok := connMap[id].Object.(*Connection); ok {
-				//load from manager
-				info, err := client.GetIaasInfoFromRemote(conn.AgentID)
-				if err != nil {
-					ylog.Errorf("refreshIaasInfo", "%s %s %s error %s", id, conn.IntranetIPv4, conn.IntranetIPv6, err.Error())
-				} else {
-					iaasInfos[id] = info
-				}
+		emptyInfos := make(map[string]string, 10)
+		deleteIDs := make([]string, 0, 10)
+
+		g.iaasInfoLock.RLock()
+		for k, v := range g.iaasInfoMap {
+			if _, ok := g.connPool.Get(k); !ok {
+				//AgentID已经不存在
+				deleteIDs = append(deleteIDs, k)
+			}
+
+			//列出所有AccountID为空的AgentID列表
+			if v == "" {
+				emptyInfos[k] = v
+			}
+		}
+		g.iaasInfoLock.RUnlock()
+
+		//重新拉取
+		for k, _ := range emptyInfos {
+			//load from manager
+			info, err := client.GetIaasInfoFromRemote(k)
+			if err != nil {
+				ylog.Errorf("refreshIaasInfo", "%s %s %s error %s", k, err.Error())
+			} else {
+				emptyInfos[k] = info
 			}
 		}
 
+		//回写
 		g.iaasInfoLock.Lock()
-		g.iaasInfoMap = iaasInfos
+		for _, k := range deleteIDs {
+			delete(g.iaasInfoMap, k)
+		}
+		for k, v := range emptyInfos {
+			g.iaasInfoMap[k] = v
+		}
 		g.iaasInfoLock.Unlock()
 	}
 }
