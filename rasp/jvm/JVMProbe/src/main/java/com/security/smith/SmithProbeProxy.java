@@ -105,14 +105,18 @@ public class SmithProbeProxy {
         while (true) {
             int quota = quotas[classID].get(methodID);
 
-            if (quota <= 0)
+            if (quota <= 0) {
+                SmithProbe.getInstance().addDisacrdCount();
                 return;
+            }
 
             if (quotas[classID].compareAndSet(methodID, quota, quota - 1))
                 break;
         }
-        if (disruptor == null)
+        if (disruptor == null) {
+            SmithProbe.getInstance().addDisacrdCount();
             return;
+        }
         RingBuffer<Trace> ringBuffer = disruptor.getRingBuffer();
 
         try {
@@ -129,7 +133,7 @@ public class SmithProbeProxy {
 
             ringBuffer.publish(sequence);
         } catch (InsufficientCapacityException ignored) {
-
+            SmithProbe.getInstance().addDisacrdCount();
         }
     }
 
