@@ -753,6 +753,12 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         return heartbeat;
     }
 
+    public void addDisacrdCount() {
+        int discrad_count = this.heartbeat.getDiscardCount();
+        discrad_count++;
+        this.heartbeat.setDiscardCount(discrad_count);
+    }
+
     public Map<Pair<Integer, Integer>, Integer>  getLimits() {
         return limits;
     }
