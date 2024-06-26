@@ -116,14 +116,15 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
                 try {
                     this.clazzToUpload = info.clazz;
                     this.transId = info.transId;
-    
-                    if (inst.isModifiableClass(info.clazz) && !info.clazz.getName().startsWith("java.lang.invoke.LambdaForm")) {
-                        try {
-                            inst.retransformClasses(info.clazz);
-                        } catch (Exception e) {
-                            SmithLogger.exception(e);
-                        }
-                    }
+                    
+                    // not upload. just send
+                    // if (inst.isModifiableClass(info.clazz) && !info.clazz.getName().startsWith("java.lang.invoke.LambdaForm")) {
+                    //     try {
+                    //         inst.retransformClasses(info.clazz);
+                    //     } catch (Exception e) {
+                    //         SmithLogger.exception(e);
+                    //     }
+                    // }
                 }
                 finally {
                     this.clazzToUpload = null;
