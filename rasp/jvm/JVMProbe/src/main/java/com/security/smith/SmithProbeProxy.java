@@ -588,4 +588,53 @@ public class SmithProbeProxy {
             SmithLogger.exception(e);
         }
      }
+
+         /*
+
+    public ManagedFilter addFilter(FilterInfo filterInfo)
+      
+      
+     */
+
+     public void checkWildflyaddFilterPre(int classID, int methodID, Object[] args) {
+        SmithLogger.logger.info("checkWildflyaddFilter pre_hook call success");
+        if(args.length < 2) {
+            return ;
+        }
+
+        try {
+            Object filterInfo = args[1];
+            if(filterInfo != null) {
+                Class<?> filterClass = (Class<?>)Reflection.getField(filterInfo,"filterClass");
+                String filterName = (String)Reflection.getField(filterInfo,"name");
+
+                if(filterName != null) {
+                    if (filterClass != null) {
+                    if(SmithProbe.getInstance().classIsSended(filterClass)) {
+                        return ;
+                    }
+
+                        ClassFilter classFilter = new ClassFilter();
+                        SmithHandler.queryClassFilter((Class<?>)filterClass, classFilter);
+                        
+                        classFilter.setTransId();
+        
+                        classFilter.setRuleId(-1);
+                        classFilter.setStackTrace(Thread.currentThread().getStackTrace());
+                        if (client != null) {
+                            client.write(Operate.SCANCLASS, classFilter);
+                            client.write(Operate.COUNTMEMSHELL, classFilter);
+                            SmithLogger.logger.info("send metadata: " + classFilter.toString());
+                            // SmithProbe.getInstance().sendClass(filterClass, classFilter.getTransId());
+                        }
+                    } else {
+                        SmithLogger.logger.warning("can't find "+filterName);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+     }
 }
+
