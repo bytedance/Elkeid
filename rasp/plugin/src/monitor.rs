@@ -64,7 +64,7 @@ pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
                     let bundle: Vec<Record> = internal_message_receiver_clone.try_iter().collect();
                     let queue_length: u64 = message_queue_length as u64;
                     debug!("sending bundle: {:?}", bundle);
-                    match client_clone.send_records(&bundle) {
+                    match client_clone.send_records_high_priority(&bundle) {
                         Ok(_) => {
                             total_messages_clone.fetch_add(queue_length, Ordering::SeqCst);
                         }
