@@ -99,7 +99,9 @@ bool pass(const Trace &trace, const std::map<std::tuple<int, int>, Filter> &filt
     return true;
 }
 
+
 void startProbe() {
+    gProbe->infoefd = -1;
     int efd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
 
     if (efd < 0) {
@@ -108,6 +110,16 @@ void startProbe() {
     }
 
     gProbe->efd = efd;
+
+    int infoefd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+
+    if (infoefd < 0) {
+        LOG_ERROR("create info event fd failed");
+        return;
+    }
+
+    gProbe->infoefd = infoefd;
+
     std::fill_n(gProbe->quotas[0], sizeof(gProbe->quotas) / sizeof(**gProbe->quotas), DEFAULT_QUOTAS);
 
     if (fork() != 0)
@@ -360,6 +372,37 @@ void startProbe() {
 
                 if (pass(trace, *filters))
                     sender->trySend({TRACE, gProbe->buffer[*index]});
+
+                P_CONTINUE(loop);
+            }
+    );
+
+    zero::async::promise::loop<void>(
+            [=, sender = sender, event = zero::ptr::makeRef<aio::ev::Event>(context, infoefd)](const auto &loop) {
+                std::optional<size_t> index = gProbe->info.acquire();
+
+                if (!index) {
+                    gProbe->infowaiting = true;
+
+                    event->on(EV_READ, 30s)->then([=](short what) {
+                        if (what & EV_TIMEOUT) {
+                            P_CONTINUE(loop);
+                            return;
+                        }
+
+                        eventfd_t value;
+                        eventfd_read(infoefd, &value);
+
+                        P_CONTINUE(loop);
+                    });
+
+                    return;
+                }
+
+                ExceptionInfo info = gProbe->info[*index];
+                gProbe->info.release(*index);
+
+                sender->trySend({EXCEPTIONINFO, gProbe->info[*index]});
 
                 P_CONTINUE(loop);
             }

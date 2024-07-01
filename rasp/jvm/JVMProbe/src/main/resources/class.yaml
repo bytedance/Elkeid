@@ -353,3 +353,17 @@
     - id: 0
       name: connect
       desc: (Ljava/net/SocketAddress;)Z
+- id: 38
+  name: io.undertow.servlet.core.ManagedFilters
+  methods:
+    - id: 0
+      name: addFilter
+      desc: (Lio/undertow/servlet/api/FilterInfo;)Lio/undertow/servlet/core/ManagedFilter;
+      preHook: checkWildflyaddFilterPre
+- id: 39
+  name: org.glassfish.web.loader.WebappClassLoader
+  methods:
+    - id: 0
+      name: addFilter
+      desc: (Lio/undertow/servlet/api/FilterInfo;)Lio/undertow/servlet/core/ManagedFilter;
+      preHook: checkWildflyaddFilterPre
