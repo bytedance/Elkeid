@@ -562,23 +562,11 @@ public class SmithProbeProxy {
 
                 if(servletName != null) {
                     if (servletClass != null) {
-                    if(SmithProbe.getInstance().classIsSended(servletClass)) {
-                        return ;
-                    }
-
-                        ClassFilter classFilter = new ClassFilter();
-                        SmithHandler.queryClassFilter((Class<?>)servletClass, classFilter);
-                        
-                        classFilter.setTransId();
-        
-                        classFilter.setRuleId(-1);
-                        classFilter.setStackTrace(Thread.currentThread().getStackTrace());
-                        if (client != null) {
-                            client.write(Operate.SCANCLASS, classFilter);
-                            client.write(Operate.COUNTMEMSHELL, classFilter);
-                            SmithLogger.logger.info("send metadata: " + classFilter.toString());
-                            // SmithProbe.getInstance().sendClass(servletClass, classFilter.getTransId());
+                        if(SmithProbe.getInstance().classIsSended(servletClass)) {
+                            return ;
                         }
+
+                        sendMetadataObject(servletClass);
                     } else {
                         SmithLogger.logger.warning("can't find "+servletName);
                     }
@@ -610,23 +598,11 @@ public class SmithProbeProxy {
 
                 if(filterName != null) {
                     if (filterClass != null) {
-                    if(SmithProbe.getInstance().classIsSended(filterClass)) {
-                        return ;
-                    }
-
-                        ClassFilter classFilter = new ClassFilter();
-                        SmithHandler.queryClassFilter((Class<?>)filterClass, classFilter);
-                        
-                        classFilter.setTransId();
-        
-                        classFilter.setRuleId(-1);
-                        classFilter.setStackTrace(Thread.currentThread().getStackTrace());
-                        if (client != null) {
-                            client.write(Operate.SCANCLASS, classFilter);
-                            client.write(Operate.COUNTMEMSHELL, classFilter);
-                            SmithLogger.logger.info("send metadata: " + classFilter.toString());
-                            // SmithProbe.getInstance().sendClass(filterClass, classFilter.getTransId());
+                        if(SmithProbe.getInstance().classIsSended(filterClass)) {
+                            return ;
                         }
+
+                        sendMetadataObject(filterClass);
                     } else {
                         SmithLogger.logger.warning("can't find "+filterName);
                     }
