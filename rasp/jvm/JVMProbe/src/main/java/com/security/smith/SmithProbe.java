@@ -680,9 +680,8 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     classFilter.setStackTrace(Thread.currentThread().getStackTrace());
 
                     client.write(Operate.SCANCLASS, classFilter);
-                    client.write(Operate.COUNTMEMSHELL, classFilter);
                     SmithLogger.logger.info("send metadata: " + classFilter.toString());
-                    // sendClass(clazz, classFilter.getTransId());
+                    sendClass(clazz, classFilter.getTransId());
 
                 } catch(Exception e) {
                     SmithLogger.exception(e);
@@ -751,6 +750,12 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
     public Heartbeat getHeartbeat() {
         return heartbeat;
+    }
+
+    public void addDisacrdCount() {
+        int discrad_count = this.heartbeat.getDiscardCount();
+        discrad_count++;
+        this.heartbeat.setDiscardCount(discrad_count);
     }
 
     public Map<Pair<Integer, Integer>, Integer>  getLimits() {

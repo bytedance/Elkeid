@@ -6,7 +6,8 @@ use std::time::Duration;
 use anyhow::{anyhow, Result};
 use log::*;
 use serde_json;
-
+use std::fs;
+use std::path::Path;
 use crate::cpython;
 use crate::golang::golang_bin_inspect;
 use crate::jvm::vm_version;
@@ -53,6 +54,35 @@ pub trait ProbeCopy {
 }
 
 pub trait RuntimeInspect {
+    fn check_jvm_attach_mechanism(pid: i32) -> Result<bool, std::io::Error> {
+        let cmdline = fs::read_to_string(format!("/proc/{}/cmdline", pid))?;
+        Ok(cmdline.contains("+DisableAttachMechanism"))
+    }
+    
+    fn check_signal_dispatch(pid: i32) -> Result<bool, std::io::Error> {
+        let task_dir = format!("/proc/{}/task", pid);
+        for entry in fs::read_dir(&task_dir)? {
+            let entry = entry?;
+            if !entry.file_type()?.is_dir() {
+                continue;
+            }
+    
+            let comm_file = format!("{}/comm", entry.path().display());
+            //info!("pid {},comm file : {}", pid, comm_file);
+            if !Path::new(&comm_file).exists() {
+                continue; // Skip if 'comm' file doesn't exist
+            }
+    
+            let comm = fs::read_to_string(comm_file)?;
+            //info!("pid {}, comm: {}", pid, comm);
+            if comm.contains("Signal Dispatch") || comm.contains("Attach Listener") {
+                return Ok(true);
+            }
+        }
+    
+        Ok(false)
+    }
+
     fn inspect_from_process_info(process_info: &mut ProcessInfo) -> Result<Option<Runtime>> {
         let process_exe_file = process_info.exe_name.clone().unwrap();
         debug!("runtime inspect: exe file: {}", process_exe_file);
@@ -71,33 +101,57 @@ pub trait RuntimeInspect {
             };
         
         if  jvm_process_filter_check_reuslt {
-            // https://bugs.openjdk.org/browse/JDK-8292695
-            let uptime = count_uptime(process_info.start_time.unwrap()).unwrap_or(0);
-            if uptime > 0  && uptime < 5 {
-                let interval = 5 - uptime;
-                info!("JVM process {} just start, so sleep {} sec", process_info.pid, interval);
-                std::thread::sleep(Duration::from_secs(interval));
-            }
-
-            let version = match vm_version(process_info.pid) {
-                Ok(ver) => {
-                    if ver < 8 {
-                        warn!("process {} Java version lower than 8: {}, so not inject", process_info.pid, ver);
-                        let msg = format!("Java version lower than 8: {}, so not inject", ver);
+            match Self::check_jvm_attach_mechanism(process_info.pid) {
+                Ok(v) => {
+                    if v == true {
+                        let msg = format!("npid: {}, set DisableAttachMechanism, so can not attach", process_info.pid);
+                        info!("pid: {}, set DisableAttachMechanism, so can not attach", process_info.pid);
                         return Err(anyhow!(msg));
                     }
-                    ver.to_string()
                 }
-                Err(e) => {
-                    warn!("read jvm version failed: {}", e);
-                    String::new()
+                Err(e) => info!("Failed to check '+DisableAttachMechanism': {}", e),
+            }
+            
+            // https://bugs.openjdk.org/browse/JDK-8292695
+            // let uptime = count_uptime(process_info.start_time.unwrap()).unwrap_or(0);
+            // if uptime > 0  && uptime < 5 {
+            //     let interval = 5 - uptime;
+            //     info!("JVM process {} just start, so sleep {} sec", process_info.pid, interval);
+            //     std::thread::sleep(Duration::from_secs(interval));
+            // }
+            match Self::check_signal_dispatch(process_info.pid) {
+                Ok(v) => {
+                    if v == true {
+                        let version = match vm_version(process_info.pid) {
+                            Ok(ver) => {
+                                if ver < 8 {
+                                    warn!("process {} Java version lower than 8: {}, so not inject", process_info.pid, ver);
+                                    let msg = format!("Java version lower than 8: {}, so not inject", ver);
+                                    return Err(anyhow!(msg));
+                                } else if ver == 13 || ver == 14 {
+                                    // jdk bug https://bugs.openjdk.org/browse/JDK-8222005
+                                    warn!("process {} Java version {} has attach bug, so not inject", process_info.pid, ver);
+                                    let msg = format!("process {} Java version {} has attach bug, so not inject", process_info.pid, ver);
+                                    return Err(anyhow!(msg));
+                                }
+                                ver.to_string()
+                            }
+                            Err(e) => {
+                                warn!("read jvm version failed: {}", e);
+                                String::new()
+                            }
+                        };
+                        return Ok(Some(Runtime {
+                            name: "JVM",
+                            version: version,
+                            size: 0,
+                        }));
+                    } else {
+                        warn!("pid: {} not found Signal Dispatcher, so not report", process_info.pid);
+                    }
                 }
-            };
-            return Ok(Some(Runtime {
-                name: "JVM",
-                version: version,
-                size: 0,
-            }));
+                Err(e) => info!("pid: {}, Failed to check 'Signal Dispatcher': {}", process_info.pid, e),
+            }
         }
         let cpython_process_filter: RuntimeFilter =
             match serde_json::from_str(DEFAULT_CPYTHON_FILTER_JSON_STR) {

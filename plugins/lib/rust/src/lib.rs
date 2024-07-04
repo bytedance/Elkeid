@@ -8,6 +8,7 @@ use parking_lot::Mutex;
 use protobuf::Message;
 use signal_hook::consts::SIGTERM;
 use std::{
+    env,
     fs::File,
     io::{BufReader, BufWriter, Error, Read, Write},
     sync::Arc,
@@ -32,6 +33,7 @@ pub enum EncodeType {
 }
 #[derive(Clone)]
 pub struct Client {
+    high_writer: Arc<Mutex<BufWriter<File>>>,
     writer: Arc<Mutex<BufWriter<File>>>,
     reader: Arc<Mutex<BufReader<File>>>,
 }
@@ -43,9 +45,27 @@ const READ_PIPE_FD: i32 = 3;
 const WRITE_PIPE_FD: i32 = 1;
 #[cfg(not(feature = "debug"))]
 const WRITE_PIPE_FD: i32 = 4;
+const HIGH_PRIORIT_FD: i32 = 5;
 
 impl Client {
+ 
+    pub fn can_use_high() -> bool {
+        match env::var("ELKEID_PLUGIN_HIGH_PRIORITY_PIPE") {
+            Ok(value) => {
+                if !value.is_empty() {
+                    return true;
+                }
+                
+            }
+            Err(_) => {
+                return false;
+            }
+            
+        }
+        false
+    }
     pub fn new(ignore_terminate: bool) -> Self {
+        
         let writer = Arc::new(Mutex::new(BufWriter::with_capacity(512 * 1024, unsafe {
             #[cfg(target_family = "unix")]
             {
@@ -58,6 +78,37 @@ impl Client {
                 File::from_raw_handle(raw_handle.0 as _)
             }
         })));
+        let mut high_writer = writer.clone();
+        if  Self::can_use_high() {
+            high_writer = Arc::new(Mutex::new(BufWriter::with_capacity(512 * 1024, unsafe {
+                #[cfg(target_family = "unix")]
+                {
+                     File::from_raw_fd(HIGH_PRIORIT_FD)
+                }
+    
+                #[cfg(target_family = "windows")]
+                {
+                    let raw_handle = GetStdHandle(STD_OUTPUT_HANDLE).unwrap();
+                    File::from_raw_handle(raw_handle.0 as _)
+                }
+            })));
+
+            let high_writer_c = high_writer.clone();
+            thread::spawn(move || {
+                let ticker = tick(Duration::from_millis(200));
+                loop {
+                    select! {
+                    recv(ticker)->_=>{
+                        let mut w = high_writer_c.lock();
+                            if w.flush().is_err() {
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         let reader = Arc::new(Mutex::new(BufReader::new(unsafe {
             #[cfg(target_family = "unix")]
             {
@@ -70,6 +121,7 @@ impl Client {
                 File::from_raw_handle(raw_handle.0 as _)
             }
         })));
+        
         let writer_c = writer.clone();
         thread::spawn(move || {
             let ticker = tick(Duration::from_millis(200));
@@ -93,6 +145,9 @@ impl Client {
                         info!("received signal: {:?}, wait 3 secs to exit", sig);
                         thread::sleep(Duration::from_secs(3));
                         unsafe {
+                            if  Self::can_use_high() {
+                                libc::close(HIGH_PRIORIT_FD);
+                            }
                             libc::close(WRITE_PIPE_FD);
                             libc::close(READ_PIPE_FD);
                         }
@@ -100,7 +155,7 @@ impl Client {
                 }
             });
         }
-        Self { writer, reader }
+        Self { high_writer, writer, reader }
     }
     pub fn send_record(&mut self, rec: &Record) -> Result<(), Error> {
         let mut w = self.writer.lock();
@@ -120,6 +175,54 @@ impl Client {
             w.write_all(b"}\n")
         }
     }
+    pub fn send_record_high_priority(&mut self, rec: &Record) -> Result<(), Error> {
+
+        let mut w = self.high_writer.lock();
+        #[cfg(not(feature = "debug"))]
+        {
+            w.write_all(&rec.compute_size().to_le_bytes()[..])?;
+            rec.write_to_writer(&mut (*w)).map_err(|err| err.into())
+        }
+        #[cfg(feature = "debug")]
+        {
+            w.write_all(b"{\"data_type\":")?;
+            w.write_all(rec.data_type.to_string().as_bytes())?;
+            w.write_all(b",\"timestamp\":")?;
+            w.write_all(rec.timestamp.to_string().as_bytes())?;
+            w.write_all(b",\"data\":")?;
+            serde_json::to_writer(w.by_ref(), rec.get_data().get_fields())?;
+            w.write_all(b"}\n")
+        }
+    }
+
+    pub fn send_records_high_priority(&mut self, recs: &Vec<Record>) -> Result<(), Error> {
+        let mut w = self.high_writer.lock();
+        #[cfg(not(feature = "debug"))]
+        {
+            for rec in recs.iter() {
+                println!("send: {:?}", rec);
+                w.write_all(&rec.compute_size().to_le_bytes()[..])?;
+                rec.write_to_writer(&mut (*w))
+                    .map_err(|err| -> std::io::Error { err.into() })?;
+            }
+            Ok(())
+        }
+        #[cfg(feature = "debug")]
+        {
+            
+            for rec in recs.iter() {
+                w.write_all(b"{\"data_type\":")?;
+                w.write_all(rec.data_type.to_string().as_bytes())?;
+                w.write_all(b",\"timestamp\":")?;
+                w.write_all(rec.timestamp.to_string().as_bytes())?;
+                w.write_all(b",\"data\":")?;
+                serde_json::to_writer(w.by_ref(), rec.get_data().get_fields())?;
+                w.write_all(b"}\n")
+            }
+            Ok(())
+       }
+    }
+
     pub fn send_records(&mut self, recs: &Vec<Record>) -> Result<(), Error> {
         let mut w = self.writer.lock();
         #[cfg(not(feature = "debug"))]

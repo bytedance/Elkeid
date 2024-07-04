@@ -105,14 +105,18 @@ public class SmithProbeProxy {
         while (true) {
             int quota = quotas[classID].get(methodID);
 
-            if (quota <= 0)
+            if (quota <= 0) {
+                SmithProbe.getInstance().addDisacrdCount();
                 return;
+            }
 
             if (quotas[classID].compareAndSet(methodID, quota, quota - 1))
                 break;
         }
-        if (disruptor == null)
+        if (disruptor == null) {
+            SmithProbe.getInstance().addDisacrdCount();
             return;
+        }
         RingBuffer<Trace> ringBuffer = disruptor.getRingBuffer();
 
         try {
@@ -129,7 +133,7 @@ public class SmithProbeProxy {
 
             ringBuffer.publish(sequence);
         } catch (InsufficientCapacityException ignored) {
-
+            SmithProbe.getInstance().addDisacrdCount();
         }
     }
 
@@ -155,9 +159,8 @@ public class SmithProbeProxy {
         classFilter.setStackTrace(Thread.currentThread().getStackTrace());
         if (client != null) {
             client.write(Operate.SCANCLASS, classFilter);
-            client.write(Operate.COUNTMEMSHELL, classFilter);
             SmithLogger.logger.info("send metadata: " + classFilter.toString());
-            // SmithProbe.getInstance().sendClass(cla, classFilter.getTransId());
+            SmithProbe.getInstance().sendClass(cla, classFilter.getTransId());
         }
     }
 
@@ -335,7 +338,7 @@ public class SmithProbeProxy {
                 Class<?> servletClass = (Class<?>)Reflection.invokeMethod(servletMapping, "getServletClass", emptyArgTypes);
                 sendMetadataClass(servletClass);
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             SmithLogger.exception(e);
         }
     }
@@ -354,7 +357,7 @@ public class SmithProbeProxy {
                 Class<?> servletClass = (Class<?>)Reflection.invokeMethod(servletMapping, "getServletClass", emptyArgTypes);
                 sendMetadataClass(servletClass);
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             SmithLogger.exception(e);
         }
     }
@@ -374,7 +377,7 @@ public class SmithProbeProxy {
                 Class <?> filterCla = (Class<?>)Reflection.invokeMethod(filterdef, "getFilterClass", emptyArgTypes);
                 sendMetadataClass(filterCla);
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             SmithLogger.exception(e);
         }
 
