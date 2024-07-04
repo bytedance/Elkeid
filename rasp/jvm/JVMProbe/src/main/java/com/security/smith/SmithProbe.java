@@ -365,7 +365,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         } catch (Exception e) {
             //SmithLogger.exception(e);
         }
-     
+
         if (smithClass == null)  {
             
             ClassReader cr = new ClassReader(classfileBuffer);
@@ -377,16 +377,27 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             String[] interfaces = cr.getInterfaces();
             String superClass = cr.getSuperName();
 
-            String[] combined = Stream.concat(Arrays.stream(interfaces), Stream.of(superClass))
-                                    .toArray(String[]::new);
-
-            for (String interName : combined) {
-                if (SmithHandler.checkInterfaceNeedTran(interName)) {
-                    Type interfaceType = Type.getObjectType(interName);
-                    smithClass = smithClasses.get(interfaceType.getClassName());
-                    break;
+            try {
+                String[] combined;
+                if (superClass != null) {
+                    combined = new String[interfaces.length + 1];
+                    System.arraycopy(interfaces, 0, combined, 0, interfaces.length);
+                    combined[interfaces.length] = superClass;
+                } else {
+                    combined = interfaces;
                 }
+
+                for (String interName : combined) {
+                    if (SmithHandler.checkInterfaceNeedTran(interName)) {
+                        Type interfaceType = Type.getObjectType(interName);
+                        smithClass = smithClasses.get(interfaceType.getClassName());
+                        break;
+                    }
+                }
+            } catch (Throwable e) {
+                SmithLogger.exception(e);
             }
+            
             if (smithClass == null) {
                 return null;
             }
