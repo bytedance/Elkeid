@@ -361,20 +361,13 @@
       desc: (Lio/undertow/servlet/api/FilterInfo;)Lio/undertow/servlet/core/ManagedFilter;
       preHook: checkWildflyaddFilterPre
 - id: 39
-  name: org.glassfish.web.loader.WebappClassLoader
-  methods:
-    - id: 0
-      name: addFilter
-      desc: (Lio/undertow/servlet/api/FilterInfo;)Lio/undertow/servlet/core/ManagedFilter;
-      preHook: checkWildflyaddFilterPre
-- id: 40
   name: org.apache.tomcat.util.threads.ThreadPoolExecutor
   methods:
     - id: 0
       name: <init>
       desc: ""
       postHook: checkMemshellInitPost
-- id: 41
+- id: 40
   name: org.apache.coyote.UpgradeProtocol
   methods:
     - id: 0
