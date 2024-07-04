@@ -48,6 +48,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHandler<Trace> {
@@ -346,27 +347,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         return false;
     }
 
-    public boolean checkInterfaceNeedTran(String interfaceName) {
-        if (interfaceName == null) {
-            return false;
-        }
-        boolean ret = false;
-        switch (interfaceName) {
-            case "org/springframework/web/servlet/HandlerInterceptor":
-            case "javax/servlet/Servlet":
-            case "javax/servlet/Filter":
-            case "javax/servlet/ServletRequestListener":
-            case "jakarta/servlet/Servlet":
-            case "jakarta/servlet/Filter":
-            case "jakarta/servlet/ServletRequestListener":
-            case "javax/websocket/Endpoint":
-                ret = true;
-                break;
-            default:
-                break;
-        }
-        return ret;
-    }
+   
     @Override
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) {
          if (disable)
@@ -385,17 +366,22 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             //SmithLogger.exception(e);
         }
      
-        if (smithClass == null && className == null)  {
+        if (smithClass == null)  {
             
             ClassReader cr = new ClassReader(classfileBuffer);
-            String[] interfaces = cr.getInterfaces();
+
             if (className == null) {
                 className = cr.getClassName();
                 classType = Type.getObjectType(className);
             }
+            String[] interfaces = cr.getInterfaces();
+            String superClass = cr.getSuperName();
 
-            for (String interName : interfaces) {
-                if (checkInterfaceNeedTran(interName)) {
+            String[] combined = Stream.concat(Arrays.stream(interfaces), Stream.of(superClass))
+                                    .toArray(String[]::new);
+
+            for (String interName : combined) {
+                if (SmithHandler.checkInterfaceNeedTran(interName)) {
                     Type interfaceType = Type.getObjectType(interName);
                     smithClass = smithClasses.get(interfaceType.getClassName());
                     break;
@@ -404,10 +390,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             if (smithClass == null) {
                 return null;
             }
-        } 
-
-        if (smithClass == null) {
-            return null;
         }
 
         try {

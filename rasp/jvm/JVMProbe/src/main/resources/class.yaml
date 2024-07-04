@@ -205,7 +205,7 @@
   methods:
     - id: 0
       name: <init>
-      desc: (Lorg/apache/catalina/Context;Lorg/apache/tomcat/util/descriptor/web/FilterDef;)V
+      desc: ""
       postHook: checkFilterConfigPost
 - id: 17
   name: com.caucho.server.dispatch.FilterManager
@@ -268,56 +268,56 @@
   methods:
     - id: 0
       name: <init>
-      desc: ()V
+      desc: ""
       postHook: checkMemshellInitPost
 - id: 26
   name: javax.servlet.Filter
   methods:
     - id: 0
       name: <init>
-      desc: ()V
+      desc: ""
       postHook: checkMemshellInitPost
 - id: 27
   name: javax.servlet.Servlet
   methods:
     - id: 0
       name: <init>
-      desc: ()V
+      desc: ""
       postHook: checkMemshellInitPost
 - id: 28
   name: javax.servlet.ServletRequestListener
   methods:
     - id: 0
       name: <init>
-      desc: ()V
+      desc: ""
       postHook: checkMemshellInitPost
 - id: 29
   name: javax.websocket.Endpoint
   methods:
     - id: 0
       name: <init>
-      desc: ()V
+      desc: ""
       postHook: checkMemshellInitPost
 - id: 30
   name: jakarta.servlet.Filter
   methods:
     - id: 0
       name: <init>
-      desc: ()V
+      desc: ""
       postHook: checkMemshellInitPost
 - id: 31
   name: jakarta.servlet.Servlet
   methods:
     - id: 0
       name: <init>
-      desc: ()V
+      desc: ""
       postHook: checkMemshellInitPost
 - id: 32
   name: jakarta.servlet.ServletRequestListener
   methods:
     - id: 0
       name: <init>
-      desc: ()V
+      desc: ""
       postHook: checkMemshellInitPost
 - id: 33
   name: io.undertow.servlet.core.ManagedServlets
@@ -338,14 +338,14 @@
   methods:
     - id: 0
       name: <init>
-      desc: (Lcom/caucho/server/http/HttpServletRequestImpl;Lcom/caucho/server/http/HttpServletResponseImpl;Lcom/caucho/websocket/WebSocketListener;Lcom/caucho/remote/websocket/FrameInputStream;)V
+      desc: ""
       preHook: checkResinWebSocketPre
 - id: 36
   name: javax.websocket.server.DefaultServerEndpointConfig
   methods:
     - id: 0
       name: <init>
-      desc: (Ljava/lang/Class;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljavax/websocket/server/ServerEndpointConfig$Configurator;)V
+      desc: ""
       preHook: checkWebSocketConfigPre
 - id: 37
   name: sun.nio.ch.SocketChannelImpl
@@ -367,3 +367,17 @@
       name: addFilter
       desc: (Lio/undertow/servlet/api/FilterInfo;)Lio/undertow/servlet/core/ManagedFilter;
       preHook: checkWildflyaddFilterPre
+- id: 40
+  name: org.apache.tomcat.util.threads.ThreadPoolExecutor
+  methods:
+    - id: 0
+      name: <init>
+      desc: ""
+      postHook: checkMemshellInitPost
+- id: 41
+  name: org.apache.coyote.UpgradeProtocol
+  methods:
+    - id: 0
+      name: <init>
+      desc: ""
+      postHook: checkMemshellInitPost

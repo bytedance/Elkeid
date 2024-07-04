@@ -183,9 +183,8 @@ public class SmithHandler {
 				Class<?> superClazz = clazz.getSuperclass();
 				if (superClazz != null) {
 					String clsName = superClazz.getName();
-
-					if ("javax.servlet.http.HttpServlet".equals(clsName)
-                            || ("org.apache.catalina.valves.ValveBase".equals(clsName))) {
+                    clsName.replace(".", "/");
+					if (checkInterfaceNeedTran(clsName)) {
                         return true;
 					}
 				}
@@ -211,13 +210,8 @@ public class SmithHandler {
 				if (interFaces != null) {
 					for (Class<?> cls : interFaces) {
 						String clsName = cls.getName();
-						if (clsName.startsWith("javax.servlet.")) {
-							if (clsName.endsWith(".Filter")
-                                    || clsName.endsWith(".Servlet")
-								    || clsName.endsWith(".ServletRequestListener")) {
-								return true;
-							}
-					    } else if (clsName.equals("org.springframework.web.servlet.HandlerInterceptor")) {
+                        clsName.replace(".", "/");
+						if (checkInterfaceNeedTran(clsName)) {
                             return true;
                         }
 				    }
@@ -229,6 +223,30 @@ public class SmithHandler {
 
 		return false;
 	}
+
+    public static boolean checkInterfaceNeedTran(String interfaceName) {
+        if (interfaceName == null) {
+            return false;
+        }
+        boolean ret = false;
+        switch (interfaceName) {
+            case "org/springframework/web/servlet/HandlerInterceptor":
+            case "javax/servlet/Servlet":
+            case "javax/servlet/Filter":
+            case "javax/servlet/ServletRequestListener":
+            case "jakarta/servlet/Servlet":
+            case "jakarta/servlet/Filter":
+            case "jakarta/servlet/ServletRequestListener":
+            case "javax/websocket/Endpoint":
+            case "org/apache/tomcat/util/threads/ThreadPoolExecutor":
+            case "org/apache/coyote/UpgradeProtocol":
+                ret = true;
+                break;
+            default:
+                break;
+        }
+        return ret;
+    }
 
     /**
      * 
