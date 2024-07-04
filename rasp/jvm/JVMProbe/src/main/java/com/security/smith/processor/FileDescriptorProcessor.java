@@ -10,7 +10,7 @@ public class FileDescriptorProcessor {
 
         try {
             return FieldUtils.readField(object, "fd", true);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             SmithLogger.exception(e);
         }
 
