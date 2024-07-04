@@ -50,6 +50,14 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import java.io.File;
+import java.security.CodeSource;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.jar.JarFile;
+
+
 
 public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHandler<Trace> {
     private static final SmithProbe ourInstance = new SmithProbe();
@@ -161,12 +169,64 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         reloadClasses(smithClasses.keySet());
     }
 
+
+    private String getJarPath(Class<?> clazz) {
+        CodeSource codeSource = clazz.getProtectionDomain().getCodeSource();
+        if (codeSource != null) {
+            URL location = codeSource.getLocation();
+            try {
+                File file = new File(location.toURI());
+                return file.getAbsolutePath();
+            } catch (Exception e) {
+                SmithLogger.exception(e);
+            }
+        }
+        return null;
+    }
+
+    private String[] addJarclassns = {
+        "org.apache.felix.framework.BundleWiringImpl$BundleClassLoader"
+    };
+    
+    private Set<String> addedJarset = Collections.synchronizedSet(new HashSet<>());
+
+    public void checkNeedAddJarPath(Class<?> clazz,Instrumentation inst) {
+        try {
+            String cn = clazz.getName();
+            for (String name : addJarclassns) {
+                if(cn.equals(name)) {
+                    try {
+                        String jarFile = getJarPath(clazz);
+                        if(jarFile != null && !addedJarset.contains(jarFile)) {
+                            SmithLogger.logger.info("add "+ name + " jarpath:"+jarFile);
+                            inst.appendToSystemClassLoaderSearch(new JarFile(jarFile));
+                            addedJarset.add(jarFile);
+                        }
+                    }catch(Exception e) {
+                        SmithLogger.exception(e);
+                    }
+                }
+            }
+        }
+        catch(Exception e) {
+            SmithLogger.exception(e);
+        }
+    }
+
+    public void checkNeedAddJarPaths(Class<?>[] cls,Instrumentation inst) {
+        for (Class<?> cx : cls) {
+            checkNeedAddJarPath(cx,inst);
+        } 
+    }
+
     private void reloadClasses(Collection<String> classes) {
         Class<?>[] loadedClasses = inst.getAllLoadedClasses();
         Class<?>[] cls = Arrays.stream(loadedClasses).filter(c -> classes.contains(c.getName())).toArray(Class<?>[]::new);
 
         SmithLogger.logger.info("reload: " + Arrays.toString(cls));
         //System.out.println("reload Class:"+cls.getClass().getName());
+
+        checkNeedAddJarPaths(cls,inst);
 
         try {
             inst.retransformClasses(cls);

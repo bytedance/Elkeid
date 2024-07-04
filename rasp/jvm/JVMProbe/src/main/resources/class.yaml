@@ -33,24 +33,6 @@
     - id: 0
       name: <init>
       desc: (Ljava/io/File;Z)V
-- id: 3
-  name: java.io.File
-  methods:
-    - id: 0
-      name: renameTo
-      desc: (Ljava/io/File;)Z
-    - id: 1
-      name: list
-      desc: ()[Ljava/lang/String;
-    - id: 2
-      name: delete
-      desc: ()Z
-    - id: 3
-      name: createNewFile
-      desc: ()Z
-    - id: 4
-      name: <init>
-      desc: (Ljava/lang/String;Ljava/lang/String;)V
 - id: 4
   name: java.net.Socket
   methods:
@@ -374,3 +356,14 @@
       name: <init>
       desc: ""
       postHook: checkMemshellInitPost
+- id: 41
+  name: org.apache.felix.framework.BundleWiringImpl$BundleClassLoader
+  methods:
+    - id: 0
+      name: findClass
+      desc: (Ljava/lang/String;)Ljava/lang/Class;
+      exceptionHook: processGlassfishClassLoaderfindClassException
+    - id: 1
+      name: loadClass
+      desc: (Ljava/lang/String;Z)Ljava/lang/Class;
+      exceptionHook: processGlassfishClassLoaderfindClassException

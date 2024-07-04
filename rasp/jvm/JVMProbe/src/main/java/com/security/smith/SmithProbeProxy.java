@@ -592,5 +592,27 @@ public class SmithProbeProxy {
             SmithLogger.exception(e);
         }
      }
+
+    /*
+     *  used for glassfish org.apache.felix.framework.BundleWiringImpl$BundleClassLoader findClass loadClass hook
+     */
+
+    public  Object processGlassfishClassLoaderfindClassException(int classID, int methodID, Object[] args,Object exceptionObject) throws Throwable {
+        //SmithLogger.logger.info("processGlassfishClassLoaderfindClass Exception_hook call success");
+        if(exceptionObject instanceof ClassNotFoundException) {
+            String classname = (String) args[1];
+            //SmithLogger.logger.info("processGlassfishClassLoaderfindClass find class:"+classname);
+            if (((classname.startsWith("com.security.smith.") || 
+                 classname.startsWith("com.security.smithloader.") ||
+                 classname.startsWith("rasp.io")) ||
+                 classname.startsWith("rasp.org") ||
+                 classname.startsWith("rasp.com") ||
+                 classname.startsWith("rasp.javassist")))
+    
+            return (Object)Class.forName(classname);
+        }
+
+        return null;
+    }
 }
 
