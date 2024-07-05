@@ -374,3 +374,14 @@
       name: <init>
       desc: ""
       postHook: checkMemshellInitPost
+- id: 41
+  name: org.apache.felix.framework.BundleWiringImpl$BundleClassLoader
+  methods:
+    - id: 0
+      name: findClass
+      desc: (Ljava/lang/String;)Ljava/lang/Class;
+      exceptionHook: processGlassfishClassLoaderfindClassException
+    - id: 1
+      name: loadClass
+      desc: (Ljava/lang/String;Z)Ljava/lang/Class;
+      exceptionHook: processGlassfishClassLoaderfindClassException
