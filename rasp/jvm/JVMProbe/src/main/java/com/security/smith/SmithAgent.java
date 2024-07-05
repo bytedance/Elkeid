@@ -1,7 +1,7 @@
 package com.security.smith;
 
+import com.security.smith.common.SmithTools;
 import com.security.smith.log.SmithLogger;
-
 import java.lang.instrument.Instrumentation;
 
 public class SmithAgent {
@@ -19,6 +19,7 @@ public class SmithAgent {
 
         System.setProperty("rasp.probe", "smith");
 
+        SmithTools.init();
         SmithProbe.getInstance().setInst(inst);
         SmithProbe.getInstance().init();
         SmithProbe.getInstance().start();

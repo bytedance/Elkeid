@@ -12,6 +12,7 @@ import com.security.smith.asm.SmithClassWriter;
 import com.security.smith.client.message.*;
 
 import com.security.smith.common.SmithHandler;
+import com.security.smith.common.SmithTools;
 import com.security.smith.log.AttachInfo;
 import com.security.smith.log.SmithLogger;
 import com.security.smith.module.Patcher;
@@ -51,6 +52,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.security.CodeSource;
 import java.util.Collections;
 import java.util.HashSet;
@@ -111,13 +113,32 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         this.inst = inst;
     }
 
+    private boolean isBypassHookClass(String className) {
+
+        if(SmithTools.isGlassfish() && SmithTools.getMajorVersion() > 5) {
+            /*
+             * In versions after GlassFish 5 (not including GlassFish 5), 
+             * not hooking java.io.File will cause the JVM process to crash directly if hooked.
+             * 
+             */
+            if(className.equals("java.io.File")) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public void init() {
         ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
         InputStream inputStream = this.getClass().getResourceAsStream("/class.yaml");
 
         try {
-            for (SmithClass smithClass : objectMapper.readValue(inputStream, SmithClass[].class))
-                smithClasses.put(smithClass.getName(), smithClass);
+            for (SmithClass smithClass : objectMapper.readValue(inputStream, SmithClass[].class)) {
+                if(!isBypassHookClass(smithClass.getName())) {
+                    smithClasses.put(smithClass.getName(), smithClass);
+                }
+            }
         } catch (IOException e) {
             SmithLogger.exception(e);
         }
