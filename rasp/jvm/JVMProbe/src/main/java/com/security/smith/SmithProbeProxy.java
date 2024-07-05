@@ -508,6 +508,20 @@ public class SmithProbeProxy {
 
     }
 
+    private boolean checkIsRaspClass(String classname) {
+
+        if (((classname.startsWith("com.security.smith.") || 
+                classname.startsWith("com.security.smithloader.") ||
+                classname.startsWith("rasp.io")) ||
+                classname.startsWith("rasp.org") ||
+                classname.startsWith("rasp.com") ||
+                classname.startsWith("rasp.javassist"))) {
+            return true;
+        }
+
+        return false;
+    }
+
     /*
      *  used for wildfly ModuleClassLoader findClass hook
      */
@@ -516,14 +530,9 @@ public class SmithProbeProxy {
         if(exceptionObject instanceof ClassNotFoundException) {
             String classname = (String) args[1];
 
-            if (((classname.startsWith("com.security.smith.") || 
-                 classname.startsWith("com.security.smithloader.") ||
-                 classname.startsWith("rasp.io")) ||
-                 classname.startsWith("rasp.org") ||
-                 classname.startsWith("rasp.com") ||
-                 classname.startsWith("rasp.javassist")))
-    
-            return (Object)Class.forName(classname);
+            if(checkIsRaspClass(classname)) {
+                return (Object)Class.forName(classname);
+            }
         }
 
         return null;
@@ -602,14 +611,9 @@ public class SmithProbeProxy {
         if(exceptionObject instanceof ClassNotFoundException) {
             String classname = (String) args[1];
             //SmithLogger.logger.info("processGlassfishClassLoaderfindClass find class:"+classname);
-            if (((classname.startsWith("com.security.smith.") || 
-                 classname.startsWith("com.security.smithloader.") ||
-                 classname.startsWith("rasp.io")) ||
-                 classname.startsWith("rasp.org") ||
-                 classname.startsWith("rasp.com") ||
-                 classname.startsWith("rasp.javassist")))
-    
-            return (Object)Class.forName(classname);
+            if(checkIsRaspClass(classname)) {
+                return (Object)Class.forName(classname);
+            }
         }
 
         return null;
