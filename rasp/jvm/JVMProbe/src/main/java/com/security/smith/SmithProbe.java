@@ -122,8 +122,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         SmithLogger.logger.info("init ClassUploadTransformer");
         ClassUploadTransformer.getInstance().start(client, inst);
 
-        inst.addTransformer(this, true);
-        reloadClasses();
+        
 
         Thread clientThread = new Thread(client::start);
 
@@ -143,6 +142,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 TimeUnit.MINUTES.toMillis(1)
         );
         smithProxy = SmithProbeProxy.getInstance();
+        SmithProbeProxy.getInstance().setReflectField();
+        SmithProbeProxy.getInstance().setClient(client);
+        SmithProbeProxy.getInstance().setDisruptor(disruptor);
+        SmithProbeProxy.getInstance().setReflectMethod();
         new Timer(true).schedule(
                 new TimerTask() {
                     @Override
@@ -153,8 +156,8 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 0,
                 TimeUnit.MINUTES.toMillis(1)
         );
-        SmithProbeProxy.getInstance().setClient(client);
-        SmithProbeProxy.getInstance().setDisruptor(disruptor);
+        inst.addTransformer(this, true);
+        reloadClasses();
     }
 
     private void reloadClasses() {
@@ -366,6 +369,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             //SmithLogger.exception(e);
         }
 
+        if (className.contains("java/lang/reflect")) {
+            SmithLogger.logger.info("class name " + className);
+        }
         if (smithClass == null)  {
             
             ClassReader cr = new ClassReader(classfileBuffer);
@@ -670,6 +676,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     }
                     classFilter.setTransId();
                     classFilter.setRuleId(rule_id);
+                    classFilter.setHashCode(clazz.hashCode());
                     classFilter.setStackTrace(Thread.currentThread().getStackTrace());
 
                     client.write(Operate.SCANCLASS, classFilter);

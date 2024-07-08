@@ -374,3 +374,17 @@
       name: <init>
       desc: ""
       postHook: checkMemshellInitPost
+- id: 41
+  name: java.lang.reflect.Field
+  methods:
+    - id: 0
+      name: <init>
+      desc: ""
+      postHook: handleReflectField
+- id: 42
+  name: java.lang.reflect.Method
+  methods:
+    - id: 0
+      name: <init>
+      desc: ""
+      postHook: handleReflectMethod
