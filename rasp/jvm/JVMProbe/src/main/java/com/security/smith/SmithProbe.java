@@ -450,9 +450,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             //SmithLogger.exception(e);
         }
 
-        if (className.contains("java/lang/reflect")) {
-            SmithLogger.logger.info("class name " + className);
-        }
         if (smithClass == null)  {
             
             ClassReader cr = new ClassReader(classfileBuffer);
