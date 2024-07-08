@@ -30,7 +30,7 @@ public class SmithProbeProxy {
     private static final int METHOD_MAX_ID = 20;
     private static final int DEFAULT_QUOTA = 12000;
     
-    private  AtomicIntegerArray[] quotas;
+    private final AtomicIntegerArray[] quotas;
     private Disruptor<Trace> disruptor;
     private Client client;
     private Map<String, String[]> reflectField = new HashMap<>();
