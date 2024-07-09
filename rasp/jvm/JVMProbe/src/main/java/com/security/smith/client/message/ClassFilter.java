@@ -16,7 +16,7 @@ public class ClassFilter {
     private String parentClassName = "";
     private String parentClassLoaderName = "";
     private long ruleId;
-    private int hashCode;
+
     @JsonSerialize(converter = StackTraceConverter.class)
     private StackTraceElement[] stackTrace = {};
 
@@ -85,14 +85,6 @@ public class ClassFilter {
         this.ruleId = ruleId;
     }
 
-    public int getHashCode() {
-        return hashCode;
-    }
-
-    public void setHashCode(int hashCode) {
-        this.hashCode = hashCode;
-    }
-
     public StackTraceElement[] getStackTrace() {
         return stackTrace;
     }
@@ -110,7 +102,6 @@ public class ClassFilter {
                 ", classLoaderName: '" + classLoaderName + '\'' +
                 ", parentClassName: '" + parentClassName + '\'' +
                 ", parentClassLoaderName: '" + parentClassLoaderName + '\'' +
-                ", hashCode: '" + hashCode + '\'' +
                 ", ruleId: " + ruleId +
                 ", timestamp: " + Instant.now().getEpochSecond() +
                 '}';

@@ -754,7 +754,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     }
                     classFilter.setTransId();
                     classFilter.setRuleId(rule_id);
-                    classFilter.setHashCode(clazz.hashCode());
                     classFilter.setStackTrace(Thread.currentThread().getStackTrace());
 
                     client.write(Operate.SCANCLASS, classFilter);
