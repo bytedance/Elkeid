@@ -29,7 +29,6 @@ import java.lang.management.ManagementFactory;
 public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
     private static ClassUploadTransformer ourInstance = new ClassUploadTransformer();
 
-    // 暂定最大10m
     public final static int MAX_DUMP_CLASS_SIZE = 1024 * 1024 * 10;
 
     public final static int MAX_HASH_SIZE = 1024*2;
@@ -365,7 +364,6 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
                 ClassUpload classUpload = new ClassUpload();
                 classUpload.setTransId(transId);
 
-                // TODO 第一版先不分包，看下性能
                 classUpload.setByteTotalLength(length);
                 classUpload.setByteLength(length);
                 classUpload.setClassData(data);
