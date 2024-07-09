@@ -750,6 +750,7 @@ public class SmithProbeProxy {
         } catch (Throwable e) {
             SmithLogger.exception(e);
         }
+    }
 
     /*
      *  used for glassfish org.apache.felix.framework.BundleWiringImpl$BundleClassLoader findClass loadClass hook
