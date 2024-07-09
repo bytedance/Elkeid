@@ -265,7 +265,6 @@ public class SmithProbeProxy {
         SmithHandler.queryClassFilter(cla, classFilter);
         classFilter.setTransId();
         classFilter.setRuleId(-1);
-        classFilter.setHashCode(cla.hashCode());
         classFilter.setStackTrace(Thread.currentThread().getStackTrace());
         if (client != null) {
             client.write(Operate.SCANCLASS, classFilter);
