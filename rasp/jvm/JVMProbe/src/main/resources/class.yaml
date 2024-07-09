@@ -385,3 +385,17 @@
       name: loadClass
       desc: (Ljava/lang/String;Z)Ljava/lang/Class;
       exceptionHook: processGlassfishClassLoaderfindClassException
+- id: 42
+  name: java.lang.reflect.Field
+  methods:
+    - id: 0
+      name: <init>
+      desc: ""
+      postHook: handleReflectField
+- id: 43
+  name: java.lang.reflect.Method
+  methods:
+    - id: 0
+      name: <init>
+      desc: ""
+      postHook: handleReflectMethod

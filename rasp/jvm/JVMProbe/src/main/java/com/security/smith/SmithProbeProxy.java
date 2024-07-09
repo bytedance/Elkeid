@@ -1,6 +1,7 @@
 package com.security.smith;
                            
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicIntegerArray;
@@ -25,13 +26,15 @@ import com.security.smith.log.SmithLogger;
 
 public class SmithProbeProxy {
     private static final SmithProbeProxy ourInstance = new SmithProbeProxy();
-    private static final int CLASS_MAX_ID = 30;
+    private static final int CLASS_MAX_ID = 50;
     private static final int METHOD_MAX_ID = 20;
     private static final int DEFAULT_QUOTA = 12000;
     
     private final AtomicIntegerArray[] quotas;
     private Disruptor<Trace> disruptor;
     private Client client;
+    private Map<String, String[]> reflectField = new HashMap<>();
+    private Map<String, String[]> reflectMethod = new HashMap<>();
 
     public static InheritableThreadLocal<Object> localfilterConfig = new InheritableThreadLocal<Object>() {
         @Override
@@ -75,6 +78,112 @@ public class SmithProbeProxy {
 
     public void setDisruptor(Disruptor<Trace> disruptor) {
         this.disruptor = disruptor;
+    }
+
+    public void setReflectField() {
+        String[] values1 = {"theUnsafe", "unsafe", "fieldFilterMap", "methodFilterMap"};
+        String[] values2 = {"launchMechanism"};
+        String[] values3 = {"handlerMap", "adaptedInterceptors"};
+        String[] values4 = {"context"};
+        String[] values5 = {"delegate"};
+        String[] values6 = {"handlerAdapters", "handlerMappings"};
+        String[] values7 = {"chain"};
+        String[] values8 = {"httpUpgradeProtocols"};
+        String[] values9 = {"executor"};
+        String[] values10 = {"connector"};
+
+        reflectField.put("*", values1);
+        reflectField.put("java.lang.UNIXProcess", values2);
+        reflectField.put("java.lang.ProcessImpl", values2);
+        reflectField.put("org.springframework.web.servlet.handler.AbstractUrlHandlerMapping", values3);
+        reflectField.put("org.apache.catalina.core.ApplicationContext", values4);
+        reflectField.put("org.springframework.context.ApplicationListener", values5);
+        reflectField.put("org.springframework.web.servlet.DispatcherServlet", values6);
+        reflectField.put("org.springframework.web.server.handler.FilteringWebHandler", values7);
+        reflectField.put("org.apache.coyote.http11.AbstractHttp11Protocol", values8);
+        reflectField.put("org.apache.tomcat.util.net.AbstractEndpoint", values9);
+        reflectField.put("org.apache.catalina.connector.CoyoteAdapter", values10);
+    }
+
+    public void setReflectMethod() {
+
+        String[] values1 = {"*"};
+        String[] values2 = {"load"};
+        String[] values3 = {"forkAndExec"};
+        String[] values4 = {"create"};
+        String[] values5 = {"defineClass"};
+        reflectMethod.put("java.lang.Unsafe", values1);
+        reflectMethod.put("java.lang.ClassLoader$NativeLibrary", values2);
+        reflectMethod.put("java.lang.UNIXProcess", values3);
+        reflectMethod.put("java.lang.ProcessImpl", values4);
+        reflectMethod.put("java.lang.ClassLoader", values5);
+    }
+
+    public Map<String, String[]> getReflectMethod()  {
+        return this.reflectMethod;
+    }
+
+    public Map<String, String[]> getReflectField() {
+        return this.reflectField;
+    }
+
+    public boolean checkReflectFeildEvil(String classname, String fieldname) {
+        if (classname == null || fieldname == null) {
+            return false;
+        }
+        Map<String, String[]> refieldMap = getReflectField();
+        if (refieldMap == null) {
+            return false;
+        }
+        if (refieldMap.containsKey(classname)) {
+            String[] values = refieldMap.get(classname);
+            for (String value : values) {
+                if (value.equals(fieldname) || value.equals("*")) {
+                    return true;
+                }
+            }
+        } else {
+            String[] values = refieldMap.get("*");
+            if (values == null) {
+                return false;
+            }
+            for (String value : values) {
+                if (value.equals(fieldname) || value.equals("*")) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+
+    public boolean checkReflectMethodEvil(String classname, String methodname) {
+        if (classname == null || methodname == null) {
+            return false;
+        }
+        Map<String, String[]> refieldMap = getReflectMethod();
+        if (refieldMap == null) {
+            return false;
+        }
+        if (refieldMap.containsKey(classname)) {
+            String[] values = refieldMap.get(classname);
+            for (String value : values) {
+                if (value.equals(methodname) || value.equals("*")) {
+                    return true;
+                }
+            }
+        } else {
+            String[] values = refieldMap.get("*");
+            if (values == null) {
+                return false;
+            }
+            for (String value : values) {
+                if (value.equals(methodname) || value.equals("*")) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public void detect(int classID, int methodID, Object[] args) {
@@ -156,6 +265,7 @@ public class SmithProbeProxy {
         SmithHandler.queryClassFilter(cla, classFilter);
         classFilter.setTransId();
         classFilter.setRuleId(-1);
+        classFilter.setHashCode(cla.hashCode());
         classFilter.setStackTrace(Thread.currentThread().getStackTrace());
         if (client != null) {
             client.write(Operate.SCANCLASS, classFilter);
@@ -601,6 +711,45 @@ public class SmithProbeProxy {
             SmithLogger.exception(e);
         }
      }
+
+     public void handleReflectField(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        if (args.length < 2) {
+            return ;
+        }
+        try {
+            Class<?> clas = (Class<?>)args[0];
+            String reflectClass = clas.getName();
+            String feild = (String)args[1];
+            if (reflectClass.startsWith("com.security.smith") || reflectClass.startsWith("rasp.")) {
+                return ;
+            } else {
+                if (checkReflectFeildEvil(reflectClass, feild)) {
+                    trace(classID, methodID, args, ret, blocked);
+                }
+            }
+        } catch (Throwable e) {
+            SmithLogger.exception(e);
+        }
+    }
+    
+    public void handleReflectMethod(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        if (args.length < 2) {
+            return ;
+        }
+        try {
+            Class<?> clas = (Class<?>)args[0];
+            String reflectClass = clas.getName();
+            String feild = (String)args[1];
+            if (reflectClass.startsWith("com.security.smith") || reflectClass.startsWith("rasp.")) {
+                return ;
+            } else {
+                if (checkReflectMethodEvil(reflectClass, feild)) {
+                    trace(classID, methodID, args, ret, blocked);
+                }
+            }
+        } catch (Throwable e) {
+            SmithLogger.exception(e);
+        }
 
     /*
      *  used for glassfish org.apache.felix.framework.BundleWiringImpl$BundleClassLoader findClass loadClass hook
