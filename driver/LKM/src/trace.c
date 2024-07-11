@@ -233,6 +233,59 @@ static enum print_line_t print_trace_fmt_line(struct print_event_iterator *iter)
     return __trace_handle_return(seq);
 }
 
+static void sd_hexdump_user(char __user *ptr, int len)
+{
+    char dat[18], str[18] = {0}, hex[50] = {0};
+    int i, j;
+
+    for  (i = 0; i < len; i += 16) {
+        memset(dat, 0, 18);
+        memset(str, '.', 16);
+        memset(hex, ' ', 48);
+        for (j = 0; j < 16; j++) {
+            if (i + j < len) {
+                int rc;
+                char c;
+                rc = get_user(c, ptr + i + j);
+                if (rc)
+                    printk("failed to read ubuf %px at off: %d\n", ptr, i + j);
+                dat[j] = c;
+                sprintf(&hex[3 * j], "%2.2X ", dat[j]);
+                if (dat[j] >= 0x20 && dat[j] <= 0x7e)
+                    str[j] = dat[j];
+            } else {
+                sprintf(&hex[3 * j], "   ");
+            }
+        }
+        printk("%8.8x %s | %s\n", i, hex, str);
+    }
+}
+
+static int trace_ensure_output(char __user *ubuf, ssize_t len, ssize_t max)
+{
+    ssize_t i;
+
+    if (len > max) {
+        printk("written %zd exceeds max %zd\n", len, max);
+        len = max;
+    }
+
+    for (i = 0; i < len; i++) {
+        int rc;
+        char c;
+        rc = get_user(c, ubuf + i);
+        if (rc) {
+            printk("failed to read ubuf %px at off: %zd\n", ubuf, i);
+            return 0;
+        }
+        if (c != 0x17 && c != 0x1e && c != 0x09 && c != 0x0a && c != 0x0d && (c < 0x20 || c > 0x7e)) {
+            printk("got invalid char %d in ubuf %px at off: %zd\n", c, ubuf, i);
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static ssize_t trace_read_pipe(struct file *filp, char __user * ubuf,
                                size_t cnt, loff_t * ppos)
 {
@@ -329,6 +382,11 @@ waitagain:
 
 out:
     mutex_unlock(&iter->mutex);
+
+    if (sret > 0) {
+        if (trace_ensure_output(ubuf, sret, cnt))
+            sd_hexdump_user(ubuf, sret);
+    }
 
     return sret;
 }
