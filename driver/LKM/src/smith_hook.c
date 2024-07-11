@@ -1690,7 +1690,10 @@ static int compat_execve_entry_handler(
 	get_execve_data(argv_ptr, env_ptr, data);
 	return 0;
 }
+#endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
+#ifdef CONFIG_COMPAT
 static int compat_execveat_entry_handler(
                 struct kretprobe_instance *ri,
 				struct pt_regs *regs)
@@ -1730,6 +1733,7 @@ static int execveat_entry_handler(struct kretprobe_instance *ri, struct pt_regs 
 	get_execve_data(argv_ptr, env_ptr, data);
 	return 0;
 }
+#endif
 
 static int execve_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
