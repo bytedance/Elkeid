@@ -353,8 +353,10 @@ struct APIEntry {
 
     static bool handler(uintptr_t sp, uintptr_t g) {
         if constexpr (ErrorIndex < 0) {
-            if (!surplus())
+            if (!surplus()) {
+                gProbe->discard_surplus++;
                 return true;
+            }
         }
 
         size_t FPSize = FLOAT_REGISTER * sizeof(double _Complex);
@@ -393,8 +395,10 @@ struct APIEntry {
                 return false;
             }
 
-            if (!surplus())
+            if (!surplus()) {
+                gProbe->discard_surplus++;
                 return true;
+            }
         }
 
         post(trace);
@@ -481,8 +485,10 @@ struct APIEntry {
     static void post(const Trace &trace) {
         std::optional<size_t> index = gProbe->buffer.reserve();
 
-        if (!index)
+        if (!index) {
+            gProbe->discard_post++;
             return;
+        }
 
         gProbe->buffer[*index] = trace;
         gProbe->buffer.commit(*index);

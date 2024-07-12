@@ -1,4 +1,5 @@
 #include "smith_client.h"
+#include "smith_probe.h"
 #include <aio/ev/timer.h>
 #include <aio/net/stream.h>
 #include <zero/log.h>
@@ -80,7 +81,7 @@ startClient(const std::shared_ptr<aio::Context> &context) {
                     reason.code,
                     reason.message.c_str()
             );
-
+            gProbe->discard_send++;
             return zero::ptr::makeRef<aio::ev::Timer>(context)->setTimeout(1min);
         });
     });

@@ -33,6 +33,9 @@ struct Heartbeat {
     std::string filter;
     std::string block;
     std::string limit;
+    int64_t discard_surplus;
+    int64_t discard_post;
+    int64_t discard_send;
 };
 
 struct Request {
