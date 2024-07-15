@@ -368,8 +368,8 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
                 classUpload.setClassData(data);
 
                 if (client != null) {
-                    client.write(Operate.CLASSUPLOAD, classUpload);
                     SmithLogger.logger.info("send classdata: " + classUpload.toString());
+                    client.write(Operate.CLASSUPLOAD, classUpload);
                 }
             }
 
