@@ -78,6 +78,9 @@ void startProbe() {
             gProbe->quotas[classID][methodID] = it->second;
         }
 
+        heartbeat->discard_surplus = gProbe->discard_surplus;
+        heartbeat->discard_post = gProbe->discard_post;
+        heartbeat->discard_send = gProbe->discard_send;
         sender->trySend({HEARTBEAT, *heartbeat});
         return true;
     });
@@ -265,8 +268,12 @@ void startProbe() {
                 Trace trace = gProbe->buffer[*index];
                 gProbe->buffer.release(*index);
 
-                if (pass(trace, *filters))
-                    sender->trySend({TRACE, gProbe->buffer[*index]});
+                if (pass(trace, *filters)) {
+                    auto result = sender->trySend({TRACE, trace});
+                    if (!result) {
+                        gProbe->discard_send++;
+                    }
+                }
 
                 P_CONTINUE(loop);
             }

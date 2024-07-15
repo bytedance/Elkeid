@@ -40,6 +40,9 @@ struct Probe {
     z_rwlock_t locks[CLASS_MAX][METHOD_MAX];
     std::pair<size_t, Policy *> policies[CLASS_MAX][METHOD_MAX];
     zero::atomic::CircularBuffer<Trace, TRACE_BUFFER_SIZE> buffer;
+    std::atomic<int64_t> discard_surplus;
+    std::atomic<int64_t> discard_post;
+    std::atomic<int64_t> discard_send;
 };
 
 void startProbe();
