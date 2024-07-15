@@ -81,8 +81,17 @@ public class Client implements EventHandler {
         if (channel == null || !channel.isActive() || !channel.isWritable())
             return;
 
+        try {
+            //TODO must send metadata first
+            if (operate == Operate.CLASSUPLOAD) {
+                Thread.sleep(1000);
+            }
+        } catch (Exception e) {
+            
+        }
         ObjectMapper objectMapper = new ObjectMapper()
                 .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+        
 
         Message message = new Message();
 

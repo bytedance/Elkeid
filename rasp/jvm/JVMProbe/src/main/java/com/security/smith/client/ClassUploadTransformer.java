@@ -116,14 +116,13 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
                     this.clazzToUpload = info.clazz;
                     this.transId = info.transId;
                     
-                    // not upload. just send
-                    // if (inst.isModifiableClass(info.clazz) && !info.clazz.getName().startsWith("java.lang.invoke.LambdaForm")) {
-                    //     try {
-                    //         inst.retransformClasses(info.clazz);
-                    //     } catch (Exception e) {
-                    //         SmithLogger.exception(e);
-                    //     }
-                    // }
+                    if (inst.isModifiableClass(info.clazz) && !info.clazz.getName().startsWith("java.lang.invoke.LambdaForm")) {
+                        try {
+                            inst.retransformClasses(info.clazz);
+                        } catch (Exception e) {
+                            SmithLogger.exception(e);
+                        }
+                    }
                 }
                 finally {
                     this.clazzToUpload = null;
@@ -369,8 +368,8 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
                 classUpload.setClassData(data);
 
                 if (client != null) {
-                    client.write(Operate.CLASSUPLOAD, classUpload);
                     SmithLogger.logger.info("send classdata: " + classUpload.toString());
+                    client.write(Operate.CLASSUPLOAD, classUpload);
                 }
             }
 
