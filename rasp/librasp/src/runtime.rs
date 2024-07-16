@@ -147,7 +147,12 @@ pub trait RuntimeInspect {
                             size: 0,
                         }));
                     } else {
-                        warn!("pid: {} not found Signal Dispatcher, so not report", process_info.pid);
+                        warn!("pid: {} not found Signal Dispatcher, so not report version", process_info.pid);
+                        return Ok(Some(Runtime {
+                            name: "JVM",
+                            version: String::new(),
+                            size: 0,
+                        }));
                     }
                 }
                 Err(e) => info!("pid: {}, Failed to check 'Signal Dispatcher': {}", process_info.pid, e),
