@@ -41,7 +41,10 @@ void to_json(nlohmann::json &j, const Heartbeat &heartbeat) {
     j = {
             {"filter", heartbeat.filter},
             {"block",  heartbeat.block},
-            {"limit",  heartbeat.limit}
+            {"limit",  heartbeat.limit},
+            {"discard_surplus", heartbeat.discard_surplus},
+            {"discard_send", heartbeat.discard_send},
+            {"discard_post", heartbeat.discard_post}
     };
 }
 

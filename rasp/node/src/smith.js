@@ -13,6 +13,7 @@ const LOGICAL_OR = 0;
 const LOGICAL_AND = 1;
 
 const heartbeat = {};
+heartbeat.discard_send = 0;
 
 const blocks = new Map();
 const filters = new Map();
@@ -168,7 +169,9 @@ function smithHook(func, classID, methodID, canBlock = false, processors = {}) {
 
                 return false;
             })) {
-                client.postMessage(Operate.trace, smithTrace);
+                client.postMessage(Operate.trace, smithTrace, function() {
+                    heartbeat.discard_send++;
+                });
                 throw new Error('API blocked by RASP');
             }
         }
@@ -176,7 +179,9 @@ function smithHook(func, classID, methodID, canBlock = false, processors = {}) {
         const filter = filters.get(`${classID} ${methodID}`);
 
         if (!filter) {
-            client.postMessage(Operate.trace, smithTrace);
+            client.postMessage(Operate.trace, smithTrace, function() {
+                heartbeat.discard_send++;
+            });
             return func.call(this, ...args);
         }
 
@@ -191,7 +196,9 @@ function smithHook(func, classID, methodID, canBlock = false, processors = {}) {
             return func.call(this, ...args);
         }
 
-        client.postMessage(Operate.trace, smithTrace);
+        client.postMessage(Operate.trace, smithTrace, function() {
+            heartbeat.discard_send++;
+        });
 
         return func.call(this, ...args);
     }

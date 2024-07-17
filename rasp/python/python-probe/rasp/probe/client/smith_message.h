@@ -38,6 +38,9 @@ struct Heartbeat {
     std::string filter;
     std::string block;
     std::string limit;
+    int64_t discard_surplus;
+    int64_t discard_send;
+    int64_t discard_post;
 };
 
 struct Trace {

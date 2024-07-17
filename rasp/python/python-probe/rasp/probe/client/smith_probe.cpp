@@ -169,7 +169,9 @@ void startProbe() {
                 gProbe->quotas[cid][mid] = it->second;
             }
         }
-
+        heartbeat->discard_post = gProbe->discard_post;
+        heartbeat->discard_send = gProbe->discard_send;
+        heartbeat->discard_surplus = gProbe->discard_surplus;
         sender->trySend({HEARTBEAT, *heartbeat});
         return true;
     });
@@ -370,8 +372,12 @@ void startProbe() {
                 Trace trace = gProbe->buffer[*index];
                 gProbe->buffer.release(*index);
 
-                if (pass(trace, *filters))
-                    sender->trySend({TRACE, gProbe->buffer[*index]});
+                if (pass(trace, *filters)) {
+                    auto result = sender->trySend({TRACE, gProbe->buffer[*index]});
+                    if (!result) {
+                        gProbe->discard_send++;
+                    }
+                }
 
                 P_CONTINUE(loop);
             }
@@ -402,7 +408,8 @@ void startProbe() {
                 ExceptionInfo info = gProbe->info[*index];
                 gProbe->info.release(*index);
 
-                sender->trySend({EXCEPTIONINFO, gProbe->info[*index]});
+                if(!sender->trySend({EXCEPTIONINFO, gProbe->info[*index]}))
+                    gProbe->discard_send++;
 
                 P_CONTINUE(loop);
             }

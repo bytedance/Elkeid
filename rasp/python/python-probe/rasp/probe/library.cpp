@@ -70,8 +70,10 @@ PyObject *send(PyObject *self, PyObject *args) {
 
     std::optional<size_t> index = gProbe->buffer.reserve();
 
-    if (!index)
+    if (!index) {
+        gProbe->discard_post++;
         Py_RETURN_NONE;
+    }
 
     gProbe->buffer[*index] = *(Trace *) pyTrace;
     gProbe->buffer.commit(*index);
@@ -167,8 +169,10 @@ PyObject *surplus(PyObject *self, PyObject *args) {
     int n = quota;
 
     do {
-        if (n <= 0)
+        if (n <= 0) {
+            gProbe->discard_surplus++;
             Py_RETURN_FALSE;
+        }
     } while (!quota.compare_exchange_weak(n, n - 1));
 
     Py_RETURN_TRUE;

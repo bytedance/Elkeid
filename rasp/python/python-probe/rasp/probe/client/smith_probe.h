@@ -41,6 +41,9 @@ struct Probe {
     zero::atomic::CircularBuffer<Trace, TRACE_BUFFER_SIZE> buffer;
     zero::atomic::CircularBuffer<ExceptionInfo, EXCEPTIONINFO_BUFFER_SIZE> info;
     zero::atomic::CircularBuffer<Policy *, PREPARED_POLICY_COUNT> nodes;
+    std::atomic<int64_t> discard_surplus;
+    std::atomic<int64_t> discard_send;
+    std::atomic<int64_t> discard_post;
 
     Policy *popNode();
     bool pushNode(Policy *node);
