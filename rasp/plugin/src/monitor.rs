@@ -4,7 +4,6 @@ use std::{
     thread::{sleep, Builder},
     time::Duration,
 };
-
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::{
@@ -64,10 +63,11 @@ pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
                         info!("collect thread: {} internal message len: {}", collect_thread_n, message_queue_length)
                     }
                     let bundle: Vec<Record> = internal_message_receiver_clone.try_iter().collect();
+                    let queue_length: u64 = message_queue_length as u64;
                     debug!("sending bundle: {:?}", bundle);
-                    match client_clone.send_records(&bundle) {
+                    match client_clone.send_records_high_priority(&bundle) {
                         Ok(_) => {
-                            total_messages_clone.fetch_add(1, Ordering::SeqCst);
+                            total_messages_clone.fetch_add(queue_length, Ordering::SeqCst);
                         }
                         Err(e) => {
                             error!("can not send data to agent, stop the world: {}", e);
@@ -130,7 +130,6 @@ pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
                             error!("recv failed from external client, {}, now to stop process", e);
                             info!("Elkeid RASP STOP");
                             std::process::exit(0);
-                            //return Err(anyhow!("recv failed client failed: {}", e));
                         }
                     };
                     let parsed_message = match parse_message(&message) {

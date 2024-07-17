@@ -24,7 +24,16 @@ public class SmithClassVisitor extends ClassVisitor {
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
         MethodVisitor methodVisitor = super.visitMethod(access, name, descriptor, signature, exceptions);
 
-        SmithMethod smithMethod = methodMap.get(name + descriptor);
+        SmithMethod smithMethod = null;
+        if (name.equals("<init>")) {
+            smithMethod = methodMap.get(name);
+            if (smithMethod == null) {
+                smithMethod = methodMap.get(name + descriptor);
+            }
+        } else {
+            smithMethod = methodMap.get(name + descriptor);
+        }
+        
 
         if (smithMethod == null)
             return methodVisitor;

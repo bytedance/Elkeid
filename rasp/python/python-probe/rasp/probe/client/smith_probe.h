@@ -16,6 +16,7 @@ constexpr auto BLOCK_RULE_LENGTH = 256;
 constexpr auto BLOCK_RULE_MAX_COUNT = 8;
 
 constexpr auto TRACE_BUFFER_SIZE = 100;
+constexpr auto EXCEPTIONINFO_BUFFER_SIZE = 100;
 
 constexpr auto MAX_POLICY_COUNT = 10;
 constexpr auto PREPARED_POLICY_COUNT = 100;
@@ -31,12 +32,18 @@ struct Policy {
 struct Probe {
 #define gProbe Probe::getInstance()
     int efd{-1};
+    int infoefd;
     std::atomic<bool> waiting;
+    std::atomic<bool> infowaiting;
     std::atomic<int> quotas[CLASS_MAX][METHOD_MAX];
     z_rwlock_t locks[CLASS_MAX][METHOD_MAX];
     std::pair<size_t, Policy *[MAX_POLICY_COUNT]> policies[CLASS_MAX][METHOD_MAX];
     zero::atomic::CircularBuffer<Trace, TRACE_BUFFER_SIZE> buffer;
+    zero::atomic::CircularBuffer<ExceptionInfo, EXCEPTIONINFO_BUFFER_SIZE> info;
     zero::atomic::CircularBuffer<Policy *, PREPARED_POLICY_COUNT> nodes;
+    std::atomic<int64_t> discard_surplus;
+    std::atomic<int64_t> discard_send;
+    std::atomic<int64_t> discard_post;
 
     Policy *popNode();
     bool pushNode(Policy *node);

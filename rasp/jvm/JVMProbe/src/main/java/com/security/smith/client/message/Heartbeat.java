@@ -6,6 +6,7 @@ public class Heartbeat {
     private String limit;
     private String patch;
     private String class_filter_version;
+    private int discard_count;
 
     public String getFilter() {
         return filter;
@@ -45,5 +46,13 @@ public class Heartbeat {
 
     public void setClassFilterVersion(String classFilterVersion) {
         this.class_filter_version = classFilterVersion;
+    }
+
+    public synchronized int  getDiscardCount() {
+        return discard_count;
+    }
+
+    public synchronized void setDiscardCount(int discard_count) {
+        this.discard_count = discard_count;
     }
 }

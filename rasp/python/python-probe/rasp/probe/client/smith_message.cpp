@@ -7,6 +7,8 @@
 constexpr auto RUNTIME = "CPython";
 constexpr auto PROBE_VERSION = "1.0.0";
 
+extern int pid;
+
 std::string getVersion() {
     const char *version = Py_GetVersion();
 
@@ -17,7 +19,6 @@ std::string getVersion() {
 }
 
 void to_json(nlohmann::json &j, const SmithMessage &message) {
-    static pid_t pid = getpid();
     static std::string version = getVersion();
 
     j = {
@@ -40,8 +41,22 @@ void to_json(nlohmann::json &j, const Heartbeat &heartbeat) {
     j = {
             {"filter", heartbeat.filter},
             {"block",  heartbeat.block},
-            {"limit",  heartbeat.limit}
+            {"limit",  heartbeat.limit},
+            {"discard_surplus", heartbeat.discard_surplus},
+            {"discard_send", heartbeat.discard_send},
+            {"discard_post", heartbeat.discard_post}
     };
+}
+
+void to_json(nlohmann::json &j, const ExceptionInfo &exceptioninfo) {
+    j["signal_num"] = exceptioninfo.signal;
+    
+    for (const auto &stackTrace: exceptioninfo.stackTrace) {
+        if (!*stackTrace)
+            break;
+
+        j["stack_trace"].push_back(stackTrace);
+    }
 }
 
 void to_json(nlohmann::json &j, const Trace &trace) {

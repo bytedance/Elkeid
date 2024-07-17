@@ -20,7 +20,13 @@ enum Operate {
     DETECT,
     FILTER,
     BLOCK,
-    LIMIT
+    LIMIT,
+    EXCEPTIONINFO
+};
+
+struct ExceptionInfo {
+    int signal;
+    char stackTrace[FRAME_COUNT][FRAME_LENGTH];
 };
 
 struct SmithMessage {
@@ -32,6 +38,9 @@ struct Heartbeat {
     std::string filter;
     std::string block;
     std::string limit;
+    int64_t discard_surplus;
+    int64_t discard_send;
+    int64_t discard_post;
 };
 
 struct Trace {
@@ -101,6 +110,7 @@ void from_json(const nlohmann::json &j, SmithMessage &message);
 
 void to_json(nlohmann::json &j, const Heartbeat &heartbeat);
 void to_json(nlohmann::json &j, const Trace &trace);
+void to_json(nlohmann::json &j, const ExceptionInfo &exceptioninfo);
 
 void from_json(const nlohmann::json &j, MatchRule &rule);
 void from_json(const nlohmann::json &j, Filter &filter);

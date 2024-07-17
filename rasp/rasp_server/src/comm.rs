@@ -106,7 +106,6 @@ pub async fn start_bind(sock: RASPSock) -> Result<(), String> {
                 sleep(Duration::from_secs(60 * 60)).await;
             } else {
                 error!("RASP ERROR: SOCK has been deleted");
-
                 match clean_bind_addr(&sock.server_addr.clone()) {
                     Ok(()) => {
                         info!("bind: {}", &sock.server_addr.clone());
