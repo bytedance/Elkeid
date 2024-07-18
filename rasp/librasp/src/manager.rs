@@ -259,7 +259,7 @@ impl RASPManager {
             }
         }
 
-        let valid_messages_string = serde_json::to_string(&valid_messages)?;
+        serde_json::to_string(&valid_messages)?;
         //self.write_message_to_config_file(pid, nspid, valid_messages_string)?;
 
         Ok(())
@@ -324,7 +324,7 @@ impl RASPManager {
         let runtime_info = &process_info.runtime.clone().unwrap();
         let root_dir = format!("/proc/{}/root", process_info.pid);
         let pid = process_info.pid;
-        let nspid = ProcessInfo::read_nspid(pid)?.ok_or(anyhow!("can not read nspid: {}", pid))?;
+        ProcessInfo::read_nspid(pid)?.ok_or(anyhow!("can not read nspid: {}", pid))?;
         // delete config
         // self.delete_config_file(pid, nspid)?;
         let attach_result = match runtime_info.name {

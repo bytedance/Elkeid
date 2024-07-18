@@ -7,7 +7,6 @@ import com.lmax.disruptor.EventHandler;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringReader;
-import com.esotericsoftware.yamlbeans.YamlReader;
 
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.EventFactory;
@@ -17,11 +16,14 @@ import com.security.smith.asm.SmithClassWriter;
 import com.security.smith.client.message.*;
 import com.security.smith.common.Reflection;
 import com.security.smith.common.SmithHandler;
+import com.security.smith.common.SmithTools;
 import com.security.smith.log.AttachInfo;
 import com.security.smith.log.SmithLogger;
 import com.security.smith.module.Patcher;
 import com.security.smith.type.*;
 import com.security.smith.client.*;
+import com.esotericsoftware.yamlbeans.YamlReader;
+
 
 import javassist.ClassPool;
 import javassist.CtClass;
@@ -54,6 +56,16 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.security.CodeSource;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.jar.JarFile;
+
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -206,31 +218,47 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
         smithProxy = new SmithProbeProxy();
 
-        InputStream inputStream = getResourceAsStream("class.yaml");
 
-        if(inputStream != null) {
-            SmithLogger.logger.info("find class.yaml");
-            try {
-                Reader xreader = new InputStreamReader(inputStream);
-                YamlReader yamlReader = new YamlReader(xreader);
-                for (SmithClass smithClass : yamlReader.read(SmithClass[].class)) {
+        ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
+        InputStream inputStream = this.getClass().getResourceAsStream("/class.yaml");
+
+        try {
+            for (SmithClass smithClass : objectMapper.readValue(inputStream, SmithClass[].class)) {
+                if(!isBypassHookClass(smithClass.getName())) {
                     smithClasses.put(smithClass.getName(), smithClass);
                 }
-            } catch (IOException e) {
-                SmithLogger.exception(e);
             }
+        } catch (IOException e) {
+            SmithLogger.exception(e);
         }
-        else {
-            SmithLogger.logger.info("not find class.yaml");
-        }
+    
 
         SmithLogger.logger.info("probe init leave");
     }
+    private boolean isBypassHookClass(String className) {
+
+        if(SmithTools.isGlassfish() && SmithTools.getMajorVersion() > 5) {
+            /*
+             * In versions after GlassFish 5 (not including GlassFish 5), 
+             * not hooking java.io.File will cause the JVM process to crash directly if hooked.
+             * 
+             */
+            if(className.equals("java.io.File")) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public void start() {
-        SmithLogger.logger.info("probe start enter");
+        SmithLogger.logger.info("probe start");
+        AttachInfo.info();
 
+        SmithLogger.logger.info("init ClassUploadTransformer");
         ClassUploadTransformer.getInstance().start(client, inst);
+
+        
 
         Thread clientThread = new Thread(client::start);
 
@@ -260,6 +288,8 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         smithProxy.setClient(client);
         smithProxy.setDisruptor(disruptor);
         smithProxy.setProbe(this);
+        smithProxy.setReflectField();
+        smithProxy.setReflectMethod();
 
         inst.addTransformer(this, true);
         reloadClasses();
@@ -352,10 +382,61 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
         SmithLogger.logger.info("probe uninit leave");
         SmithLogger.loggerProberUnInit();
+        
     }
 
     private void reloadClasses() {
         reloadClasses(smithClasses.keySet());
+    }
+
+
+    private String getJarPath(Class<?> clazz) {
+        CodeSource codeSource = clazz.getProtectionDomain().getCodeSource();
+        if (codeSource != null) {
+            URL location = codeSource.getLocation();
+            try {
+                File file = new File(location.toURI());
+                return file.getAbsolutePath();
+            } catch (Exception e) {
+                SmithLogger.exception(e);
+            }
+        }
+        return null;
+    }
+
+    private String[] addJarclassns = {
+        "org.apache.felix.framework.BundleWiringImpl$BundleClassLoader"
+    };
+    
+    private Set<String> addedJarset = Collections.synchronizedSet(new HashSet<>());
+
+    public void checkNeedAddJarPath(Class<?> clazz,Instrumentation inst) {
+        try {
+            String cn = clazz.getName();
+            for (String name : addJarclassns) {
+                if(cn.equals(name)) {
+                    try {
+                        String jarFile = getJarPath(clazz);
+                        if(jarFile != null && !addedJarset.contains(jarFile)) {
+                            SmithLogger.logger.info("add "+ name + " jarpath:"+jarFile);
+                            inst.appendToSystemClassLoaderSearch(new JarFile(jarFile));
+                            addedJarset.add(jarFile);
+                        }
+                    }catch(Exception e) {
+                        SmithLogger.exception(e);
+                    }
+                }
+            }
+        }
+        catch(Exception e) {
+            SmithLogger.exception(e);
+        }
+    }
+
+    public void checkNeedAddJarPaths(Class<?>[] cls,Instrumentation inst) {
+        for (Class<?> cx : cls) {
+            checkNeedAddJarPath(cx,inst);
+        } 
     }
 
     private void reloadClasses(Collection<String> classes) {
@@ -370,6 +451,8 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         Class<?>[] cls = resultList.toArray(new Class<?>[0]);
 
         SmithLogger.logger.info("reload: " + Arrays.toString(cls));
+
+        checkNeedAddJarPaths(cls,inst);
 
         try {
             inst.retransformClasses(cls);
@@ -528,27 +611,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         return false;
     }
 
-    public boolean checkInterfaceNeedTran(String interfaceName) {
-        if (interfaceName == null) {
-            return false;
-        }
-        boolean ret = false;
-        switch (interfaceName) {
-            case "org/springframework/web/servlet/HandlerInterceptor":
-            case "javax/servlet/Servlet":
-            case "javax/servlet/Filter":
-            case "javax/servlet/ServletRequestListener":
-            case "jakarta/servlet/Servlet":
-            case "jakarta/servlet/Filter":
-            case "jakarta/servlet/ServletRequestListener":
-            case "javax/websocket/Endpoint":
-                ret = true;
-                break;
-            default:
-                break;
-        }
-        return ret;
-    }
+   
     @Override
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) {
          if (disable)
@@ -566,30 +629,42 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         } catch (Exception e) {
             //SmithLogger.exception(e);
         }
-     
-        if (smithClass == null && className == null)  {
+
+        if (smithClass == null)  {
             
             ClassReader cr = new ClassReader(classfileBuffer);
-            String[] interfaces = cr.getInterfaces();
+
             if (className == null) {
                 className = cr.getClassName();
                 classType = Type.getObjectType(className);
             }
+            String[] interfaces = cr.getInterfaces();
+            String superClass = cr.getSuperName();
 
-            for (String interName : interfaces) {
-                if (checkInterfaceNeedTran(interName)) {
-                    Type interfaceType = Type.getObjectType(interName);
-                    smithClass = smithClasses.get(interfaceType.getClassName());
-                    break;
+            try {
+                String[] combined;
+                if (superClass != null) {
+                    combined = new String[interfaces.length + 1];
+                    System.arraycopy(interfaces, 0, combined, 0, interfaces.length);
+                    combined[interfaces.length] = superClass;
+                } else {
+                    combined = interfaces;
                 }
+
+                for (String interName : combined) {
+                    if (SmithHandler.checkInterfaceNeedTran(interName)) {
+                        Type interfaceType = Type.getObjectType(interName);
+                        smithClass = smithClasses.get(interfaceType.getClassName());
+                        break;
+                    }
+                }
+            } catch (Throwable e) {
+                SmithLogger.exception(e);
             }
+            
             if (smithClass == null) {
                 return null;
             }
-        } 
-
-        if (smithClass == null) {
-            return null;
         }
 
         try {
@@ -742,6 +817,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
     @Override
     public void onPatch(PatchConfig config) {
+        if (config == null || config.getPatches() == null || config.getPatches().length == 0) {
+            SmithLogger.logger.info("patch may not be download, so not update heartbeat");
+            return ;
+        }
         for (Patch patch : config.getPatches()) {
             SmithLogger.logger.info("install patch: " + patch.getClassName());
 
@@ -843,8 +922,11 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     if (className.startsWith("rasp.") || className.startsWith("com.security.smith") || className.startsWith("java.lang.invoke.LambdaForm")) {
                         continue;
                     }
-                    
 
+                    if(classIsSended(clazz)) {
+                        continue;
+                    }
+                    
                     ClassFilter classFilter = new ClassFilter();
                     
                     SmithHandler.queryClassFilter(clazz, classFilter);
@@ -889,6 +971,16 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         }
     }
 
+    public boolean classIsSended(Class<?> clazz) {
+        try {
+            return ClassUploadTransformer.getInstance().classIsSended(clazz.hashCode());
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+
+        return false;
+    }
+
     /*
      * send CtClass file 
      */
@@ -899,10 +991,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         int length = data.length;
         ClassUpload classUpload = new ClassUpload();
         classUpload.setTransId(transId);
-        // TODO
+
         // client.write(Operate.CLASSDUMP, classUpload);
 
-        // int packetSize = 1024; 
+        // int packetSize = 1024; \
         // int totalPackets = (data.length + packetSize - 1) / packetSize;
         //for (int i = 0; i < totalPackets; i++) {
             //int offset = i * packetSize;
@@ -919,6 +1011,12 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
     public Heartbeat getHeartbeat() {
         return heartbeat;
+    }
+
+    public void addDisacrdCount() {
+        int discrad_count = this.heartbeat.getDiscardCount();
+        discrad_count++;
+        this.heartbeat.setDiscardCount(discrad_count);
     }
 
     public Map<Pair<Integer, Integer>, Integer>  getLimits() {

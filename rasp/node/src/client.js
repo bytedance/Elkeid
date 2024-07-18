@@ -126,12 +126,16 @@ class SmithClient extends EventEmitter {
         });
     }
 
-    postMessage(operate, data) {
-        if (!this._connected)
+    postMessage(operate, data, discard_send = () => {}) {
+        if (!this._connected) {
+            discard_send();
             return;
+        }
 
-        if ('writableLength' in this._socket && this._socket.writableLength > BUFFER_MAX_SIZE)
+        if ('writableLength' in this._socket && this._socket.writableLength > BUFFER_MAX_SIZE) {
+            discard_send();
             return;
+        }
 
         const message = {
             'pid': process.pid,
@@ -151,7 +155,9 @@ class SmithClient extends EventEmitter {
         buffer.writeUInt32BE(length, 0);
         buffer.write(payload, 4);
 
-        this._socket.write(buffer);
+        if (!this._socket.write(buffer)) {
+            discard_send();
+        }
     }
 }
 

@@ -205,7 +205,7 @@
   methods:
     - id: 0
       name: <init>
-      desc: (Lorg/apache/catalina/Context;Lorg/apache/tomcat/util/descriptor/web/FilterDef;)V
+      desc: ""
       postHook: checkFilterConfigPost
 - id: 17
   name: com.caucho.server.dispatch.FilterManager
@@ -268,56 +268,56 @@
   methods:
     - id: 0
       name: <init>
-      desc: ()V
+      desc: ""
       postHook: checkMemshellInitPost
 - id: 26
   name: javax.servlet.Filter
   methods:
     - id: 0
       name: <init>
-      desc: ()V
+      desc: ""
       postHook: checkMemshellInitPost
 - id: 27
   name: javax.servlet.Servlet
   methods:
     - id: 0
       name: <init>
-      desc: ()V
+      desc: ""
       postHook: checkMemshellInitPost
 - id: 28
   name: javax.servlet.ServletRequestListener
   methods:
     - id: 0
       name: <init>
-      desc: ()V
+      desc: ""
       postHook: checkMemshellInitPost
 - id: 29
   name: javax.websocket.Endpoint
   methods:
     - id: 0
       name: <init>
-      desc: ()V
+      desc: ""
       postHook: checkMemshellInitPost
 - id: 30
   name: jakarta.servlet.Filter
   methods:
     - id: 0
       name: <init>
-      desc: ()V
+      desc: ""
       postHook: checkMemshellInitPost
 - id: 31
   name: jakarta.servlet.Servlet
   methods:
     - id: 0
       name: <init>
-      desc: ()V
+      desc: ""
       postHook: checkMemshellInitPost
 - id: 32
   name: jakarta.servlet.ServletRequestListener
   methods:
     - id: 0
       name: <init>
-      desc: ()V
+      desc: ""
       postHook: checkMemshellInitPost
 - id: 33
   name: io.undertow.servlet.core.ManagedServlets
@@ -333,3 +333,69 @@
       name: findClass
       desc: (Ljava/lang/String;ZZ)Ljava/lang/Class;
       exceptionHook: processWildflyClassLoaderException
+- id: 35
+  name: com.caucho.server.http.WebSocketContextImpl
+  methods:
+    - id: 0
+      name: <init>
+      desc: ""
+      preHook: checkResinWebSocketPre
+- id: 36
+  name: javax.websocket.server.DefaultServerEndpointConfig
+  methods:
+    - id: 0
+      name: <init>
+      desc: ""
+      preHook: checkWebSocketConfigPre
+- id: 37
+  name: sun.nio.ch.SocketChannelImpl
+  methods:
+    - id: 0
+      name: connect
+      desc: (Ljava/net/SocketAddress;)Z
+- id: 38
+  name: io.undertow.servlet.core.ManagedFilters
+  methods:
+    - id: 0
+      name: addFilter
+      desc: (Lio/undertow/servlet/api/FilterInfo;)Lio/undertow/servlet/core/ManagedFilter;
+      preHook: checkWildflyaddFilterPre
+- id: 39
+  name: org.apache.tomcat.util.threads.ThreadPoolExecutor
+  methods:
+    - id: 0
+      name: <init>
+      desc: ""
+      postHook: checkMemshellInitPost
+- id: 40
+  name: org.apache.coyote.UpgradeProtocol
+  methods:
+    - id: 0
+      name: <init>
+      desc: ""
+      postHook: checkMemshellInitPost
+- id: 41
+  name: org.apache.felix.framework.BundleWiringImpl$BundleClassLoader
+  methods:
+    - id: 0
+      name: findClass
+      desc: (Ljava/lang/String;)Ljava/lang/Class;
+      exceptionHook: processGlassfishClassLoaderfindClassException
+    - id: 1
+      name: loadClass
+      desc: (Ljava/lang/String;Z)Ljava/lang/Class;
+      exceptionHook: processGlassfishClassLoaderfindClassException
+- id: 42
+  name: java.lang.reflect.Field
+  methods:
+    - id: 0
+      name: <init>
+      desc: ""
+      postHook: handleReflectField
+- id: 43
+  name: java.lang.reflect.Method
+  methods:
+    - id: 0
+      name: <init>
+      desc: ""
+      postHook: handleReflectMethod

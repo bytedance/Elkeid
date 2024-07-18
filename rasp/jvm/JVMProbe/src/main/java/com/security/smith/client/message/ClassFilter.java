@@ -16,6 +16,7 @@ public class ClassFilter {
     private String parentClassName = "";
     private String parentClassLoaderName = "";
     private long ruleId;
+
     @JsonSerialize(converter = StackTraceConverter.class)
     private StackTraceElement[] stackTrace = {};
 

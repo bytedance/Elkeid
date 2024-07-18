@@ -113,7 +113,7 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
                 try {
                     this.clazzToUpload = info.clazz;
                     this.transId = info.transId;
-    
+                    
                     if (inst.isModifiableClass(info.clazz) && !info.clazz.getName().startsWith("java.lang.invoke.LambdaForm")) {
                         try {
                             inst.retransformClasses(info.clazz);
@@ -246,7 +246,7 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
         return !started;
     }
 
-    private boolean classIsSended(int hashcode) {
+    public boolean classIsSended(int hashcode) {
         boolean isSended = false;
         classHashCachelock.readLock().lock();
         try {
@@ -319,25 +319,18 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
     }
 
     public  boolean sendClass(Class<?> clazz, String transId) {
-        boolean ret = false;
-
         if(!started) {
             return false;
         }
 
         try {
-            if(!classIsSended(clazz.hashCode())) {
-                ret = addUploadClassInfo(clazz,transId);
-            }
-            else {
-                ret = true;
-            }
+            return addUploadClassInfo(clazz,transId);
         }
         catch(Exception e) {
             SmithLogger.exception(e);
         }
 
-        return ret;
+        return false;
     }
 
     @Override
@@ -373,8 +366,8 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
                 classUpload.setClassData(data);
 
                 if (client != null) {
-                    client.write(Operate.CLASSUPLOAD, classUpload);
                     SmithLogger.logger.info("send classdata: " + classUpload.toString());
+                    client.write(Operate.CLASSUPLOAD, classUpload);
                 }
             }
 

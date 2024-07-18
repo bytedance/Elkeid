@@ -1,10 +1,13 @@
 #include "library.h"
 #include "client/smith_probe.h"
 #include <csignal>
+#include <execinfo.h>
 #include <sys/prctl.h>
 #include <sys/eventfd.h>
 #include <zero/log.h>
 #include <re.h>
+
+int pid = 0;
 
 struct PyTrace : public PyObject, Trace {
 
@@ -67,8 +70,10 @@ PyObject *send(PyObject *self, PyObject *args) {
 
     std::optional<size_t> index = gProbe->buffer.reserve();
 
-    if (!index)
+    if (!index) {
+        gProbe->discard_post++;
         Py_RETURN_NONE;
+    }
 
     gProbe->buffer[*index] = *(Trace *) pyTrace;
     gProbe->buffer.commit(*index);
@@ -164,8 +169,10 @@ PyObject *surplus(PyObject *self, PyObject *args) {
     int n = quota;
 
     do {
-        if (n <= 0)
+        if (n <= 0) {
+            gProbe->discard_surplus++;
             Py_RETURN_FALSE;
+        }
     } while (!quota.compare_exchange_weak(n, n - 1));
 
     Py_RETURN_TRUE;
@@ -178,9 +185,77 @@ constexpr PyMethodDef MODULE_METHODS[] = {
         {nullptr,   nullptr, 0,            nullptr}
 };
 
+void send_exception_info(int sig) {
+    void *buffer[100];
+    struct ExceptionInfo exceptioninfo;
+    int nptrs = backtrace(buffer, 100);
+    char **stackstrings = backtrace_symbols(buffer, nptrs);
+    if(!stackstrings)
+        return ;
+
+    memset(&exceptioninfo,0,sizeof(struct ExceptionInfo));
+
+    exceptioninfo.signal = sig;
+    for (int i = 0; i < std::min(FRAME_COUNT, nptrs); i++) {
+        snprintf((char*)&exceptioninfo.stackTrace[i],FRAME_LENGTH,"%s",stackstrings[i]);
+    }
+
+    free(stackstrings);
+
+    std::optional<size_t> index = gProbe->info.reserve();
+
+    if (!index)
+        return;
+
+    gProbe->info[*index] = exceptioninfo;
+    gProbe->info.commit(*index);
+
+    if (gProbe->info.size() < EXCEPTIONINFO_BUFFER_SIZE / 2)
+        return;
+
+    bool expected = true;
+
+    if (!gProbe->infowaiting.compare_exchange_strong(expected, false))
+        return;
+
+    eventfd_t value = 1;
+    eventfd_write(gProbe->infoefd, value);
+}
+
+/*
+void printinfo(int sig) {
+    void *buffer[100];
+    int nptrs = backtrace(buffer, 100);
+    char **strings = backtrace_symbols(buffer, nptrs);
+
+    printf("Caught signal %d:\n", sig);
+    printf("Backtrace:\n");
+    for (int i = 0; i < nptrs; i++) {
+        printf("%s\n", strings[i]);
+    }
+
+    free(strings);
+}
+*/
+
+void signal_handler(int sig) {
+    //printinfo(sig);
+    send_exception_info(sig);
+    sleep(30);
+    exit(0);
+}
+
 INIT_FUNCTION(probe) {
     if (!gProbe)
         INIT_RETURN(nullptr);
+
+    signal(SIGTERM, signal_handler);    //  15
+    signal(SIGINT, signal_handler);     //  2
+    signal(SIGSEGV, signal_handler);    //  11
+    signal(SIGFPE, signal_handler);     //  8
+    signal(SIGILL, signal_handler);     //  4
+
+    pid = getpid();
 
     auto nodes = (Policy *) allocShared(sizeof(Policy) * (PREPARED_POLICY_COUNT - 1));
 
