@@ -486,6 +486,11 @@ fn internal_main(
                     ) {
                         warn!("operation thread send command to receiver err: {}, pid: {}", e, process.pid);
                     }
+                    let _ = process.update_failed_reason(&e.to_string());
+                    let mut opp = operation_process_rw.write();
+                    opp.insert(process.pid, process.clone());
+                    drop(opp);
+
                     continue;
                 }
             };

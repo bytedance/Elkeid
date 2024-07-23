@@ -44,6 +44,7 @@ pub struct ProcessInfo {
     pub start_time: Option<f32>,
     pub try_attach_count: u16,
     pub attached_count: u16,
+    pub failed_reason:Option<String>,
 }
 
 #[allow(non_camel_case_types)]
@@ -218,6 +219,13 @@ impl ProcessInfo {
             self.namespace_info = Some(process.ns()?);
         }
         Ok(self.namespace_info.clone().unwrap())
+    }
+
+    pub fn update_failed_reason(&mut self, reason: &String) -> AnyhowResult<()> {
+        if self.failed_reason.is_none() {
+            self.failed_reason = Some(reason.clone());
+        }
+        Ok(())
     }
     pub fn get_mnt_ns(&self) -> AnyhowResult<String> {
         if let Some(ref ns) = self.namespace_info {
