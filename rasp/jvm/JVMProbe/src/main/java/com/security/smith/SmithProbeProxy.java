@@ -17,6 +17,7 @@ import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.security.smith.client.Client;
 import com.security.smith.client.Operate;
+import com.security.smith.client.message.*;
 import com.security.smith.client.message.ClassFilter;
 import com.security.smith.client.message.Heartbeat;
 import com.security.smith.client.message.MatchRule;
@@ -26,6 +27,9 @@ import com.security.smith.common.Reflection;
 import com.security.smith.common.SmithHandler;
 import com.security.smith.log.SmithLogger;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.GsonBuilder;
 public class SmithProbeProxy {
     private final int CLASS_MAX_ID = 30;
     private final int METHOD_MAX_ID = 20;
@@ -122,7 +126,6 @@ public class SmithProbeProxy {
 
     public SmithProbeProxy() {
         stopX = false;
-        //quotas = Stream.generate(() -> new AtomicIntegerArray(METHOD_MAX_ID)).limit(CLASS_MAX_ID).toArray(AtomicIntegerArray[]::new);
 
         quotas = new AtomicIntegerArray[CLASS_MAX_ID];
         for (int i = 0; i < CLASS_MAX_ID; i++) {
@@ -139,6 +142,12 @@ public class SmithProbeProxy {
         this.quotas = null;
         this.SmithProbeObj = null;
         RemoveThreadLocalVar();
+
+        reflectField.clear();
+        reflectField = null;
+
+        reflectMethod.clear();
+        reflectMethod = null;
 
         localfilterConfig = null; 
         localfilterDef = null;
@@ -365,7 +374,12 @@ public class SmithProbeProxy {
         classFilter.setRuleId(-1);
         classFilter.setStackTrace(Thread.currentThread().getStackTrace());
         if (client != null) {
-            client.write(Operate.SCANCLASS, classFilter);
+            Gson gson = new GsonBuilder()
+            .registerTypeAdapter(ClassFilter.class, new ClassFilterSerializer())
+            .registerTypeAdapter(ClassFilter.class, new ClassFilterDeserializer())
+            .create();
+            JsonElement jsonElement = gson.toJsonTree(classFilter);
+            client.write(Operate.SCANCLASS, jsonElement);
             SmithLogger.logger.info("send metadata: " + classFilter.toString());
             SmithProbeObj.sendClass(cla, classFilter.getTransId());
         }
@@ -532,7 +546,7 @@ public class SmithProbeProxy {
     public  void onTimer() {
         Heartbeat heartbeat = SmithProbeObj.getHeartbeat();
         if (client != null)
-            client.write(Operate.HEARTBEAT, heartbeat);
+            client.write(Operate.HEARTBEAT, heartbeat.toJsonElement());
 
         Map<Pair<Integer, Integer>, Integer> limits = SmithProbeObj.getLimits();
 

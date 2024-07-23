@@ -30,9 +30,9 @@ public class SmithAgent {
     private static Object           SmithProberProxyObj = null;
     private static long             jvmHeapFree = 150;
     private static long             jvmMetaFree = 20;
-    private static String probeVersion;
-    private static String checksumStr;
-    private static String proberPath;
+    private static String probeVersion = null;
+    private static String checksumStr = null;
+    private static String proberPath = null;
     private static Instrumentation instrumentation = null;
 
     public static Object getClassLoader() {
@@ -284,11 +284,13 @@ public class SmithAgent {
                 SmithAgentLogger.logger.info("checksumStr:" + checksumStr);
                 SmithAgentLogger.logger.info("proberPath:" + proberPath); 
 
+                /* 
                 if (!JarUtil.checkJarFile(proberPath,checksumStr)) {
                     System.setProperty("smith.status", proberPath + " check fail");
                     SmithAgentLogger.logger.warning(proberPath + " check fail!");
                     return ;
                 }
+                    */
 
                 if(instrumentation == null) {
                     instrumentation = inst;

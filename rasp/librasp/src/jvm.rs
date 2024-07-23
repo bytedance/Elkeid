@@ -1,15 +1,17 @@
-use anyhow::{anyhow, Result};
-
 use log::*;
 use regex::Regex;
 use std::process::Command;
 use std::fs;
+use std::path::Path;
+use std::path::PathBuf;
 use std::time::Duration;
 use crate::async_command::run_async_process;
 use crate::process::ProcessInfo;
 use crate::runtime::{ProbeCopy, ProbeState, ProbeStateInspect};
 use crate::settings::{self, RASP_VERSION};
 use lazy_static::lazy_static;
+use anyhow::{anyhow, Result, Result as AnyhowResult};
+use fs_extra::file::{copy as file_copy, remove as file_remove, CopyOptions as FileCopyOptions};
 
 lazy_static! {
     static ref RASP_JAVA_CHECKSUMSTR: String = {
@@ -51,6 +53,127 @@ impl ProbeCopy for JVMProbe {
             [].to_vec(),
         )
     }
+}
+
+pub struct JVMProbeNativeLib {}
+
+impl ProbeCopy for JVMProbeNativeLib {
+    #[cfg(all(target_os = "linux"))]
+    fn names() -> (Vec<String>, Vec<String>) {
+        (
+            [
+                settings::RASP_JAVA_NETTY_EPOLL_SO(),
+            ]
+            .to_vec(),
+            [].to_vec(),
+        )
+    }
+
+    #[cfg(all(target_os = "macos"))]
+    fn names() -> (Vec<String>, Vec<String>) {
+        (
+            [
+                settings::RASP_JAVA_NETTY_KQUEUQ_SO_MAC(),
+                settings::RASP_JAVA_NETTY_DNS_SO_MAC(),
+            ]
+            .to_vec(),
+            [].to_vec(),
+        )
+    }
+}
+
+pub fn parse_java_library_path(input: &str) -> Result<Vec<PathBuf>, anyhow::Error> {
+    let xinput = input.replace("\\:", ":");
+    let paths: Vec<&str> = xinput.split(":").collect();
+    let mut result = Vec::with_capacity(paths.len());
+
+    for path in paths {
+        let path_buf = {
+            let path_str = path.to_string();
+            PathBuf::from(path_str)
+        };
+        if path_buf.exists() {
+            result.push(path_buf);
+        } else {
+            // Ignore non-existent paths
+            continue;
+        }
+    }
+
+    Ok(result)
+}
+
+fn copy_file_probe(from:String,to:String) -> AnyhowResult<()> {
+    let options = FileCopyOptions::new();
+    return match file_copy(from.clone(), to.clone(), &options) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            warn!("can not copy: {}", e);
+            Err(anyhow!(
+                "copy failed: from {} to {}: {}",
+                from,
+                to,
+                e
+            ))
+        }
+    }
+}
+
+fn get_last_filename(path: &str) -> Option<String> {
+    Path::new(path)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .map(|name| name.to_string())
+}
+
+pub fn copy_probe_nativelib(pid:i32,dst_root:String) -> AnyhowResult<()> {
+        let java_library_path = jcmd(pid, " VM.system_properties").and_then(|output| {
+        let output_str = String::from_utf8_lossy(&output);
+        let lines: Vec<&str> = output_str.split("\n").collect();
+        let java_library_path_line = lines.iter().find(|line| line.starts_with("java.library.path="));
+        if let Some(line) = java_library_path_line {
+            let path = line.trim_start_matches("java.library.path=");
+            match parse_java_library_path(path) {
+                Ok(parsed_paths) => {
+                    println!("Java library paths:{:?}",parsed_paths);
+                    for from in JVMProbeNativeLib::names().0.iter() {
+                        let src_path = from.clone();
+                        if let Some(soname) = get_last_filename(&src_path) {
+                            let mut bIsExist = false;
+                            println!("Last filename: {}", soname);
+                            for path in parsed_paths.clone() {
+                                let mut path_str = format!("{}{}",dst_root,path.display());
+                                let path_buf: PathBuf = path_str.into();
+                                println!("  {} exist", path_buf.display());
+                                if path_buf.join(&soname).exists() {
+                                    println!("{} exist",soname);
+                                    bIsExist = true;
+                                    break;
+                                } 
+                            }
+
+                            if !bIsExist {
+                                let path = parsed_paths[0].clone();
+
+                                let dst_path = format!("{}{}/{}",dst_root,path.display(),soname);
+                                println!("copy {} to {}",src_path,dst_path);
+                                copy_file_probe(src_path,dst_path);
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    info!("parse java library path failed: {}", e);
+                }
+            }
+           
+            Ok(0)
+        } else {
+            Err(anyhow::anyhow!("java.library.path not found in output"))
+        }
+    });
+
+    Ok(())
 }
 
 pub fn java_attach(pid: i32) -> Result<bool> {

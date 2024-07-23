@@ -29,12 +29,15 @@ public class SmithLoader extends ClassLoader {
                 if (classData != null) {
                     return defineClass(name, classData, 0, classData.length);
                 }
-            } catch (IOException ex) {
+            }
+            catch (IOException ex) {
                 throw new ClassNotFoundException("Failed to load class: " + name, ex);
             }
         } catch (ClassNotFoundException e) {
             // If the class is not found in JAR file,try to load from parent class loader
-            return super.findClass(name);
+            throw e;
+        } catch(Throwable t) {
+            throw t;
             //throw e;
         }
 

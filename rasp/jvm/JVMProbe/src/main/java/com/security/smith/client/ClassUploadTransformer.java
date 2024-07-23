@@ -24,6 +24,9 @@ import com.security.smith.log.SmithLogger;
 import java.lang.instrument.IllegalClassFormatException;
 import java.lang.management.ManagementFactory;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+
 public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
     private static ClassUploadTransformer ourInstance = new ClassUploadTransformer();
 
@@ -366,8 +369,9 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
                 classUpload.setClassData(data);
 
                 if (client != null) {
-                    SmithLogger.logger.info("send classdata: " + classUpload.toString());
-                    client.write(Operate.CLASSUPLOAD, classUpload);
+                    Gson gson = new Gson();
+                    JsonElement jsonElement = gson.toJsonTree(classUpload);
+                    client.write(Operate.CLASSUPLOAD, jsonElement);
                 }
             }
 
