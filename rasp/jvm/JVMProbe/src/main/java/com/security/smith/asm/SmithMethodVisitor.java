@@ -141,8 +141,9 @@ public class SmithMethodVisitor extends AdviceAdapter {
     protected void onMethodExit(int opcode) {
         super.onMethodExit(opcode);
 
-        if (opcode == ATHROW)
+        if (opcode == ATHROW) {
             return;
+        }
 
         Type returnType = Type.getReturnType(methodDesc);
 
@@ -236,30 +237,6 @@ public class SmithMethodVisitor extends AdviceAdapter {
             if (!isStatic) {
                 types = ArrayUtils.addFirst(types, classType);
             }
-
-            /* 
-            Object[] local = Arrays.stream(types).map(t -> {
-                switch (t.getSort()) {
-                    case Type.BOOLEAN:
-                    case Type.CHAR:
-                    case Type.BYTE:
-                    case Type.SHORT:
-                    case Type.INT:
-                        return Opcodes.INTEGER;
-                    case Type.FLOAT:
-                        return Opcodes.FLOAT;
-                    case Type.ARRAY:
-                    case Type.OBJECT:
-                        return t.getInternalName();
-                    case Type.LONG:
-                        return Opcodes.LONG;
-                    case Type.DOUBLE:
-                        return Opcodes.DOUBLE;
-                    default:
-                        throw new AssertionError();
-                }
-            }).toArray();
-*/
 
             Function<Type, Object> typeMapper = new TypeMapper();
             Object[] local = Arrays.stream(types).map(typeMapper).toArray();

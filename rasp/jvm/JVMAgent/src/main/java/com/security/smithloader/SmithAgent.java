@@ -30,9 +30,9 @@ public class SmithAgent {
     private static Object           SmithProberProxyObj = null;
     private static long             jvmHeapFree = 150;
     private static long             jvmMetaFree = 20;
-    private static String probeVersion;
-    private static String checksumStr;
-    private static String proberPath;
+    private static String probeVersion = null;
+    private static String checksumStr = null;
+    private static String proberPath = null;
     private static Instrumentation instrumentation = null;
 
     public static Object getClassLoader() {
@@ -48,13 +48,11 @@ public class SmithAgent {
     }
 
     public static void PreProxy(Object MethodNameObj,int classID, int methodID, Object[] args) {
-
         if(SmithProberProxyObj != null) {
             String MethodName = (String)MethodNameObj;
             Class<?>[]  argType = new Class[]{int.class,int.class,Object[].class};
             Reflection.invokeMethod(SmithProberProxyObj,MethodName,argType,classID,methodID,args);
         }
-
     }
 
     public static void PostProxy(Object MethodNameObj,int classID, int methodID, Object[] args, Object ret, boolean blocked) {
@@ -104,8 +102,7 @@ public class SmithAgent {
             Class<?>[]  loadclassargType = new Class[]{String.class};
             SmithProberClazz = (Class<?>)Reflection.invokeMethod(xLoader,"loadClass", loadclassargType,smithProbeClassName);
 
-            SmithAgentLogger.logger.info("SmithProbe ClassLoader:"+SmithProberClazz.getClassLoader());
-
+            SmithAgentLogger.logger.info("SmithProbe classloader:"+SmithProberClazz.getClassLoader());
             Class<?>[] emptyArgTypes = new Class[]{};
             if (SmithProberClazz != null) {
                 Constructor<?> constructor = SmithProberClazz.getDeclaredConstructor();
@@ -220,7 +217,7 @@ public class SmithAgent {
         public String call() throws Exception {
              xLoaderLock.lock();
                 try {
-                    if(xLoader != null) {
+                    if(SmithProberObj != null) {
                         String agent = System.getProperty("rasp.probe");
 
                         if(unLoadSmithProber()) {
@@ -244,9 +241,8 @@ public class SmithAgent {
                             SmithAgentLogger.logger.warning(proberPath + " loading fail!");
                         }
                         else {
-                            System.setProperty("smith.status", "attach");
                             System.setProperty("smith.rasp", probeVersion+"-"+checksumStr);
-                            
+                            System.setProperty("smith.status", "attach");
                             System.setProperty("rasp.probe", "smith");
                         }
                     }
@@ -284,11 +280,13 @@ public class SmithAgent {
                 SmithAgentLogger.logger.info("checksumStr:" + checksumStr);
                 SmithAgentLogger.logger.info("proberPath:" + proberPath); 
 
+                /* 
                 if (!JarUtil.checkJarFile(proberPath,checksumStr)) {
                     System.setProperty("smith.status", proberPath + " check fail");
                     SmithAgentLogger.logger.warning(proberPath + " check fail!");
                     return ;
                 }
+                    */
 
                 if(instrumentation == null) {
                     instrumentation = inst;
