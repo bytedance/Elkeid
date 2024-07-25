@@ -1,5 +1,3 @@
-use anyhow::{anyhow, Result};
-
 use log::*;
 use regex::Regex;
 use std::process::Command;
@@ -10,6 +8,8 @@ use crate::process::ProcessInfo;
 use crate::runtime::{ProbeCopy, ProbeState, ProbeStateInspect};
 use crate::settings::{self, RASP_VERSION};
 use lazy_static::lazy_static;
+use anyhow::{anyhow, Result, Result as AnyhowResult};
+use fs_extra::file::{copy as file_copy, remove as file_remove, CopyOptions as FileCopyOptions};
 
 lazy_static! {
     static ref RASP_JAVA_CHECKSUMSTR: String = {

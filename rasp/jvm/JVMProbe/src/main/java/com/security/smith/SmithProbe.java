@@ -1,8 +1,5 @@
 package com.security.smith;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.lmax.disruptor.EventHandler;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -61,14 +58,24 @@ import java.util.stream.Stream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.security.CodeSource;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.jar.JarFile;
 
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonArray;
+import com.google.gson.GsonBuilder;
+import com.security.smith.client.message.*;
+
+import java.io.File;
+import java.io.FileOutputStream;
+
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 
 class DetectTimerTask extends TimerTask {
         private boolean isCancel = false;
@@ -202,9 +209,17 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         limits = new ConcurrentHashMap<>();
 
         MessageSerializer.initInstance(proberVersion);
+        MessageEncoder.initInstance();
+        MessageDecoder.initInstance();
+
         heartbeat = new Heartbeat();
 
-        client = new Client(this);
+        try {
+            client = new Client(this);
+        }
+        catch(Throwable e) {
+            SmithLogger.exception(e);
+        }
 
         disruptor = new Disruptor<>(new EventFactory<Trace>() {
             @Override
@@ -212,27 +227,30 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 return new Trace();
             }
         }, TRACE_BUFFER_SIZE, DaemonThreadFactory.INSTANCE);
-       
+
         rulemgr = new Rule_Mgr();
         ruleconfig = new Rule_Config(rulemgr);
 
         smithProxy = new SmithProbeProxy();
 
+      InputStream inputStream = getResourceAsStream("class.yaml");
 
-        ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
-        InputStream inputStream = this.getClass().getResourceAsStream("/class.yaml");
-
-        try {
-            for (SmithClass smithClass : objectMapper.readValue(inputStream, SmithClass[].class)) {
-                if(!isBypassHookClass(smithClass.getName())) {
+        if(inputStream != null) {
+            SmithLogger.logger.info("find class.yaml");
+            try {
+                Reader xreader = new InputStreamReader(inputStream);
+                YamlReader yamlReader = new YamlReader(xreader);
+                for (SmithClass smithClass : yamlReader.read(SmithClass[].class)) {
                     smithClasses.put(smithClass.getName(), smithClass);
                 }
+            } catch (IOException e) {
+                SmithLogger.exception(e);
             }
-        } catch (IOException e) {
-            SmithLogger.exception(e);
+        }
+        else {
+            SmithLogger.logger.info("not find class.yaml");
         }
     
-
         SmithLogger.logger.info("probe init leave");
     }
     private boolean isBypassHookClass(String className) {
@@ -302,28 +320,27 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
         inst.removeTransformer(this);
         reloadClasses();
-        SmithLogger.logger.info("probe stop 0");
+        SmithLogger.logger.info("Transformer stop");
 
         disable = true;
         scanswitch = false;
 
         ClassUploadTransformer.getInstance().stop();
 
-        SmithLogger.logger.info("probe stop 1");
+        SmithLogger.logger.info("Upload Transformer stop");
 
         detectTimer.cancel();
         smithproxyTimer.cancel();
-        SmithLogger.logger.info("probe stop 2");
+        SmithLogger.logger.info("detect Timer stop");
         
         client.stop();
-        SmithLogger.logger.info("probe stop 3");
-
+        SmithLogger.logger.info("client stop");
         
         ruleconfig.destry();
-        SmithLogger.logger.info("probe stop 4");
+        SmithLogger.logger.info("ruleconfig stop");
 
         rulemgr.destry();
-        SmithLogger.logger.info("probe stop 5");
+        SmithLogger.logger.info("rulemgr stop");
 
         detectTimerTask = null;
         detectTimer =null;
@@ -380,6 +397,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         proberPath = null;
         MessageSerializer.delInstance();
 
+        MessageEncoder.delInstance();
+        MessageSerializer.delInstance();
+        MessageDecoder.delInstance();
         SmithLogger.logger.info("probe uninit leave");
         SmithLogger.loggerProberUnInit();
         
@@ -466,7 +486,13 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         Filter filter = filters.get(new ImmutablePair<>(trace.getClassID(), trace.getMethodID()));
 
         if (filter == null) {
-            client.write(Operate.TRACE, trace);
+                Gson gson = new GsonBuilder()
+                .registerTypeAdapter(Trace.class, new TraceSerializer())
+                .registerTypeAdapter(Trace.class, new TraceDeserializer())
+                .create();
+            JsonElement jsonElement = gson.toJsonTree(trace);
+
+            client.write(Operate.TRACE, jsonElement);
             return;
         }
 
@@ -481,7 +507,13 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         if (exclude.length > 0 && Arrays.stream(exclude).anyMatch(pred))
             return;
 
-        client.write(Operate.TRACE, trace);
+        Gson gson = new GsonBuilder()
+            .registerTypeAdapter(Trace.class, new TraceSerializer())
+            .registerTypeAdapter(Trace.class, new TraceDeserializer())
+            .create();
+        JsonElement jsonElement = gson.toJsonTree(trace);
+
+        client.write(Operate.TRACE, jsonElement);
     }
 
     public void printClassfilter(ClassFilter data) {
@@ -582,7 +614,13 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 classFilter.setTransId();
                 classFilter.setStackTrace(Thread.currentThread().getStackTrace());
 
-                client.write(Operate.SCANCLASS, classFilter);
+                Gson gson = new GsonBuilder()
+                .registerTypeAdapter(ClassFilter.class, new ClassFilterSerializer())
+                .registerTypeAdapter(ClassFilter.class, new ClassFilterDeserializer())
+                .create();
+                JsonElement jsonElement = gson.toJsonTree(classFilter);
+
+                client.write(Operate.SCANCLASS, jsonElement);
                 SmithLogger.logger.info("send metadata: " + classFilter.toString());
                 Thread.sleep(1000);
                 sendByte(classfileBuffer, classFilter.getTransId());
@@ -694,11 +732,11 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     methodMap
             );
 
-
             classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);  
- 
+
             return classWriter.toByteArray();
-        } catch (Throwable e) {
+        }
+        catch(Throwable e) {
             SmithLogger.exception(e);
         }
 
@@ -731,6 +769,26 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         SmithLogger.logger.info("on control: " + action);
         disable = action == STOP;
         reloadClasses();
+    }
+
+     public static JsonElement convertJarsToJsonElement(Set<Jar> jars) {
+        Gson gson = new Gson();
+
+        JsonArray jarsArray = new JsonArray();
+        for (Jar jar : jars) {
+            JsonObject jarObj = new JsonObject();
+            jarObj.addProperty("path", jar.getPath());
+            jarObj.addProperty("implementationTitle", jar.getImplementationTitle());
+            jarObj.addProperty("implementationVersion", jar.getImplementationVersion());
+            jarObj.addProperty("specificationTitle", jar.getSpecificationTitle());
+            jarObj.addProperty("specificationVersion", jar.getSpecificationVersion());
+            jarsArray.add(jarObj);
+        }
+
+        JsonObject jsonObj = new JsonObject();
+        jsonObj.add("jars", jarsArray);
+
+        return jsonObj;
     }
 
     @Override
@@ -770,7 +828,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             jars.add(jar);
         }
 
-        client.write(Operate.DETECT, Collections.singletonMap("jars", jars));
+        JsonElement jsonElement = convertJarsToJsonElement(jars);
+
+        client.write(Operate.DETECT, jsonElement);
     }
 
     @Override
@@ -940,7 +1000,13 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     classFilter.setRuleId(rule_id);
                     classFilter.setStackTrace(Thread.currentThread().getStackTrace());
 
-                    client.write(Operate.SCANCLASS, classFilter);
+                    Gson gson = new GsonBuilder()
+                    .registerTypeAdapter(ClassFilter.class, new ClassFilterSerializer())
+                    .registerTypeAdapter(ClassFilter.class, new ClassFilterDeserializer())
+                    .create();
+                    JsonElement jsonElement = gson.toJsonTree(classFilter);
+
+                    client.write(Operate.SCANCLASS, jsonElement);
                     SmithLogger.logger.info("send metadata: " + classFilter.toString());
                     sendClass(clazz, classFilter.getTransId());
 
@@ -1004,7 +1070,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             //int send_length = Math.min(packetSize, data.length - offset);
             classUpload.setClassData(data);
 
-            client.write(Operate.CLASSUPLOAD, classUpload);
+            Gson gson = new Gson();
+            JsonElement jsonElement = gson.toJsonTree(classUpload);
+
+            client.write(Operate.CLASSUPLOAD, jsonElement);
             SmithLogger.logger.info("send classdata: " + classUpload.toString());
         //}
     }
