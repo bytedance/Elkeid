@@ -143,6 +143,25 @@ pub fn vm_version(pid: i32) -> Result<i32> {
     };
 }
 
+pub fn check_java_version(ver: &String, pid:i32) -> Result<()> {
+    let ver:u32 = match ver.parse::<u32>() {
+        Ok(v) => {v}
+        Err(_) => {0}
+    };
+    if ver < 8 {
+        warn!("process {} Java version lower than 8: {}, so not inject", pid, ver);
+        let msg = format!("Java version lower than 8: {}, so not inject", ver);
+        return Err(anyhow!(msg));
+    } else if ver == 13 || ver == 14 {
+        // jdk bug https://bugs.openjdk.org/browse/JDK-8222005
+        warn!("process {} Java version {} has attach bug, so not inject", pid, ver);
+        let msg = format!("process {} Java version {} has attach bug, so not inject", pid, ver);
+        return Err(anyhow!(msg));
+    } else {
+        return Ok(());
+    }
+}
+
 pub fn prop(pid: i32) -> Result<ProbeState> {
     return match jcmd(pid, " VM.system_properties") {
         Ok(stdout) => {
