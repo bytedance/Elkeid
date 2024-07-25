@@ -150,3 +150,36 @@ pub fn nodejs_version(pid: i32, nodejs_bin_path: &String) -> Result<(u32, u32, S
     };
     Ok((major_number, minor_number, String::from(version)))
 }
+
+pub fn check_nodejs_version(ver: &String) -> Result<()> {
+    let major_minor: Option<(u32, u32)> = match ver.split('.').next() {
+        Some(major_str) => {
+            if let Ok(major) = major_str.parse::<u32>() {
+                if let Some(minor_str) = ver.split('.').nth(1) {
+                    if let Ok(minor) = minor_str.parse::<u32>() {
+                        Some((major, minor))
+                    } else {
+                        None
+                    }
+                } else {
+                    Some((major, 0))
+                }
+            } else {
+                None
+            }
+        }
+        None => None,
+    };
+
+    if let Some((major, minor)) = major_minor {
+        if major > 8 || (major == 8 && minor >= 6) {
+            return Ok(());
+        } else {
+            let msg = format!("nodejs version lower than 8.6: {}", ver);
+            return Err(anyhow!(msg));
+        }
+    } else {
+        let msg = format!("nodejs version cannot parse: {}", ver);
+        return Err(anyhow!(msg));
+    }
+}

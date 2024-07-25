@@ -112,28 +112,11 @@ pub trait RuntimeInspect {
                 Err(e) => info!("Failed to check '+DisableAttachMechanism': {}", e),
             }
             
-            // https://bugs.openjdk.org/browse/JDK-8292695
-            // let uptime = count_uptime(process_info.start_time.unwrap()).unwrap_or(0);
-            // if uptime > 0  && uptime < 5 {
-            //     let interval = 5 - uptime;
-            //     info!("JVM process {} just start, so sleep {} sec", process_info.pid, interval);
-            //     std::thread::sleep(Duration::from_secs(interval));
-            // }
             match Self::check_signal_dispatch(process_info.pid) {
                 Ok(v) => {
                     if v == true {
                         let version = match vm_version(process_info.pid) {
                             Ok(ver) => {
-                                if ver < 8 {
-                                    warn!("process {} Java version lower than 8: {}, so not inject", process_info.pid, ver);
-                                    let msg = format!("Java version lower than 8: {}, so not inject", ver);
-                                    return Err(anyhow!(msg));
-                                } else if ver == 13 || ver == 14 {
-                                    // jdk bug https://bugs.openjdk.org/browse/JDK-8222005
-                                    warn!("process {} Java version {} has attach bug, so not inject", process_info.pid, ver);
-                                    let msg = format!("process {} Java version {} has attach bug, so not inject", process_info.pid, ver);
-                                    return Err(anyhow!(msg));
-                                }
                                 ver.to_string()
                             }
                             Err(e) => {
@@ -193,17 +176,7 @@ pub trait RuntimeInspect {
             };
         if nodejs_process_filter_check_reuslt {
             let version = match nodejs_version(process_info.pid, &process_exe_file) {
-                Ok((major, minor, v)) => {
-                    if major < 8 {
-                        let msg = format!("nodejs version lower than 8.6: {}", v);
-                        return Err(anyhow!(msg));
-                    }
-                    if major == 8 {
-                        if minor < 6 {
-                            let msg = format!("nodejs version lower than 8.6: {}", v);
-                            return Err(anyhow!(msg));
-                        }
-                    }
+                Ok((_, _, v)) => {
                     v
                 }
                 Err(e) => {
