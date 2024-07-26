@@ -2,6 +2,7 @@ package com.security.smithloader;
 
 import java.util.jar.Manifest;
 
+import com.security.smithloader.common.JarUtil;
 import com.security.smithloader.common.ParseParameter;
 import com.security.smithloader.common.Reflection;
 import com.security.smithloader.log.SmithAgentLogger;
@@ -270,13 +271,11 @@ public class SmithAgent {
                 SmithAgentLogger.logger.info("checksumStr:" + checksumStr);
                 SmithAgentLogger.logger.info("proberPath:" + proberPath); 
 
-                /* 
                 if (!JarUtil.checkJarFile(proberPath,checksumStr)) {
                     System.setProperty("smith.status", proberPath + " check fail");
                     SmithAgentLogger.logger.warning(proberPath + " check fail!");
                     return ;
                 }
-                    */
 
                 if(instrumentation == null) {
                     instrumentation = inst;
