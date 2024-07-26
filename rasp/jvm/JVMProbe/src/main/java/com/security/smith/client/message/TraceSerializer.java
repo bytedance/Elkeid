@@ -16,10 +16,10 @@ public class TraceSerializer implements JsonSerializer<Trace> {
         jsonObject.addProperty("class_id", src.getClassID());
         jsonObject.addProperty("method_id", src.getMethodID());
         jsonObject.addProperty("blocked", src.isBlocked());
-        jsonObject.addProperty("policyID", src.getPolicyID());
+        jsonObject.addProperty("policy_id",src.getPolicyID());
         jsonObject.add("ret",context.serialize(convertRet(src.getRet())));
         jsonObject.add("args",context.serialize(convertArgs(src.getArgs())));
-        jsonObject.add("stackTrace", context.serialize(convertStackTrace(src.getStackTrace())));
+        jsonObject.add("stack_trace", context.serialize(convertStackTrace(src.getStackTrace())));
         return jsonObject;
     }
 
@@ -33,7 +33,6 @@ public class TraceSerializer implements JsonSerializer<Trace> {
             result[i] = String.valueOf(value[i]);
         }
         return result;
-//        return Arrays.stream(value).map(String::valueOf).toArray(String[]::new);
     }
 
    private String[] convertStackTrace(StackTraceElement[] stackTrace) {

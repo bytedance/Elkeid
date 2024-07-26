@@ -3,16 +3,15 @@ package com.security.smith.client.message;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
-
 
 import java.util.Arrays;
 
 public class Trace {
     private int classID;
     private int methodID;
-    private boolean blocked;
-    private String policyID;
+    private boolean blocked = false;
+
+    private String policyID = "";
 
     private Object ret;
     private Object[] args;
