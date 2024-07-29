@@ -13,6 +13,15 @@ public class Heartbeat {
     private String class_filter_version;
     private int discard_count;
 
+    public Heartbeat() {
+        filter = "";
+        block = "";
+        limit = "";
+        patch = "";
+        class_filter_version = "";
+        discard_count = 0;
+    }
+
     public String getFilter() {
         return filter;
     }

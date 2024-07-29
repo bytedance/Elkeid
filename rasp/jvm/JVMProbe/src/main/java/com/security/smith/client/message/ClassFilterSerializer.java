@@ -22,7 +22,7 @@ public class ClassFilterSerializer implements JsonSerializer<ClassFilter> {
         jsonObject.addProperty("parent_Class_name", src.getParentClassName());
         jsonObject.addProperty("parent_class_Loader_name", src.getParentClassLoaderName());
         jsonObject.addProperty("rule_id", src.getRuleId());
-        jsonObject.add("stackTrace", context.serialize(convertStackTrace(src.getStackTrace())));
+        jsonObject.add("stack_trace", context.serialize(convertStackTrace(src.getStackTrace())));
         return jsonObject;
     }
 

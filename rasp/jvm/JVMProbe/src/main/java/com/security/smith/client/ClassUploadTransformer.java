@@ -15,6 +15,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.Base64;
 
 import com.security.smith.client.message.ClassFilter;
 import com.security.smith.client.message.ClassUpload;
@@ -366,14 +367,15 @@ public class ClassUploadTransformer implements ClassFileTransformer,Runnable {
 
                 classUpload.setByteTotalLength(length);
                 classUpload.setByteLength(length);
-                classUpload.setClassData(data);
+                Base64.Encoder encoder = Base64.getEncoder();
+                String dataStr = encoder.encodeToString(data);
+                classUpload.setClassData(dataStr);
 
                 if (client != null) {
                     Gson gson = new Gson();
                     JsonElement jsonElement = gson.toJsonTree(classUpload);
                     client.write(Operate.CLASSUPLOAD, jsonElement);
                     SmithLogger.logger.info("send classdata: " + classUpload.toString());
-                    client.write(Operate.CLASSUPLOAD, classUpload);
                 }
             }
 

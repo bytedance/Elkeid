@@ -5,14 +5,14 @@ import java.time.Instant;
 import java.util.UUID;
 
 public class ClassFilter {
-    private String transId = null;
+    private String transId = "";
     private String className = "";
     private String classPath = "";
     private String interfacesName = "";
     private String classLoaderName = "";
     private String parentClassName = "";
     private String parentClassLoaderName = "";
-    private long ruleId;
+    private long ruleId = -1;
     @SerializedName("stackTrace")
     private StackTraceElement[] stackTrace = {};
 

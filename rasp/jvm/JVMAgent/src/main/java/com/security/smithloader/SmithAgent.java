@@ -1,12 +1,7 @@
 package com.security.smithloader;
 
-import java.util.jar.Attributes;
-import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
-import javax.management.openmbean.CompositeDataInvocationHandler;
-
-import com.security.smithloader.MemCheck;
 import com.security.smithloader.common.JarUtil;
 import com.security.smithloader.common.ParseParameter;
 import com.security.smithloader.common.Reflection;
@@ -14,10 +9,6 @@ import com.security.smithloader.log.SmithAgentLogger;
 
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.locks.ReentrantLock;

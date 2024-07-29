@@ -3,7 +3,6 @@ package com.security.smith.client.message;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.security.smith.client.message.ClassFilter;
-import com.security.smith.client.message.ClassFilter;
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
 import java.lang.reflect.Type;
@@ -21,7 +20,7 @@ public class ClassFilterDeserializer implements com.google.gson.JsonDeserializer
         filter.setParentClassName(jsonObject.getAsJsonPrimitive("parent_Class_name").getAsString());
         filter.setParentClassLoaderName(jsonObject.getAsJsonPrimitive("parent_class_Loader_name").getAsString());
         filter.setRuleId(jsonObject.getAsJsonPrimitive("rule_id").getAsInt());
-        filter.setStackTrace(convertStackTrace(context.deserialize(jsonObject.get("stackTrace"), String[].class)));
+        filter.setStackTrace(convertStackTrace(context.deserialize(jsonObject.get("stack_trace"), String[].class)));
         return filter;
     }
 

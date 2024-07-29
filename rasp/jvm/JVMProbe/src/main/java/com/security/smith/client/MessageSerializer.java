@@ -15,24 +15,34 @@ import java.time.Instant;
 
 public class MessageSerializer implements  JsonSerializer<Message> {
     static private int pid;
-    static private String jvmVersion;
-    static private String probeVersion;
+    static private String jvmVersion = "";
+    static private String probeVersion = "";
 
     public static void initInstance(String probeVer) {
         pid = ProcessHelper.getCurrentPID();
         jvmVersion = ManagementFactory.getRuntimeMXBean().getSpecVersion();
         probeVersion = probeVer;
+        if(probeVersion == null) {
+            probeVersion = "";
+        }
     }
 
     public static void delInstance() {
-        jvmVersion = null;
-        probeVersion = null;
+        jvmVersion = "";
+        probeVersion = "";
     }
 
     public static void initInstance() {
         pid = ProcessHelper.getCurrentPID();
         jvmVersion = ManagementFactory.getRuntimeMXBean().getSpecVersion();
+        if(jvmVersion == null) {
+            jvmVersion = "";
+        }
+
         probeVersion = MessageSerializer.class.getPackage().getImplementationVersion();
+        if(probeVersion == null) {
+            probeVersion = "";
+        }
     }
 
     @Override
@@ -43,7 +53,12 @@ public class MessageSerializer implements  JsonSerializer<Message> {
         obj.addProperty("pid", pid);
         obj.addProperty("runtime", "JVM");
         obj.addProperty("runtime_version", jvmVersion);
-        obj.addProperty("probe_version", probeVersion);
+        if(probeVersion != null) {
+            obj.addProperty("probe_version", probeVersion);
+        }
+        else {
+            obj.addProperty("probe_version", "");
+        }
         obj.addProperty("time", Instant.now().getEpochSecond());
         return obj;
     }

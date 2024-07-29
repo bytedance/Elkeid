@@ -57,12 +57,7 @@ import java.util.stream.Stream;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.security.CodeSource;
 import java.util.jar.JarFile;
-
-
-import java.io.FileOutputStream;
-import java.io.IOException;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -70,9 +65,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonArray;
 import com.google.gson.GsonBuilder;
 import com.security.smith.client.message.*;
-
-import java.io.File;
-import java.io.FileOutputStream;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -1068,7 +1060,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             //classUpload.setByteOffset(offset);
             classUpload.setByteLength(length);
             //int send_length = Math.min(packetSize, data.length - offset);
-            classUpload.setClassData(data);
+            Base64.Encoder encoder = Base64.getEncoder();
+            String dataStr = encoder.encodeToString(data);
+            classUpload.setClassData(dataStr);
 
             Gson gson = new Gson();
             JsonElement jsonElement = gson.toJsonTree(classUpload);
