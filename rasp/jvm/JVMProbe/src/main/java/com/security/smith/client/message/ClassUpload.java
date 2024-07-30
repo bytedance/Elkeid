@@ -18,7 +18,7 @@ public class ClassUpload {
         this.trans_id = traceId;
     }
 
-    public int getByte_Total_Length() {
+    public int getByteTotalLength() {
         return byte_total_length;
     }
 
@@ -53,12 +53,11 @@ public class ClassUpload {
     @Override
     public String toString() {
         return "{" +
-                "transId: '" + trans_id + '\'' +
-                ", byteTotalLength: " + byte_total_length +
-                ", byteOffset: " + byte_offset +
-                ", byteLength: " + byte_length +
+                "trans_id: '" + trans_id + '\'' +
+                ", byte_total_length: " + byte_total_length +
+                ", byte_offset: " + byte_offset +
+                ", byte_length: " + byte_length +
                 ", timestamp: " + Instant.now().getEpochSecond() +
-                ", classData: " + class_data +
                 '}';
     }
 }
