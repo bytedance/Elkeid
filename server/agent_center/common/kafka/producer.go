@@ -68,7 +68,7 @@ func createProducerConfig(clientID string) *sarama.Config {
 	config.Producer.Flush.Bytes = 1024 * 1024 * 4
 	config.Producer.Flush.MaxMessages = 1024 * 1024 * 4
 	config.Producer.Flush.Frequency = 10 * time.Second
-	config.Producer.Compression = sarama.CompressionLZ4
+	config.Producer.Compression = sarama.CompressionSnappy
 	return config
 }
 
