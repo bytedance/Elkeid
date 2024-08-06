@@ -11,6 +11,7 @@ public class Heartbeat {
     private String limit;
     private String patch;
     private String class_filter_version;
+    private String switches;
     private int discard_count;
 
     public Heartbeat() {
@@ -19,6 +20,7 @@ public class Heartbeat {
         limit = "";
         patch = "";
         class_filter_version = "";
+        switches = "";
         discard_count = 0;
     }
 
@@ -60,6 +62,14 @@ public class Heartbeat {
 
     public void setClassFilterVersion(String classFilterVersion) {
         this.class_filter_version = classFilterVersion;
+    }
+
+    public String getSwicthes() {
+        return switches;
+    }
+
+    public void setSwitches(String switches) {
+        this.switches = switches;
     }
 
     public synchronized int  getDiscardCount() {

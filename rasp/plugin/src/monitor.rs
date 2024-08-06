@@ -215,7 +215,6 @@ pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
         }
         sleep(Duration::from_secs(10));
     }
-    Ok(())
 }
 
 fn internal_main(
@@ -473,24 +472,25 @@ fn internal_main(
                 }
                 Err(e) => {
                     warn!("operation failed: {:?} {}", operation_message, e);
-                    let report = make_report(
-                        &process.clone(),
-                        format!("{}_failed", state.clone()).as_str(),
-                        e.to_string(),
-                    );
-                    let mut record = hashmap_to_record(report);
-                    record.data_type = report_action_data_type.clone() as i32;
-                    record.timestamp = time();
-                    if let Err(e) = operation_reporter.send(
-                        record
-                    ) {
-                        warn!("operation thread send command to receiver err: {}, pid: {}", e, process.pid);
+                    if state != "ATTACHED" {
+                        let report = make_report(
+                            &process.clone(),
+                            format!("{}_failed", state.clone()).as_str(),
+                            e.to_string(),
+                        );
+                        let mut record = hashmap_to_record(report);
+                        record.data_type = report_action_data_type.clone() as i32;
+                        record.timestamp = time();
+                        if let Err(e) = operation_reporter.send(
+                            record
+                        ) {
+                            warn!("operation thread send command to receiver err: {}, pid: {}", e, process.pid);
+                        }
+                        let _ = process.update_failed_reason(&e.to_string());
+                        let mut opp = operation_process_rw.write();
+                        opp.insert(process.pid, process.clone());
+                        drop(opp);
                     }
-                    let _ = process.update_failed_reason(&e.to_string());
-                    let mut opp = operation_process_rw.write();
-                    opp.insert(process.pid, process.clone());
-                    drop(opp);
-
                     continue;
                 }
             };
@@ -535,5 +535,4 @@ fn internal_main(
         }
         sleep(Duration::from_secs(10));
     }
-    Ok(())
 }

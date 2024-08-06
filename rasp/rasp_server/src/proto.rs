@@ -6,6 +6,8 @@ use lazy_static::lazy_static;
 use log::*;
 use serde::{Deserialize, Serialize};
 use serde_json;
+use crate::proto::serde_json::Map;
+use serde_json::Value;
 use anyhow::{Result as AnyhowResult, anyhow};
 
 use super::utils::generate_timestamp_f64;
@@ -138,6 +140,8 @@ pub struct ProbeConfigData {
     pub class_filter_version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rule: Option<Vec<ProbeConfigClassRule>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub switches: Option<Map<String, Value>>,
 }
 
 impl ProbeConfigData {
@@ -161,6 +165,7 @@ impl ProbeConfigData {
                 rule_version: None,
                 class_filter_version: None,
                 rule: None,
+                switches: None,
             },
             7 => ProbeConfigData {
                 uuid: Some(String::new()),
@@ -171,6 +176,7 @@ impl ProbeConfigData {
                 rule_version: None,
                 class_filter_version: None,
                 rule: None,
+                switches: None,
             },
             8 => ProbeConfigData {
                 uuid: Some(String::new()),
@@ -181,6 +187,7 @@ impl ProbeConfigData {
                 rule_version: None,
                 class_filter_version: None,
                 rule: None,
+                switches: None,
             },
             9 => ProbeConfigData {
                 uuid: Some(String::new()),
@@ -191,6 +198,7 @@ impl ProbeConfigData {
                 rule_version: None,
                 class_filter_version: None,
                 rule: None,
+                switches: None,
             },
             12 => ProbeConfigData {
                 uuid: None,
@@ -201,6 +209,7 @@ impl ProbeConfigData {
                 rule_version: Some(0),
                 class_filter_version: Some(String::new()),
                 rule: None,
+                switches: None,
             },
             13 => ProbeConfigData {
                 uuid: None,
@@ -211,6 +220,7 @@ impl ProbeConfigData {
                 rule_version: None,
                 class_filter_version: None,
                 rule: Some(Vec::new()),
+                switches: None,
             },
             14 => ProbeConfigData {
                 uuid: None,
@@ -221,6 +231,18 @@ impl ProbeConfigData {
                 rule_version: None,
                 class_filter_version: None,
                 rule: None,
+                switches: None,
+            },
+            18 => ProbeConfigData {
+                uuid: Some(String::new()),
+                blocks: None,
+                filters: None,
+                limits: None,
+                patches: None,
+                rule_version: None,
+                class_filter_version: None,
+                rule: None,
+                switches: Some(Map::new()),
             },
             _ => {
                 return Err(anyhow!("message type not valid"));
@@ -294,6 +316,7 @@ pub struct ProbeConfigPatch {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[allow(non_snake_case)]
 pub struct ProbeConfigClassRule {
     pub virusName: String,
     pub flags: i32,

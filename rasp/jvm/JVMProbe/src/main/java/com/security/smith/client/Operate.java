@@ -19,4 +19,5 @@ public class Operate {
     public static final int CLASSUPLOADSTART = 15;      // start to send class
     public static final int CLASSUPLOAD = 16;
     public static final int CLASSUPLOADEND = 17;        // end to send class
+    public static final int SWITCHES = 18;    // switch
 }

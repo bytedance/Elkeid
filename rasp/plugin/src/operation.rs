@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result as AnyhowResult};
 use crossbeam::channel::{Sender};
-use librasp::{manager::{BPFSelect, RASPManager}, runtime::ProbeState};
+use librasp::manager::{BPFSelect, RASPManager};
 use log::*;
 use librasp::process::TracingState;
 use crate::{utils::Control};
@@ -175,7 +175,7 @@ impl Operator {
                     match process_state.to_string().as_str() {
                         "ATTACHED" => {
                             match  self.detach_process(process) {
-                                Ok(res) => {
+                                Ok(_) => {
                                     process.tracing_state = Some(TracingState::INSPECTED);
                                 }
                                 Err(e) => {

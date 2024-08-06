@@ -1,5 +1,6 @@
 package com.security.smith.type;
 
+import java.util.Set;
 public class SmithMethod {
     private int id;
     private String name;
@@ -8,6 +9,7 @@ public class SmithMethod {
     private String preHook;
     private String postHook;
     private String exceptionHook;
+    private Set<String> types;
 
     public int getId() {
         return id;
@@ -63,5 +65,13 @@ public class SmithMethod {
 
     public void setExceptionHook(String exceptionHook) {
         this.exceptionHook = exceptionHook;
+    }
+
+    public Set<String> getTypes() {
+        return types;
+    }
+
+    public void setTypes(Set<String> types) {
+        this.types = types;
     }
 }

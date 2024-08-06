@@ -114,7 +114,7 @@ pub async fn start_bind(sock: RASPSock) -> Result<(), String> {
                         error!("clean bind path err: {:?}", err);
                     },
                 }
-                listen(&sock.server_addr.clone());
+                let _ = listen(&sock.server_addr.clone());
             }
         }
     });
@@ -286,7 +286,7 @@ pub async fn looping(
                     None => {
                         log::warn!("tx recv ctrl stop");
                         let _ = tx_ctrl.stop();
-                        drop(framed_rx.get_mut());
+                        //drop(framed_rx.get_mut());
                         return
                     }
 

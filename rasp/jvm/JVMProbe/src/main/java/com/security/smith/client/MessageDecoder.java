@@ -29,22 +29,17 @@ public class MessageDecoder extends ReplayingDecoder<Void> {
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws IOException {
-        try {
-            long payloadSize = in.readUnsignedInt();
-            if (payloadSize > Message.MAX_PAYLOAD_SIZE)
-                return;
+ 
+        long payloadSize = in.readUnsignedInt();
+        if (payloadSize > Message.MAX_PAYLOAD_SIZE)
+            return;
 
-            byte[] buffer = new byte[(int) payloadSize];
-            in.readBytes(buffer);
+        byte[] buffer = new byte[(int) payloadSize];
+        in.readBytes(buffer);
 
-            String msg = new String(buffer);
-            Message message = gson.fromJson(msg,Message.class);
-            if (message != null)
-                out.add(message);
-        }
-        catch(Throwable e) {
-            e.printStackTrace();
-        }
-        
+        String msg = new String(buffer);
+        Message message = gson.fromJson(msg,Message.class);
+        if (message != null)
+            out.add(message);
     }
 }

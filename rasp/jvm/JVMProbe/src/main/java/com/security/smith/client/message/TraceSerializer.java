@@ -20,6 +20,7 @@ public class TraceSerializer implements JsonSerializer<Trace> {
         jsonObject.add("ret",context.serialize(convertRet(src.getRet())));
         jsonObject.add("args",context.serialize(convertArgs(src.getArgs())));
         jsonObject.add("stack_trace", context.serialize(convertStackTrace(src.getStackTrace())));
+        jsonObject.addProperty("types", src.getTypes());
         return jsonObject;
     }
 

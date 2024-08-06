@@ -221,7 +221,7 @@ impl RASPComm for ThreadMode {
                 target = resolved_path;
             }
 
-            make_path_exist(target.clone());
+            let _ = make_path_exist(target.clone());
         
             match fs::symlink(self.bind_path.clone(), target.clone()) {
                 Ok(()) => {
