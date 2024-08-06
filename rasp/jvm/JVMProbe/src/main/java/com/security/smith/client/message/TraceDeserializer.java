@@ -18,6 +18,7 @@ public class TraceDeserializer implements com.google.gson.JsonDeserializer<Trace
         trace.setRet(context.deserialize(jsonObject.get("ret"), Object.class));
         trace.setArgs(context.deserialize(jsonObject.get("args"), Object[].class));
         trace.setStackTrace(convertStackTrace(context.deserialize(jsonObject.get("stack_trace"), String[].class)));
+        trace.setTypes(jsonObject.getAsJsonPrimitive("types").getAsString());
         return trace;
     }
 

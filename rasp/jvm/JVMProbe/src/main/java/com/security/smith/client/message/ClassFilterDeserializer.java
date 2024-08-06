@@ -20,6 +20,9 @@ public class ClassFilterDeserializer implements com.google.gson.JsonDeserializer
         filter.setParentClassName(jsonObject.getAsJsonPrimitive("parent_Class_name").getAsString());
         filter.setParentClassLoaderName(jsonObject.getAsJsonPrimitive("parent_class_Loader_name").getAsString());
         filter.setRuleId(jsonObject.getAsJsonPrimitive("rule_id").getAsInt());
+        filter.setClassId(jsonObject.getAsJsonPrimitive("class_id").getAsInt());
+        filter.setMethodId(jsonObject.getAsJsonPrimitive("method_id").getAsInt());
+        filter.setTypes(jsonObject.getAsJsonPrimitive("types").getAsString());
         filter.setStackTrace(convertStackTrace(context.deserialize(jsonObject.get("stack_trace"), String[].class)));
         return filter;
     }

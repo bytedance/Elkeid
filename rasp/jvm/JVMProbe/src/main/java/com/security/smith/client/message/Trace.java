@@ -9,6 +9,7 @@ import java.util.Arrays;
 public class Trace {
     private int classID;
     private int methodID;
+    private String types;
     private boolean blocked = false;
 
     private String policyID = "";
@@ -71,5 +72,13 @@ public class Trace {
 
     public void setStackTrace(StackTraceElement[] stackTrace) {
         this.stackTrace = stackTrace;
+    }
+
+    public String getTypes() {
+        return types;
+    }
+
+    public void setTypes(String types) {
+        this.types = types;
     }
 }

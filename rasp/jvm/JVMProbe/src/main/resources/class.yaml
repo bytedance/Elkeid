@@ -5,21 +5,33 @@
       name: start
       desc: ([Ljava/lang/String;Ljava/util/Map;Ljava/lang/String;[Ljava/lang/ProcessBuilder$Redirect;Z)Ljava/lang/Process;
       block: true
+      types: 
+        - process
     - id: 1
       name: getOutputStream
       desc: ()Ljava/io/OutputStream;
+      types: 
+        - process
     - id: 2
       name: getInputStream
       desc: ()Ljava/io/InputStream;
+      types:
+        - process
     - id: 3
       name: getErrorStream
       desc: ()Ljava/io/InputStream;
+      types: 
+        - process
     - id: 4
       name: <init>
       desc: ([B[BI[BI[B[IZZ)V
+      types:
+        - process
     - id: 5
       name: <init>
       desc: (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;[JZ)V
+      types: 
+        - process
 
 - id: 1
   name: java.io.FileInputStream
@@ -27,153 +39,229 @@
     - id: 0
       name: <init>
       desc: (Ljava/io/File;)V
+      types:
+        - file
 - id: 2
   name: java.io.FileOutputStream
   methods:
     - id: 0
       name: <init>
       desc: (Ljava/io/File;Z)V
+      types:
+        - file
 - id: 3
   name: java.io.File
   methods:
     - id: 0
       name: renameTo
       desc: (Ljava/io/File;)Z
+      types:
+        - file
     - id: 1
       name: list
       desc: ()[Ljava/lang/String;
+      types:
+        - file
     - id: 2
       name: delete
       desc: ()Z
+      types:
+        - file
     - id: 3
       name: createNewFile
       desc: ()Z
+      types:
+        - file
     - id: 4
       name: <init>
       desc: (Ljava/lang/String;Ljava/lang/String;)V
+      types:
+        - file
 - id: 4
   name: java.net.Socket
   methods:
     - id: 0
       name: connect
       desc: (Ljava/net/SocketAddress;I)V
+      types:
+        - net
 - id: 5
   name: sun.nio.ch.Net
   methods:
     - id: 0
       name: connect
       desc: (Ljava/net/ProtocolFamily;Ljava/io/FileDescriptor;Ljava/net/InetAddress;I)I
+      types:
+        - net
 - id: 6
   name: java.lang.ClassLoader
   methods:
     - id: 0
       name: loadLibrary
       desc: (Ljava/lang/Class;Ljava/lang/String;Z)V
+      types:
+        - load
 - id: 7
   name: java.net.URLClassLoader
   methods:
     - id: 0
       name: <init>
       desc: ([Ljava/net/URL;Ljava/lang/ClassLoader;)V
+      types:
+        - load
     - id: 1
       name: <init>
       desc: ([Ljava/net/URL;)V
+      types:
+        - load
     - id: 2
       name: <init>
       desc: ([Ljava/net/URL;Ljava/lang/ClassLoader;Ljava/net/URLStreamHandlerFactory;)V
+      types:
+        - load
     - id: 3
       name: <init>
       desc: (Ljava/lang/String;[Ljava/net/URL;Ljava/lang/ClassLoader;)V
+      types:
+        - load
     - id: 4
       name: <init>
       desc: (Ljava/lang/String;[Ljava/net/URL;Ljava/lang/ClassLoader;Ljava/net/URLStreamHandlerFactory;)V
+      types:
+        - load
     - id: 5
       name: addURL
       desc: (Ljava/net/URL;)V
+      types:
+        - load
 - id: 8
   name: java.net.InetAddress
   methods:
     - id: 0
       name: getAllByName
       desc: (Ljava/lang/String;Ljava/net/InetAddress;)[Ljava/net/InetAddress;
+      types:
+        - net
 - id: 9
   name: java.net.DatagramSocket
   methods:
     - id: 0
       name: connectInternal
       desc: (Ljava/net/InetAddress;I)V
+      types:
+        - net
 - id: 10
   name: java.lang.UNIXProcess
   methods:
     - id: 0
       name: <init>
       desc: ([B[BI[BI[B[IZ)V
+      types:
+        - process
     - id: 1
       name: getOutputStream
       desc: ()Ljava/io/OutputStream;
+      types:
+        - process
     - id: 2
       name: getInputStream
       desc: ()Ljava/io/InputStream;
+      types:
+        - process
     - id: 3
       name: getErrorStream
       desc: ()Ljava/io/InputStream;
+      types:
+        - process
 - id: 11
   name: sun.nio.fs.UnixNativeDispatcher
   methods:
     - id: 0
       name: open
       desc: (Lsun/nio/fs/UnixPath;II)I
+      types:
+        - file
     - id: 1
       name: openat
       desc: (I[BII)I
+      types:
+        - file
     - id: 2
       name: link
       desc: (Lsun/nio/fs/UnixPath;Lsun/nio/fs/UnixPath;)V
+      types:
+        - file
     - id: 3
       name: unlink
       desc: (Lsun/nio/fs/UnixPath;)V
+      types:
+        - file
     - id: 4
       name: unlinkat
       desc: (I[BI)V
+      types:
+        - file
     - id: 5
       name: mknod
       desc: (Lsun/nio/fs/UnixPath;IJ)V
+      types:
+        - file
     - id: 6
       name: rename
       desc: (Lsun/nio/fs/UnixPath;Lsun/nio/fs/UnixPath;)V
+      types:
+        - file
     - id: 7
       name: renameat
       desc: (I[BI[B)V
+      types:
+        - file
     - id: 8
       name: mkdir
       desc: (Lsun/nio/fs/UnixPath;I)V
+      types:
+        - file
     - id: 9
       name: rmdir
       desc: (Lsun/nio/fs/UnixPath;)V
+      types:
+        - file
     - id: 10
       name: readlink
       desc: (Lsun/nio/fs/UnixPath;)[B
+      types:
+        - file
     - id: 11
       name: symlink
       desc: ([BLsun/nio/fs/UnixPath;)V
+      types:
+        - file
     - id: 12
       name: opendir
       desc: (Lsun/nio/fs/UnixPath;)J
+      types:
+        - file
 - id: 12
   name: java.io.RandomAccessFile
   methods:
     - id: 0
       name: <init>
       desc: (Ljava/io/File;Ljava/lang/String;)V
+      types:
+        - file
 - id: 13
   name: java.nio.file.Files
   methods:
     - id: 0
       name: copy
       desc: (Ljava/nio/file/Path;Ljava/nio/file/Path;[Ljava/nio/file/CopyOption;)Ljava/nio/file/Path;
+      types:
+        - file
     - id: 1
       name: move
       desc: (Ljava/nio/file/Path;Ljava/nio/file/Path;[Ljava/nio/file/CopyOption;)Ljava/nio/file/Path;
+      types:
+        - file
 - id: 14
   name: org.apache.catalina.core.StandardPipeline
   methods:
@@ -181,6 +269,8 @@
        name: addValve
        desc: (Lorg/apache/catalina/Valve;)V
        preHook: checkAddValvePre
+       types:
+        - memshell
 - id: 15
   name: org.apache.catalina.core.StandardContext
   methods:
@@ -188,18 +278,26 @@
        name: addServletMapping
        desc: (Ljava/lang/String;Ljava/lang/String;Z)V
        preHook: checkAddServletPre
+       types:
+        - memshell
      - id: 1
        name: addApplicationEventListener
        desc: (Ljava/lang/Object;)V
        preHook: checkAddListenerPre
+       types:
+        - memshell
      - id: 2
        name: addFilterDef
        desc: (Lorg/apache/tomcat/util/descriptor/web/FilterDef;)V
        preHook: checkAddFilterPre
+       types:
+        - memshell
      - id: 3
        name: addServletMappingDecoded
        desc: (Ljava/lang/String;Ljava/lang/String;Z)V
        preHook: checkAddServletPre
+       types:
+        - memshell
 - id: 16
   name: org.apache.catalina.core.ApplicationFilterConfig
   methods:
@@ -207,6 +305,8 @@
       name: <init>
       desc: ""
       postHook: checkFilterConfigPost
+      types:
+        - memshell
 - id: 17
   name: com.caucho.server.dispatch.FilterManager
   methods:
@@ -214,6 +314,8 @@
       name: addFilter
       desc: (Lcom/caucho/server/dispatch/FilterConfigImpl;)V
       preHook: checkResinAddFilterPre
+      types:
+        - memshell
 - id: 18
   name: com.caucho.server.dispatch.ServletManager
   methods:
@@ -221,6 +323,8 @@
       name: addServlet
       desc: (Lcom/caucho/server/dispatch/ServletConfigImpl;Z)V
       preHook: checkResinAddServletPre
+      types:
+        - memshell
 - id: 19
   name: com.caucho.server.webapp.WebApp
   methods:
@@ -228,6 +332,8 @@
       name: addListenerObject
       desc: (Ljava/lang/Object;Z)V
       preHook: checkAddListenerPre
+      types:
+        - memshell
 - id: 20
   name: org.eclipse.jetty.servlet.BaseHolder
   methods:
@@ -235,6 +341,8 @@
       name: setHeldClass
       desc: (Ljava/lang/Class;)V
       preHook: checkJettyMemshellPre
+      types:
+        - memshell
 - id: 21
   name: org.eclipse.jetty.servlet.Holder
   methods:
@@ -242,6 +350,8 @@
       name: setHeldClass
       desc: (Ljava/lang/Class;)V
       preHook: checkJettyMemshellPre
+      types:
+        - memshell
 - id: 22
   name: org.eclipse.jetty.server.handler.ContextHandler
   methods:
@@ -249,6 +359,8 @@
       name: addEventListener
       desc: (Ljava/util/EventListener;)V
       preHook: checkJettyListenerPre
+      types:
+        - memshell
 - id: 23
   name: org.springframework.web.servlet.handler.AbstractUrlHandlerMapping
   methods:
@@ -256,6 +368,8 @@
       name: registerHandler
       desc: (Ljava/lang/String;Ljava/lang/Object;)V
       preHook: checkSpringControllerPre
+      types:
+        - memshell
 - id: 24
   name: org.springframework.web.servlet.handler.AbstractHandlerMethodMapping$MappingRegistry
   methods:
@@ -263,6 +377,8 @@
       name: register
       desc: (Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/reflect/Method;)V
       preHook: checkSpringControllerPre
+      types:
+        - memshell
 - id: 25
   name: org.springframework.web.servlet.HandlerInterceptor
   methods:
@@ -270,6 +386,8 @@
       name: <init>
       desc: ""
       postHook: checkMemshellInitPost
+      types:
+        - memshell
 - id: 26
   name: javax.servlet.Filter
   methods:
@@ -277,6 +395,8 @@
       name: <init>
       desc: ""
       postHook: checkMemshellInitPost
+      types: 
+        - memshell
 - id: 27
   name: javax.servlet.Servlet
   methods:
@@ -284,6 +404,8 @@
       name: <init>
       desc: ""
       postHook: checkMemshellInitPost
+      types: 
+        - memshell
 - id: 28
   name: javax.servlet.ServletRequestListener
   methods:
@@ -291,6 +413,8 @@
       name: <init>
       desc: ""
       postHook: checkMemshellInitPost
+      types: 
+        - memshell
 - id: 29
   name: javax.websocket.Endpoint
   methods:
@@ -298,6 +422,8 @@
       name: <init>
       desc: ""
       postHook: checkMemshellInitPost
+      types: 
+        - memshell
 - id: 30
   name: jakarta.servlet.Filter
   methods:
@@ -305,6 +431,8 @@
       name: <init>
       desc: ""
       postHook: checkMemshellInitPost
+      types: 
+        - memshell
 - id: 31
   name: jakarta.servlet.Servlet
   methods:
@@ -312,6 +440,8 @@
       name: <init>
       desc: ""
       postHook: checkMemshellInitPost
+      types:
+        - memshell
 - id: 32
   name: jakarta.servlet.ServletRequestListener
   methods:
@@ -319,6 +449,8 @@
       name: <init>
       desc: ""
       postHook: checkMemshellInitPost
+      types: 
+        - memshell
 - id: 33
   name: io.undertow.servlet.core.ManagedServlets
   methods:
@@ -326,6 +458,8 @@
        name: addServlet
        desc: (Lio/undertow/servlet/api/ServletInfo;)Lio/undertow/servlet/handlers/ServletHandler;
        preHook: checkWildflyaddServletPre
+       types:
+         - memshell
 - id: 34
   name: org.jboss.modules.ModuleClassLoader
   methods:
@@ -333,6 +467,8 @@
       name: findClass
       desc: (Ljava/lang/String;ZZ)Ljava/lang/Class;
       exceptionHook: processWildflyClassLoaderException
+      types:
+        - memshell
 - id: 35
   name: com.caucho.server.http.WebSocketContextImpl
   methods:
@@ -340,6 +476,8 @@
       name: <init>
       desc: ""
       preHook: checkResinWebSocketPre
+      types:
+        - memshell
 - id: 36
   name: javax.websocket.server.DefaultServerEndpointConfig
   methods:
@@ -347,12 +485,16 @@
       name: <init>
       desc: ""
       preHook: checkWebSocketConfigPre
+      types:
+        - memshell
 - id: 37
   name: sun.nio.ch.SocketChannelImpl
   methods:
     - id: 0
       name: connect
       desc: (Ljava/net/SocketAddress;)Z
+      types:
+        - net
 - id: 38
   name: io.undertow.servlet.core.ManagedFilters
   methods:
@@ -360,6 +502,8 @@
       name: addFilter
       desc: (Lio/undertow/servlet/api/FilterInfo;)Lio/undertow/servlet/core/ManagedFilter;
       preHook: checkWildflyaddFilterPre
+      types:
+        - memshell
 - id: 39
   name: org.apache.tomcat.util.threads.ThreadPoolExecutor
   methods:
@@ -367,6 +511,8 @@
       name: <init>
       desc: ""
       postHook: checkMemshellInitPost
+      types:
+        - memshell
 - id: 40
   name: org.apache.coyote.UpgradeProtocol
   methods:
@@ -374,6 +520,8 @@
       name: <init>
       desc: ""
       postHook: checkMemshellInitPost
+      types:
+        - memshell
 - id: 41
   name: org.apache.felix.framework.BundleWiringImpl$BundleClassLoader
   methods:
@@ -381,10 +529,14 @@
       name: findClass
       desc: (Ljava/lang/String;)Ljava/lang/Class;
       exceptionHook: processGlassfishClassLoaderfindClassException
+      types:
+        - memshell
     - id: 1
       name: loadClass
       desc: (Ljava/lang/String;Z)Ljava/lang/Class;
       exceptionHook: processGlassfishClassLoaderfindClassException
+      types:
+        - memshell
 - id: 42
   name: java.lang.reflect.Field
   methods:
@@ -392,6 +544,8 @@
       name: <init>
       desc: ""
       postHook: handleReflectField
+      types:
+        - reflect
 - id: 43
   name: java.lang.reflect.Method
   methods:
@@ -399,3 +553,5 @@
       name: <init>
       desc: ""
       postHook: handleReflectMethod
+      types:
+        - reflect

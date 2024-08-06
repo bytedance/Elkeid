@@ -245,6 +245,20 @@ public class Client implements EventHandler {
                 Thread scanAllClassThread = new Thread(messageHandler::onScanAllClass);
                 scanAllClassThread.setDaemon(true);
                 scanAllClassThread.start();
+                break;
+            }
+            case Operate.SWITCHES: {
+                SmithLogger.logger.info("switches: " + message.getData().toString());
+
+                try {
+                    Gson gson = new Gson();
+                    SwitchConfig config = gson.fromJson(message.getData().toString(), SwitchConfig.class);
+                    messageHandler.onSwitches(config);
+                } catch (Exception e) {
+                    SmithLogger.exception(e);
+                }
+
+                break;
             }
         }
     }

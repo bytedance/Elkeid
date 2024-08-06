@@ -149,7 +149,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     private Map<Pair<Integer, Integer>, Filter> filters;
     private Map<Pair<Integer, Integer>, Block> blocks;
     private Map<Pair<Integer, Integer>, Integer> limits;
+    private Map<String, Set<String>> hookTypes;
     private Disruptor<Trace> disruptor;
+    private Map<String, Boolean> switchConfig;
     
     private Rule_Mgr    rulemgr;
     private Rule_Config ruleconfig;
@@ -199,6 +201,8 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         filters = new ConcurrentHashMap<>();
         blocks = new ConcurrentHashMap<>();
         limits = new ConcurrentHashMap<>();
+        hookTypes = new ConcurrentHashMap<>();
+        switchConfig = new ConcurrentHashMap<>();
 
         MessageSerializer.initInstance(proberVersion);
         MessageEncoder.initInstance();
@@ -233,16 +237,21 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 Reader xreader = new InputStreamReader(inputStream);
                 YamlReader yamlReader = new YamlReader(xreader);
                 for (SmithClass smithClass : yamlReader.read(SmithClass[].class)) {
+                    for (SmithMethod smithMethod : smithClass.getMethods()) {
+            
+                        if (smithMethod.getTypes() != null && !smithMethod.getTypes().isEmpty())
+                            hookTypes.put(smithClass.getId() + "-" + smithMethod.getId(), smithMethod.getTypes());
+                    }
                     smithClasses.put(smithClass.getName(), smithClass);
                 }
-            } catch (IOException e) {
+            } catch (Throwable e) {
                 SmithLogger.exception(e);
             }
         }
         else {
             SmithLogger.logger.info("not find class.yaml");
         }
-    
+        
         SmithLogger.logger.info("probe init leave");
     }
     private boolean isBypassHookClass(String className) {
@@ -259,6 +268,23 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         }
 
         return false;
+    }
+    public boolean isFunctionEnabled(int classId, int methodId) {
+        String key = classId + "-" + methodId;
+        Set<String> types = hookTypes.get(key);
+        
+        if (switchConfig == null || switchConfig.isEmpty()) {
+            return true;
+        }
+
+        if (types != null) {
+            for (String type : types) {
+                if (switchConfig.getOrDefault(type, true)) {
+                    return true;
+                }
+            }
+        }
+        return false; 
     }
 
     public void start() {
@@ -1072,6 +1098,16 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         //}
     }
 
+    @Override
+    public void onSwitches(SwitchConfig switches) {
+        if (switches == null || switches.getSwitches() == null) {
+            return;
+        }
+        switchConfig = switches.getSwitches();
+
+        heartbeat.setSwitches(switches.getUUID());
+    }
+
     public Heartbeat getHeartbeat() {
         return heartbeat;
     }
@@ -1102,4 +1138,21 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         return disruptor;
     }
 
+    public String getFuncTypes(int classId, int methodId) {
+        String types = "";
+        try {
+            
+            if (hookTypes.containsKey(classId + "-" + methodId)) {
+                for (String type: hookTypes.get(classId + "-" + methodId)) {
+                    types += type + ",";
+                }
+            }
+            if (types.length() > 0) {
+                types = types.substring(0, types.length() - 1);
+            }
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+        return types;
+    }
 }

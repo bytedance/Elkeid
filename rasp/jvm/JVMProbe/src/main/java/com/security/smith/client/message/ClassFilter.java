@@ -13,6 +13,9 @@ public class ClassFilter {
     private String parent_class_name = "";
     private String parent_class_loader_name = "";
     private long rule_id = -1;
+    private int class_id = -1;
+    private int method_id = -1;
+    private String types = "";
     @SerializedName("stackTrace")
     private StackTraceElement[] stack_trace = {};
 
@@ -81,6 +84,30 @@ public class ClassFilter {
         this.rule_id = ruleId;
     }
 
+    public int getClassId() {
+        return class_id;
+    }
+
+    public void setClassId(int classId) {
+        this.class_id = classId;
+    }
+
+    public int getMethodId() {
+        return method_id;
+    }
+
+    public void setMethodId(int methodId) {
+        this.method_id = methodId;
+    }
+
+    public String getTypes() {
+        return types;
+    }
+
+    public void setTypes(String types) {
+        this.types = types;
+    }
+
     public StackTraceElement[] getStackTrace() {
         return stack_trace;
     }
@@ -93,6 +120,9 @@ public class ClassFilter {
     public String toString() {
         return "{" +
                 "trans_id: '" + trans_id + '\'' +
+                ", class_id: '" + class_id + '\'' +
+                ", method_id: '" + method_id + '\'' +
+                ", types: '" + types + '\'' +
                 ", class_name: '" + class_name + '\'' +
                 ", class_path: '" + class_path + '\'' +
                 ", interfaces_name: '" + interfaces_name + '\'' +

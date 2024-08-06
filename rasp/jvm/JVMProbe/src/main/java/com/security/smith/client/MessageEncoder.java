@@ -26,20 +26,15 @@ public class MessageEncoder extends MessageToByteEncoder<Object> {
 
     @Override
     protected void encode(ChannelHandlerContext ctx, Object msg, ByteBuf out) {
-        try {
-            byte[] payload = gson.toJson(msg).getBytes();
-            int payloadSize = payload.length;
 
-            ByteBuffer buffer = ByteBuffer.allocate(payloadSize + Message.PROTOCOL_HEADER_SIZE);
-            buffer.putInt(payloadSize);
-            buffer.put(payload);
-            buffer.flip();
+        byte[] payload = gson.toJson(msg).getBytes();
+        int payloadSize = payload.length;
 
-            out.writeBytes(buffer);
-        } 
-        catch(Throwable e) {
-            e.printStackTrace();
-        }
-       
+        ByteBuffer buffer = ByteBuffer.allocate(payloadSize + Message.PROTOCOL_HEADER_SIZE);
+        buffer.putInt(payloadSize);
+        buffer.put(payload);
+        buffer.flip();
+
+        out.writeBytes(buffer);
     }
 }

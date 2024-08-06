@@ -14,4 +14,5 @@ public interface MessageHandler {
     boolean OnAddRule(Rule_Data ruleData);
     boolean OnAddRule(String rulejson);
     void onScanAllClass();
+    void onSwitches(SwitchConfig switches);
 }
