@@ -77,6 +77,11 @@
       desc: (Ljava/lang/String;Ljava/lang/String;)V
       types:
         - file
+    - id: 5
+      name: setExecutable
+      desc: (ZZ)Z
+      types:
+        - file
 - id: 4
   name: java.net.Socket
   methods:
