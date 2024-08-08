@@ -10,7 +10,7 @@ public class ProcessProcessor {
 
         try {
             return FieldUtils.readField(object, "pid", true);
-        } catch (IllegalAccessException e) {
+        } catch (Throwable e) {
             SmithAgentLogger.exception(e);
         }
 
