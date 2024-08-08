@@ -94,6 +94,12 @@ ifneq ($(MNTNS_OPS_INUM),)
 ccflags-y += -D SMITH_HAVE_MNTNS_OPS_INUM
 endif
 
+FCHECK_H_FILES := $(shell find -L $(K_I_PATH) -path \*/linux/fdtable.h) /dev/null
+FCHECK_SUPPORT := $(shell sh -c "grep -sE \\*[[:space:]]*fcheck_files $(FCHECK_H_FILES)")
+ifneq ($(FCHECK_SUPPORT),)
+ccflags-y += -D SMITH_HAVE_FCHECK_FILES
+endif
+
 USER_MSGHDR_FILES := $(shell find -L $(K_I_PATH) -path \*/linux/socket.h) /dev/null
 USER_MSGHDR_STRUT := $(shell sh -c "grep -sE struct[[:space:]]\+user_msghdr[[:space:]]\+\{ $(USER_MSGHDR_FILES)")
 ifeq ($(USER_MSGHDR_STRUT),)

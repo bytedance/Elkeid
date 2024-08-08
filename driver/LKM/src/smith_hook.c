@@ -330,10 +330,10 @@ static struct files_struct *smith_get_files_struct(struct task_struct *task)
     return files;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
-#define smith_lookup_fd          files_lookup_fd_raw
+#ifdef SMITH_HAVE_FCHECK_FILES
+#define smith_lookup_fd          fcheck_files /* < 5.10.220 */
 #else
-#define smith_lookup_fd          fcheck_files
+#define smith_lookup_fd          files_lookup_fd_raw /* >= 5.10.220 */
 #endif
 
 static struct file *smith_fget_raw(unsigned int fd)
