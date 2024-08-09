@@ -453,6 +453,7 @@ impl Detector {
                                                 };
                                                 break; 
                                                 */
+                                                warn!("walkdir err, should continue: {:?}", _err);
                                                 continue
                                             }
                                             Some(Ok(entry)) => entry,
@@ -461,6 +462,15 @@ impl Detector {
                                         if fp.is_dir() {
                                             continue;
                                         }
+                                        if let Ok(pmeta) = fp.metadata() {
+                                            let fsize = pmeta.len();
+                                            if fsize <= 4 || fsize > 1024 * 1024 * 100 {
+                                                continue;
+                                            }
+                                        }else{
+                                            continue
+                                        }
+
                                         let task = ScanTaskUserTask::with_path(
                                             t.get_token(),
                                             &fp.to_string_lossy(),
