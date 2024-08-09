@@ -441,6 +441,7 @@ impl Detector {
                                                 break;
                                             }
                                             Some(Err(_err)) => {
+                                                /* 
                                                 let end_flag = ScanFinished {
                                                     data: "failed".to_string(),
                                                     error: _err.to_string(),
@@ -450,7 +451,9 @@ impl Detector {
                                                 ) {
                                                     warn!("send err, should exit : {:?}", e);
                                                 };
-                                                break;
+                                                break; 
+                                                */
+                                                continue
                                             }
                                             Some(Ok(entry)) => entry,
                                         };
