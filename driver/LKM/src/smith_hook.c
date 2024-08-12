@@ -122,7 +122,9 @@ static uint64_t g_loaded_jiffies;
 static uint32_t smith_get_delta(uint32_t start)
 {
     uint64_t delta = smith_get_jiffies() - g_loaded_jiffies;
-    return (uint32_t)do_div(delta, USER_HZ) + start;
+
+    do_div(delta, USER_HZ);
+    return (uint32_t)delta + start;
 }
 
 /*
@@ -3881,7 +3883,8 @@ static int smith_drop_head_img(int count)
             break;
         prev = link;
         /* it doesn't timeout yet, so continue and wait */
-        if (smith_get_delta(0) < img->si_age)
+        if (smith_get_delta(0) < img->si_age &&
+            count < (SMITH_IMG_MAX_INSTANCES << 4))
             break;
 
         /* img hasn't been touched for seconds */
@@ -4008,9 +4011,8 @@ static void smith_show_img(struct tt_node *tnod)
         return;
 
     img = container_of(tnod, struct smith_img, si_node);
-    printk("img: %px sb: %px ino: %lu lru: %u/%d refs: %d -> %s\n",
-            img, img->si_sb, img->si_ino, img->si_age,
-            smith_get_delta(0) >= img->si_age,
+    printk("img: %px sb: %px ino: %lu lru age: %u now: %u refs: %d -> %s\n",
+            img, img->si_sb, img->si_ino, img->si_age, smith_get_delta(0),
             atomic_read(&img->si_node.refs), img->si_path);
 }
 
