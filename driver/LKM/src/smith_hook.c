@@ -4042,7 +4042,11 @@ static void smith_enum_img_lru(void)
 }
 
 /* FMODE_CREATED added since v4.19 */
-#define SMITH_FILE_CREATION_TRACK  !defined(FMODE_CREATED)
+#ifdef FMODE_CREATED
+# define SMITH_FILE_CREATION_TRACK 0
+#else
+# define SMITH_FILE_CREATION_TRACK 1
+#endif
 
 #if SMITH_FILE_CREATION_TRACK
 
