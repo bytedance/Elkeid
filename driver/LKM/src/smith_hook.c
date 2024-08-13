@@ -627,7 +627,10 @@ static int __init kernel_symbols_init(void)
         return -ENODEV;
     smith_get_pid_task = ptr;
 
+    /* sized_strscpy introduced from v6.9 to replace strscpy */
     ptr = (void *)smith_kallsyms_lookup_name("strscpy");
+    if (!ptr)
+        ptr = (void *)smith_kallsyms_lookup_name("sized_strscpy");
     if (!ptr)
         ptr = (void *)smith_kallsyms_lookup_name("strlcpy");
     if (!ptr)
