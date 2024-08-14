@@ -208,17 +208,17 @@ pub fn pangolin_inject_file(pid: i32, file_path: &str) -> Result<bool> {
                 Ok(true)
             } else if es_code == 255 {
                 let msg = format!(
-                    "python attach exit code 255: {} {} {} {}",
-                    es_code, pid, &stdout, &stderr
+                    "python attach exit code 255: {} {} {}",
+                    es_code, &stdout, &stderr
                 );
-                error!("{}", msg);
+                error!("pid: {}, {}", pid, msg);
                 Err(anyhow!("{}", msg))
             } else {
                 let msg = format!(
-                    "python attach exit code {} {} {} {}",
-                    es_code, pid, &stdout, &stderr
+                    "python attach exit code {} {} {}",
+                    es_code, &stdout, &stderr
                 );
-                error!("{}", msg);
+                error!("pid: {}, {}", pid, msg);
                 Err(anyhow!("{}", msg))
             }
         }

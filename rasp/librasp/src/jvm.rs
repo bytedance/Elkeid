@@ -73,7 +73,7 @@ pub fn java_attach(pid: i32) -> Result<bool> {
             let es_code = match es.code() {
                 Some(ec) => ec,
                 None => {
-                    return Err(anyhow!("get status code failed: {}", pid));
+                    return Err(anyhow!("get status code failed: {}, output: {}, err: {}", pid, out, err));
                 }
             };
             if es_code == 0 {
@@ -82,16 +82,24 @@ pub fn java_attach(pid: i32) -> Result<bool> {
                     Ok(_) => {
                         return Ok(true);
                     }
-                    Err(e) => {
-                        return Err(anyhow!(e.to_string()));
+                    Err(_) => {
+                        std::thread::sleep(Duration::from_millis(500));
+                        match check_result(pid, "attach") {
+                            Ok(_) => {
+                                return Ok(true);
+                            }
+                            Err(e) => {
+                                return Err(anyhow!(e.to_string()));
+                            }
+                        }
                     }
                 }
             } else {
                 let msg = format!(
-                    "jvm attach exit code {} {} {} {}",
-                    es_code, pid, &out, &err
+                    "jvm attach exit code {} {} {}",
+                    es_code, &out, &err
                 );
-                error!("{}", msg);
+                error!("pid: {}, {}", pid, msg);
                 Err(anyhow!("{}", msg))
             }
         }
@@ -244,10 +252,10 @@ pub fn java_detach(pid: i32) -> Result<bool> {
                 }
             } else {
                 let msg = format!(
-                    "jvm detach exit code {} {} {} {}",
-                    es_code, pid, &out, &err
+                    "jvm detach exit code {} {} {}",
+                    es_code, &out, &err
                 );
-                error!("{}", msg);
+                error!("pid: {}, {}", pid, msg);
                 Err(anyhow!("{}", msg))
             }      
         }
