@@ -216,13 +216,14 @@ static spinlock_t g_delayed_put_lock;
 static struct delayed_put_node *smith_deref_head_node(void)
 {
     struct delayed_put_node *dnod;
+    unsigned long flags;
 
     /* retrive head node from delayed put queue */
-    spin_lock(&g_delayed_put_lock);
+    spin_lock_irqsave(&g_delayed_put_lock, flags);
     dnod = g_delayed_put_queue;
     if (dnod)
         g_delayed_put_queue = dnod->next;
-    spin_unlock(&g_delayed_put_lock);
+    spin_unlock_irqrestore(&g_delayed_put_lock, flags);
 
     /* do actual put_files_struct or fput */
     if (dnod) {
@@ -294,15 +295,17 @@ static void smith_stop_delayed_put(void)
 
 static void smith_insert_delayed_put_node(struct delayed_put_node *dnod)
 {
+    unsigned long flags;
+
     if (!dnod)
         return;
 
     atomic_inc(&g_delayed_put_active);
     /* attach dnod to deayed_fput_queue */
-    spin_lock(&g_delayed_put_lock);
+    spin_lock_irqsave(&g_delayed_put_lock, flags);
     dnod->next = g_delayed_put_queue;
     g_delayed_put_queue = dnod;
-    spin_unlock(&g_delayed_put_lock);
+    spin_unlock_irqrestore(&g_delayed_put_lock, flags);
     wake_up_process(g_delayed_put_thread);
 }
 
