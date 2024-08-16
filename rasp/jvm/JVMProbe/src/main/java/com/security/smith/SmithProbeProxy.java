@@ -31,7 +31,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.GsonBuilder;
 public class SmithProbeProxy {
-    private final int CLASS_MAX_ID = 30;
+    private final int CLASS_MAX_ID = 50;
     private final int METHOD_MAX_ID = 20;
     private final int DEFAULT_QUOTA = 12000;
     
