@@ -126,7 +126,7 @@ ccflags-y += -D SMITH_HAVE_MNTNS_OPS_INUM
 endif
 
 FCHECK_H_FILES := $(shell find -L $(K_I_PATH) -path \*/linux/fdtable.h) /dev/null
-FCHECK_SUPPORT := $(shell sh -c "grep -s \*fcheck_files $(FCHECK_H_FILES)")
+FCHECK_SUPPORT := $(shell sh -c "-sE \\*[[:space:]]*fcheck_files $(FCHECK_H_FILES)")
 ifneq ($(FCHECK_SUPPORT),)
 ccflags-y += -D SMITH_HAVE_FCHECK_FILES
 endif
