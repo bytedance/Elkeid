@@ -25,6 +25,12 @@ public class SmithAgent {
     private static String checksumStr = null;
     private static String proberPath = null;
     private static Instrumentation instrumentation = null;
+    public static InheritableThreadLocal<Boolean> checkRecursive = new InheritableThreadLocal<Boolean>() {
+        @Override
+        protected Boolean initialValue() {
+            return false;
+        }
+    };
 
     public static Object getClassLoader() {
         return xLoader;
@@ -39,42 +45,58 @@ public class SmithAgent {
     }
 
     public static void PreProxy(Object MethodNameObj,int classID, int methodID, Object[] args) {
+        if (checkRecursive != null && checkRecursive.get() == true) {
+            return;
+        }
+        if (checkRecursive != null && checkRecursive.get() == false) {
+            checkRecursive.set(true);
+        }
         if(SmithProberProxyObj != null) {
             String MethodName = (String)MethodNameObj;
             Class<?>[]  argType = new Class[]{int.class,int.class,Object[].class};
             Reflection.invokeMethod(SmithProberProxyObj,MethodName,argType,classID,methodID,args);
         }
+        if (checkRecursive != null && checkRecursive.get() == true) {
+            checkRecursive.set(false);
+        }
     }
 
     public static void PostProxy(Object MethodNameObj,int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        if (checkRecursive != null && checkRecursive.get() == true) {
+            return;
+        }
+        if (checkRecursive != null && checkRecursive.get() == false) {
+            checkRecursive.set(true);
+        }
 
         if(SmithProberProxyObj != null) {
             String MethodName = (String)MethodNameObj;
             Class<?>[]  argType = new Class[]{int.class,int.class,Object[].class,Object.class,boolean.class};
             Reflection.invokeMethod(SmithProberProxyObj,MethodName,argType,classID,methodID,args,ret,blocked);
         }
+        if (checkRecursive != null && checkRecursive.get() == true) {
+            checkRecursive.set(false);
+        }
     }
 
     public static Object ExceptionProxy(Object MethodNameObj,int classID, int methodID, Object[] args,Object exceptionObject) throws Throwable {
-
+        if (checkRecursive != null && checkRecursive.get() == true) {
+            return null;
+        }
+        if (checkRecursive != null && checkRecursive.get() == false) {
+            checkRecursive.set(true);
+        }
+        Object obj = null;
         if(SmithProberProxyObj != null) {
             String MethodName = (String)MethodNameObj;
             Class<?>[]  argType = new Class[]{int.class,int.class,Object[].class,Object.class};
-            return Reflection.invokeMethod(SmithProberProxyObj,MethodName,argType,classID,methodID,args,exceptionObject);
+            obj = Reflection.invokeMethod(SmithProberProxyObj,MethodName,argType,classID,methodID,args,exceptionObject);
         }
 
-        return null;
-    }
-
-    public static Object PassProxyToProbe(Object Obj,Object MethodNameObj,int functionID, Object[] args) {
-
-          if(Obj != null) {
-            String MethodName = (String)MethodNameObj;
-            Class<?>[]  argType = new Class[]{int.class,int.class,Object[].class};
-            return Reflection.invokeMethod(Obj,MethodName,argType,functionID,args);
+        if (checkRecursive != null && checkRecursive.get() == true) {
+            checkRecursive.set(false);
         }
-
-        return null;
+        return obj;
     }
 
     private static boolean loadSmithProber(String proberPath, Instrumentation inst) {
