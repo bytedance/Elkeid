@@ -90,9 +90,9 @@ Therefore, it is necessary to have complete anti-intrusion and risk perception c
 | Alarm traceability (resident traceability)             | :ng_man:                 | :white_check_mark:        |
 | Alert Whitelist                                        | :white_check_mark:       | :white_check_mark:        |
 | Multi-alarm aggregation capability                     | :ng_man:                 | :white_check_mark:        |
-| Threat Repsonse (Process)                              | :ng_man:                 | :white_check_mark:        |
-| Threat Repsonse (Network)                              | :ng_man:                 | :white_check_mark:        |
-| Threat Repsonse (File)                                 | :ng_man:                 | :white_check_mark:        |
+| Threat Response (Process)                              | :ng_man:                 | :white_check_mark:        |
+| Threat Response (Network)                              | :ng_man:                 | :white_check_mark:        |
+| Threat Response (File)                                 | :ng_man:                 | :white_check_mark:        |
 | File isolation                                         | :ng_man:                 | :white_check_mark:        |
 | Vulnerability discovery                                | `few vuln info`          | :white_check_mark:        |
 | Vulnerability information hot update                   | :ng_man:                 | :white_check_mark:        |
