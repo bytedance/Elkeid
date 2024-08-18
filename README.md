@@ -20,7 +20,7 @@ Elkeid has the following key capabilities:
 
 * **Elkeid**'s rule engine **Elkeid HUB** can also be well linked with external multiple systems.
 
-**Ekeid** integrates these capabilities into one platform to meet the complex security requirements of different workloads, while also achieving multi-component capability association. What is even more rare is that each component undergoes massive byte-beating. Data and years of combat testing.
+**Elkeid** integrates these capabilities into one platform to meet the complex security requirements of different workloads, while also achieving multi-component capability association. What is even more rare is that each component undergoes massive byte-beating. Data and years of combat testing.
 
 
 
