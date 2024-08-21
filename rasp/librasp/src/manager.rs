@@ -210,7 +210,11 @@ impl RASPManager {
                 })
             }
         }
+        let mut need_write_config = true;
         for m in messages.iter() {
+            if m.message_type >= 12 && m.message_type <= 14 {
+                need_write_config = false;
+            }
             if let Some(uuid) = &m.data.uuid {
                 if uuid == "" {
                     valid_messages.push(PidMissingProbeConfig {
@@ -259,8 +263,10 @@ impl RASPManager {
             }
         }
 
-        let valid_messages_string = serde_json::to_string(&valid_messages)?;
-        self.write_message_to_config_file(pid, nspid, valid_messages_string)?;
+        if need_write_config {
+            let valid_messages_string = serde_json::to_string(&valid_messages)?;
+            self.write_message_to_config_file(pid, nspid, valid_messages_string)?;
+        }
 
         Ok(())
     }
@@ -903,7 +909,7 @@ impl RASPManager {
         if !Path::new(&config_dir).exists() {
             fs_extra::dir::create(&config_dir, true)?;
         }
-        fs::set_permissions(&config_dir, fs::Permissions::from_mode(0o666))?;
+        fs::set_permissions(&config_dir, fs::Permissions::from_mode(0o777))?;
         fs_extra::file::write_all(&config_path_bak, message.as_str())?;
         fs::set_permissions(&config_path_bak, fs::Permissions::from_mode(0o777))?;
         let mut option = fs_extra::file::CopyOptions::new();
