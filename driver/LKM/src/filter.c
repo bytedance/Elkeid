@@ -115,6 +115,7 @@ static void rbtree_clear(struct rb_node *this_node)
 static int add_execve_exe_allowlist(char *data)
 {
     struct allowlist_node *node;
+    unsigned long flags;
     int rc = 0;
 
     if (!data)
@@ -127,13 +128,13 @@ static int add_execve_exe_allowlist(char *data)
     node->len = strlen(data);
     node->value = hash_murmur_OAAT64(data, node->len);
 
-    write_lock(&exe_allowlist_lock);
+    write_lock_irqsave(&exe_allowlist_lock, flags);
     rc = insert_rb(&execve_exe_allowlist, node);
     if (!rc) {
         execve_exe_allowlist_limit++;
-        write_unlock(&exe_allowlist_lock);
+        write_unlock_irqrestore(&exe_allowlist_lock, flags);
     } else {
-        write_unlock(&exe_allowlist_lock);
+        write_unlock_irqrestore(&exe_allowlist_lock, flags);
         if (rc == 1)
             printk(KERN_INFO "[ELKEID] exe already added: %s\n", data);
         smith_kfree(node);
@@ -145,14 +146,15 @@ static int add_execve_exe_allowlist(char *data)
 static void del_execve_exe_allowlist(char *data)
 {
     struct allowlist_node *node;
+    unsigned long flags;
 
-    write_lock(&exe_allowlist_lock);
+    write_lock_irqsave(&exe_allowlist_lock, flags);
     node = search_rb(&execve_exe_allowlist, data);
     if (node) {
         rb_erase(&node->node, &execve_exe_allowlist);
         execve_exe_allowlist_limit--;
     }
-    write_unlock(&exe_allowlist_lock);
+    write_unlock_irqrestore(&exe_allowlist_lock, flags);
 
     if (node) {
         smith_kfree(node->data);
@@ -162,11 +164,13 @@ static void del_execve_exe_allowlist(char *data)
 
 static int del_all_execve_exe_allowlist(void)
 {
-    write_lock(&exe_allowlist_lock);
+    unsigned long flags;
+
+    write_lock_irqsave(&exe_allowlist_lock, flags);
     rbtree_clear(execve_exe_allowlist.rb_node);
     execve_exe_allowlist = RB_ROOT;
     execve_exe_allowlist_limit = 0;
-    write_unlock(&exe_allowlist_lock);
+    write_unlock_irqrestore(&exe_allowlist_lock, flags);
 
     return 0;
 }
@@ -174,9 +178,10 @@ static int del_all_execve_exe_allowlist(void)
 static int print_execve_allowlist(const __user char *buf)
 {
     struct rb_node *node;
+    unsigned long flags;
     int len, sz = 0;
 
-    read_lock(&exe_allowlist_lock);
+    read_lock_irqsave(&exe_allowlist_lock, flags);
     for (node = rb_first(&execve_exe_allowlist); node; node = rb_next(node)) {
         struct allowlist_node *data =
         container_of(node, struct allowlist_node, node);
@@ -191,13 +196,14 @@ static int print_execve_allowlist(const __user char *buf)
             printk("[ELKEID DEBUG] execve_allowlist: %s\n", data->data);
         }
     }
-    read_unlock(&exe_allowlist_lock);
+    read_unlock_irqrestore(&exe_allowlist_lock, flags);
 
     return sz;
 }
 
 static int execve_exe_check(char *data, int len, uint64_t value)
 {
+    unsigned long flags;
     int res;
 
     if (IS_ERR_OR_NULL(data) || len == 0 || value == 0)
@@ -205,9 +211,9 @@ static int execve_exe_check(char *data, int len, uint64_t value)
     if (len == 2 && data[0] == '-' && (data[1] == '1' || data[1] == '2'))
         return 0;
 
-    read_lock(&exe_allowlist_lock);
+    read_lock_irqsave(&exe_allowlist_lock, flags);
     res = exist_rb_value(&execve_exe_allowlist, value);
-    read_unlock(&exe_allowlist_lock);
+    read_unlock_irqrestore(&exe_allowlist_lock, flags);
 
     return res;
 }
@@ -221,6 +227,7 @@ static int execve_exe_check(char *data, int len, uint64_t value)
 static int add_execve_argv_allowlist(char *data)
 {
     struct allowlist_node *node;
+    unsigned long flags;
     int rc = 0;
 
     if (!data)
@@ -233,13 +240,13 @@ static int add_execve_argv_allowlist(char *data)
     node->len = strlen(data);
     node->value = hash_murmur_OAAT64(data, node->len);
 
-    write_lock(&argv_allowlist_lock);
+    write_lock_irqsave(&argv_allowlist_lock, flags);
     rc = insert_rb(&execve_argv_allowlist, node);
     if (!rc) {
         execve_argv_allowlist_limit++;
-        write_unlock(&argv_allowlist_lock);
+        write_unlock_irqrestore(&argv_allowlist_lock, flags);
     } else {
-        write_unlock(&argv_allowlist_lock);
+        write_unlock_irqrestore(&argv_allowlist_lock, flags);
         if (rc == 1)
             printk(KERN_INFO"[ELKEID] cmd already added: %s\n", data);
         smith_kfree(node);
@@ -251,14 +258,15 @@ static int add_execve_argv_allowlist(char *data)
 static void del_execve_argv_allowlist(char *data)
 {
     struct allowlist_node *node;
+    unsigned long flags;
 
-    write_lock(&argv_allowlist_lock);
+    write_lock_irqsave(&argv_allowlist_lock, flags);
     node = search_rb(&execve_argv_allowlist, data);
     if (node) {
         rb_erase(&node->node, &execve_argv_allowlist);
         execve_argv_allowlist_limit--;
     }
-    write_unlock(&argv_allowlist_lock);
+    write_unlock_irqrestore(&argv_allowlist_lock, flags);
 
     if (node) {
         smith_kfree(node->data);
@@ -268,11 +276,13 @@ static void del_execve_argv_allowlist(char *data)
 
 static int del_all_execve_argv_allowlist(void)
 {
-    write_lock(&argv_allowlist_lock);
+    unsigned long flags;
+
+    write_lock_irqsave(&argv_allowlist_lock, flags);
     rbtree_clear(execve_argv_allowlist.rb_node);
     execve_argv_allowlist = RB_ROOT;
     execve_argv_allowlist_limit = 0;
-    write_unlock(&argv_allowlist_lock);
+    write_unlock_irqrestore(&argv_allowlist_lock, flags);
 
     return 0;
 }
@@ -280,8 +290,10 @@ static int del_all_execve_argv_allowlist(void)
 static int print_argv_allowlist(const __user char *buf)
 {
     struct rb_node *node;
+    unsigned long flags;
     int len, sz = 0;
-    read_lock(&argv_allowlist_lock);
+
+    read_lock_irqsave(&argv_allowlist_lock, flags);
     for (node = rb_first(&execve_argv_allowlist); node;
          node = rb_next(node)) {
         struct allowlist_node *data =
@@ -297,7 +309,7 @@ static int print_argv_allowlist(const __user char *buf)
             printk("[ELKEID DEBUG] argv_allowlist:%s \n", data->data);
         }
     }
-    read_unlock(&argv_allowlist_lock);
+    read_unlock_irqrestore(&argv_allowlist_lock, flags);
 
     return sz;
 }
@@ -305,6 +317,7 @@ static int print_argv_allowlist(const __user char *buf)
 static int execve_argv_check(char *data, int len)
 {
     uint64_t value;
+    unsigned long flags;
     int res;
 
     if (IS_ERR_OR_NULL(data) || len == 0)
@@ -313,9 +326,9 @@ static int execve_argv_check(char *data, int len)
         return 0;
 
     value = hash_murmur_OAAT64(data, len);
-    read_lock(&exe_allowlist_lock);
+    read_lock_irqsave(&exe_allowlist_lock, flags);
     res = exist_rb_value(&execve_argv_allowlist, value);
-    read_unlock(&exe_allowlist_lock);
+    read_unlock_irqrestore(&exe_allowlist_lock, flags);
 
     return res;
 }
@@ -447,6 +460,7 @@ static void clear_rb_hash(struct rb_node *node)
 static int image_md5_add(image_hash_t *md5)
 {
     struct image_hash_node *node;
+    unsigned long flags;
     int rc = 0;
 
     if (!md5)
@@ -457,12 +471,12 @@ static int image_md5_add(image_hash_t *md5)
         return -ENOMEM;
     memcpy(&node->hash, md5, sizeof(image_hash_t));
 
-    write_lock(&image_hash_lock);
+    write_lock_irqsave(&image_hash_lock, flags);
     rc = insert_rb_hash(&image_hash_list, node);
     if (!rc) {
-        write_unlock(&image_hash_lock);
+        write_unlock_irqrestore(&image_hash_lock, flags);
     } else {
-        write_unlock(&image_hash_lock);
+        write_unlock_irqrestore(&image_hash_lock, flags);
         if (rc == 1) {
             show_hash(&node->hash, "DUPED:");
             printk(KERN_INFO"[ELKEID] hash already added.\n");
@@ -476,12 +490,13 @@ static int image_md5_add(image_hash_t *md5)
 static void image_md5_del(image_hash_t *md5)
 {
     struct image_hash_node *node;
+    unsigned long flags;
 
-    write_lock(&image_hash_lock);
+    write_lock_irqsave(&image_hash_lock, flags);
     node = search_rb_hash(&image_hash_list, md5);
     if (node)
         rb_erase(&node->node, &image_hash_list);
-    write_unlock(&image_hash_lock);
+    write_unlock_irqrestore(&image_hash_lock, flags);
 
     if (node)
         smith_kfree(node);
@@ -489,24 +504,27 @@ static void image_md5_del(image_hash_t *md5)
 
 static int image_md5_clear(void)
 {
-    write_lock(&image_hash_lock);
+    unsigned long flags;
+
+    write_lock_irqsave(&image_hash_lock, flags);
     clear_rb_hash(image_hash_list.rb_node);
     image_hash_list = RB_ROOT;
-    write_unlock(&image_hash_lock);
+    write_unlock_irqrestore(&image_hash_lock, flags);
 
     return 0;
 }
 
 static int image_md5_check(image_hash_t *md5)
 {
+    unsigned long flags;
     int rc;
 
-    read_lock(&image_hash_lock);
+    read_lock_irqsave(&image_hash_lock, flags);
     if (md5)
         rc = exist_rb_hash(&image_hash_list, md5);
     else
         rc = (image_hash_list.rb_node != NULL);
-    read_unlock(&image_hash_lock);
+    read_unlock_irqrestore(&image_hash_lock, flags);
 
     return rc;
 }
@@ -514,14 +532,15 @@ static int image_md5_check(image_hash_t *md5)
 static void image_md5_enum(void)
 {
     struct rb_node *nod;
+    unsigned long flags;
 
-    read_lock(&image_hash_lock);
+    read_lock_irqsave(&image_hash_lock, flags);
     for (nod = rb_first(&image_hash_list); nod;
          nod = rb_next(nod)) {
         struct image_hash_node *hash = (void *)nod;
         show_hash(&hash->hash, "MD5:  ");
     }
-    read_unlock(&image_hash_lock);
+    read_unlock_irqrestore(&image_hash_lock, flags);
 }
 
 /*
@@ -656,14 +675,15 @@ static struct rule_node *rule_add(struct hlist_head *list,
                     rwlock_t *lock, exe_rule_flex_t *rule)
 {
     struct rule_node *nod;
+    unsigned long flags;
 
     nod = rule_alloc(rule);
     if (!nod)
         return nod;
 
-    write_lock(lock);
+    write_lock_irqsave(lock, flags);
     hlist_add_head(&nod->link, list);
-    write_unlock(lock);
+    write_unlock_irqrestore(lock, flags);
     return nod;
 }
 
@@ -672,8 +692,9 @@ static int rule_del(struct hlist_head *list,
 {
     struct rule_node *nod = NULL;
     struct hlist_node *ent;
+    unsigned long flags;
 
-    write_lock(lock);
+    write_lock_irqsave(lock, flags);
     hlist_for_each(ent, list) {
         nod = hlist_entry(ent, struct rule_node, link);
         if (!memcmp(nod->id, id, sizeof(nod->id)))
@@ -683,7 +704,7 @@ static int rule_del(struct hlist_head *list,
     }
     if (nod)
         hlist_del(&nod->link);
-    write_unlock(lock);
+    write_unlock_irqrestore(lock, flags);
 
     if (nod)
         smith_kfree(nod);
@@ -697,9 +718,10 @@ static int rule_match(struct hlist_head *list,
 {
     struct rule_node *nod = NULL;
     struct hlist_node *ent;
+    unsigned long flags;
     int rc;
 
-    read_lock(lock);
+    read_lock_irqsave(lock, flags);
     if (ei) {
         hlist_for_each(ent, list) {
             int i;
@@ -721,7 +743,7 @@ static int rule_match(struct hlist_head *list,
     } else {
         rc = !hlist_empty(list);
     }
-    read_unlock(lock);
+    read_unlock_irqrestore(lock, flags);
 
     return rc;
 }
@@ -730,23 +752,25 @@ static int rule_clear(struct hlist_head *list, rwlock_t *lock)
 {
     struct hlist_node *ent, *next;
     struct rule_node *nod;
+    unsigned long flags;
 
-    write_lock(lock);
+    write_lock_irqsave(lock, flags);
     hlist_for_each_safe(ent, next, list) {
         nod = hlist_entry(ent, struct rule_node, link);
         hlist_del(&nod->link);
         smith_kfree(nod);
     }
-    write_unlock(lock);
+    write_unlock_irqrestore(lock, flags);
     return 0;
 }
 static void rule_enum(struct hlist_head *list, rwlock_t *lock)
 {
     struct hlist_node *ent;
     struct rule_node *nod;
+    unsigned long flags;
     int i = 0;
 
-    read_lock(lock);
+    read_lock_irqsave(lock, flags);
     printk("enuming exe/cmd rules: %px\n", list);
     hlist_for_each(ent, list) {
         nod = hlist_entry(ent, struct rule_node, link);
@@ -757,7 +781,7 @@ static void rule_enum(struct hlist_head *list, rwlock_t *lock)
                 nod->items[2].item ? nod->items[2].item : "(null)",
                 nod->items[3].item ? nod->items[3].item : "(null)");
     }
-    read_unlock(lock);
+    read_unlock_irqrestore(lock, flags);
 }
 
 static int rule_check(struct exe_item *items, int nitems, char *id)

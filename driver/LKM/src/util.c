@@ -106,24 +106,26 @@ int tt_rb_remove_node_nolock(struct tt_rb *rb, struct tt_node *tnod)
 
 int tt_rb_remove_node(struct tt_rb *rb, struct tt_node *node)
 {
+    unsigned long flags;
     int rc;
 
-    write_lock(&rb->lock);
+    write_lock_irqsave(&rb->lock, flags);
     rc = tt_rb_remove_node_nolock(rb, node);
-    write_unlock(&rb->lock);
+    write_unlock_irqrestore(&rb->lock, flags);
     return rc;
 }
 
 int tt_rb_remove_key(struct tt_rb *rb, void *key)
 {
     struct tt_node *tnod;
+    unsigned long flags;
     int rc = -ENOENT;
 
-    write_lock(&rb->lock);
+    write_lock_irqsave(&rb->lock, flags);
     tnod = tt_rb_lookup_nolock(rb, key);
     if (tnod)
         rb_erase(&tnod->node, &rb->root);
-    write_unlock(&rb->lock);
+    write_unlock_irqrestore(&rb->lock, flags);
 
     if (tnod && !atomic_dec_return(&tnod->refs)) {
         if (rb->release)
@@ -139,15 +141,16 @@ int tt_rb_remove_key(struct tt_rb *rb, void *key)
 
 int tt_rb_deref_node(struct tt_rb *rb, struct tt_node *tnod)
 {
+    unsigned long flags;
     int rc = atomic_add_unless(&tnod->refs, -1, 1);
 
     if (rc)
         return 0;
 
-    write_lock(&rb->lock);
+    write_lock_irqsave(&rb->lock, flags);
     if (0 == atomic_dec_return(&tnod->refs))
         rc = tt_rb_remove_node_nolock(rb, tnod);
-    write_unlock(&rb->lock);
+    write_unlock_irqrestore(&rb->lock, flags);
 
     return rc;
 }
@@ -155,9 +158,10 @@ int tt_rb_deref_node(struct tt_rb *rb, struct tt_node *tnod)
 int tt_rb_deref_key(struct tt_rb *rb, void *key)
 {
     struct tt_node *tnod;
+    unsigned long flags;
     int rc = -ENOENT;
 
-    write_lock(&rb->lock);
+    write_lock_irqsave(&rb->lock, flags);
     tnod = tt_rb_lookup_nolock(rb, key);
     if (tnod) {
         if (atomic_dec_return(&tnod->refs)) {
@@ -167,7 +171,7 @@ int tt_rb_deref_key(struct tt_rb *rb, void *key)
             rb_erase(&tnod->node, &rb->root);
         }
     }
-    write_unlock(&rb->lock);
+    write_unlock_irqrestore(&rb->lock, flags);
 
     if (tnod) {
         if (rb->release)
@@ -229,10 +233,11 @@ errorout:
 int tt_rb_insert_key(struct tt_rb *rb, void *key)
 {
     struct tt_node *tnod;
+    unsigned long flags;
 
-    write_lock(&rb->lock);
+    write_lock_irqsave(&rb->lock, flags);
     tnod = tt_rb_insert_key_nolock(rb, key);
-    write_unlock(&rb->lock);
+    write_unlock_irqrestore(&rb->lock, flags);
     if (IS_ERR(tnod)) {
         return PTR_ERR(tnod);
     } else if (!tnod) {
@@ -244,12 +249,13 @@ int tt_rb_insert_key(struct tt_rb *rb, void *key)
 struct tt_node *tt_rb_lookup_key(struct tt_rb *rb, void *key)
 {
     struct tt_node *tnod;
+    unsigned long flags;
 
-    read_lock(&rb->lock);
+    read_lock_irqsave(&rb->lock, flags);
     tnod = tt_rb_lookup_nolock(rb, key);
     if (tnod)
         atomic_inc(&tnod->refs);
-    read_unlock(&rb->lock);
+    read_unlock_irqrestore(&rb->lock, flags);
 
     return tnod;
 }
@@ -257,12 +263,13 @@ struct tt_node *tt_rb_lookup_key(struct tt_rb *rb, void *key)
 int tt_rb_query_key(struct tt_rb *rb, void *key)
 {
     struct tt_node *tnod;
+    unsigned long flags;
 
-    read_lock(&rb->lock);
+    read_lock_irqsave(&rb->lock, flags);
     tnod = tt_rb_lookup_nolock(rb, key);
     if (tnod)
         memcpy(key, tnod, rb->node);
-    read_unlock(&rb->lock);
+    read_unlock_irqrestore(&rb->lock, flags);
 
     return !tnod;
 }
@@ -270,23 +277,24 @@ int tt_rb_query_key(struct tt_rb *rb, void *key)
 struct tt_node *tt_rb_find_key(struct tt_rb *rb, void *key)
 {
     struct tt_node *tnod;
+    unsigned long flags;
 
     /* do lookup first to check whether it's in rbtree */
-    read_lock(&rb->lock);
+    read_lock_irqsave(&rb->lock, flags);
     tnod = tt_rb_lookup_nolock(rb, key);
     if (tnod)
         atomic_inc(&tnod->refs);
-    read_unlock(&rb->lock);
+    read_unlock_irqrestore(&rb->lock, flags);
 
     if (tnod)
         return tnod;
 
     /* try to alloc new key and attach it to rbtree */
-    write_lock(&rb->lock);
+    write_lock_irqsave(&rb->lock, flags);
     tnod = tt_rb_insert_key_nolock(rb, key);
     if (tnod)
         atomic_inc(&tnod->refs);
-    write_unlock(&rb->lock);
+    write_unlock_irqrestore(&rb->lock, flags);
 
     return tnod;
 }
@@ -307,9 +315,11 @@ static void tt_rb_clear_node(struct tt_rb *rb, struct rb_node *node)
 
 void tt_rb_fini(struct tt_rb *rb)
 {
-    write_lock(&rb->lock);
+    unsigned long flags;
+
+    write_lock_irqsave(&rb->lock, flags);
     tt_rb_clear_node(rb, rb->root.rb_node);
-    write_unlock(&rb->lock);
+    write_unlock_irqrestore(&rb->lock, flags);
 
     /* cleanup objects pool */
     memcache_fini(&rb->pool);
@@ -318,12 +328,13 @@ void tt_rb_fini(struct tt_rb *rb)
 void tt_rb_enum(struct tt_rb *rb, void (*cb)(struct tt_node *))
 {
     struct rb_node *nod;
+    unsigned long flags;
 
-    read_lock(&rb->lock);
+    read_lock_irqsave(&rb->lock, flags);
     for (nod = rb_first(&rb->root); nod; nod = rb_next(nod)) {
         cb(container_of(nod, struct tt_node, node));
     }
-    read_unlock(&rb->lock);
+    read_unlock_irqrestore(&rb->lock, flags);
 }
 
 /*
@@ -457,16 +468,6 @@ void hlist_fini(struct hlist_root *hr)
     memcache_fini(&hr->pool);
 }
 
-void hlist_lock(struct hlist_root *hr)
-{
-    spin_lock(&hr->lock);
-}
-
-void hlist_unlock(struct hlist_root *hr)
-{
-    spin_unlock(&hr->lock);
-}
-
 static struct hlist_hnod *hlist_lookup_key_noref(struct hlist_root *hr, void *key)
 {
     struct hlist_hnod *hnod = NULL, *e;
@@ -509,15 +510,16 @@ static int hlist_remove_node_nolock(struct hlist_root *hr, struct hlist_hnod *hn
 
 int hlist_remove_node(struct hlist_root *hr, struct hlist_hnod *hnod)
 {
+    unsigned long flags;
     int rc;
 
-    spin_lock(&hr->lock);
+    spin_lock_irqsave(&hr->lock, flags);
     rc = hlist_remove_node_nolock(hr, hnod);
     if (0 == rc && !hnod->flag_rcu) {
         hnod->flag_rcu = 1;
         call_rcu(&hnod->rcu, hlist_free_node_rcu);
     }
-    spin_unlock(&hr->lock);
+    spin_unlock_irqrestore(&hr->lock, flags);
 
     return 0;
 }
@@ -525,9 +527,10 @@ int hlist_remove_node(struct hlist_root *hr, struct hlist_hnod *hnod)
 int hlist_remove_key(struct hlist_root *hr, void *key)
 {
     struct hlist_hnod *hnod;
+    unsigned long flags;
     int rc;
 
-    spin_lock(&hr->lock);
+    spin_lock_irqsave(&hr->lock, flags);
     hnod = hlist_lookup_key_noref(hr, key);
     if (hnod) {
         rc = hlist_remove_node_nolock(hr, hnod);
@@ -538,21 +541,23 @@ int hlist_remove_key(struct hlist_root *hr, void *key)
     } else {
         rc = -ENOENT;
     }
-    spin_unlock(&hr->lock);
+    spin_unlock_irqrestore(&hr->lock, flags);
 
     return rc;
 }
 
 int hlist_deref_node(struct hlist_root *hr, struct hlist_hnod *hnod)
 {
+    unsigned long flags;
     int rc = atomic_dec_return(&hnod->refs);
+
     if (0 == rc) {
-        spin_lock(&hr->lock);
+        spin_lock_irqsave(&hr->lock, flags);
         if (!hnod->flag_rcu) {
             hnod->flag_rcu = 1;
             call_rcu(&hnod->rcu, hlist_free_node_rcu);
         }
-        spin_unlock(&hr->lock);
+        spin_unlock_irqrestore(&hr->lock, flags);
     }
     return rc;
 }
@@ -607,10 +612,11 @@ errorout:
 struct hlist_hnod *hlist_insert_key(struct hlist_root *hr, void *key)
 {
     struct hlist_hnod *hnod;
+    unsigned long flags;
 
-    spin_lock(&hr->lock);
+    spin_lock_irqsave(&hr->lock, flags);
     hnod = hlist_insert_key_nolock(hr, key);
-    spin_unlock(&hr->lock);
+    spin_unlock_irqrestore(&hr->lock, flags);
     return hnod;
 }
 

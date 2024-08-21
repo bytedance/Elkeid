@@ -412,8 +412,9 @@ void hlist_fini(struct hlist_root *hr);
 struct hlist_hnod *hlist_alloc_node(struct hlist_root *hr);
 void hlist_free_node(struct hlist_root *hr, struct hlist_hnod *node);
 
-void hlist_lock(struct hlist_root *hr);
-void hlist_unlock(struct hlist_root *hr);
+#define hlist_lock(hr, flags) spin_lock_irqsave(&(hr)->lock, (flags))
+#define hlist_unlock(hr, flags) spin_unlock_irqrestore(&(hr)->lock, (flags))
+
 int hlist_remove_node(struct hlist_root *hr, struct hlist_hnod *node);
 int hlist_remove_key(struct hlist_root *hr, void *key);
 int hlist_deref_key(struct hlist_root *hr, void *key);

@@ -3876,9 +3876,10 @@ static int smith_drop_head_img(int count)
 {
     struct list_head *link, *prev = NULL;
     struct smith_img *img;
+    unsigned long flags;
     int rc = 0, dropped;
 
-    write_lock(&g_rb_img.lock);
+    write_lock_irqsave(&g_rb_img.lock, flags);
     do {
         if (list_empty(&g_lru_img))
             break;
@@ -3906,7 +3907,7 @@ static int smith_drop_head_img(int count)
         }
         rc += dropped;
     } while (count-- > SMITH_IMG_MAX_INSTANCES || dropped);
-    write_unlock(&g_rb_img.lock);
+    write_unlock_irqrestore(&g_rb_img.lock, flags);
 
     return rc;
 }
@@ -3954,21 +3955,22 @@ static struct smith_img *smith_find_img(struct smith_img *img)
 {
     struct smith_img *si = NULL;
     struct tt_node *tnod = NULL;
+    unsigned long flags;
 
     /* check whether the image was already inserted ? */
-    read_lock(&g_rb_img.lock);
+    read_lock_irqsave(&g_rb_img.lock, flags);
     tnod = tt_rb_lookup_nolock(&g_rb_img, img);
     if (tnod) {
         atomic_inc(&tnod->refs);
-        read_unlock(&g_rb_img.lock);
+        read_unlock_irqrestore(&g_rb_img.lock, flags);
         si = container_of(tnod, struct smith_img, si_node);
         goto errorout;
     } else {
-        read_unlock(&g_rb_img.lock);
+        read_unlock_irqrestore(&g_rb_img.lock, flags);
     }
 
     /* insert new node to rbtree */
-    write_lock(&g_rb_img.lock);
+    write_lock_irqsave(&g_rb_img.lock, flags);
     tnod = tt_rb_insert_key_nolock(&g_rb_img, &img->si_node);
     if (tnod) {
         si = container_of(tnod, struct smith_img, si_node);
@@ -3977,7 +3979,7 @@ static struct smith_img *smith_find_img(struct smith_img *img)
         si->si_age = smith_get_delta(SMITH_IMG_REAPER_TIMEOUT);
         list_add_tail(&si->si_link, &g_lru_img);
     }
-    write_unlock(&g_rb_img.lock);
+    write_unlock_irqrestore(&g_rb_img.lock, flags);
 
 errorout:
     return si;
@@ -4032,16 +4034,17 @@ static void smith_enum_img_lru(void)
 {
     struct list_head *link;
     struct smith_img *img;
+    unsigned long flags;
 
     printk("enum all imgs in lru (%d):\n", atomic_read(&g_rb_img.count));
-    read_lock(&g_rb_img.lock);
+    read_lock_irqsave(&g_rb_img.lock, flags);
     link = g_lru_img.next;
     while (link != &g_lru_img) {
         img = list_entry(link, struct smith_img, si_link);
         link = link->next;
         smith_show_img(&img->si_node);
     }
-    read_unlock(&g_rb_img.lock);
+    read_unlock_irqrestore(&g_rb_img.lock, flags);
 }
 
 /* FMODE_CREATED added since v4.19 */
@@ -4141,23 +4144,24 @@ static int smith_drop_head_ent(int count)
 {
     struct list_head *link;
     struct smith_ent *ent;
+    unsigned long flags;
     int rc = 0;
 
     if (count <= 0) {
-        read_lock(&g_rb_ent.lock);
+        read_lock_irqsave(&g_rb_ent.lock, flags);
         if (!list_empty(&g_lru_ent)) {
             link = g_lru_ent.next;
             ent = list_entry(link, struct smith_ent, se_link);
             if (smith_get_delta(0) > ent->se_age)
                 count = 1;
         }
-        read_unlock(&g_rb_ent.lock);
+        read_unlock_irqrestore(&g_rb_ent.lock, flags);
     }
 
     if (count <= 0)
         goto errout;
 
-    write_lock(&g_rb_ent.lock);
+    write_lock_irqsave(&g_rb_ent.lock, flags);
     while (count--) {
         if (list_empty(&g_lru_ent))
             break;
@@ -4170,7 +4174,7 @@ static int smith_drop_head_ent(int count)
         tt_rb_remove_node_nolock(&g_rb_ent, &ent->se_node);
         rc++;
     }
-    write_unlock(&g_rb_ent.lock);
+    write_unlock_irqrestore(&g_rb_ent.lock, flags);
 
 errout:
     return rc;
@@ -4193,20 +4197,20 @@ int smith_insert_ent(char *path)
 {
     struct smith_ent obj, *ent;
     struct tt_node *tnod = NULL;
-
+    unsigned long flags;
 
     /* init obj */
     smith_prepare_ent(path, &obj);
 
     /* check whether the entry was already inserted ? */
-    read_lock(&g_rb_ent.lock);
+    read_lock_irqsave(&g_rb_ent.lock, flags);
     tnod = tt_rb_lookup_nolock(&g_rb_ent, &obj);
-    read_unlock(&g_rb_ent.lock);
+    read_unlock_irqrestore(&g_rb_ent.lock, flags);
     if (tnod)
         goto out;
 
     /* insert new node to rbtree */
-    write_lock(&g_rb_ent.lock);
+    write_lock_irqsave(&g_rb_ent.lock, flags);
     tnod = tt_rb_insert_key_nolock(&g_rb_ent, &obj.se_node);
     if (tnod) {
         ent = container_of(tnod, struct smith_ent, se_node);
@@ -4216,7 +4220,7 @@ int smith_insert_ent(char *path)
         /* insert ent to the tail of LRU list */
         list_add_tail(&ent->se_link, &g_lru_ent);
     }
-    write_unlock(&g_rb_ent.lock);
+    write_unlock_irqrestore(&g_rb_ent.lock, flags);
 
     /* drop stale entries */
     smith_drop_head_ents(&g_rb_ent);
@@ -4229,18 +4233,19 @@ int smith_remove_ent(char *path)
 {
     struct smith_ent obj, *ent;
     struct tt_node *tnod = NULL;
+    unsigned long flags;
 
     /* init obj */
     smith_prepare_ent(path, &obj);
 
     /* check whether the entry was already inserted ? */
-    read_lock(&g_rb_ent.lock);
+    read_lock_irqsave(&g_rb_ent.lock, flags);
     tnod = tt_rb_lookup_nolock(&g_rb_ent, &obj);
-    read_unlock(&g_rb_ent.lock);
+    read_unlock_irqrestore(&g_rb_ent.lock, flags);
     if (!tnod)
         goto out;
 
-    write_lock(&g_rb_ent.lock);
+    write_lock_irqsave(&g_rb_ent.lock, flags);
     /* do 2nd search to assure it's in lru list */
     tnod = tt_rb_lookup_nolock(&g_rb_ent, &obj);
     if (tnod) {
@@ -4248,7 +4253,7 @@ int smith_remove_ent(char *path)
         list_del_init(&ent->se_link);
         tt_rb_remove_node_nolock(&g_rb_ent, tnod);
     }
-    write_unlock(&g_rb_ent.lock);
+    write_unlock_irqrestore(&g_rb_ent.lock, flags);
 
 out:
     smith_drop_head_ents(&g_rb_ent);
@@ -4270,11 +4275,13 @@ static void smith_show_ent(struct tt_node *tnod)
 
 void smith_enum_ent(void)
 {
+    unsigned long flags;
+
     printk("smith_enum_ent: newly created ents (%u):\n",
             atomic_read(&g_rb_ent.count));
-    read_lock(&g_rb_ent.lock);
+    read_lock_irqsave(&g_rb_ent.lock, flags);
     tt_rb_enum(&g_rb_ent, smith_show_ent);
-    read_unlock(&g_rb_ent.lock);
+    read_unlock_irqrestore(&g_rb_ent.lock, flags);
     printk("smith_enum_ent: done\n");
 }
 
@@ -4562,10 +4569,11 @@ static int smith_hash_tid(struct hlist_root *hr, void *key)
 static void smith_process_tasks(struct hlist_root *hr)
 {
     struct task_struct *task;
+    unsigned long flags;
 
     /* rcu lock is enough since we are only reading tasklist */
     rcu_read_lock();
-    hlist_lock(hr);
+    hlist_lock(hr, flags);
     for_each_process(task) {
         /* skip kernel threads and tasks being shut donw */
         if (task->flags & (PF_KTHREAD | PF_EXITING))
@@ -4575,7 +4583,7 @@ static void smith_process_tasks(struct hlist_root *hr)
             continue;
         hlist_insert_key_nolock(hr, task);
     }
-    hlist_unlock(hr);
+    hlist_unlock(hr, flags);
     rcu_read_unlock();
 }
 
