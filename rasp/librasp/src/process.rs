@@ -28,6 +28,7 @@ pub struct ProcessInfo {
     pub fgid: u32,
     pub ppid: i32,
     pub tgid: i32,
+    pub nspid: i32,
     pub environ: Option<HashMap<OsString, OsString>>,
     pub namespace_info: Option<Namespaces>,
 
@@ -117,6 +118,7 @@ impl ProcessInfo {
         self.sgid = status.sgid;
         self.fuid = status.fuid;
         self.fgid = status.fgid;
+        self.nspid = Self::read_nspid(process.pid).unwrap_or_default().unwrap();
         Ok(())
     }
     pub fn update_start_time(&mut self, process: &Process) -> AnyhowResult<f32> {
@@ -222,9 +224,7 @@ impl ProcessInfo {
     }
 
     pub fn update_failed_reason(&mut self, reason: &String) -> AnyhowResult<()> {
-        if self.failed_reason.is_none() {
-            self.failed_reason = Some(reason.clone());
-        }
+        self.failed_reason = Some(reason.clone());
         Ok(())
     }
     pub fn get_mnt_ns(&self) -> AnyhowResult<String> {

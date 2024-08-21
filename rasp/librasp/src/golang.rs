@@ -1,7 +1,8 @@
 use log::*;
 use std::fs::File;
 use std::{fs, path::PathBuf, process::Command};
-
+use std::io::Read;
+use regex::Regex;
 use anyhow::{anyhow, Result};
 use goblin::elf::Elf;
 use memmap::MmapOptions;
@@ -10,7 +11,9 @@ use crate::async_command::run_async_process;
 use crate::process::ProcessInfo;
 use crate::runtime::{ProbeCopy, ProbeState, ProbeStateInspect};
 use crate::settings;
+use crate::parse_elf::{find_by_section, find_by_symbol};
 
+const GOLANG_SUPPORT_VERSION: u32 = 22;
 pub struct GolangProbeState {}
 
 impl ProbeStateInspect for GolangProbeState {
@@ -105,10 +108,10 @@ pub fn golang_attach(pid: i32) -> Result<bool> {
                 Ok(true)
             } else if es_code == 255 {
                 let msg = format!(
-                    "golang attach exit code 255: {} {} {} {}",
-                    es_code, pid, &stdout, &stderr
+                    "golang attach exit code 255: {} {} {}",
+                    es_code, &stdout, &stderr
                 );
-                error!("{}", msg);
+                error!("pid: {}, {}", pid, msg);
                 Err(anyhow!("{}", msg))
             } else {
                 let msg = format!(
@@ -123,7 +126,7 @@ pub fn golang_attach(pid: i32) -> Result<bool> {
     };
 }
 
-pub fn golang_bin_inspect(bin_file: PathBuf) -> Result<u64> {
+pub fn golang_bin_inspect(bin_file: &PathBuf) -> Result<u64> {
     let metadata = match fs::metadata(bin_file.clone()) {
         Ok(md) => md,
         Err(e) => {
@@ -141,11 +144,86 @@ pub fn golang_bin_inspect(bin_file: PathBuf) -> Result<u64> {
     let shstrtab = elf.shdr_strtab;
     for section in elf.section_headers.iter() {
         let offset = section.sh_name;
-        if let Some(name) = shstrtab.get(offset) {
-            if name.unwrap() == ".gopclntab" {
+        if let Some(name) = shstrtab.get_at(offset) {
+            if name == ".gopclntab" {
                 return Ok(size);
             }
         }
     }
     return Ok(0);
+}
+
+pub fn parse_version(version: &String) -> Result<String> {
+    let re = Regex::new(r"^go(\d+\.\d+)(?:\.\d+)?").unwrap();
+
+    // use regex to extract the version number from the string
+    if let Some(captures) = re.captures(version) {
+        if let Some(version_number) = captures.get(1) {
+            let extracted_version = version_number.as_str();
+            return Ok(extracted_version.to_string());
+        }
+    }
+    return Err(anyhow::anyhow!("Failed to extract version number, from: {}", version));
+}
+
+pub fn golang_version(bin_file: &PathBuf) -> Result<String> {
+    let mut file = File::open(bin_file)?;
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer)?;
+
+    // parse elf
+    let elf = match Elf::parse(&buffer) {
+        Ok(elf) => elf,
+        Err(err) => {
+            let msg = format!(
+               "Failed to parse ELF file: {}", err
+            );
+            warn!("{}", msg);
+            return Err(anyhow!("{}", msg));
+        }
+    };
+    
+    if let Ok(version) = find_by_section(&elf, &buffer, &file) {
+        return parse_version(&version);
+    } else {
+        if let Ok(version) = find_by_symbol(&elf, &file) {
+            return parse_version(&version);
+        } else {
+            return Err(anyhow!("get go version by section and symbol failed"));
+        }
+    }
+    
+}
+
+pub fn check_golang_version(ver: &String) -> Result<()> {
+    let major_minor: Option<(u32, u32)> = match ver.split('.').next() {
+        Some(major_str) => {
+            if let Ok(major) = major_str.parse::<u32>() {
+                if let Some(minor_str) = ver.split('.').nth(1) {
+                    if let Ok(minor) = minor_str.parse::<u32>() {
+                        Some((major, minor))
+                    } else {
+                        None
+                    }
+                } else {
+                    Some((major, 0))
+                }
+            } else {
+                None
+            }
+        }
+        None => None,
+    };
+
+    if let Some((major, minor)) = major_minor {
+        if major == 1 && minor <= GOLANG_SUPPORT_VERSION {
+            return Ok(());
+        } else {
+            let msg = format!("Golang version too big: {}", ver);
+            return Err(anyhow!(msg));
+        }
+    } else {
+        let msg = format!("golang version cannot parse: {}", ver);
+        return Err(anyhow!(msg));
+    }
 }

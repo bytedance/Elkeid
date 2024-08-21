@@ -2,16 +2,16 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
-
+use std::os::unix::fs::PermissionsExt;
 use anyhow::{anyhow, Result, Result as AnyhowResult};
 use crossbeam::channel::Sender;
 use fs_extra::dir::{copy, create_all, CopyOptions};
-use fs_extra::file::{copy as file_copy, CopyOptions as FileCopyOptions};
+use fs_extra::file::{copy as file_copy, remove, CopyOptions as FileCopyOptions};
 use libraspserver::proto::{PidMissingProbeConfig, ProbeConfigData};
 use log::*;
 
 use crate::cpython::{python_attach, CPythonProbe, CPythonProbeState};
-use crate::golang::{golang_attach, GolangProbe, GolangProbeState};
+use crate::golang::{check_golang_version, golang_attach, GolangProbe, GolangProbeState};
 use crate::jvm::{check_java_version, java_attach, java_detach, JVMProbe, JVMProbeState};
 use crate::nodejs::{check_nodejs_version, nodejs_attach, NodeJSProbe};
 use crate::php::{php_attach, PHPProbeState};
@@ -41,8 +41,8 @@ impl RASPManager {
     ) -> AnyhowResult<()> {
         debug!("starting comm with probe, target pid: {}", process_info.pid);
         let mnt_namespace = process_info.get_mnt_ns()?;
-        let nspid = if let Some(nspid) = ProcessInfo::read_nspid(process_info.pid)? {
-            nspid
+        let nspid = if process_info.nspid != 0 {
+            process_info.nspid
         } else {
             process_info.pid
         };
@@ -259,8 +259,8 @@ impl RASPManager {
             }
         }
 
-        serde_json::to_string(&valid_messages)?;
-        //self.write_message_to_config_file(pid, nspid, valid_messages_string)?;
+        let valid_messages_string = serde_json::to_string(&valid_messages)?;
+        self.write_message_to_config_file(pid, nspid, valid_messages_string)?;
 
         Ok(())
     }
@@ -324,9 +324,9 @@ impl RASPManager {
         let runtime_info = &process_info.runtime.clone().unwrap();
         let root_dir = format!("/proc/{}/root", process_info.pid);
         let pid = process_info.pid;
-        ProcessInfo::read_nspid(pid)?.ok_or(anyhow!("can not read nspid: {}", pid))?;
+        let nspid = process_info.nspid;
         // delete config
-        // self.delete_config_file(pid, nspid)?;
+        self.delete_config_file(pid, nspid)?;
         let attach_result = match runtime_info.name {
             "JVM" => match JVMProbeState::inspect_process(process_info)? {
                 ProbeState::Attached => {
@@ -371,7 +371,7 @@ impl RASPManager {
                                 let to = format!("{}{}",root_dir.clone(), settings::RASP_JAVA_AGENT_BIN());
                                 let _ = self.copy_file_from_to_dest(settings::RASP_JAVA_JATTACH_BIN(), root_dir.clone());
                                 let _ = self.copy_file_from_to_dest(settings::RASP_JAVA_AGENT_BIN(), root_dir.clone());
-                                info!("copy from jattach/SmithAgent.jar to {}", to.clone());
+                                info!("copy from java/SmithAgent.jar to {}", to.clone());
                             }
                         }
                         Err(e) => {
@@ -430,6 +430,14 @@ impl RASPManager {
                     Ok(true)
                 }
                 ProbeState::NotAttach => {
+                    if !runtime_info.version.is_empty() {
+                        match check_golang_version(&runtime_info.version) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                return Err(anyhow!(e));
+                            }
+                        }
+                    }
                     let mut golang_attach = |pid: i32, bpf: bool| -> AnyhowResult<bool> {
                         if bpf {
                             if let Some(bpf_manager) = self.ebpf_comm.as_mut() {
@@ -881,66 +889,40 @@ impl MntNamespaceTracer {
 }
 
 impl RASPManager {
-    /* 
     pub fn write_message_to_config_file(
         &self,
         pid: i32,
         nspid: i32,
         message: String,
     ) -> AnyhowResult<()> {
-        let config_dir = "/var/run/elkeid_rasp";
+        let config_dir = format!("/proc/{}/root/var/run/elkeid_rasp", pid);
         let config_path = format!("{}/{}.json", config_dir, nspid);
         let config_path_bak = format!("{}.bak", config_path);
-        debug!("write message to {} {}", config_path_bak, message);
-        crate::async_command::run_async_process(
-            Command::new(crate::settings::RASP_NS_ENTER_BIN()).args([
-                "-m",
-                "-t",
-                pid.to_string().as_str(),
-                "sh",
-                "-c",
-                "PATH=/bin:/usr/bin:/sbin",
-                format!(
-                    "mkdir -p {} && echo '{}' > {} && mv {} {}",
-                    config_dir, message, config_path_bak, config_path_bak, config_path
-                )
-                .as_str(),
-            ]),
-        )?;
-        let ns_thread = thread::Builder::new().spawn(move || -> AnyhowResult<()> {
-            debug!("switch namespace");
-            libraspserver::ns::switch_namespace(pid);
-            if !Path::new(&config_dir).exists() {
-                fs_extra::dir::create(config_dir, true)?;
-            }
-            fs_extra::file::write_all(&config_path_bak, message.as_str())?;
-            let mut option = fs_extra::file::CopyOptions::new();
-            option.overwrite = true;
-            fs_extra::file::move_file(config_path_bak, config_path, &option)?;
-            Ok(())
-        }).unwrap();
-        ns_thread.join()?;
+        info!("write message to {} {}", config_path_bak, message);
+        
+        if !Path::new(&config_dir).exists() {
+            fs_extra::dir::create(&config_dir, true)?;
+        }
+        fs::set_permissions(&config_dir, fs::Permissions::from_mode(0o666))?;
+        fs_extra::file::write_all(&config_path_bak, message.as_str())?;
+        fs::set_permissions(&config_path_bak, fs::Permissions::from_mode(0o777))?;
+        let mut option = fs_extra::file::CopyOptions::new();
+        option.overwrite = true;
+        fs_extra::file::move_file(config_path_bak, config_path, &option)?;
+        info!("write message success");
          
         Ok(())
     }
     
     pub fn delete_config_file(&self, pid: i32, nspid: i32) -> AnyhowResult<()> {
-        let config_path = format!("/var/run/elkeid_rasp/{}.json", nspid);
+        
+        let config_path = format!("/proc/{}/root/var/run/elkeid_rasp/{}.json", pid, nspid);
         if Path::new(&config_path).exists() {
-            crate::async_command::run_async_process(
-                Command::new(crate::settings::RASP_NS_ENTER_BIN()).args([
-                    "-m",
-                    "-t",
-                    pid.to_string().as_str(),
-                    "sh",
-                    "-c",
-                    format!("rm {}", config_path).as_str(),
-                ]),
-            )?;
+            info!("delete config file: {}", config_path);
+            remove(config_path)?
         }
         Ok(())
     }
-    */
 }
 
 fn read_dir<P>(path: P) -> AnyhowResult<Vec<fs::DirEntry>>
