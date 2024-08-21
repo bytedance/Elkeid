@@ -97,6 +97,7 @@ impl Operator {
             }
             Err(e) => {
                 //if process.tracing_state != ProbeState::Attached {
+                    self.rasp_manager.delete_config_file(process.pid, process.nspid)?;
                     process.update_failed_time();
                     warn!(
                         "pid: {} runtime: {}, attach failed",
@@ -117,14 +118,8 @@ impl Operator {
     }
 
     pub fn handle_missing(&mut self, process: &mut ProcessInfo) -> AnyhowResult<()> {
-        if process
-            .tracing_state
-            .ok_or(anyhow!("empty state found during handle missing"))?
-            .to_string()
-            == "ATTACHED"
-        {
-            process.update_missing_time();
-        }
+        // for count abnormal process
+        process.update_missing_time();
         self.stop_comm(&process)?;
         return Ok(());
     }
@@ -135,6 +130,7 @@ impl Operator {
             .namespace_info.clone().ok_or(anyhow!("unable fetch namespace"))?
             .mnt.ok_or(anyhow!("unable fetch namespace"))?;
         // self.rasp_manager.write_message_to_config_file(pid, process_info.nspid, probe_message.clone());
+        self.rasp_manager.delete_config_file(pid, process_info.nspid)?;
         self.rasp_manager.send_message_to_probe(pid, &mnt_namespace, probe_message)
     }
 

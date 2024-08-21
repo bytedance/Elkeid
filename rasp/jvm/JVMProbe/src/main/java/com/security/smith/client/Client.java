@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
+import com.google.gson.GsonBuilder;
 import com.security.smith.client.message.*;
 import com.security.smith.common.ProcessHelper;
 import com.security.smith.log.SmithLogger;
@@ -282,7 +283,8 @@ public class Client implements EventHandler {
                 JsonArray jsonArray = jsonElement.getAsJsonArray();
                 for (JsonElement element : jsonArray) {
                     if (element.isJsonObject()) {
-                        Message message = new Gson().fromJson(element, Message.class);
+                        Gson gson = new GsonBuilder().registerTypeAdapter(Message.class, new MessageDeserializer()).create();
+                        Message message = gson.fromJson(element, Message.class);
                         onMessage(message);
                     }
                 }

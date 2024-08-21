@@ -9,6 +9,7 @@ pub mod process;
 pub mod runtime;
 #[allow(non_snake_case)]
 pub mod settings;
+pub mod parse_elf;
 
 pub mod async_command {
     use std::io::{BufRead, BufReader};

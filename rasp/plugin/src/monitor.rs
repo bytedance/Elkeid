@@ -251,8 +251,8 @@ fn internal_main(
             }
             for pid in pids.iter() {
                 debug!("send pid: {}", pid);
-                if let Err(_) = pid_sender.send(*pid) {
-                    error!("can not send pid to pid_sender channel, quiting");
+                if let Err(e) = pid_sender.send(*pid) {
+                    error!("can not send pid to pid_sender channel, quiting, err: {}", e);
                     let _ = pid_recv_ctrl.stop();
                     break;
                 };
@@ -506,6 +506,7 @@ fn internal_main(
                     } else {
                         String::new()
                     };
+                    let _ = process.update_failed_reason(&String::new());
                     process.current_config_hash = probe_config_hash;
                     (*opp).insert(process.pid, process);
                 }

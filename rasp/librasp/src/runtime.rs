@@ -8,7 +8,7 @@ use serde_json;
 use std::fs;
 use std::path::Path;
 use crate::cpython;
-use crate::golang::golang_bin_inspect;
+use crate::golang::{golang_bin_inspect, golang_version};
 use crate::jvm::vm_version;
 use crate::nodejs::nodejs_version;
 use crate::php::{inspect_phpfpm, inspect_phpfpm_version, inspect_phpfpm_zts};
@@ -205,12 +205,21 @@ pub trait RuntimeInspect {
                 path.push(p);
             }
         }
-        match golang_bin_inspect(path) {
+        match golang_bin_inspect(&path) {
             Ok(res) => {
                 if res > 0 {
+                    let version = match golang_version(&path) {
+                        Ok(v) => {
+                            v
+                        }
+                        Err(e) => {
+                            warn!("read golang elf version failed: {}", e);
+                            String::new()
+                        }
+                    };
                     return Ok(Some(Runtime {
                         name: "Golang",
-                        version: String::new(),
+                        version: version,
                         size: res,
                     }));
                 }
