@@ -106,6 +106,12 @@ ifeq ($(USER_MSGHDR_STRUT),)
 ccflags-y += -D USER_MSGHDR_SUPPORT
 endif
 
+MM_GUP_FILES := $(shell find -L $(K_I_PATH) -path \*/linux/mm.h) /dev/null
+MM_GUP_STRUT := $(shell sh -c "grep -sE -A2 long[[:space:]]\+get_user_pages[\(\)] $(MM_GUP_FILES) | grep gup_flags")
+ifneq ($(MM_GUP_STRUT),)
+ccflags-y += -D MM_GUP_FLAGS_SUPPORT
+endif
+
 else
 
 MODULE_DIR		:= $(shell pwd)

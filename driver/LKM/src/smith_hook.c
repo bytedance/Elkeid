@@ -6282,6 +6282,8 @@ static char *smith_query_args(struct linux_binprm *bprm)
     ret = get_user_pages_remote(current, mm, pos, 1, FOLL_FORCE, &page, NULL);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 6, 0)
     ret = get_user_pages_remote(current, mm, pos, 1, 0, 1, &page, NULL);
+#elif defined(MM_GUP_FLAGS_SUPPORT)
+    ret = get_user_pages(current, mm, pos, 1, FOLL_FORCE, &page, NULL);
 #else
     ret = get_user_pages(current, mm, pos, 1, 0, 1, &page, NULL);
 #endif
