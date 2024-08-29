@@ -17,6 +17,7 @@ import com.security.smith.common.SmithTools;
 import com.security.smith.log.AttachInfo;
 import com.security.smith.log.SmithLogger;
 import com.security.smith.module.Patcher;
+import com.security.smith.rulemgr.StackRuleManager;
 import com.security.smith.type.*;
 import com.security.smith.client.*;
 import com.esotericsoftware.yamlbeans.YamlReader;
@@ -161,6 +162,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     private SmithproxyTimerTask smithproxyTimerTask;
     private String proberVersion;
     private String proberPath;
+    StackRuleManager ruleManager;
 
     public SmithProbe() {
         disable = false;
@@ -203,7 +205,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         limits = new ConcurrentHashMap<>();
         hookTypes = new ConcurrentHashMap<>();
         switchConfig = new ConcurrentHashMap<>();
-
+        StackRuleManager ruleManager = new StackRuleManager();
         MessageSerializer.initInstance(proberVersion);
         MessageEncoder.initInstance();
         MessageDecoder.initInstance();
@@ -253,6 +255,67 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         }
         
         SmithLogger.logger.info("probe init leave");
+        /* just for test */
+        TestAdd();
+    }
+    public void TestAdd() {
+        String[] danger_stacks = {
+            "org.apache.jsp.*",
+            "com.thoughtworks.xstream.XStream.unmarshal",
+    "java.beans.XMLDecoder.readObject",
+    "java.io.ObjectInputStream.readObject",
+    "org.apache.dubbo.common.serialize.hessian2.Hessian2ObjectInput.readObject",
+    "com.alibaba.fastjson.JSON.parse",
+    "com.fasterxml.jackson.databind.ObjectMapper.readValue",
+    "payload.execCommand",
+    "net.rebeyond.behinder.*",
+    "org.springframework.expression.spel.support.ReflectiveMethodExecutor.execute",
+    "freemarker.template.utility.Execute.exec",
+    "freemarker.core.Expression.eval",
+    "bsh.Reflect.invokeMethod",
+    "org.jboss.el.util.ReflectionUtil.invokeMethod",
+    "org.codehaus.groovy.runtime.ProcessGroovyMethods.execute",
+    "org.codehaus.groovy.runtime.callsite.AbstractCallSite.call",
+    "ScriptFunction.invoke",
+    "com.caucho.hessian.io.HessianInput.readObject",
+    "org.apache.velocity.runtime.parser.node.ASTMethod.execute",
+    "org.apache.commons.jexl3.internal.Interpreter.call",
+    "javax.script.AbstractScriptEngine.eval",
+    "javax.el.ELProcessor.getValue",
+    "ognl.OgnlRuntime.invokeMethod",
+    "javax.naming.InitialContext.lookup",
+    "org.mvel2.MVEL.executeExpression",
+    "ysoserial.Pwner",
+    "org.yaml.snakeyaml.Yaml.load",
+    "org.mozilla.javascript.Context.evaluateString",
+    "command.Exec.equals",
+    
+        };
+        String[] white_stacks = {
+            "org.apache.catalina.core.ApplicationFilterChain.doFilter"
+        };
+
+        String[] danger_stacks2 = {
+            "jsp_servlet.*",
+            "java.lang.ref.Finalizer.runFinalizer",
+            "com.ibm._jsp.*",
+            "run(RealCMD.java*",
+            "(payload.java*",
+            "(addfilter_jsp.java*",
+            "java.sql.DriverManager.getConnection",
+            "org.h2.engine.FunctionAlias$JavaMethod.getValue",
+        };
+
+        String[] white_stacks2 = {
+            "org.apache.catalina.core.ApplicationFilterChain.doFilter"
+        };
+    
+        getStackRuleManager().addBlackStackRule(111, danger_stacks);
+        getStackRuleManager().addWhiteStackRule(111, white_stacks);
+        getStackRuleManager().addWhiteStackRule(112, white_stacks2);
+        getStackRuleManager().addBlackStackRule(112, danger_stacks2);
+        
+
     }
     private boolean isBypassHookClass(String className) {
 
@@ -268,6 +331,14 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         }
 
         return false;
+    }
+
+    public StackRuleManager getStackRuleManager() {
+        if (ruleManager == null) {
+            ruleManager = new StackRuleManager();
+            SmithLogger.logger.info("init ruleManager");
+        }
+        return ruleManager;
     }
     public boolean isFunctionEnabled(int classId, int methodId) {
         String key = classId + "-" + methodId;
@@ -365,6 +436,8 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
         smithproxyTimerTask = null;
         smithproxyTimer = null;
+        ruleManager.clear();
+        ruleManager = null;
 
         SmithLogger.logger.info("probe stop leave");
     }

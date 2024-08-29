@@ -18,11 +18,6 @@ import com.lmax.disruptor.dsl.Disruptor;
 import com.security.smith.client.Client;
 import com.security.smith.client.Operate;
 import com.security.smith.client.message.*;
-import com.security.smith.client.message.ClassFilter;
-import com.security.smith.client.message.Heartbeat;
-import com.security.smith.client.message.MatchRule;
-import com.security.smith.client.message.Trace;
-import com.security.smith.client.message.Block;
 import com.security.smith.common.Reflection;
 import com.security.smith.common.SmithHandler;
 import com.security.smith.log.SmithLogger;
@@ -368,6 +363,28 @@ public class SmithProbeProxy {
         if(SmithProbeObj.classIsSended(cla)) {
             return ;
         }
+        /* just for test */
+        SmithProbeObj.getStackRuleManager().formatStack();
+        if (SmithProbeObj.getStackRuleManager().isMatched(111, true)) {
+            SmithLogger.logger.info("matched the white rule: ruleId: 111");
+        } else {
+            SmithLogger.logger.info("not matched the white rule: ruleId: 111");
+        }
+        if (SmithProbeObj.getStackRuleManager().isMatched(111, false)) {
+            SmithLogger.logger.info("matched the black rule: ruleId: 111");
+        } else {
+            SmithLogger.logger.info("not matched the black rule: ruleId: 111");
+        }
+        if (SmithProbeObj.getStackRuleManager().isMatched(112, true)) {
+            SmithLogger.logger.info("matched the white rule: ruleId: 112");
+        } else {
+            SmithLogger.logger.info("not matched the white rule:ruleId: 112");
+        }
+        if (SmithProbeObj.getStackRuleManager().isMatched(112, false)) {
+            SmithLogger.logger.info("matched the black rule: ruleId: 112");
+        } else {
+            SmithLogger.logger.info("not matched the black rule: ruleId: 112");
+        }
 
         ClassFilter classFilter = new ClassFilter();
         SmithHandler.queryClassFilter(cla, classFilter);
@@ -453,6 +470,7 @@ public class SmithProbeProxy {
             return;
         }
         try {
+            
             Object filterdef = args[1];
             Object filter = null;
             Class<?> filterClass = null;

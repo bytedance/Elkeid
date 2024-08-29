@@ -19,6 +19,7 @@ dependencies {
     implementation group: 'com.lmax', name: 'disruptor', version: '3.4.4'
     implementation 'com.google.code.gson:gson:2.8.9'
     implementation 'com.esotericsoftware.yamlbeans:yamlbeans:1.14'
+    implementation 'org.lz4:lz4-java:1.8.0'
     api group: 'org.javassist', name: 'javassist', version: '3.29.0-GA'
 }
 
@@ -48,5 +49,6 @@ shadowJar {
     relocate 'com.google','rasp.com.google'
     relocate 'com.esotericsoftware', 'rasp.com.esotericsoftware'
     relocate 'javassist', 'rasp.javassist'
+    relocate 'net.jpountz', 'rasp.net.jpountz'
     relocate 'META-INF/native/libnetty', 'META-INF/native/librasp_netty'
 }
