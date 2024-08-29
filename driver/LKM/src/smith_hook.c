@@ -71,7 +71,6 @@ static int EXECVE_GET_SOCK_FD_LIMIT = 12;  /* maximum fd numbers to be queried *
 static char connect_syscall_kprobe_state = 0x0;
 static char execve_kretprobe_state = 0x0;
 static char bind_kprobe_state = 0x0;
-static char compat_execve_kretprobe_state = 0x0;
 static char create_file_kprobe_state = 0x0;
 static char ptrace_kprobe_state = 0x0;
 static char do_init_module_kprobe_state = 0x0;
@@ -103,9 +102,15 @@ static char security_path_unlink_kprobe_state = 0x0;
 static char call_usermodehelper_exec_kprobe_state = 0x0;
 static char write_kprobe_state = 0x0;
 
+#ifdef CONFIG_COMPAT
+static char compat_execve_kretprobe_state = 0x0;
+#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)
 static char execveat_kretprobe_state = 0x0;
+#ifdef CONFIG_COMPAT
 static char compat_execveat_kretprobe_state = 0x0;
+#endif
 #endif
 
 #if EXIT_PROTECT == 1
