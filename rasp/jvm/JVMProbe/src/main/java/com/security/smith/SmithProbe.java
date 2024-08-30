@@ -262,33 +262,33 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         String[] danger_stacks = {
             "org.apache.jsp.*",
             "com.thoughtworks.xstream.XStream.unmarshal",
-    "java.beans.XMLDecoder.readObject",
-    "java.io.ObjectInputStream.readObject",
-    "org.apache.dubbo.common.serialize.hessian2.Hessian2ObjectInput.readObject",
-    "com.alibaba.fastjson.JSON.parse",
-    "com.fasterxml.jackson.databind.ObjectMapper.readValue",
-    "payload.execCommand",
-    "net.rebeyond.behinder.*",
-    "org.springframework.expression.spel.support.ReflectiveMethodExecutor.execute",
-    "freemarker.template.utility.Execute.exec",
-    "freemarker.core.Expression.eval",
-    "bsh.Reflect.invokeMethod",
-    "org.jboss.el.util.ReflectionUtil.invokeMethod",
-    "org.codehaus.groovy.runtime.ProcessGroovyMethods.execute",
-    "org.codehaus.groovy.runtime.callsite.AbstractCallSite.call",
-    "ScriptFunction.invoke",
-    "com.caucho.hessian.io.HessianInput.readObject",
-    "org.apache.velocity.runtime.parser.node.ASTMethod.execute",
-    "org.apache.commons.jexl3.internal.Interpreter.call",
-    "javax.script.AbstractScriptEngine.eval",
-    "javax.el.ELProcessor.getValue",
-    "ognl.OgnlRuntime.invokeMethod",
-    "javax.naming.InitialContext.lookup",
-    "org.mvel2.MVEL.executeExpression",
-    "ysoserial.Pwner",
-    "org.yaml.snakeyaml.Yaml.load",
-    "org.mozilla.javascript.Context.evaluateString",
-    "command.Exec.equals",
+            "java.beans.XMLDecoder.readObject",
+            "java.io.ObjectInputStream.readObject",
+            "org.apache.dubbo.common.serialize.hessian2.Hessian2ObjectInput.readObject",
+            "com.alibaba.fastjson.JSON.parse",
+            "com.fasterxml.jackson.databind.ObjectMapper.readValue",
+            "payload.execCommand",
+            "net.rebeyond.behinder.*",
+            "org.springframework.expression.spel.support.ReflectiveMethodExecutor.execute",
+            "freemarker.template.utility.Execute.exec",
+            "freemarker.core.Expression.eval",
+            "bsh.Reflect.invokeMethod",
+            "org.jboss.el.util.ReflectionUtil.invokeMethod",
+            "org.codehaus.groovy.runtime.ProcessGroovyMethods.execute",
+            "org.codehaus.groovy.runtime.callsite.AbstractCallSite.call",
+            "ScriptFunction.invoke",
+            "com.caucho.hessian.io.HessianInput.readObject",
+            "org.apache.velocity.runtime.parser.node.ASTMethod.execute",
+            "org.apache.commons.jexl3.internal.Interpreter.call",
+            "javax.script.AbstractScriptEngine.eval",
+            "javax.el.ELProcessor.getValue",
+            "ognl.OgnlRuntime.invokeMethod",
+            "javax.naming.InitialContext.lookup",
+            "org.mvel2.MVEL.executeExpression",
+            "ysoserial.Pwner",
+            "org.yaml.snakeyaml.Yaml.load",
+            "org.mozilla.javascript.Context.evaluateString",
+            "command.Exec.equals",
     
         };
         String[] white_stacks = {
@@ -486,6 +486,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         ourInstance = null;
         proberVersion = null;
         proberPath = null;
+        
         MessageSerializer.delInstance();
 
         MessageEncoder.delInstance();

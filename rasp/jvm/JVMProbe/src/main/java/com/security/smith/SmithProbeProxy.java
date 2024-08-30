@@ -385,6 +385,7 @@ public class SmithProbeProxy {
         } else {
             SmithLogger.logger.info("not matched the black rule: ruleId: 112");
         }
+        SmithProbeObj.getStackRuleManager().clearStack();
 
         ClassFilter classFilter = new ClassFilter();
         SmithHandler.queryClassFilter(cla, classFilter);
