@@ -4,8 +4,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import net.jpountz.xxhash.XXHash32;
 import net.jpountz.xxhash.XXHash64;
 import net.jpountz.xxhash.XXHashFactory;
@@ -15,7 +13,6 @@ import com.security.smith.log.SmithLogger;
 
 public class StackRuleManager {
     public  Map<Integer, StackRule> stackRuleMaps = new ConcurrentHashMap<>();
-    private ReadWriteLock ruleLock = new ReentrantReadWriteLock();
     private XXHashFactory factory = XXHashFactory.fastestInstance();
     private XXHash64 hash64 = factory.hash64();
     private long seed64 = 0x9747b28c727a1617L;
@@ -23,7 +20,7 @@ public class StackRuleManager {
     public ThreadLocal<Map<Long, String>>  currentStack = new ThreadLocal<Map<Long, String>>() {
         @Override
         protected  Map<Long, String> initialValue() {
-            return new ConcurrentHashMap<>();
+            return new HashMap<>();
         }
     };
 
@@ -36,14 +33,13 @@ public class StackRuleManager {
 
 
     public boolean addBlackStackRule(Integer ruleId, String[] stackinfo) {
-        if (stackSwitch.get() == false) {
+        if (stackSwitch == null || stackSwitch.get() == false) {
             return false;
         }
         if (ruleId == null ||stackinfo == null || stackinfo.length == 0) {
             return false;
         }
         StackRule stackRule = null;
-        ruleLock.readLock().lock();
         try {
             if (stackRuleMaps.containsKey(ruleId)) {
                 SmithLogger.logger.info("ruleId is exist, ruleid :" + ruleId);
@@ -55,8 +51,6 @@ public class StackRuleManager {
             }
         } catch (Exception e) {
             SmithLogger.exception(e);
-        } finally {
-            ruleLock.readLock().unlock();
         }
         
         StackItem[] items = new StackItem[stackinfo.length];
@@ -76,14 +70,12 @@ public class StackRuleManager {
                 items[i] = stackItem;
             }
         }
-        ruleLock.writeLock().lock();
+
         try {
             stackRule.setBlackItems(items);
             stackRuleMaps.put(stackRule.getRuleId(), stackRule);
         } catch (Exception e) {
             SmithLogger.exception(e);
-        } finally {
-            ruleLock.writeLock().unlock();
         }
     
         SmithLogger.logger.info("add black stack rule: " + stackRule.getRuleId());
@@ -91,14 +83,13 @@ public class StackRuleManager {
     }
 
     public boolean addWhiteStackRule(Integer ruleId, String[] stackinfo) {
-        if (stackSwitch.get() == false) {
+        if (stackSwitch == null || stackSwitch.get() == false) {
             return false;
         }
         if (ruleId == null ||stackinfo == null || stackinfo.length == 0) {
             return false;
         }
         StackRule stackRule = null;
-        ruleLock.readLock().lock();
         try {
             if (stackRuleMaps.containsKey(ruleId)) {
                 stackRule = stackRuleMaps.get(ruleId);
@@ -108,8 +99,6 @@ public class StackRuleManager {
             }
         } catch (Exception e) {
             SmithLogger.exception(e);
-        } finally {
-            ruleLock.readLock().unlock();
         }
         
         StackItem[] items = new StackItem[stackinfo.length];
@@ -128,25 +117,22 @@ public class StackRuleManager {
                 items[i] = stackItem;
             }
         }
-        ruleLock.writeLock().lock();
+
         try {
             stackRule.setWhiteItems(items);
             stackRuleMaps.put(stackRule.getRuleId(), stackRule);
         } catch (Exception e) {
             SmithLogger.exception(e);
-        } finally {
-            ruleLock.writeLock().unlock();
         }
         
         return true;
     }
 
     public boolean removeBlackStackRule(Integer ruleId) {
-        if (stackSwitch.get() == false) {
+        if (stackSwitch == null || stackSwitch.get() == false) {
             return false;
         }
         boolean ret = false;
-        ruleLock.writeLock().lock();
         try {
             if (stackRuleMaps.containsKey(ruleId)) {
                 StackRule stackRule = stackRuleMaps.get(ruleId);
@@ -156,19 +142,17 @@ public class StackRuleManager {
             }
         } catch (Exception e) {
             SmithLogger.exception(e);
-        } finally {
-            ruleLock.writeLock().unlock();
         }
         
         return ret;
     }
 
     public boolean removeWhiteStackRule(Integer ruleId) {
-        if (stackSwitch.get() == false) {
+        if (stackSwitch == null || stackSwitch.get() == false) {
             return false;
         }
         boolean ret = false;
-        ruleLock.writeLock().lock();
+
         try {
             if (stackRuleMaps.containsKey(ruleId)) {
                 StackRule stackRule = stackRuleMaps.get(ruleId);
@@ -177,8 +161,6 @@ public class StackRuleManager {
             }
         } catch (Exception e) {
             SmithLogger.exception(e);
-        } finally {
-            ruleLock.writeLock().unlock();
         }
     
         return ret;
@@ -186,13 +168,11 @@ public class StackRuleManager {
 
     public StackRule getStackRule(Integer ruleId) {
         StackRule stackRule = null;
-        ruleLock.readLock().lock();
+
         try {
             stackRule = stackRuleMaps.get(ruleId);
         } catch (Exception e) {
             SmithLogger.exception(e);
-        } finally {
-            ruleLock.readLock().unlock();
         }
         return stackRule;
     }
@@ -208,7 +188,7 @@ public class StackRuleManager {
      */
 
     public boolean isMatched(Integer ruleId, boolean isWhite) {
-        if (stackSwitch.get() == false) {
+        if (stackSwitch == null || stackSwitch.get() == false) {
             return false;
         }
         if (ruleId == null || !stackRuleMaps.containsKey(ruleId)) {
@@ -223,7 +203,7 @@ public class StackRuleManager {
                 formatStack();
             }
             SmithLogger.logger.info("isWhite: " + isWhite + " ruleId: " + ruleId);
-            ruleLock.readLock().lock();
+
             try {
                 StackRule stackRule = stackRuleMaps.get(ruleId);
                 if (stackRule != null) {
@@ -271,7 +251,6 @@ public class StackRuleManager {
                 if (needClearStack) {
                     currentStack.get().clear();
                 }
-                ruleLock.readLock().unlock();
             }
             
             SmithLogger.logger.info("not find the match");
@@ -282,7 +261,7 @@ public class StackRuleManager {
     }
 
     public void formatStack() {
-        if (stackSwitch.get() == false) {
+        if (stackSwitch == null || stackSwitch.get() == false) {
             return ;
         }
         try {
@@ -291,7 +270,7 @@ public class StackRuleManager {
             SmithLogger.logger.info("now to get current stack");
             StackTraceElement[] stack_str  =  Thread.currentThread().getStackTrace();
             String[] stackTraceStrings = new String[stack_str.length];
-            Map<Long, String> curStack = new ConcurrentHashMap<>();
+            Map<Long, String> curStack = new HashMap<>();
 
             for (int i = 0; i < stack_str.length; i++) {
                 stackTraceStrings[i] = stack_str[i].toString();
@@ -309,7 +288,7 @@ public class StackRuleManager {
     }
 
     public void clearStack() {
-        if (stackSwitch.get() == false) {
+        if (stackSwitch == null || stackSwitch.get() == false) {
             return ;
         }
         try {
@@ -374,11 +353,12 @@ public class StackRuleManager {
     }
 
     public void clear() {
-        if (stackSwitch.get() == false) {
+        if (stackSwitch == null || stackSwitch.get() == false) {
             return ;
         }
         stackSwitch.set(false);
-        ruleLock.writeLock().lock();
+        stackSwitch.remove();
+        stackSwitch = null;
         try {
             for (StackRule stackRule : stackRuleMaps.values()) {
                 stackRule.removeBlackStackRule();
@@ -389,10 +369,6 @@ public class StackRuleManager {
             stackRuleMaps = null;
         } catch (Exception e) {
             SmithLogger.exception(e);
-        } finally {
-            ruleLock.writeLock().unlock();
-            ruleLock = null;
-
         }
         try {
             clearStack();
