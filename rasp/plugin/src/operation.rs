@@ -2,7 +2,6 @@ use anyhow::{anyhow, Result as AnyhowResult};
 use crossbeam::channel::{Sender};
 use librasp::manager::{BPFSelect, RASPManager};
 use log::*;
-use librasp::process::TracingState;
 use crate::{utils::Control};
 use librasp::process::ProcessInfo;
 use crate::config::{settings_bool, settings_string};
@@ -169,15 +168,7 @@ impl Operator {
                 if let Some(process_state) = process.tracing_state.as_ref() {
                     match process_state.to_string().as_str() {
                         "ATTACHED" => {
-                            match  self.detach_process(process) {
-                                Ok(_) => {
-                                    process.tracing_state = Some(TracingState::INSPECTED);
-                                }
-                                Err(e) => {
-                                    return Err(anyhow!(e));
-                                }
-                               
-                            }
+                            self.detach_process(process)?;
                         }
                         _ => {}
                     }

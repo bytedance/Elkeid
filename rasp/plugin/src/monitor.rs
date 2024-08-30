@@ -217,6 +217,36 @@ pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
     }
 }
 
+fn switch_state_after_success(state: &String, trace_state: Option<TracingState>) -> Option<TracingState> {
+    match state.as_str() {
+        "WAIT_ATTACH" => {
+            Some(TracingState::ATTACHED)
+        },
+        "DETACH" => {
+            Some(TracingState::INSPECTED)
+        },
+        "MISSING" => {
+            trace_state
+        }
+        _ => {None}
+    }  
+}
+
+fn switch_state_after_failed(state: &String, trace_state: Option<TracingState>) -> Option<TracingState> {
+    match state.as_str() {
+        "WAIT_ATTACH" => {
+            Some(TracingState::INSPECTED)
+        },
+        "DETACH" => {
+            Some(TracingState::ATTACHED)
+        },
+        "MISSING" => {
+            trace_state
+        }
+        _ => {None}
+    } 
+}
+
 fn internal_main(
     internal_message_sender: Sender<Record>,
     external_message_receiver: Receiver<RASPCommand>,
@@ -457,6 +487,7 @@ fn internal_main(
             info!("starting operation: {:?}", operation_message);
             match operator.op(&mut process, state.clone(), probe_message.clone()) {
                 Ok(_) => {
+                    process.tracing_state = switch_state_after_success(&state, process.tracing_state.clone());
                     info!("operation success: {:?}", operation_message);
                     if state != "ATTACHED" {
                         let report = make_report(&process.clone(), format!("{}_success", state.clone()).as_str(), String::new());
@@ -471,6 +502,7 @@ fn internal_main(
                     }
                 }
                 Err(e) => {
+                    process.tracing_state = switch_state_after_failed(&state, process.tracing_state.clone());
                     warn!("operation failed: {:?} {}", operation_message, e);
                     if state != "ATTACHED" {
                         let report = make_report(
@@ -498,7 +530,6 @@ fn internal_main(
             let mut opp = operation_process_rw.write();
             match state.as_str() {
                 "WAIT_ATTACH" => {
-                    process.tracing_state = Some(TracingState::ATTACHED);
                     // update config hash
                     let probe_config_hash = if !probe_message.clone().is_empty() {
                         // calc_hash
@@ -514,7 +545,6 @@ fn internal_main(
                     (*opp).remove(&process.pid);
                 }
                 "DETACH" => {
-                    process.tracing_state = Some(TracingState::INSPECTED);
                     (*opp).insert(process.pid, process);
                 }
                 _ => {}
