@@ -6,6 +6,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"os"
+	"time"
 )
 
 const (
@@ -28,15 +29,10 @@ type YLog struct {
 	lvl      int
 }
 
-func NewYLog(opts ...interface{}) *YLog {
-	var (
-		opt     interface{}
-		options *Options
-	)
-
-	options = &Options{}
-	for _, opt = range opts {
-		opt.(Option)(options)
+func NewYLog(opts ...Option) *YLog {
+	options := &Options{}
+	for _, opt := range opts {
+		opt(options)
 	}
 
 	logFile := defaultLogFile
@@ -52,10 +48,10 @@ func NewYLog(opts ...interface{}) *YLog {
 		maxAge = options.MaxAge
 	}
 	maxBackups := defaultMaxBackups
-	if options.MaxSize != 0 {
+	if options.MaxBackups != 0 {
 		maxBackups = options.MaxBackups
 	}
-	logLevel := options.Level
+	logLevel := zapcore.Level(options.Level)
 
 	hook := &lumberjack.Logger{
 		Filename:   logFile,
@@ -66,11 +62,31 @@ func NewYLog(opts ...interface{}) *YLog {
 		Compress:   true,
 	}
 
-	core := zapcore.NewCore(zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
-		zapcore.NewMultiWriteSyncer(zapcore.AddSync(os.Stdout),
-			zapcore.AddSync(hook)),
-		zapcore.Level(logLevel))
-	return &YLog{provider: zap.New(core), lvl: logLevel}
+	encoderConfig := zapcore.EncoderConfig{
+		MessageKey:     "msg",
+		LevelKey:       "level",
+		TimeKey:        "ts",
+		CallerKey:      "caller",
+		StacktraceKey:  "stacktrace",
+		EncodeLevel:    zapcore.LowercaseLevelEncoder,
+		EncodeTime:     CustomTimeEncoder, // Use custom time encoder
+		EncodeCaller:   zapcore.ShortCallerEncoder,
+		EncodeDuration: zapcore.SecondsDurationEncoder,
+	}
+
+	core := zapcore.NewCore(
+		zapcore.NewJSONEncoder(encoderConfig),
+		zapcore.NewMultiWriteSyncer(zapcore.AddSync(os.Stdout), zapcore.AddSync(hook)),
+		logLevel,
+	)
+
+	return &YLog{provider: zap.New(core), lvl: options.Level}
+}
+
+// Custom time encoder that formats time as both Unix timestamp and a readable format
+func CustomTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+	// Append Human-readable time
+	enc.AppendString(t.Format("2006-01-02 15:04:05"))
 }
 
 func (l *YLog) SetMsg(msg string) {
@@ -95,7 +111,7 @@ func Fatalf(msg string, format string, v ...interface{}) {
 		return
 	}
 	if defaultLogger.lvl <= FatalLevel {
-		defaultLogger.provider.Fatal(msg, zap.String("info", fmt.Sprintf(format, v...)))
+		defaultLogger.provider.Fatal(msg, zap.String("info", fmt.Sprintf(format, v...)), zap.Stack("stacktrace"))
 	}
 }
 
