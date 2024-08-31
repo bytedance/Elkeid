@@ -106,15 +106,26 @@ func runServer(enableCA bool, port int, crtFile, keyFile, caFile string) {
 	}
 
 	server := grpc.NewServer(opts...)
+	//rawdata
 	pb.RegisterTransferServer(server, &grpc_handler.TransferHandler{})
+
+	//file
 	fileHandler := &grpc_handler.FileExtHandler{FileBaseDir: common.FileDir}
 	fileHandler.Init()
 	pb.RegisterFileExtServer(server, fileHandler)
 
+	//config
 	configHandler := &grpc_handler.ConfigExtHandler{}
 	configHandler.Init()
 	configHandler.SetGlobal()
 	pb.RegisterConfigExtServer(server, configHandler)
+
+	//verify
+	pb.RegisterVerifyInstallServer(server, &grpc_handler.VerifyHandler{})
+
+	//proxy
+	pb.RegisterProxyHeartbeatServer(server, &grpc_handler.ProxyHandler{})
+
 	reflection.Register(server)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))

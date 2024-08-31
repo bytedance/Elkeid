@@ -2,6 +2,8 @@ syntax = "proto3";
 option go_package = "grpc";
 package grpc;
 
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
 //pb for rawdata
 //agent --> server
 message RawData{
@@ -171,15 +173,15 @@ enum ConfigFPStatusCode {
 }
 
 message ConfigRefreshRequest{
-  string AgentID = 1;
-  string PluginName = 2;
-  repeated ConfigFingerPrint Fingerprint  = 3;
+  string AgentID = 1 [(gogoproto.jsontag) = "agent_id,omitempty"];
+  string PluginName = 2 [(gogoproto.jsontag) = "plugin,omitempty"];
+  repeated ConfigFingerPrint Fingerprint  = 3 [(gogoproto.jsontag) = "configs,omitempty"];
 }
 
 message ConfigFingerPrint{
-  string Path = 1;
-  string Hash = 2;
-  ConfigFPStatusCode Status = 3;
+  string Path = 1 [(gogoproto.jsontag) = "path,omitempty"];
+  string Hash = 2 [(gogoproto.jsontag) = "hash,omitempty"];
+  ConfigFPStatusCode Status = 3 [(gogoproto.jsontag) = "status,omitempty"];
 }
 
 message ConfigRefreshResponse{
@@ -192,15 +194,69 @@ message ConfigRefreshResponse{
 }
 
 message ConfigDetail {
-  string Path = 1;
-  ConfigStatusCode Status = 2;
-  string Data = 3;    // type = config/file 的时候使用
-  ConfigTypeCode Type = 4;
-  string Hash = 5;    //文件hash，type = config 的时候使用
-  string Detail = 6;
+  string Path = 1 [(gogoproto.jsontag) = "path,omitempty"];
+  ConfigStatusCode Status = 2 [(gogoproto.jsontag) = "status,omitempty"];
+  string Data = 3 [(gogoproto.jsontag) = "data,omitempty"];    // type = config/file 的时候使用
+  ConfigTypeCode Type = 4 [(gogoproto.jsontag) = "type,omitempty"];
+  string Hash = 5 [(gogoproto.jsontag) = "hash,omitempty"];   //文件hash，type = config 的时候使用
+  string Detail = 6 [(gogoproto.jsontag) = "detail,omitempty"];
 }
 
 
 service ConfigExt {
   rpc CheckConfig(ConfigRefreshRequest) returns (ConfigRefreshResponse);
+}
+
+// 定义心跳请求消息
+message HeartbeatRequest {
+  string ProxyID = 1 [(gogoproto.jsontag) = "proxy_id,omitempty"];                      // 代理名称，在安装时指定
+  string ProxyLocalID = 2 [(gogoproto.jsontag) = "proxy_local_id,omitempty"];                 // 代理本地ID，部署时生成
+  repeated string IntranetIPv4 = 3 [(gogoproto.jsontag) = "intranet_ipv4,omitempty"];
+  repeated string ExtranetIPv4 = 4 [(gogoproto.jsontag) = "extranet_ipv4,omitempty"];
+  repeated string IntranetIPv6 = 5 [(gogoproto.jsontag) = "intranet_ipv6,omitempty"];
+  repeated string ExtranetIPv6 = 6 [(gogoproto.jsontag) = "extranet_ipv6,omitempty"];
+  string Hostname = 7 [(gogoproto.jsontag) = "hostname,omitempty"];                        //代理所在主机名
+  string Version = 8 [(gogoproto.jsontag) = "version,omitempty"];                         //版本
+  repeated string ConnectedAgents = 9 [(gogoproto.jsontag) = "connected_agents,omitempty"];       // 代理连接的Agent ID列表，每次全量更新
+  int64 ProxyStartTime = 10 [(gogoproto.jsontag) = "proxy_start_time,omitempty"];                // 代理启动时间（linux 秒时间戳）
+  ProxyStatus ProxyStatus = 11 [(gogoproto.jsontag) = "proxy_status,omitempty"];               // 代理连接状态，枚举值
+  string StatusMessage = 12 [(gogoproto.jsontag) = "status_message,omitempty"];                  // 代理状态的详细说明或异常原因
+  map<string, string> DetailedStatus = 13 [(gogoproto.jsontag) = "detailed_status,omitempty"];    // 代理详细状态信息，比如cpu，内存等
+}
+
+// 定义代理连接状态枚举
+enum ProxyStatus {
+  CONNECTED = 0;               // 已连接
+  CONNECTION_HTTP_FAILED = 1;  // 连接HTTP失败
+  UNKNOWN_ERROR = 2;           // 未知错误
+}
+
+// 定义心跳响应消息
+message HeartbeatResponse {
+  string Status = 1;                          // 响应状态，比如 "OK"
+}
+
+// 定义代理心跳服务
+service ProxyHeartbeat {
+  // 发送心跳信息的 RPC 方法
+  rpc SendHeartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+}
+
+// 定义安装密钥校验请求消息
+message VerifyInstallRequest {
+  string AgentID = 1 [(gogoproto.jsontag) = "agent_id,omitempty"];
+  string InstallKey = 2 [(gogoproto.jsontag) = "install_key,omitempty"];
+  string InstallType = 3 [(gogoproto.jsontag) = "install_type,omitempty"];
+}
+
+// 定义安装密钥校验响应消息
+message VerifyInstallResponse {
+  bool Success = 1;
+  string AccountID = 2;              //install_type不为volc情况下返回
+  map<string, string> Metadata = 3;   // 预留字段
+}
+
+// 定义Agent服务
+service VerifyInstall {
+  rpc VerifyInstall(VerifyInstallRequest) returns (VerifyInstallResponse);
 }
