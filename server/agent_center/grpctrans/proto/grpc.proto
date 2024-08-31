@@ -16,6 +16,8 @@ message RawData{
   string Hostname = 7;
   string Version = 8;
   string Product = 9;
+  string AccountID = 10;
+  map<string, string> metadata = 11;
 }
 
 message Record{

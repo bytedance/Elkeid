@@ -24,7 +24,12 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 	var exIpv6 = strings.Join(req.ExtranetIPv6, ",")
 	var SvrTime = time.Now().Unix()
 	var extraInfo = GlobalGRPCPool.GetExtraInfoByID(req.AgentID)
-	var accountID = GlobalGRPCPool.GetIaasInfo(req.AgentID)
+
+	//优先使用Agent上报的accountid
+	var accountID = req.AccountID
+	if accountID == "" {
+		accountID = GlobalGRPCPool.GetIaasInfo(req.AgentID)
+	}
 
 	for k, v := range req.GetData() {
 		ylog.Debugf("handleRawData", "Num:%d Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
