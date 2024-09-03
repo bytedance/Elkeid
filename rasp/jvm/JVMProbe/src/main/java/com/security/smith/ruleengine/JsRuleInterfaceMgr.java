@@ -1,8 +1,8 @@
 package com.security.smith.ruleengine;
 
-// import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
-// import org.openjdk.nashorn.internal.objects.NativeArray;
-import jdk.nashorn.api.scripting.ScriptObjectMirror;
+
+// import jdk.nashorn.api.scripting.ScriptObjectMirror;
+import jdk.nashorn.internal.objects.NativeArray;
 import com.security.smith.log.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,17 +41,27 @@ public class JsRuleInterfaceMgr {
     }
 
     private String[] Convert_JsStringArray_To_JavaStringArray(Object jsArray) {
-        // 检查结果是否为ScriptObjectMirror
-        if (jsArray  instanceof jdk.nashorn.api.scripting.ScriptObjectMirror) {
-                jdk.nashorn.api.scripting.ScriptObjectMirror array = (jdk.nashorn.api.scripting.ScriptObjectMirror)jsArray;
+        if (jsArray  instanceof jdk.nashorn.internal.objects.NativeArray) {
+        try {
+            jdk.nashorn.internal.objects.NativeArray array = (jdk.nashorn.internal.objects.NativeArray)jsArray;
 
-                // 将JavaScript数组转换为Java List
-                List<String> javaList = new ArrayList<>();
-                for (Object obj : array.values()) {
-                    javaList.add(obj.toString());
-                }
+            List<String> javaList = new ArrayList<>();
+            for (Object obj : array.values()) {
+                javaList.add(obj.toString());
+            }
 
-                return javaList.toArray(new String[javaList.size()]);
+            return javaList.toArray(new String[javaList.size()]);
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+               
+        // } else if (jsArray instanceof NativeArray) {
+        //     NativeArray array = (NativeArray)jsArray;
+        //     String[] javaArray = new String[array.getLength()];
+        //     for (int i = 0; i < array.getLength(); i++) {
+        //         javaArray[i] = array.get(i).toString();
+        //     }
+        //     return javaArray;
         }
 
         return null;
@@ -73,6 +83,7 @@ public class JsRuleInterfaceMgr {
         int ruletype = (int)args[0];
         int ruleid = (int)args[1];
         String[] rule = Convert_JsStringArray_To_JavaStringArray(args[2]);
+
 
         if(rule == null) {
             return false;

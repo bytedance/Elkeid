@@ -3,14 +3,12 @@ package com.security.smith.ruleengine;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
+
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import com.security.smith.log.*;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptEngine;
-import javax.script.ScriptException;
+import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
 
 public class JsRuleEngine {
     private static boolean  bInited = false;
@@ -18,7 +16,7 @@ public class JsRuleEngine {
     private static JsRuleEngine instance = null;
     private static JsRuleInterfaceMgr jsInterfaceMgr = null;
     private static StackRuleMgr stackRuleMgr = null;
-    //private static NashornScriptEngineFactory engineFactory = null;
+    private static NashornScriptEngineFactory engineFactory = null;
     private static Map<Integer,JsExecutor>[] jsExecuterMgr = null;
     private static ReadWriteLock jsExecuterMgrLock = null;
 
@@ -36,7 +34,7 @@ public class JsRuleEngine {
 
             jsInterfaceMgr = new JsRuleInterfaceMgr(stackRuleMgr);
             //jsInterfaceMgr.setStackRuleMgr(stackRuleMgr);
-           // engineFactory = new NashornScriptEngineFactory();
+            engineFactory = new NashornScriptEngineFactory();
         } catch (Exception e) {
             SmithLogger.exception(e);
         }
@@ -44,7 +42,7 @@ public class JsRuleEngine {
     }
 
     public  static JsRuleEngine InitializeEngine() {
-        if(instance != null) {
+        if (instance != null) {
             return instance;
         }
 
@@ -108,7 +106,7 @@ public class JsRuleEngine {
         stackRuleMgr.Uninitialize();
         stackRuleMgr = null;
         jsExecuterMgrLock = null;
-        //engineFactory = null;
+        engineFactory = null;
         enterCount = null;
 
         return true;
