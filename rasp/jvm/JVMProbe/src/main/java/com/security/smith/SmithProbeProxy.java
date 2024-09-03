@@ -21,7 +21,7 @@ import com.security.smith.client.message.*;
 import com.security.smith.common.Reflection;
 import com.security.smith.common.SmithHandler;
 import com.security.smith.log.SmithLogger;
-
+import com.security.smith.ruleengine.JsRuleResult;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.GsonBuilder;
@@ -363,48 +363,37 @@ public class SmithProbeProxy {
         if(SmithProbeObj.classIsSended(cla)) {
             return ;
         }
-        /* just for test */
-        SmithProbeObj.getStackRuleManager().formatStack();
-        if (SmithProbeObj.getStackRuleManager().isMatched(111, true)) {
-            SmithLogger.logger.info("matched the white rule: ruleId: 111");
-        } else {
-            SmithLogger.logger.info("not matched the white rule: ruleId: 111");
-        }
-        if (SmithProbeObj.getStackRuleManager().isMatched(111, false)) {
-            SmithLogger.logger.info("matched the black rule: ruleId: 111");
-        } else {
-            SmithLogger.logger.info("not matched the black rule: ruleId: 111");
-        }
-        if (SmithProbeObj.getStackRuleManager().isMatched(112, true)) {
-            SmithLogger.logger.info("matched the white rule: ruleId: 112");
-        } else {
-            SmithLogger.logger.info("not matched the white rule:ruleId: 112");
-        }
-        if (SmithProbeObj.getStackRuleManager().isMatched(112, false)) {
-            SmithLogger.logger.info("matched the black rule: ruleId: 112");
-        } else {
-            SmithLogger.logger.info("not matched the black rule: ruleId: 112");
-        }
-        SmithProbeObj.getStackRuleManager().clearStack();
+        
+        Object[] argsX = new Object[2];
+        argsX[0] = (Object)classID;
+        argsX[1] = (Object)methodID;
 
-        ClassFilter classFilter = new ClassFilter();
-        SmithHandler.queryClassFilter(cla, classFilter);
-        classFilter.setTransId();
-        classFilter.setRuleId(-1);
-        classFilter.setClassId(classID);
-        classFilter.setMethodId(methodID);
-        classFilter.setTypes(SmithProbeObj.getFuncTypes(classID, methodID));
-        classFilter.setStackTrace(Thread.currentThread().getStackTrace());
-        if (client != null) {
-            Gson gson = new GsonBuilder()
-            .registerTypeAdapter(ClassFilter.class, new ClassFilterSerializer())
-            .registerTypeAdapter(ClassFilter.class, new ClassFilterDeserializer())
-            .create();
-            JsonElement jsonElement = gson.toJsonTree(classFilter);
-            client.write(Operate.SCANCLASS, jsonElement);
-            SmithLogger.logger.info("send metadata: " + classFilter.toString());
-            SmithProbeObj.sendClass(cla, classFilter.getTransId());
+        JsRuleResult result = SmithProbeObj.getJsRuleEngine().detect(1,argsX);
+        if(result != null) {
+            SmithLogger.logger.info("Js Rule Result +" + result.toString());
+            ClassFilter classFilter = new ClassFilter();
+            SmithHandler.queryClassFilter(cla, classFilter);
+            classFilter.setTransId();
+            classFilter.setRuleId(-1);
+            classFilter.setClassId(classID);
+            classFilter.setMethodId(methodID);
+            classFilter.setTypes(SmithProbeObj.getFuncTypes(classID, methodID));
+            classFilter.setStackTrace(Thread.currentThread().getStackTrace());
+            if (client != null) {
+                Gson gson = new GsonBuilder()
+                .registerTypeAdapter(ClassFilter.class, new ClassFilterSerializer())
+                .registerTypeAdapter(ClassFilter.class, new ClassFilterDeserializer())
+                .create();
+                JsonElement jsonElement = gson.toJsonTree(classFilter);
+                client.write(Operate.SCANCLASS, jsonElement);
+                SmithLogger.logger.info("send metadata: " + classFilter.toString());
+                SmithProbeObj.sendClass(cla, classFilter.getTransId());
+            }
         }
+        else {
+            SmithLogger.logger.info("Js Rule No hit");
+        }
+        
     }
 
     public void checkAddServletPre(int classID, int methodID, Object[] args) {
