@@ -20,9 +20,9 @@ const (
 )
 
 type ResAgentConf struct {
-	Code    int         `json:"code"`
-	Message string      `json:"msg"`
-	Data    []ConfigMsg `json:"data"`
+	Code    int             `json:"code"`
+	Message string          `json:"msg"`
+	Data    json.RawMessage `json:"data"`
 }
 
 type ConfigMsg struct {
@@ -59,22 +59,42 @@ func GetConfigFromRemote(agentID string, detail map[string]interface{}) ([]*pb.C
 		return nil, err
 	}
 	if !resp.Ok {
-		ylog.Errorf("GetConfigFromRemote", "response code is not 200, AgentID: %s, StatusCode: %d,String: %s", agentID, resp.StatusCode, resp.String())
+		ylog.Errorf("GetConfigFromRemote", "response code is not 200, AgentID: %s, StatusCode: %d, String: %s", agentID, resp.StatusCode, resp.String())
 		return nil, errors.New("status code is not ok")
 	}
+
 	var response ResAgentConf
 	err = json.Unmarshal(resp.Bytes(), &response)
 	if err != nil {
-		ylog.Errorf("GetConfigFromRemote", "agentID: %s, error: %s, resp:%s", agentID, err.Error(), resp.String())
+		ylog.Errorf("GetConfigFromRemote", "agentID: %s, error: %s, resp: %s", agentID, err.Error(), resp.String())
 		return nil, err
 	}
+
+	// 检查业务响应码是否为非 0
 	if response.Code != 0 {
-		ylog.Errorf("GetConfigFromRemote", "response code is not 0, agentID: %s, resp: %s", agentID, resp.String())
-		return nil, errors.New("response code is not 0")
+		// 如果 Code 不为 0，处理异常情况
+		errMsg := fmt.Sprintf("response code is %d, message: %s", response.Code, response.Message)
+
+		// 检查 data 字段的类型是否为字符串
+		var errData string
+		if err := json.Unmarshal(response.Data, &errData); err == nil {
+			errMsg = fmt.Sprintf("%s, data: %s", errMsg, errData)
+		}
+
+		ylog.Errorf("GetConfigFromRemote", "agentID: %s, %s", agentID, errMsg)
+		return nil, errors.New(errMsg)
+	}
+
+	// 如果 Code 为 0，则继续处理 data 作为配置数组
+	var configData []ConfigMsg
+	err = json.Unmarshal(response.Data, &configData)
+	if err != nil {
+		ylog.Errorf("GetConfigFromRemote", "agentID: %s, error: %s, resp: %s", agentID, err.Error(), resp.String())
+		return nil, err
 	}
 
 	res := make([]*pb.ConfigItem, 0)
-	for _, v := range response.Data {
+	for _, v := range configData {
 		tmp := &pb.ConfigItem{
 			Name:        v.Name,
 			Type:        v.Type,

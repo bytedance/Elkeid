@@ -17,5 +17,6 @@ func (p ProxyHandler) SendHeartbeat(ctx context.Context, request *pb.HeartbeatRe
 		ylog.Errorf("SendHeartbeat", "ProxyID: %s, ProxyLocalID: %s, Error: %s", request.ProxyID, request.ProxyLocalID, err.Error())
 		return nil, status.Errorf(codes.Internal, "Internal Server Error")
 	}
+	ylog.Infof("SendHeartbeat", "Receive HB, ProxyID: %s, ProxyLocalID: %s", request.ProxyID, request.ProxyLocalID)
 	return &pb.HeartbeatResponse{Status: "ok"}, nil
 }

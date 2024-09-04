@@ -14,12 +14,13 @@ type VerifyHandler struct{}
 func (v VerifyHandler) VerifyInstall(ctx context.Context, request *pb.VerifyInstallRequest) (*pb.VerifyInstallResponse, error) {
 	success, accountID, err := client.VerifyInstallKey(*request)
 	if err != nil {
-		ylog.Errorf("VerifyInstallKey", "AgentID: %s, Error: %s", request.AgentID, err.Error())
+		ylog.Errorf("VerifyInstall", "AgentID: %s, Error: %s", request.AgentID, err.Error())
 		return nil, status.Errorf(codes.Internal, "Internal Server Error")
 	}
 	res := pb.VerifyInstallResponse{
 		Success:   success,
 		AccountID: accountID,
 	}
+	ylog.Infof("VerifyInstall", "AgentID: %s, VerifyInstall ok, AccountID: %s", request.AgentID, accountID)
 	return &res, nil
 }

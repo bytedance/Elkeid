@@ -27,7 +27,7 @@ func initConfig() {
 
 	initLog()
 	initDefault()
-	//initComponents()
+	initComponents()
 }
 
 func initDefault() {
