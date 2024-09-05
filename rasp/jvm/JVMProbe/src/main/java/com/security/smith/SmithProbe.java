@@ -270,10 +270,13 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
     public void addJsRule() {
         SmithLogger.logger.info("add js rule");
-        Path jsrulePath = Paths.get("/etc/elkeid/plugin/rasp/lib-2.2.4.6-test/java/rules/rule.js");
+        Path jsrulePath = Paths.get("/home/leminis/common.js");
+        SmithLogger.logger.info("add js rule 1");
 
         if (jsrulePath != null && jsRuleEngine!= null) {
+            SmithLogger.logger.info("add js rule 2");
             int ret = jsRuleEngine.addJsRule(jsrulePath);
+            SmithLogger.logger.info("add js rule 3");
              if (ret == 0) {
                  SmithLogger.logger.info("add js rule success");
              } else {

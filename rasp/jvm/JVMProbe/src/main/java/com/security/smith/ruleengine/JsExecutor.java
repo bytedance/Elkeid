@@ -7,12 +7,14 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Path;
 import com.security.smith.log.*;
+import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
 
 public class JsExecutor {
     public static final int COMMON_TYPE = 1;
     public static final int REFLECT_TYPE  = 2;
     public static final int MAX_TYPE = 2;
-   // private NashornScriptEngineFactory jsEngineFactory;
+    private static String LANGUAGE_ES6 = "--language=es6";
+    private NashornScriptEngineFactory jsEngineFactory;
     private ScriptEngine jsEngine;
     private ScriptContext jsctx;
     private Invocable inv;
@@ -92,7 +94,7 @@ public class JsExecutor {
     public JsExecutor() {
         jsctx = null;
         jsEngine = null;
-        //jsEngineFactory = null;
+        jsEngineFactory = null;
         ruletype = 0xFFFFFFFF;
         ruleid = 0xFFFFFFFF;
         rulename = null;
@@ -100,7 +102,7 @@ public class JsExecutor {
         argsNum = 0xFFFFFFFF;
     }
 
-    public boolean Initialize(JsRuleInterfaceMgr jsInterfaceMgr,Path ScriptFilePath) {
+    public boolean Initialize(NashornScriptEngineFactory EngineFactory,JsRuleInterfaceMgr jsInterfaceMgr,Path ScriptFilePath) {
         boolean     bret = false;
 
         /*
@@ -113,9 +115,8 @@ public class JsExecutor {
 
             rulename = filename.toString();
 
-            //jsEngineFactory = EngineFactory;
-            ScriptEngineManager scriptEngineManager = new ScriptEngineManager();
-            jsEngine = scriptEngineManager.getEngineByName("nashorn");
+            jsEngineFactory = EngineFactory;
+            jsEngine = EngineFactory.getScriptEngine(LANGUAGE_ES6); 
 
             jsEngine.put("JsRuleInterfaceMgr",jsInterfaceMgr);
 
@@ -124,11 +125,11 @@ public class JsExecutor {
             inv = (Invocable)jsEngine;
 
             bret = true;
-        } catch(Exception e) {
+        } catch(Throwable e) {
             bret = false;
 
             jsctx = null;
-            // jsEngineFactory = null;
+            jsEngineFactory = null;
             jsEngine = null;
             inv = null;
             SmithLogger.exception(e);
@@ -144,7 +145,7 @@ public class JsExecutor {
 
         jsctx = null;
         jsEngine = null;
-        // jsEngineFactory = null;
+        jsEngineFactory = null;
         inv = null;
         rulename = null;
         ruletype = -1;

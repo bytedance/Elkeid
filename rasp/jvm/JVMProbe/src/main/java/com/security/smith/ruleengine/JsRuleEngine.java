@@ -33,7 +33,6 @@ public class JsRuleEngine {
             stackRuleMgr.Initialize();
 
             jsInterfaceMgr = new JsRuleInterfaceMgr(stackRuleMgr);
-            //jsInterfaceMgr.setStackRuleMgr(stackRuleMgr);
             engineFactory = new NashornScriptEngineFactory();
         } catch (Exception e) {
             SmithLogger.exception(e);
@@ -123,7 +122,8 @@ public class JsRuleEngine {
         enterCount.incrementAndGet();
 
         jsExecuter = new JsExecutor();
-        if(!jsExecuter.Initialize(jsInterfaceMgr,ScriptFilePath)) {
+
+        if(!jsExecuter.Initialize(engineFactory,jsInterfaceMgr,ScriptFilePath)) {
             enterCount.decrementAndGet();
             return 4;
         }
