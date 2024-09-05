@@ -129,7 +129,7 @@ public class JsRuleEngine {
         }
 
         int ruletype = jsExecuter.getRuleType();
-        if(ruletype >= JsExecutor.MAX_TYPE ||
+        if(ruletype > JsExecutor.MAX_TYPE ||
                 ruletype <= 0) {
             jsExecuter.Uninitialize();
 
@@ -194,19 +194,23 @@ public class JsRuleEngine {
         boolean     bInitStack = false;
 
         if(!bInited) {
+            SmithLogger.logger.info("JsRuleEngine not inited");
             return null;
         }
 
         enterCount.incrementAndGet();
 
-        if(ruletype >= JsExecutor.MAX_TYPE ||
+        if(ruletype > JsExecutor.MAX_TYPE ||
             ruletype <= 0) {
             enterCount.decrementAndGet();
             return null;
         }
 
         try {
-            bInitStack = stackRuleMgr.InitCallStack(ruletype);
+            // only format stack when ruletype is common type
+            if (ruletype == JsExecutor.COMMON_TYPE) {
+                bInitStack = stackRuleMgr.InitCallStack(ruletype);
+            }
 
             jsExecuterMgrLock.readLock().lock();
 

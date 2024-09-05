@@ -195,6 +195,11 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         this.proberPath = proberPath;
     }
 
+    public String getProbePath() {
+        return proberPath;
+
+    }
+
     public void init() {
         AttachInfo.info();
         SmithLogger.loggerProberInit();
@@ -260,28 +265,68 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         try {
             SmithLogger.logger.info("jsRuleEngine init");
             jsRuleEngine = JsRuleEngine.InitializeEngine();
+            if (jsRuleEngine != null) {
+                SmithLogger.logger.info("jsRuleEngine init success");
+            }
         } catch (Throwable e) {
             SmithLogger.exception(e);
         }
         
         SmithLogger.logger.info("probe init leave");
-        /* just for test */
-        //TestAdd();
+    }
+
+    public boolean addJsFile(Path scriptFilePath) {
+        boolean ret = false;
+        try {
+            if (scriptFilePath != null && jsRuleEngine != null) {
+                SmithLogger.logger.info("add js rule enter");
+                int result = jsRuleEngine.addJsRule(scriptFilePath);
+                if (result == 0) {
+                    SmithLogger.logger.info("add js rule success");
+                    ret = true;
+                } else {
+                    SmithLogger.logger.info("add js rule failed, ret :" + result);
+                }
+            } else {
+                SmithLogger.logger.info("not find js rule path: " + scriptFilePath);
+            }
+        }
+        catch (Throwable e) {
+            SmithLogger.exception(e);
+        }
+        return ret;
     }
     public void addJsRule() {
-        SmithLogger.logger.info("add js rule");
-        Path jsrulePath = Paths.get("/etc/elkeid/plugin/rasp/lib-2.2.4.6-test/java/rules/rule.js");
+        try {
+            SmithLogger.logger.info("add js rule");
+            File ruleFile = new File(getProbePath());
+            File ruleDir = new File(ruleFile.getParent(), "rules");
+            if (ruleDir == null || !ruleDir.exists() || !ruleDir.isDirectory()) {
+                SmithLogger.logger.info("not find js rule dir: " + ruleDir);
+                return;
+            }
+            SmithLogger.logger.info("find js rule dir: " + ruleDir);
+       
+            File[] files = ruleDir.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isFile()) {
+                        Path jsPath = file.toPath();
+                        if (addJsFile(jsPath)) {
+                            SmithLogger.logger.info("add js rule success: " + jsPath);
+                        } else {
+                            SmithLogger.logger.info("add js rule failed: " + jsPath);
+                        }
+                    }
+                }
+            }
 
-        if (jsrulePath != null && jsRuleEngine!= null) {
-            int ret = jsRuleEngine.addJsRule(jsrulePath);
-             if (ret == 0) {
-                 SmithLogger.logger.info("add js rule success");
-             } else {
-                 SmithLogger.logger.info("add js rule failed, ret :" + ret);
-             }
-        } else {
-            SmithLogger.logger.info("not find js rule path: " + jsrulePath);
+
+            
+        } catch (Throwable e) {
+            SmithLogger.exception(e);
         }
+        
     }
     public JsRuleEngine getJsRuleEngine() {
         return jsRuleEngine;
@@ -357,17 +402,16 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         smithProxy.setClient(client);
         smithProxy.setDisruptor(disruptor);
         smithProxy.setProbe(this);
-        smithProxy.setReflectField();
-        smithProxy.setReflectMethod();
-
-        inst.addTransformer(this, true);
-        reloadClasses();
 
         try {
             addJsRule();
         } catch (Exception e) {
             SmithLogger.exception(e);
         }
+
+
+        inst.addTransformer(this, true);
+        reloadClasses();
 
         SmithLogger.logger.info("probe start leave");
     }

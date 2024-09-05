@@ -36,7 +36,7 @@ public class StackRuleManager {
         if (stackSwitch == null || stackSwitch.get() == false) {
             return false;
         }
-        if (ruleId == null ||stackinfo == null || stackinfo.length == 0) {
+        if (ruleId == null || stackinfo == null || stackinfo.length == 0) {
             return false;
         }
         StackRule stackRule = null;
