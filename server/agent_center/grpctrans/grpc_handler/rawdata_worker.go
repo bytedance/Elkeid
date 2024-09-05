@@ -173,6 +173,9 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 		}
 	}
 
+	if req.AccountID != "" {
+		detail["account_id"] = req.AccountID
+	}
 	detail["agent_id"] = req.AgentID
 	detail["agent_addr"] = conn.SourceAddr
 	detail["create_at"] = conn.CreateAt
@@ -344,6 +347,9 @@ func parsePluginHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connect
 	//last heartbeat time get from server
 	detail["last_heartbeat_time"] = time.Now().Unix()
 	detail["online"] = true
+	if req.AccountID != "" {
+		detail["account_id"] = req.AccountID
+	}
 
 	conn.SetPluginDetail(pluginName, detail)
 	return detail
