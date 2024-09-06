@@ -5,7 +5,11 @@ package com.security.smith.ruleengine;
 import javax.script.*;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import com.security.smith.common.RSAUtil;
+
 import com.security.smith.log.*;
 import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
 
@@ -102,6 +106,16 @@ public class JsExecutor {
         argsNum = 0xFFFFFFFF;
     }
 
+    private byte[] parseScript(String script) {
+        try {
+            byte[] encryptedData = Files.readAllBytes(Paths.get(script));
+            return RSAUtil.decryptRSA(encryptedData);
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+        return null;
+    }
+
     public boolean Initialize(NashornScriptEngineFactory EngineFactory,JsRuleInterfaceMgr jsInterfaceMgr,Path ScriptFilePath) {
         boolean     bret = false;
 
@@ -119,8 +133,13 @@ public class JsExecutor {
             jsEngine = EngineFactory.getScriptEngine(LANGUAGE_ES6); 
 
             jsEngine.put("JsRuleInterfaceMgr",jsInterfaceMgr);
+            byte[] script = parseScript(ScriptFilePath.toString());
+            if (script == null) {
+                SmithLogger.logger.info("load script failed");
+                return false;
+            }
 
-            jsEngine.eval(new FileReader(ScriptFilePath.toString()));
+            jsEngine.eval(new String(script));
 
             inv = (Invocable)jsEngine;
 
