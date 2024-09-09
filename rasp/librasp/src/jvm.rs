@@ -47,7 +47,7 @@ impl ProbeCopy for JVMProbe {
                 settings::RASP_JAVA_AGENT_BIN(),
             ]
             .to_vec(),
-            [].to_vec(),
+            [settings::RASP_JAVA_RULES_DIR()].to_vec(),
         )
     }
 }
