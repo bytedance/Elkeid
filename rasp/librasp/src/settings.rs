@@ -73,6 +73,10 @@ pub fn RASP_JAVA_AGENT_BIN() -> String {
     format!("{}{}", RASP_LIB_DIR(), "/java/SmithAgent.jar")
 }
 
+pub fn RASP_JAVA_RULES_DIR() -> String {
+    format!("{}{}", RASP_JAVA_DIR(), "/rules")
+}
+
 pub fn RASP_JAVA_DIR() -> String {
     format!("{}{}", RASP_LIB_DIR(), "/java")
 }

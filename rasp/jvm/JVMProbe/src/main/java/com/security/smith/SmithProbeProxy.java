@@ -18,15 +18,10 @@ import com.lmax.disruptor.dsl.Disruptor;
 import com.security.smith.client.Client;
 import com.security.smith.client.Operate;
 import com.security.smith.client.message.*;
-import com.security.smith.client.message.ClassFilter;
-import com.security.smith.client.message.Heartbeat;
-import com.security.smith.client.message.MatchRule;
-import com.security.smith.client.message.Trace;
-import com.security.smith.client.message.Block;
 import com.security.smith.common.Reflection;
 import com.security.smith.common.SmithHandler;
 import com.security.smith.log.SmithLogger;
-
+import com.security.smith.ruleengine.JsRuleResult;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.GsonBuilder;
@@ -40,8 +35,6 @@ public class SmithProbeProxy {
     private Disruptor<Trace> disruptor;
     private Client client;
     private boolean stopX;
-    private Map<String, String[]> reflectField = new HashMap<>();
-    private Map<String, String[]> reflectMethod = new HashMap<>();
 
     public InheritableThreadLocal<Object> localfilterConfig = new InheritableThreadLocal<Object>() {
         @Override
@@ -143,12 +136,6 @@ public class SmithProbeProxy {
         this.SmithProbeObj = null;
         RemoveThreadLocalVar();
 
-        reflectField.clear();
-        reflectField = null;
-
-        reflectMethod.clear();
-        reflectMethod = null;
-
         localfilterConfig = null; 
         localfilterDef = null;
         needFoundfilterDef = null;
@@ -167,109 +154,27 @@ public class SmithProbeProxy {
         this.disruptor = disruptor;
     }
 
-    public void setReflectField() {
-        String[] values1 = {"theUnsafe", "unsafe", "fieldFilterMap", "methodFilterMap"};
-        String[] values2 = {"launchMechanism"};
-        String[] values3 = {"handlerMap", "adaptedInterceptors"};
-        String[] values4 = {"context"};
-        String[] values5 = {"delegate"};
-        String[] values6 = {"handlerAdapters", "handlerMappings"};
-        String[] values7 = {"chain"};
-        String[] values8 = {"httpUpgradeProtocols"};
-        String[] values9 = {"executor"};
-        String[] values10 = {"connector"};
 
-        reflectField.put("*", values1);
-        reflectField.put("java.lang.UNIXProcess", values2);
-        reflectField.put("java.lang.ProcessImpl", values2);
-        reflectField.put("org.springframework.web.servlet.handler.AbstractUrlHandlerMapping", values3);
-        reflectField.put("org.apache.catalina.core.ApplicationContext", values4);
-        reflectField.put("org.springframework.context.ApplicationListener", values5);
-        reflectField.put("org.springframework.web.servlet.DispatcherServlet", values6);
-        reflectField.put("org.springframework.web.server.handler.FilteringWebHandler", values7);
-        reflectField.put("org.apache.coyote.http11.AbstractHttp11Protocol", values8);
-        reflectField.put("org.apache.tomcat.util.net.AbstractEndpoint", values9);
-        reflectField.put("org.apache.catalina.connector.CoyoteAdapter", values10);
-    }
-
-    public void setReflectMethod() {
-
-        String[] values1 = {"*"};
-        String[] values2 = {"load"};
-        String[] values3 = {"forkAndExec"};
-        String[] values4 = {"create"};
-        String[] values5 = {"defineClass"};
-        reflectMethod.put("java.lang.Unsafe", values1);
-        reflectMethod.put("java.lang.ClassLoader$NativeLibrary", values2);
-        reflectMethod.put("java.lang.UNIXProcess", values3);
-        reflectMethod.put("java.lang.ProcessImpl", values4);
-        reflectMethod.put("java.lang.ClassLoader", values5);
-    }
-
-    public Map<String, String[]> getReflectMethod()  {
-        return this.reflectMethod;
-    }
-
-    public Map<String, String[]> getReflectField() {
-        return this.reflectField;
-    }
-
-    public boolean checkReflectFeildEvil(String classname, String fieldname) {
+    public boolean checkReflectEvil(String classname, String fieldname, boolean isMethod) {
         if (classname == null || fieldname == null) {
             return false;
         }
-        Map<String, String[]> refieldMap = getReflectField();
-        if (refieldMap == null) {
-            return false;
-        }
-        if (refieldMap.containsKey(classname)) {
-            String[] values = refieldMap.get(classname);
-            for (String value : values) {
-                if (value.equals(fieldname) || value.equals("*")) {
-                    return true;
-                }
-            }
-        } else {
-            String[] values = refieldMap.get("*");
-            if (values == null) {
-                return false;
-            }
-            for (String value : values) {
-                if (value.equals(fieldname) || value.equals("*")) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
+        try {
+            Object[] argsX = new Object[3];
+            argsX[0] = (Object)classname;
+            argsX[1] = (Object)fieldname;
+            argsX[2] = (Object)isMethod;
 
-
-    public boolean checkReflectMethodEvil(String classname, String methodname) {
-        if (classname == null || methodname == null) {
-            return false;
-        }
-        Map<String, String[]> refieldMap = getReflectMethod();
-        if (refieldMap == null) {
-            return false;
-        }
-        if (refieldMap.containsKey(classname)) {
-            String[] values = refieldMap.get(classname);
-            for (String value : values) {
-                if (value.equals(methodname) || value.equals("*")) {
-                    return true;
-                }
+            JsRuleResult result = SmithProbeObj.getJsRuleEngine().detect(2, argsX);
+            if (result != null) {
+                SmithLogger.logger.info("classname = " + classname + ", fieldname = " + fieldname + ", result = " + result.rulename);
+                SmithLogger.logger.info("classname = " + classname + ", fieldname = " + fieldname + ", result = " + result.ruleid);
+                return true;
             }
-        } else {
-            String[] values = refieldMap.get("*");
-            if (values == null) {
-                return false;
-            }
-            for (String value : values) {
-                if (value.equals(methodname) || value.equals("*")) {
-                    return true;
-                }
-            }
+        } catch (Throwable e) {
+            SmithLogger.exception(e);
         }
+        
         return false;
     }
 
@@ -368,25 +273,34 @@ public class SmithProbeProxy {
         if(SmithProbeObj.classIsSended(cla)) {
             return ;
         }
+        
+        Object[] argsX = new Object[2];
+        argsX[0] = (Object)classID;
+        argsX[1] = (Object)methodID;
 
-        ClassFilter classFilter = new ClassFilter();
-        SmithHandler.queryClassFilter(cla, classFilter);
-        classFilter.setTransId();
-        classFilter.setRuleId(-1);
-        classFilter.setClassId(classID);
-        classFilter.setMethodId(methodID);
-        classFilter.setTypes(SmithProbeObj.getFuncTypes(classID, methodID));
-        classFilter.setStackTrace(Thread.currentThread().getStackTrace());
-        if (client != null) {
-            Gson gson = new GsonBuilder()
-            .registerTypeAdapter(ClassFilter.class, new ClassFilterSerializer())
-            .registerTypeAdapter(ClassFilter.class, new ClassFilterDeserializer())
-            .create();
-            JsonElement jsonElement = gson.toJsonTree(classFilter);
-            client.write(Operate.SCANCLASS, jsonElement);
-            SmithLogger.logger.info("send metadata: " + classFilter.toString());
-            SmithProbeObj.sendClass(cla, classFilter.getTransId());
+        JsRuleResult result = SmithProbeObj.getJsRuleEngine().detect(1,argsX);
+        if(result != null) {
+            SmithLogger.logger.info("Js Rule Result +" + result.toString());
+            ClassFilter classFilter = new ClassFilter();
+            SmithHandler.queryClassFilter(cla, classFilter);
+            classFilter.setTransId();
+            classFilter.setRuleId(-1);
+            classFilter.setClassId(classID);
+            classFilter.setMethodId(methodID);
+            classFilter.setTypes(SmithProbeObj.getFuncTypes(classID, methodID));
+            classFilter.setStackTrace(Thread.currentThread().getStackTrace());
+            if (client != null) {
+                Gson gson = new GsonBuilder()
+                .registerTypeAdapter(ClassFilter.class, new ClassFilterSerializer())
+                .registerTypeAdapter(ClassFilter.class, new ClassFilterDeserializer())
+                .create();
+                JsonElement jsonElement = gson.toJsonTree(classFilter);
+                client.write(Operate.SCANCLASS, jsonElement);
+                SmithLogger.logger.info("send metadata: " + classFilter.toString());
+                SmithProbeObj.sendClass(cla, classFilter.getTransId());
+            }
         }
+        
     }
 
     public void checkAddServletPre(int classID, int methodID, Object[] args) {
@@ -453,6 +367,7 @@ public class SmithProbeProxy {
             return;
         }
         try {
+            
             Object filterdef = args[1];
             Object filter = null;
             Class<?> filterClass = null;
@@ -901,7 +816,7 @@ public class SmithProbeProxy {
             if (reflectClass.startsWith("com.security.smith") || reflectClass.startsWith("rasp.")) {
                 return ;
             } else {
-                if (checkReflectFeildEvil(reflectClass, feild)) {
+                if (checkReflectEvil(reflectClass, feild, false)) {
                     trace(classID, methodID, args, ret, blocked);
                 }
             }
@@ -924,7 +839,7 @@ public class SmithProbeProxy {
             if (reflectClass.startsWith("com.security.smith") || reflectClass.startsWith("rasp.")) {
                 return ;
             } else {
-                if (checkReflectMethodEvil(reflectClass, feild)) {
+                if (checkReflectEvil(reflectClass, feild, true)) {
                     trace(classID, methodID, args, ret, blocked);
                 }
             }

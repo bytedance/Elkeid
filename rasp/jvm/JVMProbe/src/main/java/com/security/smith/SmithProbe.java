@@ -17,6 +17,8 @@ import com.security.smith.common.SmithTools;
 import com.security.smith.log.AttachInfo;
 import com.security.smith.log.SmithLogger;
 import com.security.smith.module.Patcher;
+import com.security.smith.ruleengine.JsRuleEngine;
+import com.security.smith.rulemgr.StackRuleManager;
 import com.security.smith.type.*;
 import com.security.smith.client.*;
 import com.esotericsoftware.yamlbeans.YamlReader;
@@ -161,6 +163,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     private SmithproxyTimerTask smithproxyTimerTask;
     private String proberVersion;
     private String proberPath;
+    private JsRuleEngine jsRuleEngine;
 
     public SmithProbe() {
         disable = false;
@@ -190,6 +193,11 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
     public void setProbePath(String proberPath) {
         this.proberPath = proberPath;
+    }
+
+    public String getProbePath() {
+        return proberPath;
+
     }
 
     public void init() {
@@ -228,8 +236,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         ruleconfig = new Rule_Config(rulemgr);
 
         smithProxy = new SmithProbeProxy();
-
-      InputStream inputStream = getResourceAsStream("class.yaml");
+        
+        
+        InputStream inputStream = getResourceAsStream("class.yaml");
 
         if(inputStream != null) {
             SmithLogger.logger.info("find class.yaml");
@@ -251,8 +260,75 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         else {
             SmithLogger.logger.info("not find class.yaml");
         }
+    
+        try {
+            SmithLogger.logger.info("jsRuleEngine init");
+            jsRuleEngine = JsRuleEngine.InitializeEngine();
+            if (jsRuleEngine != null) {
+                SmithLogger.logger.info("jsRuleEngine init success");
+            }
+        } catch (Throwable e) {
+            SmithLogger.exception(e);
+        }
         
         SmithLogger.logger.info("probe init leave");
+    }
+
+    public boolean addJsFile(Path scriptFilePath) {
+        boolean ret = false;
+        try {
+            if (scriptFilePath != null && jsRuleEngine != null) {
+                SmithLogger.logger.info("add js rule enter");
+                int result = jsRuleEngine.addJsRule(scriptFilePath);
+                if (result == 0) {
+                    SmithLogger.logger.info("add js rule success");
+                    ret = true;
+                } else {
+                    SmithLogger.logger.info("add js rule failed, ret :" + result);
+                }
+            } else {
+                SmithLogger.logger.info("not find js rule path: " + scriptFilePath);
+            }
+        }
+        catch (Throwable e) {
+            SmithLogger.exception(e);
+        }
+        return ret;
+    }
+    public void addJsRule() {
+        try {
+            // SmithLogger.logger.info("add js rule");
+            File ruleFile = new File(getProbePath());
+            File ruleDir = new File(ruleFile.getParent(), "rules");
+            if (ruleDir == null || !ruleDir.exists() || !ruleDir.isDirectory()) {
+                SmithLogger.logger.info("not find js rule dir: " + ruleDir);
+                return;
+            }
+            SmithLogger.logger.info("find js rule dir: " + ruleDir);
+       
+            File[] files = ruleDir.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isFile()) {
+                        Path jsPath = file.toPath();
+                        if (addJsFile(jsPath)) {
+                            SmithLogger.logger.info("add js rule success: " + jsPath);
+                        } else {
+                            SmithLogger.logger.info("add js rule failed: " + jsPath);
+                        }
+                    }
+                }
+            }
+
+
+            
+        } catch (Throwable e) {
+            SmithLogger.exception(e);
+        }
+        
+    }
+    public JsRuleEngine getJsRuleEngine() {
+        return jsRuleEngine;
     }
     private boolean isBypassHookClass(String className) {
 
@@ -269,6 +345,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
         return false;
     }
+
     public boolean isFunctionEnabled(int classId, int methodId) {
         String key = classId + "-" + methodId;
         Set<String> types = hookTypes.get(key);
@@ -324,8 +401,13 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         smithProxy.setClient(client);
         smithProxy.setDisruptor(disruptor);
         smithProxy.setProbe(this);
-        smithProxy.setReflectField();
-        smithProxy.setReflectMethod();
+
+        try {
+            addJsRule();
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+
 
         inst.addTransformer(this, true);
         reloadClasses();
@@ -413,6 +495,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         ourInstance = null;
         proberVersion = null;
         proberPath = null;
+        JsRuleEngine.UninitializeEngine();
+        jsRuleEngine = null;
+        
         MessageSerializer.delInstance();
 
         MessageEncoder.delInstance();
