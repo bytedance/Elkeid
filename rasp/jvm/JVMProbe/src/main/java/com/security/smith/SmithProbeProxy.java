@@ -300,9 +300,6 @@ public class SmithProbeProxy {
                 SmithProbeObj.sendClass(cla, classFilter.getTransId());
             }
         }
-        else {
-            SmithLogger.logger.info("Js Rule No hit");
-        }
         
     }
 

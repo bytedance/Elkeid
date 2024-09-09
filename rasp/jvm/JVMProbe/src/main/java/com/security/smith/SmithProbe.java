@@ -260,8 +260,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         else {
             SmithLogger.logger.info("not find class.yaml");
         }
-
-        /* js test */
+    
         try {
             SmithLogger.logger.info("jsRuleEngine init");
             jsRuleEngine = JsRuleEngine.InitializeEngine();
@@ -298,7 +297,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
     public void addJsRule() {
         try {
-            SmithLogger.logger.info("add js rule");
+            // SmithLogger.logger.info("add js rule");
             File ruleFile = new File(getProbePath());
             File ruleDir = new File(ruleFile.getParent(), "rules");
             if (ruleDir == null || !ruleDir.exists() || !ruleDir.isDirectory()) {
