@@ -42,28 +42,19 @@ public class JsRuleInterfaceMgr {
 
     private String[] Convert_JsStringArray_To_JavaStringArray(Object jsArray) {
         if (jsArray  instanceof jdk.nashorn.internal.objects.NativeArray) {
-        try {
-            jdk.nashorn.internal.objects.NativeArray array = (jdk.nashorn.internal.objects.NativeArray)jsArray;
+            try {
+                jdk.nashorn.internal.objects.NativeArray array = (jdk.nashorn.internal.objects.NativeArray)jsArray;
 
-            List<String> javaList = new ArrayList<>();
-            for (Object obj : array.values()) {
-                javaList.add(obj.toString());
+                List<String> javaList = new ArrayList<>();
+                for (Object obj : array.values()) {
+                    javaList.add(obj.toString());
+                }
+
+                return javaList.toArray(new String[javaList.size()]);
+            } catch (Exception e) {
+                SmithLogger.exception(e);
             }
-
-            return javaList.toArray(new String[javaList.size()]);
-        } catch (Exception e) {
-            SmithLogger.exception(e);
         }
-               
-        // } else if (jsArray instanceof NativeArray) {
-        //     NativeArray array = (NativeArray)jsArray;
-        //     String[] javaArray = new String[array.getLength()];
-        //     for (int i = 0; i < array.getLength(); i++) {
-        //         javaArray[i] = array.get(i).toString();
-        //     }
-        //     return javaArray;
-        }
-
         return null;
     }
 

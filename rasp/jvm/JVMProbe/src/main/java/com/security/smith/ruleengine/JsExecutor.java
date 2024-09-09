@@ -180,7 +180,7 @@ public class JsExecutor {
         if(!bInited) {
             return false;
         }
-        SmithLogger.logger.info("JsExecutor.detect, args num: "+ argsNum);
+        // SmithLogger.logger.info("JsExecutor.detect, args num: "+ argsNum);
 
        if(args.length == argsNum) {
            try {

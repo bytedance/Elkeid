@@ -33,9 +33,7 @@ public class RSAUtil {
             int offset = 0;
             byte[] cache;
             while (offset < inputLength) {
-                SmithLogger.logger.info("offset: "+ offset);
                 int blockLength = Math.min(chunkSize, inputLength - offset);
-                SmithLogger.logger.info("blockLength: "+ blockLength);
                 cache = cipher.doFinal(input, offset, blockLength);
                 if (out == null) {
                     SmithLogger.logger.info("output is null");

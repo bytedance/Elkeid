@@ -217,7 +217,7 @@ public class JsRuleEngine {
             Map<Integer,JsExecutor> Map = jsExecuterMgr[ruletype];
             //  enum all js executer
             for (Map.Entry<Integer,JsExecutor> entry : Map.entrySet()) {
-                SmithLogger.logger.info("ruleid = " + entry.getKey());
+                // SmithLogger.logger.info("ruleid = " + entry.getKey());
 
 
                 JsExecutor  Executer = entry.getValue();
