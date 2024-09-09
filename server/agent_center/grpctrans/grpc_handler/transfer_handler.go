@@ -43,7 +43,7 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 	//Maximum number of concurrent connections
 	if !GlobalGRPCPool.LoadToken() {
 		err := errors.New("out of max connection limit")
-		ylog.Errorf("Transfer", err.Error())
+		ylog.Errorf("Transfer", "LoadToken Error %s", err.Error())
 		return err
 	}
 	defer func() {
@@ -61,11 +61,11 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 	//Get the client address
 	p, ok := peer.FromContext(stream.Context())
 	if !ok {
-		ylog.Errorf("Transfer", "Transfer error %s", err.Error())
+		ylog.Errorf("Transfer", "Transfer %s, error: %s", agentID, err.Error())
 		return err
 	}
 	addr := fmt.Sprintf("%s-%s", p.Addr.String(), xid.New().String())
-	ylog.Infof("Transfer", ">>>>connection addr: %s", addr)
+	ylog.Infof("Transfer", ">>>>connection %s, addr: %s", agentID, addr)
 
 	//add connection info to the GlobalGRPCPool
 	ctx, cancelButton := context.WithCancel(context.Background())
@@ -86,7 +86,7 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 	ylog.Infof("Transfer", ">>>>now set %s %v", agentID, connection)
 	err = GlobalGRPCPool.Add(agentID, &connection)
 	if err != nil {
-		ylog.Errorf("Transfer", "Transfer error %s", err.Error())
+		ylog.Errorf("Transfer", "Transfer %s, error: %s", agentID, err.Error())
 		return err
 	}
 	defer func() {
