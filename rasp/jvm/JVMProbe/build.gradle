@@ -11,7 +11,6 @@ repositories {
 }
 
 dependencies {
-    // 依赖某个jar文件
     implementation files('lib/nashorn.jar') 
     testImplementation group: 'junit', name: 'junit', version: '4.13.1'
     implementation group: 'org.ow2.asm', name: 'asm-tree', version: '9.6'
@@ -22,7 +21,6 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.8.9'
     implementation 'com.esotericsoftware.yamlbeans:yamlbeans:1.14'
     implementation 'org.lz4:lz4-java:1.8.0'
-    // implementation 'org.openjdk.nashorn:nashorn-core:15.0'
     api group: 'org.javassist', name: 'javassist', version: '3.29.0-GA'
 }
 
@@ -51,7 +49,6 @@ shadowJar {
     relocate 'com.lmax.disruptor', 'rasp.com.lmax.disruptor'
     relocate 'com.google','rasp.com.google'
     relocate 'com.esotericsoftware', 'rasp.com.esotericsoftware'
-   // relocate 'org.openjdk.nashorn', 'org.openjdk.nashorn'
     relocate 'javassist', 'rasp.javassist'
     relocate 'net.jpountz', 'rasp.net.jpountz'
     relocate 'META-INF/native/libnetty', 'META-INF/native/librasp_netty'
