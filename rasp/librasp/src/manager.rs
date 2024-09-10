@@ -325,7 +325,7 @@ impl RASPManager {
             Some(e) => e,
             None => return Err(anyhow!("can not fetch envrion {}", process_info.pid)),
         };
-        // 假设 process_info.namespace_info 是一个 Option 类型
+
         if let Some(namespace_info) = &process_info.namespace_info.clone() {
             if let Some(mnt_namespace) = &namespace_info.mnt {
                 let runtime_info = &process_info.runtime.clone().unwrap();
