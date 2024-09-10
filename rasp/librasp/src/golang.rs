@@ -17,7 +17,7 @@ const GOLANG_SUPPORT_VERSION: u32 = 22;
 pub struct GolangProbeState {}
 
 impl ProbeStateInspect for GolangProbeState {
-    fn inspect_process(process_info: &ProcessInfo) -> Result<ProbeState> {
+    fn inspect_process(process_info: &mut ProcessInfo) -> Result<ProbeState> {
         match search_thread(process_info) {
             Ok(ProbeState::Attached) => {
                 warn!("find golang probe client thread");

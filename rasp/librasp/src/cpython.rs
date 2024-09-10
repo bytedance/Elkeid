@@ -16,7 +16,7 @@ use crate::{process::ProcessInfo, settings};
 pub struct CPythonProbeState {}
 
 impl ProbeStateInspect for CPythonProbeState {
-    fn inspect_process(process_info: &ProcessInfo) -> Result<ProbeState> {
+    fn inspect_process(process_info: &mut ProcessInfo) -> Result<ProbeState> {
         search_proc_map(process_info)
     }
 }

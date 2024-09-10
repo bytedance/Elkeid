@@ -46,6 +46,7 @@ pub struct ProcessInfo {
     pub try_attach_count: u16,
     pub attached_count: u16,
     pub failed_reason:Option<String>,
+    pub attached_agent: Option<String>,
 }
 
 #[allow(non_camel_case_types)]
@@ -221,6 +222,11 @@ impl ProcessInfo {
             self.namespace_info = Some(process.ns()?);
         }
         Ok(self.namespace_info.clone().unwrap())
+    }
+
+    pub fn update_attached_agent(&mut self, version: &String) -> AnyhowResult<()> {
+        self.attached_agent = Some(version.clone());
+        Ok(())
     }
 
     pub fn update_failed_reason(&mut self, reason: &String) -> AnyhowResult<()> {
