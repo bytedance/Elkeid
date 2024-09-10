@@ -42,11 +42,11 @@ pub enum ProbeState {
 
 pub trait ProbeStateInspect {
     fn inspect_pid(pid: i32) -> Result<ProbeState> {
-        let process_info = ProcessInfo::from_pid(pid)?;
+        let mut process_info = ProcessInfo::from_pid(pid)?;
         // inspect process
-        Self::inspect_process(&process_info)
+        Self::inspect_process(&mut process_info)
     }
-    fn inspect_process(process_info: &ProcessInfo) -> Result<ProbeState>;
+    fn inspect_process(process_info: &mut ProcessInfo) -> Result<ProbeState>;
 }
 
 pub trait ProbeCopy {

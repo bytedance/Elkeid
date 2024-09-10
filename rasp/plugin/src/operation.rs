@@ -84,7 +84,7 @@ impl Operator {
         }
         process.update_try_attach_count();
         process.update_attach_start_time();
-        match self.rasp_manager.attach(&process, librasp::manager::BPFSelect::FIRST) {
+        match self.rasp_manager.attach(process, librasp::manager::BPFSelect::FIRST) {
             Ok(_) => {
                 process.update_attached_count();
                 process.update_attach_end_time();

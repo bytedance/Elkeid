@@ -315,7 +315,7 @@ impl RASPManager {
         Ok(true)
     }
     // Attach
-    pub fn attach(&mut self, process_info: &ProcessInfo, bpf: BPFSelect) -> Result<()> {
+    pub fn attach(&mut self, process_info: &mut ProcessInfo, bpf: BPFSelect) -> Result<()> {
         if process_info.runtime.is_none() {
             let msg = "attaching to unknow runtime process";
             error!("{}", msg);
@@ -325,72 +325,32 @@ impl RASPManager {
             Some(e) => e,
             None => return Err(anyhow!("can not fetch envrion {}", process_info.pid)),
         };
-        let namespace = process_info.namespace_info.as_ref().unwrap();
-        let mnt_namespace = namespace.mnt.as_ref().unwrap();
-        let runtime_info = &process_info.runtime.clone().unwrap();
-        let root_dir = format!("/proc/{}/root", process_info.pid);
-        let pid = process_info.pid;
-        let nspid = process_info.nspid;
-        // delete config
-        self.delete_config_file(pid, nspid)?;
-        let attach_result = match runtime_info.name {
-            "JVM" => match JVMProbeState::inspect_process(process_info)? {
-                ProbeState::Attached => {
-                    info!("JVM attached process {}", pid);
-                    Ok(true)
-                }
-                ProbeState::NotAttach => {
-                    if !runtime_info.version.is_empty() {
-                        match check_java_version(&runtime_info.version, pid) {
-                            Ok(_) => {}
-                            Err(e) => {
-                                return Err(anyhow!(e));
-                            }
-                        }
-                    }
-                    if self.can_copy(mnt_namespace) {
-                        for from in JVMProbe::names().0.iter() {
-                            self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
-                        }
-                        for from in JVMProbe::names().1.iter() {
-                            self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
-                        }
-                    }
-                    
-                    java_attach(process_info.pid)
 
-                }
-                ProbeState::AttachedVersionNotMatch => {
-                    if !runtime_info.version.is_empty() {
-                        match check_java_version(&runtime_info.version, pid) {
-                            Ok(_) => {}
-                            Err(e) => {
-                                return Err(anyhow!(e));
+        if let Some(namespace_info) = &process_info.namespace_info.clone() {
+            if let Some(mnt_namespace) = &namespace_info.mnt {
+                let runtime_info = &process_info.runtime.clone().unwrap();
+                let root_dir = format!("/proc/{}/root", process_info.pid);
+                let pid = process_info.pid;
+                let nspid = process_info.nspid;
+                // delete config
+                self.delete_config_file(pid, nspid)?;
+                let attach_result = match runtime_info.name {
+                    "JVM" => match JVMProbeState::inspect_process(process_info)? {
+                        ProbeState::Attached => {
+                            info!("JVM attached process {}", pid);
+                            Ok(true)
+                        }
+                        ProbeState::NotAttach => {
+                            
+                            if !runtime_info.version.is_empty() {
+                                match check_java_version(&runtime_info.version, pid) {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        return Err(anyhow!(e));
+                                    }
+                                }
                             }
-                        }
-                    }
-                    
-                    match check_need_mount(mnt_namespace) {
-                        Ok(value) => {
-                            let diff_ns = value;
-                            if diff_ns {
-                                let to = format!("{}{}",root_dir.clone(), settings::RASP_JAVA_AGENT_BIN());
-                                let _ = self.copy_file_from_to_dest(settings::RASP_JAVA_JATTACH_BIN(), root_dir.clone());
-                                let _ = self.copy_file_from_to_dest(settings::RASP_JAVA_AGENT_BIN(), root_dir.clone());
-                                info!("copy from java/SmithAgent.jar to {}", to.clone());
-                            }
-                        }
-                        Err(e) => {
-                            warn!(
-                                "check_need_mount failed, {}", e
-                            );
-                        }
-                        
-                    }
-                    
-                    match java_detach(pid) {
-                        Ok(_) => {
-                            if self.can_copy(mnt_namespace) {
+                            if self.can_copy(&mnt_namespace.clone()) {
                                 for from in JVMProbe::names().0.iter() {
                                     self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
                                 }
@@ -398,166 +358,219 @@ impl RASPManager {
                                     self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
                                 }
                             }
-                            java_attach(pid)
-                        }
-                        Err(e) => {
-                            //process_info.tracing_state = ProbeState::Attached;
-                            Err(anyhow!(e))
-                        } 
-                    }
+                            
+                            java_attach(process_info.pid, process_info.attached_agent.clone())
 
-                }
-            },
-            "CPython" => match CPythonProbeState::inspect_process(process_info)? {
-                ProbeState::Attached => {
-                    info!("CPython attached process");
-                    Ok(true)
-                }
-                ProbeState::NotAttach => {
-                    if self.can_copy(mnt_namespace) {
-                        for from in CPythonProbe::names().0.iter() {
-                            self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
                         }
-                        for from in CPythonProbe::names().1.iter() {
-                            self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
-                        }
-                    }
-                    python_attach(process_info.pid)
-                }
-                ProbeState::AttachedVersionNotMatch => {
-                    let msg = format!("not support CPython update version now");
-                    error!("{}", msg);
-                    Err(anyhow!(msg))
-                }
-            },
-            "Golang" => match GolangProbeState::inspect_process(process_info)? {
-                ProbeState::Attached => {
-                    info!("Golang attached process");
-                    Ok(true)
-                }
-                ProbeState::NotAttach => {
-                    if !runtime_info.version.is_empty() {
-                        match check_golang_version(&runtime_info.version) {
-                            Ok(_) => {}
-                            Err(e) => {
-                                return Err(anyhow!(e));
+                        ProbeState::AttachedVersionNotMatch => {
+                            if !runtime_info.version.is_empty() {
+                                match check_java_version(&runtime_info.version, pid) {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        return Err(anyhow!(e));
+                                    }
+                                }
                             }
-                        }
-                    }
-                    let mut golang_attach = |pid: i32, bpf: bool| -> AnyhowResult<bool> {
-                        if bpf {
-                            if let Some(bpf_manager) = self.ebpf_comm.as_mut() {
-                                bpf_manager.attach(pid)
-                            } else {
-                                Err(anyhow!(
-                                    "FORCE BPF attach failed, golang ebpf daemon not running"
-                                ))
+                            
+                            match check_need_mount(&mnt_namespace.clone()) {
+                                Ok(value) => {
+                                    let diff_ns = value;
+                                    if diff_ns {
+                                        let to = format!("{}{}",root_dir.clone(), settings::RASP_JAVA_AGENT_BIN());
+                                        let _ = self.copy_file_from_to_dest(settings::RASP_JAVA_JATTACH_BIN(), root_dir.clone());
+                                        let _ = self.copy_file_from_to_dest(settings::RASP_JAVA_AGENT_BIN(), root_dir.clone());
+                                        info!("copy from java/SmithAgent.jar to {}", to.clone());
+                                    }
+                                }
+                                Err(e) => {
+                                    warn!(
+                                        "check_need_mount failed, {}", e
+                                    );
+                                }
+                                
                             }
-                        } else {
+                            
+                            match java_detach(pid, process_info.attached_agent.clone()) {
+                                Ok(_) => {
+                                    if self.can_copy(mnt_namespace) {
+                                        for from in JVMProbe::names().0.iter() {
+                                            self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
+                                        }
+                                        for from in JVMProbe::names().1.iter() {
+                                            self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
+                                        }
+                                    }
+                                    java_attach(pid, process_info.attached_agent.clone())
+                                }
+                                Err(e) => {
+                                    //process_info.tracing_state = ProbeState::Attached;
+                                    Err(anyhow!(e))
+                                } 
+                            }
+
+                        }
+                    },
+                    "CPython" => match CPythonProbeState::inspect_process(process_info)? {
+                        ProbeState::Attached => {
+                            info!("CPython attached process");
+                            Ok(true)
+                        }
+                        ProbeState::NotAttach => {
                             if self.can_copy(mnt_namespace) {
-                                for from in GolangProbe::names().0.iter() {
+                                for from in CPythonProbe::names().0.iter() {
                                     self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
                                 }
-                                for from in GolangProbe::names().1.iter() {
+                                for from in CPythonProbe::names().1.iter() {
                                     self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
                                 }
                             }
-                            golang_attach(pid)
+                            python_attach(process_info.pid)
                         }
-                    };
-                    match bpf {
-                        BPFSelect::FORCE => golang_attach(pid, true),
-                        BPFSelect::DISABLE => golang_attach(pid, false),
-                        BPFSelect::FIRST => {
-                            let bpf_result = golang_attach(pid, true);
-                            match bpf_result {
-                                Ok(true) => Ok(true),
-                                Ok(false) => {
-                                    warn!("FIRST BPF attach failed, trying golang attach");
-                                    golang_attach(pid, false)
+                        ProbeState::AttachedVersionNotMatch => {
+                            let msg = format!("not support CPython update version now");
+                            error!("{}", msg);
+                            Err(anyhow!(msg))
+                        }
+                    },
+                    "Golang" => match GolangProbeState::inspect_process(process_info)? {
+                        ProbeState::Attached => {
+                            info!("Golang attached process");
+                            Ok(true)
+                        }
+                        ProbeState::NotAttach => {
+                            if !runtime_info.version.is_empty() {
+                                match check_golang_version(&runtime_info.version) {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        return Err(anyhow!(e));
+                                    }
                                 }
-                                Err(e) => {
-                                    warn!("FIRST BPF attach failed: {}, trying golang attach", e);
-                                    golang_attach(pid, false)
+                            }
+                            let mut golang_attach = |pid: i32, bpf: bool| -> AnyhowResult<bool> {
+                                if bpf {
+                                    if let Some(bpf_manager) = self.ebpf_comm.as_mut() {
+                                        bpf_manager.attach(pid)
+                                    } else {
+                                        Err(anyhow!(
+                                            "FORCE BPF attach failed, golang ebpf daemon not running"
+                                        ))
+                                    }
+                                } else {
+                                    if self.can_copy(mnt_namespace) {
+                                        for from in GolangProbe::names().0.iter() {
+                                            self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
+                                        }
+                                        for from in GolangProbe::names().1.iter() {
+                                            self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
+                                        }
+                                    }
+                                    golang_attach(pid)
+                                }
+                            };
+                            match bpf {
+                                BPFSelect::FORCE => golang_attach(pid, true),
+                                BPFSelect::DISABLE => golang_attach(pid, false),
+                                BPFSelect::FIRST => {
+                                    let bpf_result = golang_attach(pid, true);
+                                    match bpf_result {
+                                        Ok(true) => Ok(true),
+                                        Ok(false) => {
+                                            warn!("FIRST BPF attach failed, trying golang attach");
+                                            golang_attach(pid, false)
+                                        }
+                                        Err(e) => {
+                                            warn!("FIRST BPF attach failed: {}, trying golang attach", e);
+                                            golang_attach(pid, false)
+                                        }
+                                    }
+                                }
+                                BPFSelect::SECOND => {
+                                    let golang_attach_result = golang_attach(pid, false);
+                                    match golang_attach_result {
+                                        Ok(true) => Ok(true),
+                                        Ok(false) => {
+                                            warn!("golang attach failed, trying BPF attach");
+                                            golang_attach(pid, true)
+                                        }
+                                        Err(e) => {
+                                            warn!("golang attach faild: {}, trying BPF attach", e);
+                                            golang_attach(pid, true)
+                                        }
+                                    }
                                 }
                             }
                         }
-                        BPFSelect::SECOND => {
-                            let golang_attach_result = golang_attach(pid, false);
-                            match golang_attach_result {
-                                Ok(true) => Ok(true),
-                                Ok(false) => {
-                                    warn!("golang attach failed, trying BPF attach");
-                                    golang_attach(pid, true)
-                                }
+                        ProbeState::AttachedVersionNotMatch => {
+                            let msg = format!("not support Golang update version now");
+                            error!("{}", msg);
+                            Err(anyhow!(msg))
+                        }
+                    },
+                    "NodeJS" => {
+                        if !runtime_info.version.is_empty() {
+                            match check_nodejs_version(&runtime_info.version) {
+                                Ok(_) => {}
                                 Err(e) => {
-                                    warn!("golang attach faild: {}, trying BPF attach", e);
-                                    golang_attach(pid, true)
+                                    return Err(anyhow!(e));
                                 }
                             }
                         }
-                    }
-                }
-                ProbeState::AttachedVersionNotMatch => {
-                    let msg = format!("not support Golang update version now");
-                    error!("{}", msg);
-                    Err(anyhow!(msg))
-                }
-            },
-            "NodeJS" => {
-                if !runtime_info.version.is_empty() {
-                    match check_nodejs_version(&runtime_info.version) {
-                        Ok(_) => {}
-                        Err(e) => {
-                            return Err(anyhow!(e));
+                        if self.can_copy(mnt_namespace) {
+                            for from in NodeJSProbe::names().0.iter() {
+                                self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
+                            }
+                            for from in NodeJSProbe::names().1.iter() {
+                                self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
+                            }
                         }
-                    }
-                }
-                if self.can_copy(mnt_namespace) {
-                    for from in NodeJSProbe::names().0.iter() {
-                        self.copy_file_from_to_dest(from.clone(), root_dir.clone())?;
-                    }
-                    for from in NodeJSProbe::names().1.iter() {
-                        self.copy_dir_from_to_dest(from.clone(), root_dir.clone())?;
-                    }
-                }
 
-                let process_exe_file = process_info
-                    .exe_path
-                    .clone()
-                    .ok_or(anyhow!("process exe path not found: {}", pid))?;
-                nodejs_attach(pid, &environ, &process_exe_file)
-            }
-            "PHP" => match PHPProbeState::inspect_process(&process_info)? {
-                ProbeState::Attached => {
-                    info!("PHP attached process");
-                    Ok(true)
+                        let process_exe_file = process_info
+                            .exe_path
+                            .clone()
+                            .ok_or(anyhow!("process exe path not found: {}", pid))?;
+                        nodejs_attach(pid, &environ, &process_exe_file)
+                    }
+                    "PHP" => match PHPProbeState::inspect_process(process_info)? {
+                        ProbeState::Attached => {
+                            info!("PHP attached process");
+                            Ok(true)
+                        }
+                        ProbeState::NotAttach => php_attach(process_info, runtime_info.version.clone()),
+                        ProbeState::AttachedVersionNotMatch => {
+                            let msg = format!("not support PHP update version now");
+                            error!("{}", msg);
+                            Err(anyhow!(msg))
+                        }
+                    },
+                    _ => {
+                        let msg = format!("can not attach to runtime: `{}`", runtime_info.name);
+                        error!("{}", msg);
+                        return Err(anyhow!(msg));
+                    }
+                };
+                match attach_result {
+                    Ok(success) => {
+                        if !success {
+                            let msg = format!("attach failed: {:?}", process_info);
+                            error!("{}", msg);
+                            Err(anyhow!(msg))
+                        } else {
+                            Ok(())
+                        }
+                    }
+                    Err(e) => Err(anyhow!(e)),
                 }
-                ProbeState::NotAttach => php_attach(process_info, runtime_info.version.clone()),
-                ProbeState::AttachedVersionNotMatch => {
-                    let msg = format!("not support PHP update version now");
-                    error!("{}", msg);
-                    Err(anyhow!(msg))
-                }
-            },
-            _ => {
-                let msg = format!("can not attach to runtime: `{}`", runtime_info.name);
+            } else {
+                let msg = format!("can not attach to pid: `{}`, failed to get pid", process_info.pid);
                 error!("{}", msg);
                 return Err(anyhow!(msg));
             }
-        };
-        match attach_result {
-            Ok(success) => {
-                if !success {
-                    let msg = format!("attach failed: {:?}", process_info);
-                    error!("{}", msg);
-                    Err(anyhow!(msg))
-                } else {
-                    Ok(())
-                }
-            }
-            Err(e) => Err(anyhow!(e)),
+        } else {
+            let msg = format!("can not attach to pid: `{}`, failed to get namespace", process_info.pid);
+            error!("{}", msg);
+            return Err(anyhow!(msg));
         }
+        
     }
 
     pub fn detach(&mut self, process_info: &ProcessInfo) -> Result<()>  {
@@ -572,7 +585,7 @@ impl RASPManager {
             error!("{}", msg);
             return Err(anyhow!(msg));
         }
-        match java_detach(process_info.pid) {
+        match java_detach(process_info.pid, process_info.attached_agent.clone()) {
             Ok(success) => {
                 if !success {
                     let msg = format!("detach failed: {:?}", process_info);

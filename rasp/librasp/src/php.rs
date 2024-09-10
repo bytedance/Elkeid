@@ -130,7 +130,7 @@ fn execute_phpfpm_info(
 pub struct PHPProbeState {}
 
 impl ProbeStateInspect for PHPProbeState {
-    fn inspect_process(process_info: &ProcessInfo) -> AnyhowResult<ProbeState> {
+    fn inspect_process(process_info: &mut ProcessInfo) -> AnyhowResult<ProbeState> {
         check_probe(process_info)
     }
 }

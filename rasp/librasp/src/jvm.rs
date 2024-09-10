@@ -3,12 +3,18 @@ use regex::Regex;
 use std::process::Command;
 use std::fs;
 use std::time::Duration;
+use std::path::Path;
+use std::fs::File;
+use std::io::BufReader;
+use std::io::BufRead;
+use anyhow::{anyhow, Result, Result as AnyhowResult};
+use fs_extra::dir::create_all;
+use fs_extra::file::{copy as file_copy, CopyOptions as FileCopyOptions};
 use crate::async_command::run_async_process;
 use crate::process::ProcessInfo;
 use crate::runtime::{ProbeCopy, ProbeState, ProbeStateInspect};
 use crate::settings::{self, RASP_VERSION};
 use lazy_static::lazy_static;
-use anyhow::{anyhow, Result};
 
 lazy_static! {
     static ref RASP_JAVA_CHECKSUMSTR: String = {
@@ -24,7 +30,10 @@ lazy_static! {
 pub struct JVMProbeState {}
 
 impl ProbeStateInspect for JVMProbeState {
-    fn inspect_process(process_info: &ProcessInfo) -> Result<ProbeState> {
+    fn inspect_process(process_info: &mut ProcessInfo) -> Result<ProbeState> {
+        if let Some(agent_jar) = extract_jar_path(process_info.pid) {
+            let _ = process_info.update_attached_agent(&agent_jar);
+        }
         match  prop(process_info.pid) {
             Ok(state) => {
                 Ok(state)
@@ -52,10 +61,59 @@ impl ProbeCopy for JVMProbe {
     }
 }
 
-pub fn java_attach(pid: i32) -> Result<bool> {
-    let java_attach = settings::RASP_JAVA_JATTACH_BIN();
+pub fn copy_file_from_to_dest(from: String, dest: String) -> AnyhowResult<()> {
+    let target = dest;
+    if Path::new(&target).exists() {
+        return Ok(());
+    }
+    let dir = Path::new(&target).parent().unwrap();
+    if Path::new(&target).exists() {
+        return Ok(());
+    }
+    create_all(dir, true)?;
+    let options = FileCopyOptions::new();
+    return match file_copy(from.clone(), target.clone(), &options) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            warn!("can not copy: {}", e);
+            Err(anyhow!(
+                "copy failed: from {} to {}: {}",
+                from,
+                target,
+                e
+            ))
+        }
+    };
+}
+
+pub fn process_agent_path(attached_agent: Option<String>, pid: i32) -> String {
     let agent = settings::RASP_JAVA_AGENT_BIN();
+    if attached_agent.is_none() {
+        return agent;
+    } else {
+        let attached_agent = attached_agent.unwrap();
+        info!("attached version: {}", attached_agent);
+        if attached_agent != "" && attached_agent != settings::RASP_JAVA_AGENT_BIN() {
+            let root_dir = format!("/proc/{}/root", pid);
+            let agent_path = format!("{}{}", root_dir, attached_agent);
+            let file_path = Path::new(&agent_path);
+
+            if !file_path.exists() {
+                info!("{} does not exist. start to copy", agent_path.clone());
+                let _ = copy_file_from_to_dest(settings::RASP_JAVA_AGENT_BIN(), agent_path.clone());
+            }
+            return attached_agent;
+        }
+    }
+    return agent;
+}
+
+pub fn java_attach(pid: i32, attached_agent: Option<String>) -> Result<bool> {
+    let java_attach = settings::RASP_JAVA_JATTACH_BIN();
+    let agent = process_agent_path(attached_agent, pid);
+    
     let probe_param = format!("{}={};{};{};", agent, "attach", *RASP_JAVA_CHECKSUMSTR, settings::RASP_JAVA_PROBE_BIN());
+    debug!("java attach: {}", probe_param.clone());
     match run_async_process(Command::new(java_attach).args(&[
         pid.to_string().as_str(),
         "load",
@@ -169,6 +227,27 @@ pub fn check_java_version(ver: &String, pid:i32) -> Result<()> {
     }
 }
 
+fn extract_jar_path(pid: i32) -> Option<String> {
+    let maps_path = format!("/proc/{}/maps", pid);
+
+    if let Ok(file) = File::open(maps_path) {
+        let reader = BufReader::new(file);
+
+        for line in reader.lines() {
+            if let Ok(line) = line {
+                if line.contains("SmithAgent.jar") {
+                    let parts: Vec<&str> = line.split_whitespace().collect();
+                    if let Some(path) = parts.get(5) {
+                        return Some(path.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    None
+}
+
 pub fn prop(pid: i32) -> Result<ProbeState> {
     return match jcmd(pid, " VM.system_properties") {
         Ok(stdout) => {
@@ -216,10 +295,11 @@ pub fn check_result(pid: i32, need_status: &str) -> Result<bool> {
     }
 }
 
-pub fn java_detach(pid: i32) -> Result<bool> {
+pub fn java_detach(pid: i32, attached_agent: Option<String>) -> Result<bool> {
     let java_detach = settings::RASP_JAVA_JATTACH_BIN();
-    let agent = settings::RASP_JAVA_AGENT_BIN();
+    let agent = process_agent_path(attached_agent, pid);
     let probe_param = format!("{}={};", agent, "detach");
+    debug!("java detach param: {}", probe_param);
     match run_async_process(Command::new(java_detach).args(&[
         pid.to_string().as_str(),
         "load",
