@@ -20,7 +20,7 @@ Elkeid has the following key capabilities:
 
 * **Elkeid**'s rule engine **Elkeid HUB** can also be well linked with external multiple systems.
 
-**Ekeid** integrates these capabilities into one platform to meet the complex security requirements of different workloads, while also achieving multi-component capability association. What is even more rare is that each component undergoes massive byte-beating. Data and years of combat testing.
+**Elkeid** integrates these capabilities into one platform to meet the complex security requirements of different workloads, while also achieving multi-component capability association. What is even more rare is that each component undergoes massive byte-beating. Data and years of combat testing.
 
 
 
@@ -90,9 +90,9 @@ Therefore, it is necessary to have complete anti-intrusion and risk perception c
 | Alarm traceability (resident traceability)             | :ng_man:                 | :white_check_mark:        |
 | Alert Whitelist                                        | :white_check_mark:       | :white_check_mark:        |
 | Multi-alarm aggregation capability                     | :ng_man:                 | :white_check_mark:        |
-| Threat Repsonse (Process)                              | :ng_man:                 | :white_check_mark:        |
-| Threat Repsonse (Network)                              | :ng_man:                 | :white_check_mark:        |
-| Threat Repsonse (File)                                 | :ng_man:                 | :white_check_mark:        |
+| Threat Response (Process)                              | :ng_man:                 | :white_check_mark:        |
+| Threat Response (Network)                              | :ng_man:                 | :white_check_mark:        |
+| Threat Response (File)                                 | :ng_man:                 | :white_check_mark:        |
 | File isolation                                         | :ng_man:                 | :white_check_mark:        |
 | Vulnerability discovery                                | `few vuln info`          | :white_check_mark:        |
 | Vulnerability information hot update                   | :ng_man:                 | :white_check_mark:        |
