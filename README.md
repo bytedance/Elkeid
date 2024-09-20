@@ -1,6 +1,6 @@
 # Elkeid - Bytedance Cloud Workload Protection Platform
 
-English | [简体中文](README-zh_CN.md)
+English | [简体中文](README-zh_CN.md) | [日本語](README-ja.md)
 
 **Elkeid** is an open source solution that can meet the security requirements of various workloads such as **hosts, containers and K8s, and serverless**. It is derived from ByteDance's internal best practices.
 
