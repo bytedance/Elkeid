@@ -138,7 +138,7 @@ pub fn find_by_symbol(elf: &Elf, file: &File) -> Result<String> {
         Ok(version)
     } else {
         let msg = format!("file {:?} Failed to find symbol: runtime.buildVersion", file);
-        warn!("{}", msg);
+        // warn!("{}", msg);
         Err(anyhow!(msg))
     }
 }
@@ -223,12 +223,12 @@ pub fn find_by_section(elf: &Elf, buffer:&Vec<u8>, file: &File) -> Result<String
             return Ok(version);
         } else {
             let msg = format!("file {:?} Failed to find magic header: {:?}", file, magic_header);
-            warn!("{}", msg);
+            // warn!("{}", msg);
             return Err(anyhow!(msg));
         }
      } else {
         let msg = format!("file {:?} Failed to find section:.go.buildinfo", file);
-        warn!("{}", msg);
+        // warn!("{}", msg);
         Err(anyhow!(msg))
      }
 }
