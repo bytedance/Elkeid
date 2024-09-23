@@ -13,7 +13,7 @@ use log::*;
 use crate::cpython::{python_attach, CPythonProbe, CPythonProbeState};
 use crate::golang::{check_golang_version, golang_attach, GolangProbe, GolangProbeState};
 use crate::jvm::{check_java_version, java_attach, java_detach, JVMProbe, JVMProbeState};
-use crate::nodejs::{check_nodejs_version, nodejs_attach, NodeJSProbe};
+use crate::nodejs::{check_nodejs_version, get_inspect_port, nodejs_attach, get_process_listening_port, NodeJSProbe};
 use crate::php::{php_attach, PHPProbeState};
 use crate::{
     comm::{Control, EbpfMode, ProcessMode, RASPComm, ThreadMode, check_need_mount},
@@ -528,7 +528,28 @@ impl RASPManager {
                             .exe_path
                             .clone()
                             .ok_or(anyhow!("process exe path not found: {}", pid))?;
-                        nodejs_attach(pid, &environ, &process_exe_file)
+                        let inspect_port = get_inspect_port(pid);
+                        if inspect_port != 0 {
+                            match nodejs_attach(pid, &environ, &process_exe_file, Some(inspect_port)) {
+                               Ok(result) => {Ok(result)}
+                               Err(out) => {
+                                   if out.to_string().contains("ECONNREFUSED") {
+                                       let port = get_process_listening_port(pid);
+                                       if port != 0 {
+                                          nodejs_attach(pid, &environ, &process_exe_file, Some(port))
+                                       } else {
+                                           Err(out)
+                                       }
+                                   }
+                                   else {
+                                       Err(out)
+                                   }
+                               }
+                            }
+                        
+                        } else {
+                            nodejs_attach(pid, &environ, &process_exe_file, None)
+                        }
                     }
                     "PHP" => match PHPProbeState::inspect_process(process_info)? {
                         ProbeState::Attached => {
