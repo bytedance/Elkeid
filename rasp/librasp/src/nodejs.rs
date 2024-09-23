@@ -44,6 +44,7 @@ fn parse_port_from_address(address: &str) -> Option<u16> {
 pub fn get_process_listening_port(pid: i32) -> u16 {
     let tcp_path = format!("/proc/{}/net/tcp", pid);
 
+    // frist get ipv4 listen port
     if let Ok(content) = std::fs::read_to_string(tcp_path) {
         
         for line in content.lines().skip(1) {
@@ -55,7 +56,29 @@ pub fn get_process_listening_port(pid: i32) -> u16 {
                 if status == "0A" {
                     if let Some(port) = parse_port_from_address(local_address) {
                         if (NODEJS_INSPECT_PORT_MIN..= NODEJS_INSPECT_PORT_MAX).contains(&port) {
-                            info!("Found listen port {} for pid {}", port, pid);
+                            info!("Found  IPv4 listen port {} for pid {}", port, pid);
+                            return port;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // get ipv6 listen port
+    let tcp6_path = format!("/proc/{}/net/tcp6", pid);
+    if let Ok(content) = std::fs::read_to_string(tcp6_path) {
+        
+        for line in content.lines().skip(1) {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 3 {
+                let local_address = parts[1];
+                let status = parts[3];
+
+                if status == "0A" {
+                    if let Some(port) = parse_port_from_address(local_address) {
+                        if (16680..= NODEJS_INSPECT_PORT_MAX).contains(&port) {
+                            info!("Found IPv6 listen port {} for pid {}", port, pid);
                             return port;
                         }
                     }
