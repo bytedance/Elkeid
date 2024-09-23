@@ -10,6 +10,8 @@ use log::*;
 use regex::Regex;
 use wait_timeout::ChildExt;
 
+const NODEJS_INSPECT_PORT_MIN:u16 = 19230;
+const NODEJS_INSPECT_PORT_MAX:u16 = 19235;
 pub struct NodeJSProbe {}
 
 impl ProbeCopy for NodeJSProbe {
@@ -22,13 +24,79 @@ pub fn nodejs_attach(
     pid: i32,
     _environ: &HashMap<OsString, OsString>,
     node_path: &str,
+    port: Option<u16>,
 ) -> Result<bool> {
     debug!("node attach: {}", pid);
     let smith_module_path = settings::RASP_NODEJS_ENTRY();
-    nodejs_run(pid, node_path, smith_module_path.as_str())
+    nodejs_run(pid, node_path, smith_module_path.as_str(), port)
 }
 
-pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str) -> Result<bool> {
+fn parse_port_from_address(address: &str) -> Option<u16> {
+    if let Some(pos) = address.find(':') {
+        let port_hex = &address[pos + 1..];
+        if let Ok(port) = u16::from_str_radix(port_hex, 16) {
+            return Some(port);
+        }
+    }
+    None
+}
+
+pub fn get_process_listening_port(pid: i32) -> u16 {
+    let tcp_path = format!("/proc/{}/net/tcp", pid);
+
+    if let Ok(content) = std::fs::read_to_string(tcp_path) {
+        
+        for line in content.lines().skip(1) {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 3 {
+                let local_address = parts[1];
+                let status = parts[3];
+
+                if status == "0A" {
+                    if let Some(port) = parse_port_from_address(local_address) {
+                        if (NODEJS_INSPECT_PORT_MIN..= NODEJS_INSPECT_PORT_MAX).contains(&port) {
+                            info!("Found listen port {} for pid {}", port, pid);
+                            return port;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    info!("cannot found {} sutible  inspect port", pid);
+    0
+}
+
+
+pub fn get_inspect_port(pid: i32) -> u16 {
+    let re = regex::Regex::new(r"inspect(?:-brk|-port)?=(?:(?:[0-9]{1,3}\.){3}[0-9]{1,3}:)?(\d+)")
+        .expect("Invalid regex pattern");
+    
+    let cmdline = std::fs::read_to_string(format!("/proc/{}/cmdline", pid)).unwrap_or_default();
+    
+    if let Some(captures) = re.captures(&cmdline) {
+        if let Some(port) = captures.get(1) {
+            info!("inspect port: {}", port.as_str());
+            return port.as_str().parse().unwrap_or(0);
+        }
+    }
+    
+    let environ = std::fs::read_to_string(format!("/proc/{}/environ", pid)).unwrap_or_default();
+    let options = environ.split('\0').find(|element| element.starts_with("NODE_OPTIONS="));
+    
+    if let Some(options) = options {
+        if let Some(captures) = re.captures(options) {
+            if let Some(port) = captures.get(1) {
+                info!("inspect port: {}", port.as_str());
+                return port.as_str().parse().unwrap_or(0);
+            }
+        }
+    }
+    
+    0
+}
+
+pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str, port: Option<u16>) -> Result<bool> {
     let pid_string = pid.to_string();
     let nsenter = settings::RASP_NS_ENTER_BIN();
     let inject_script_path = settings::RASP_NODEJS_INJECTOR();
@@ -48,17 +116,37 @@ pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str) -> Result<
     let prefix = "setTimeout((inspector) => {inspector.close(); }, 500, require('inspector')); if (!Object.keys(require.cache).some(m => m.includes('smith.js'))) { require('";
     let suffix = "');}";
     let require_module = format!("{}{}{}", prefix, smith_module_path, suffix);
-    let args = [
-        "-m",
-        "-n",
-        "-p",
-        "-t",
-        pid_string.as_str(),
-        node_path,
-        inject_script_path.as_str(),
-        nspid_string.as_str(),
-        require_module.as_str(),
-    ];
+    let port_str;
+    let args;
+    if let Some(port) = port.as_ref() {
+        port_str = port.to_string();
+        debug!("port is : {}", port_str);
+        args = vec![
+            "-m",
+            "-n",
+            "-p",
+            "-t",
+            pid_string.as_str(),
+            node_path,
+            inject_script_path.as_str(),
+            nspid_string.as_str(),
+            require_module.as_str(),
+            port_str.as_str(),
+        ];
+    } else {
+        args = vec![
+            "-m",
+            "-n",
+            "-p",
+            "-t",
+            pid_string.as_str(),
+            node_path,
+            inject_script_path.as_str(),
+            nspid_string.as_str(),
+            require_module.as_str(),
+        ];
+    }
+    debug!("args is : {:?}", args.clone());
     let mut child = Command::new(nsenter)
     .args(&args)
     .stderr(Stdio::piped())
