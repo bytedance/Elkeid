@@ -172,6 +172,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     public SmithProbe() {
         disable = false;
         scanswitch = true;
+        records = new ConcurrentHashMap<>();
+        recordsTotal = new ConcurrentHashMap<>();
+        hooktimeRecords = new ConcurrentHashMap<>();
+        runtimeRecords = new ConcurrentHashMap<>();
     }
 
     public void setInst(Instrumentation inst) {
@@ -215,10 +219,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         limits = new ConcurrentHashMap<>();
         hookTypes = new ConcurrentHashMap<>();
         switchConfig = new ConcurrentHashMap<>();
-        records = new ConcurrentHashMap<>();
-        recordsTotal = new ConcurrentHashMap<>();
-        hooktimeRecords = new ConcurrentHashMap<>();
-        runtimeRecords = new ConcurrentHashMap<>();
+        
 
         MessageSerializer.initInstance(proberVersion);
         MessageEncoder.initInstance();
@@ -397,6 +398,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 detectTimerTask,
                 TimeUnit.MINUTES.toMillis(1)
         );
+
         smithproxyTimerTask =  new SmithproxyTimerTask();
         smithproxyTimerTask.setSmithProxy(smithProxy);
 
@@ -421,6 +423,16 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         reloadClasses();
 
         SmithLogger.logger.info("probe start leave");
+        new Timer(true).schedule(
+            new TimerTask() {
+                @Override
+                public void run() {
+                    show();
+                }
+            },
+            TimeUnit.SECONDS.toMillis(5),
+            TimeUnit.SECONDS.toMillis(10)
+        );
     }
 
     public void stop() {
@@ -515,28 +527,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         SmithLogger.loggerProberUnInit();
         
     }
-        new Timer(true).schedule(
-                new TimerTask() {
-                    @Override
-                    public void run() {
-                        onTimer();
-                    }
-                },
-                0,
-                TimeUnit.MINUTES.toMillis(1)
-        );
-
-        new Timer(true).schedule(
-            new TimerTask() {
-                @Override
-                public void run() {
-                    show();
-                }
-            },
-            TimeUnit.SECONDS.toMillis(5),
-            TimeUnit.SECONDS.toMillis(10)
-        );
-}
 
     private void reloadClasses() {
         reloadClasses(smithClasses.keySet());
