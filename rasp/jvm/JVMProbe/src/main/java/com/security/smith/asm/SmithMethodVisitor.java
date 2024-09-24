@@ -141,32 +141,20 @@ public class SmithMethodVisitor extends AdviceAdapter {
 
         if (preHook == null || preHook == "") {
             if (!canBlock) {
+                loadLocal(stopWatchVariable);
+
+                invokeVirtual(
+                        Type.getType(StopWatch.class),
+                        new Method(
+                                "suspend",
+                                Type.VOID_TYPE,
+                                new Type[]{}
+                        )
+                );
                 return;
             } else {
                 preHook = "detect";
             }
-        if (!canBlock) {
-            Label label = new Label();
-
-            surplus();
-            ifZCmp(EQ, label);
-
-            newTrace();
-            storeLocal(traceVariable);
-
-            loadLocal(stopWatchVariable);
-
-            invokeVirtual(
-                    Type.getType(StopWatch.class),
-                    new Method(
-                            "suspend",
-                            Type.VOID_TYPE,
-                            new Type[]{}
-                    )
-            );
-
-            mark(label);
-            return;
         }
 
         push(preHook);
@@ -187,16 +175,6 @@ public class SmithMethodVisitor extends AdviceAdapter {
                         }
                 )
         );
-
-        Label label = new Label();
-
-        surplus();
-        ifZCmp(NE, label);
-
-        visitInsn(ACONST_NULL);
-        storeLocal(traceVariable);
-
-        mark(label);
 
         loadLocal(stopWatchVariable);
 
