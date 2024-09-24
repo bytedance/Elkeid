@@ -285,6 +285,8 @@ public class SmithMethodVisitor extends AdviceAdapter {
                         )
                 );
 
+                push(classID);
+                push(methodID);
                 loadLocal(stopWatchVariable);
 
                 invokeVirtual(

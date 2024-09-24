@@ -172,10 +172,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     public SmithProbe() {
         disable = false;
         scanswitch = true;
-        records = new ConcurrentHashMap<>();
-        recordsTotal = new ConcurrentHashMap<>();
-        hooktimeRecords = new ConcurrentHashMap<>();
-        runtimeRecords = new ConcurrentHashMap<>();
+        records = new HashMap<>();
+        recordsTotal = new HashMap<>();
+        hooktimeRecords = new HashMap<>();
+        runtimeRecords = new HashMap<>();
     }
 
     public void setInst(Instrumentation inst) {
@@ -644,6 +644,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
 
     public void record(int classID, int methodID, long time,long totaltime) {
+        SmithLogger.logger.info("record: " + classID + " " + methodID + " " + time);
         synchronized (records) {
             records.computeIfAbsent(new ImmutablePair<>(classID, methodID), k -> new ArrayList<>()).add(time);
         }
@@ -915,6 +916,13 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             );
 
             classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);  
+    
+            if (classType.getClassName().equals("java.lang.ProcessImpl")) {
+                String path = "/tmp/ProcessImpl.class";
+                FileOutputStream fos = new FileOutputStream(path);
+                fos.write(classWriter.toByteArray());
+                fos.close();
+            }
 
             return classWriter.toByteArray();
         }

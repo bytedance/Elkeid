@@ -99,20 +99,25 @@ public class SmithAgent {
         return obj;
     }
 
-    public static void RecordProxy(int classID, int methodID, long t1, long t2) {
-        if (checkRecursive!= null && checkRecursive.get() == true) {
-            return;
+    public static void RecordProxy(int classID, int methodID, Long t1, Long t2) {
+        try {
+            if (checkRecursive != null && checkRecursive.get() == true) {
+                return;
+            }
+            if (checkRecursive != null && checkRecursive.get() == false) {
+                checkRecursive.set(true);
+            }
+            if(SmithProberObj != null) {
+                Class<?>[]  argType = new Class[]{int.class,int.class, Long.class, Long.class};
+                Reflection.invokeMethod(SmithProberObj,"record",argType,classID,methodID,t1,t2);
+            }
+            if (checkRecursive != null && checkRecursive.get() == true) {
+                checkRecursive.set(false);
+            }
+        } catch (Throwable e) {
+            SmithAgentLogger.exception(e);
         }
-        if (checkRecursive!= null && checkRecursive.get() == false) {
-            checkRecursive.set(true);
-        }
-        if(SmithProberProxyObj!= null) {
-            Class<?>[]  argType = new Class[]{int.class,int.class, long.class, long.class};
-            Reflection.invokeMethod(SmithProberProxyObj,"record",argType,classID,methodID,t1,t2);
-        }
-        if (checkRecursive != null && checkRecursive.get() == true) {
-            checkRecursive.set(false);
-        }
+        
     }
 
     private static boolean loadSmithProber(String proberPath, Instrumentation inst) {
