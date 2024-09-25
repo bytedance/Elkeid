@@ -115,6 +115,28 @@ class SmithproxyTimerTask extends TimerTask {
         }
 }
 
+class BenchMarkTimerTask extends TimerTask {
+        private boolean isCancel = false;
+        private SmithProbe smithProbe = null;
+
+        public void setSmithProbe(SmithProbe smithProbe) {
+            this.smithProbe = smithProbe;
+        }
+
+        @Override
+        public void run() {
+            if(!isCancel) {
+                smithProbe.show();
+            }
+        }
+
+        @Override
+        public boolean cancel() {
+            isCancel = true;
+            return super.cancel();
+        }
+}
+
 class MatchRulePredicate implements Predicate<MatchRule> {
     private final Trace trace;
     
@@ -162,12 +184,16 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     private Rule_Mgr    rulemgr;
     private Rule_Config ruleconfig;
     private Timer detectTimer;
+    private Timer benchMarkTimer;
     private Timer smithproxyTimer;
     private DetectTimerTask detectTimerTask;
     private SmithproxyTimerTask smithproxyTimerTask;
+    private BenchMarkTimerTask benchMarkTimerTask;
     private String proberVersion;
     private String proberPath;
     private JsRuleEngine jsRuleEngine;
+    // just for benchmark test
+    private boolean isBenchMark;
 
     public SmithProbe() {
         disable = false;
@@ -176,6 +202,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         recordsTotal = new HashMap<>();
         hooktimeRecords = new HashMap<>();
         runtimeRecords = new HashMap<>();
+        isBenchMark = false;
     }
 
     public void setInst(Instrumentation inst) {
@@ -399,6 +426,18 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 TimeUnit.MINUTES.toMillis(1)
         );
 
+        if (isBenchMark) {
+            benchMarkTimerTask = new BenchMarkTimerTask();
+            benchMarkTimerTask.setSmithProbe(this);
+
+            benchMarkTimer = new Timer(true);
+            benchMarkTimer.schedule(
+                    benchMarkTimerTask,
+                    TimeUnit.SECONDS.toMillis(5),
+                    TimeUnit.SECONDS.toMillis(10)
+            );
+        }     
+
         smithproxyTimerTask =  new SmithproxyTimerTask();
         smithproxyTimerTask.setSmithProxy(smithProxy);
 
@@ -423,16 +462,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         reloadClasses();
 
         SmithLogger.logger.info("probe start leave");
-        new Timer(true).schedule(
-            new TimerTask() {
-                @Override
-                public void run() {
-                    show();
-                }
-            },
-            TimeUnit.SECONDS.toMillis(5),
-            TimeUnit.SECONDS.toMillis(10)
-        );
+        
     }
 
     public void stop() {
@@ -452,6 +482,11 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         detectTimer.cancel();
         smithproxyTimer.cancel();
         SmithLogger.logger.info("detect Timer stop");
+
+        if (isBenchMark) {
+            benchMarkTimer.cancel();
+            SmithLogger.logger.info("benchMark Timer stop");
+        }
         
         client.stop();
         SmithLogger.logger.info("client stop");
@@ -464,6 +499,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
         detectTimerTask = null;
         detectTimer =null;
+
+        benchMarkTimerTask = null;
+        benchMarkTimer = null;
 
         smithproxyTimerTask = null;
         smithproxyTimer = null;
@@ -608,7 +646,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         return times.get((int)(percent / 100 * times.size() - 1));
     }
 
-    private void show() {
+    public void show() {
         synchronized (records) {
             SmithLogger.logger.info("=================== statistics ===================");
 

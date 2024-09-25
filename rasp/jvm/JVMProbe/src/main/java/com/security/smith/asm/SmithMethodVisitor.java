@@ -23,8 +23,8 @@ public class SmithMethodVisitor extends AdviceAdapter {
     private final boolean canBlock;
     private final boolean isStatic;
     private final boolean isConstructor;
-    private final int stopWatchVariable;
-    private final int stopWatchTotalVariable;
+    private int stopWatchVariable;
+    private int stopWatchTotalVariable;
     private final int argumentsVariable;
     private final int returnVariable;
     private final Label start;
@@ -34,6 +34,7 @@ public class SmithMethodVisitor extends AdviceAdapter {
     private String postHook;
     private String exceptionHook;
     private String xHook;
+    // just fo benchmark test
     private final boolean isBenchMark;
 
     private final Map<String, Class<?>> smithProcessors = new HashMap<String, Class<?>>() {{
@@ -61,15 +62,18 @@ public class SmithMethodVisitor extends AdviceAdapter {
         this.preHook = pre_hook;
         this.postHook = post_hook;
         this.exceptionHook = exception_hook;
-        this.isBenchMark = true;
+        this.isBenchMark = false;
 
         start = new Label();
         end = new Label();
         handler = new Label();
 
         argumentsVariable = newLocal(Type.getType(Object[].class));
-        stopWatchTotalVariable = newLocal(Type.getType(StopWatch.class));
-        stopWatchVariable = newLocal(Type.getType(StopWatch.class));
+        if (isBenchMark) {
+            stopWatchTotalVariable = newLocal(Type.getType(StopWatch.class));
+            stopWatchVariable = newLocal(Type.getType(StopWatch.class));
+        }
+        
         returnVariable = newLocal(Type.getType(Object.class));
         isConstructor = name.equals("<init>");
         isStatic = (access & Opcodes.ACC_STATIC) != 0;
