@@ -953,14 +953,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     methodMap
             );
 
-            classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);  
-    
-            if (classType.getClassName().equals("java.lang.ProcessImpl")) {
-                String path = "/tmp/ProcessImpl.class";
-                FileOutputStream fos = new FileOutputStream(path);
-                fos.write(classWriter.toByteArray());
-                fos.close();
-            }
+            classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
 
             return classWriter.toByteArray();
         }
