@@ -414,7 +414,7 @@ else
 endif
 
 
-$(OUTPUT): set-version agent-plugin nsenter pangolin jattach JVMProbe python-probe python-loader go-probe go-probe-ebpf node-probe php-probe rasp-server librasp NSMount
+$(OUTPUT): check_benchmark set-version agent-plugin nsenter pangolin jattach JVMProbe python-probe python-loader go-probe go-probe-ebpf node-probe php-probe rasp-server librasp NSMount
 	mkdir -p $(OUTPUT) $(LIB_OUTPUT) $(LIB_OUTPUT)/golang $(LIB_OUTPUT)/java $(LIB_OUTPUT)/node $(LIB_OUTPUT)/php $(LIB_OUTPUT)/python
 
 	cp plugin/settings.toml $(OUTPUT)/settings.toml
