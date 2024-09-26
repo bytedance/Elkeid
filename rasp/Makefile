@@ -46,9 +46,9 @@ SHA256SUMS: rasp-linux-default-x86_64-$(VERSION).tar.gz
 check_benchmark:
 	if echo $(VERSION) | grep -q benchmark; then \
 		echo "Version contains benchmark. Modifying files..."; \
-		sed -i "s/isBenchMark = false/isBenchMark = true/g" "jvm/JVMAgent/src/main/java/com/security/smithloader/SmithAgent.java" \
-		sed -i "s/isBenchMark = false/isBenchMark = true/g" "jvm/JVMProbe/src/main/java/com/security/smith/SmithProbe.java" \
-		sed -i "s/isBenchMark = false/isBenchMark = true/g" "jvm/JVMProbe/src/main/java/com/security/smith/asm/SmithMethodVisitor.java" \
+		sed -i "s/isBenchMark = false/isBenchMark = true/g" "jvm/JVMAgent/src/main/java/com/security/smithloader/SmithAgent.java"; \
+		sed -i "s/isBenchMark = false/isBenchMark = true/g" "jvm/JVMProbe/src/main/java/com/security/smith/SmithProbe.java"; \
+		sed -i "s/isBenchMark = false/isBenchMark = true/g" "jvm/JVMProbe/src/main/java/com/security/smith/asm/SmithMethodVisitor.java"; \
 	else \
 		echo "Version does not contain benchmark. Skipping modification."; \
 	fi
