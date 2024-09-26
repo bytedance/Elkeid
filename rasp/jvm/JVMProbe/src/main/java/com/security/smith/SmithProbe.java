@@ -115,6 +115,28 @@ class SmithproxyTimerTask extends TimerTask {
         }
 }
 
+class BenchMarkTimerTask extends TimerTask {
+        private boolean isCancel = false;
+        private SmithProbe smithProbe = null;
+
+        public void setSmithProbe(SmithProbe smithProbe) {
+            this.smithProbe = smithProbe;
+        }
+
+        @Override
+        public void run() {
+            if(!isCancel) {
+                smithProbe.show();
+            }
+        }
+
+        @Override
+        public boolean cancel() {
+            isCancel = true;
+            return super.cancel();
+        }
+}
+
 class MatchRulePredicate implements Predicate<MatchRule> {
     private final Trace trace;
     
@@ -151,6 +173,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     private Map<Pair<Integer, Integer>, Filter> filters;
     private Map<Pair<Integer, Integer>, Block> blocks;
     private Map<Pair<Integer, Integer>, Integer> limits;
+    private final Map<Pair<Integer, Integer>, List<Long>> records;
+    private final Map<Pair<Integer, Integer>, List<Long>> recordsTotal;
+    private final Map<Pair<Integer, Integer>, Long> hooktimeRecords;
+    private final Map<Pair<Integer, Integer>, Long> runtimeRecords;
     private Map<String, Set<String>> hookTypes;
     private Disruptor<Trace> disruptor;
     private Map<String, Boolean> switchConfig;
@@ -158,16 +184,25 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     private Rule_Mgr    rulemgr;
     private Rule_Config ruleconfig;
     private Timer detectTimer;
+    private Timer benchMarkTimer;
     private Timer smithproxyTimer;
     private DetectTimerTask detectTimerTask;
     private SmithproxyTimerTask smithproxyTimerTask;
+    private BenchMarkTimerTask benchMarkTimerTask;
     private String proberVersion;
     private String proberPath;
     private JsRuleEngine jsRuleEngine;
+    // just for benchmark test
+    private boolean isBenchMark;
 
     public SmithProbe() {
         disable = false;
         scanswitch = true;
+        records = new HashMap<>();
+        recordsTotal = new HashMap<>();
+        hooktimeRecords = new HashMap<>();
+        runtimeRecords = new HashMap<>();
+        isBenchMark = false;
     }
 
     public void setInst(Instrumentation inst) {
@@ -211,6 +246,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         limits = new ConcurrentHashMap<>();
         hookTypes = new ConcurrentHashMap<>();
         switchConfig = new ConcurrentHashMap<>();
+        
 
         MessageSerializer.initInstance(proberVersion);
         MessageEncoder.initInstance();
@@ -389,6 +425,19 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 detectTimerTask,
                 TimeUnit.MINUTES.toMillis(1)
         );
+
+        if (isBenchMark) {
+            benchMarkTimerTask = new BenchMarkTimerTask();
+            benchMarkTimerTask.setSmithProbe(this);
+
+            benchMarkTimer = new Timer(true);
+            benchMarkTimer.schedule(
+                    benchMarkTimerTask,
+                    TimeUnit.SECONDS.toMillis(5),
+                    TimeUnit.SECONDS.toMillis(10)
+            );
+        }     
+
         smithproxyTimerTask =  new SmithproxyTimerTask();
         smithproxyTimerTask.setSmithProxy(smithProxy);
 
@@ -413,6 +462,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         reloadClasses();
 
         SmithLogger.logger.info("probe start leave");
+        
     }
 
     public void stop() {
@@ -432,6 +482,11 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         detectTimer.cancel();
         smithproxyTimer.cancel();
         SmithLogger.logger.info("detect Timer stop");
+
+        if (isBenchMark) {
+            benchMarkTimer.cancel();
+            SmithLogger.logger.info("benchMark Timer stop");
+        }
         
         client.stop();
         SmithLogger.logger.info("client stop");
@@ -444,6 +499,9 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
         detectTimerTask = null;
         detectTimer =null;
+
+        benchMarkTimerTask = null;
+        benchMarkTimer = null;
 
         smithproxyTimerTask = null;
         smithproxyTimer = null;
@@ -581,6 +639,66 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             inst.retransformClasses(cls);
         } catch (UnmodifiableClassException e) {
             SmithLogger.exception(e);
+        }
+    }
+
+    private Long tp(List<Long> times, double percent) {
+        return times.get((int)(percent / 100 * times.size() - 1));
+    }
+
+    public void show() {
+        synchronized (records) {
+            SmithLogger.logger.info("=================== statistics ===================");
+
+            records.forEach((k, v) -> {
+                Collections.sort(v);
+
+                List<Long> tv = recordsTotal.get(new ImmutablePair<>(k.getLeft(), k.getRight()));
+
+                Collections.sort(tv);
+
+                Long hooktime = hooktimeRecords.get(new ImmutablePair<>(k.getLeft(), k.getRight()));
+                Long runtime = runtimeRecords.get(new ImmutablePair<>(k.getLeft(), k.getRight()));
+
+                SmithLogger.logger.info(
+                        String.format(
+                                "class: %d method: %d count: %d tp50: %d tp90: %d tp95: %d tp99: %d tp99.99: %d max: %d total-max:%d hooktime:%d runtime:%d",
+                                k.getLeft(),
+                                k.getRight(),
+                                v.size(),
+                                tp(v, 50),
+                                tp(v, 90),
+                                tp(v, 95),
+                                tp(v, 99),
+                                tp(v, 99.99),
+                                v.get(v.size() - 1),
+                                tv.get(tv.size() - 1),
+                                hooktime,
+                                runtime
+                        )
+                );
+            });
+        }
+    }
+
+    public void record(int classID, int methodID, long time,long totaltime) {
+        SmithLogger.logger.info("record: " + classID + " " + methodID + " " + time);
+        synchronized (records) {
+            records.computeIfAbsent(new ImmutablePair<>(classID, methodID), k -> new ArrayList<>()).add(time);
+        }
+
+        synchronized (recordsTotal) {
+            recordsTotal.computeIfAbsent(new ImmutablePair<>(classID, methodID), k -> new ArrayList<>()).add(totaltime);
+        }
+
+        synchronized (hooktimeRecords) {
+            hooktimeRecords.computeIfAbsent(new ImmutablePair<>(classID, methodID), k -> time);
+            hooktimeRecords.computeIfPresent(new ImmutablePair<>(classID, methodID),(k,v) -> v+time);
+        }
+
+        synchronized (runtimeRecords) {
+            runtimeRecords.computeIfAbsent(new ImmutablePair<>(classID, methodID), k -> totaltime);
+            runtimeRecords.computeIfPresent(new ImmutablePair<>(classID, methodID),(k,v) -> v+totaltime);
         }
     }
 
@@ -835,7 +953,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     methodMap
             );
 
-            classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);  
+            classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
 
             return classWriter.toByteArray();
         }

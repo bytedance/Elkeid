@@ -25,6 +25,8 @@ public class SmithAgent {
     private static String checksumStr = null;
     private static String proberPath = null;
     private static Instrumentation instrumentation = null;
+    // just fo benchmark test
+    private static boolean isBenchMark = false;
     public static InheritableThreadLocal<Boolean> checkRecursive = new InheritableThreadLocal<Boolean>() {
         @Override
         protected Boolean initialValue() {
@@ -97,6 +99,28 @@ public class SmithAgent {
             checkRecursive.set(false);
         }
         return obj;
+    }
+
+    public static void RecordProxy(int classID, int methodID, Long t1, Long t2) {
+        if (isBenchMark) {
+            try {
+                if (checkRecursive != null && checkRecursive.get() == true) {
+                    return;
+                }
+                if (checkRecursive != null && checkRecursive.get() == false) {
+                    checkRecursive.set(true);
+                }
+                if(SmithProberObj != null) {
+                    Class<?>[]  argType = new Class[]{int.class,int.class, Long.class, Long.class};
+                    Reflection.invokeMethod(SmithProberObj,"record",argType,classID,methodID,t1,t2);
+                }
+                if (checkRecursive != null && checkRecursive.get() == true) {
+                    checkRecursive.set(false);
+                }
+            } catch (Throwable e) {
+                SmithAgentLogger.exception(e);
+            }
+        }
     }
 
     private static boolean loadSmithProber(String proberPath, Instrumentation inst) {
