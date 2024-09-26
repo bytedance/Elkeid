@@ -4,7 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.lmax.disruptor.EventHandler;
-
+import com.lmax.disruptor.InsufficientCapacityException;
+import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.util.DaemonThreadFactory;
 import com.security.smith.asm.SmithClassVisitor;
@@ -54,9 +55,6 @@ import java.util.stream.Stream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.security.CodeSource;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.jar.JarFile;
 
 
@@ -85,6 +83,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     private final Rule_Mgr    rulemgr;
     private final Rule_Config ruleconfig;
     private SmithProbeProxy smithProxy;
+    private boolean isBenchMark;
 
     enum Action {
         STOP,
@@ -98,6 +97,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     public SmithProbe() {
         disable = false;
         scanswitch = true;
+        isBenchMark = false;
 
         smithClasses = new ConcurrentHashMap<>();
         patchers = new ConcurrentHashMap<>();
@@ -193,6 +193,20 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 0,
                 TimeUnit.MINUTES.toMillis(1)
         );
+        if (isBenchMark) {
+            new Timer(true).schedule(
+                new TimerTask() {
+                    @Override
+                    public void run() {
+                        show();
+                    }
+                },
+                TimeUnit.SECONDS.toMillis(5),
+                TimeUnit.SECONDS.toMillis(10)
+            );
+        }
+        inst.addTransformer(this, true);
+        reloadClasses();
     }
 
     private void reloadClasses() {
@@ -265,103 +279,53 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         }
     }
 
-    public boolean surplus(int classID, int methodID) {
-        if (classID >= CLASS_MAX_ID || methodID >= METHOD_MAX_ID)
-            return false;
-
-        while (true) {
-            int quota = quotas[classID].get(methodID);
-
-            if (quota <= 0)
-                return false;
-
-            if (quotas[classID].compareAndSet(methodID, quota, quota - 1))
-                break;
-        }
-
-        return true;
+    private Long tp(List<Long> times, double percent) {
+        return times.get((int)(percent / 100 * times.size() - 1));
     }
 
-    public Trace newTrace(int classID, int methodID, Object[] args) {
-        Trace trace = new Trace();
-
-        trace.setClassID(classID);
-        trace.setMethodID(methodID);
-        trace.setArgs(args);
-        trace.setStackTrace(Thread.currentThread().getStackTrace());
-
-        return trace;
-    }
-
-    public void detect(Trace trace) {
-        List<Block> policies = blocks.get(new ImmutablePair<>(trace.getClassID(), trace.getMethodID()));
-
-        if (policies == null)
-            return;
-
-        for (Block block : policies) {
-            MatchRule[] rules = block.getRules();
-
-            if (rules.length > 0 && Arrays.stream(block.getRules()).noneMatch(rule -> {
-                if (rule.getIndex() >= trace.getArgs().length)
-                    return false;
-
-                return Pattern.compile(rule.getRegex()).matcher(trace.getArgs()[rule.getIndex()].toString()).find();
-            }))
-                continue;
-
-            StackFrame stackFrame = block.getStackFrame();
-
-            if (stackFrame == null) {
-                trace.setBlocked(true);
-                trace.setPolicyID(block.getPolicyID());
-                throw new SecurityException("API blocked by RASP");
-            }
-
-            StackTraceElement[] elements = trace.getStackTrace();
-
-            if (elements.length <= 2)
-                continue;
-
-            String[] frames = Arrays.stream(Arrays.copyOfRange(elements, 2, elements.length))
-                    .map(StackTraceElement::toString)
-                    .toArray(String[]::new);
-
-            Predicate<String> pred = keyword -> Arrays.stream(frames).anyMatch(frame -> Pattern.compile(keyword).matcher(frame).find());
-
-            if (stackFrame.getOperator() == StackFrame.Operator.OR && Arrays.stream(stackFrame.getKeywords()).anyMatch(pred)) {
-                trace.setBlocked(true);
-                trace.setPolicyID(block.getPolicyID());
-                throw new SecurityException("API blocked by RASP");
-            }
-
-            if (stackFrame.getOperator() == StackFrame.Operator.AND && Arrays.stream(stackFrame.getKeywords()).allMatch(pred)) {
-                trace.setBlocked(true);
-                trace.setPolicyID(block.getPolicyID());
-                throw new SecurityException("API blocked by RASP");
-            }
+    private void show() {
+        synchronized (records) {
+            SmithLogger.logger.info("=================== statistics ===================");
+            records.forEach((k, v) -> {
+                Collections.sort(v);
+                List<Long> tv = recordsTotal.get(new ImmutablePair<>(k.getLeft(), k.getRight()));
+                Collections.sort(tv);
+                Long hooktime = hooktimeRecords.get(new ImmutablePair<>(k.getLeft(), k.getRight()));
+                Long runtime = runtimeRecords.get(new ImmutablePair<>(k.getLeft(), k.getRight()));
+                SmithLogger.logger.info(
+                        String.format(
+                                "class: %d method: %d count: %d tp50: %d tp90: %d tp95: %d tp99: %d tp99.99: %d max: %d total-max:%d hooktime:%d runtime:%d",
+                                k.getLeft(),
+                                k.getRight(),
+                                v.size(),
+                                tp(v, 50),
+                                tp(v, 90),
+                                tp(v, 95),
+                                tp(v, 99),
+                                tp(v, 99.99),
+                                v.get(v.size() - 1),
+                                tv.get(tv.size() - 1),
+                                hooktime,
+                                runtime
+                        )
+                );
+            });
         }
     }
-
-    public void post(Trace trace) {
-        RingBuffer<Trace> ringBuffer = disruptor.getRingBuffer();
-
-        try {
-            long sequence = ringBuffer.tryNext();
-
-            Trace t = ringBuffer.get(sequence);
-
-            t.setClassID(trace.getClassID());
-            t.setMethodID(trace.getMethodID());
-            t.setBlocked(trace.isBlocked());
-            t.setPolicyID(trace.getPolicyID());
-            t.setRet(trace.getRet());
-            t.setArgs(trace.getArgs());
-            t.setStackTrace(trace.getStackTrace());
-
-            ringBuffer.publish(sequence);
-        } catch (InsufficientCapacityException ignored) {
-
+    public void record(int classID, int methodID, long time,long totaltime) {
+        synchronized (records) {
+            records.computeIfAbsent(new ImmutablePair<>(classID, methodID), k -> new ArrayList<>()).add(time);
+        }
+        synchronized (recordsTotal) {
+            recordsTotal.computeIfAbsent(new ImmutablePair<>(classID, methodID), k -> new ArrayList<>()).add(totaltime);
+        }
+        synchronized (hooktimeRecords) {
+            hooktimeRecords.computeIfAbsent(new ImmutablePair<>(classID, methodID), k -> time);
+            hooktimeRecords.computeIfPresent(new ImmutablePair<>(classID, methodID),(k,v) -> v+time);
+        }
+        synchronized (runtimeRecords) {
+            runtimeRecords.computeIfAbsent(new ImmutablePair<>(classID, methodID), k -> totaltime);
+            runtimeRecords.computeIfPresent(new ImmutablePair<>(classID, methodID),(k,v) -> v+totaltime);
         }
     }
 
