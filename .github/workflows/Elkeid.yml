@@ -34,7 +34,7 @@ jobs:
     - name: Build RASP
       run: |
         curl -fsSL https://lf3-static.bytednsdoc.com/obj/eden-cn/kplrsl/ljhwZthlaukjlkulzlp/php-headers.tar.gz | tar -xz -C rasp/php
-        docker run --rm --pull=always -v $(pwd):/Elkeid yoloyyh/rasp-toolchain:v1.0 \
+        docker run --rm --pull=always -v $(pwd):/Elkeid yoloyyh/rasp-toolchain:v3.0 \
         make -C /Elkeid/rasp \
           STATIC=TRUE \
           PY_PREBUILT=TRUE \
