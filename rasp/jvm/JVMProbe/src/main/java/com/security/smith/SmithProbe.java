@@ -4,7 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.lmax.disruptor.EventHandler;
-
+import com.lmax.disruptor.InsufficientCapacityException;
+import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.util.DaemonThreadFactory;
 import com.security.smith.asm.SmithClassVisitor;
@@ -54,9 +55,6 @@ import java.util.stream.Stream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.security.CodeSource;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.jar.JarFile;
 
 
@@ -73,6 +71,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     
     private final Map<String, SmithClass> smithClasses;
     private final Map<String, Patcher> patchers;
+    private final Map<Pair<Integer, Integer>, List<Long>> records;
+    private final Map<Pair<Integer, Integer>, List<Long>> recordsTotal;
+    private final Map<Pair<Integer, Integer>, Long> hooktimeRecords;
+    private final Map<Pair<Integer, Integer>, Long> runtimeRecords;
     private final Map<Pair<Integer, Integer>, Filter> filters;
     private final Map<Pair<Integer, Integer>, Block> blocks;
     private final Map<Pair<Integer, Integer>, Integer> limits;
@@ -81,6 +83,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     private final Rule_Mgr    rulemgr;
     private final Rule_Config ruleconfig;
     private SmithProbeProxy smithProxy;
+    private boolean isBenchMark;
 
     enum Action {
         STOP,
@@ -94,12 +97,17 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     public SmithProbe() {
         disable = false;
         scanswitch = true;
+        isBenchMark = false;
 
         smithClasses = new ConcurrentHashMap<>();
         patchers = new ConcurrentHashMap<>();
         filters = new ConcurrentHashMap<>();
         blocks = new ConcurrentHashMap<>();
         limits = new ConcurrentHashMap<>();
+        records = new HashMap<>();
+        recordsTotal = new HashMap<>();
+        hooktimeRecords = new HashMap<>();
+        runtimeRecords = new HashMap<>();
 
         heartbeat = new Heartbeat();
         client = new Client(this);
@@ -185,6 +193,18 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                 0,
                 TimeUnit.MINUTES.toMillis(1)
         );
+        if (isBenchMark) {
+            new Timer(true).schedule(
+                new TimerTask() {
+                    @Override
+                    public void run() {
+                        show();
+                    }
+                },
+                TimeUnit.SECONDS.toMillis(5),
+                TimeUnit.SECONDS.toMillis(10)
+            );
+        }
         inst.addTransformer(this, true);
         reloadClasses();
     }
@@ -256,6 +276,56 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             inst.retransformClasses(cls);
         } catch (UnmodifiableClassException e) {
             SmithLogger.exception(e);
+        }
+    }
+
+    private Long tp(List<Long> times, double percent) {
+        return times.get((int)(percent / 100 * times.size() - 1));
+    }
+
+    private void show() {
+        synchronized (records) {
+            SmithLogger.logger.info("=================== statistics ===================");
+            records.forEach((k, v) -> {
+                Collections.sort(v);
+                List<Long> tv = recordsTotal.get(new ImmutablePair<>(k.getLeft(), k.getRight()));
+                Collections.sort(tv);
+                Long hooktime = hooktimeRecords.get(new ImmutablePair<>(k.getLeft(), k.getRight()));
+                Long runtime = runtimeRecords.get(new ImmutablePair<>(k.getLeft(), k.getRight()));
+                SmithLogger.logger.info(
+                        String.format(
+                                "class: %d method: %d count: %d tp50: %d tp90: %d tp95: %d tp99: %d tp99.99: %d max: %d total-max:%d hooktime:%d runtime:%d",
+                                k.getLeft(),
+                                k.getRight(),
+                                v.size(),
+                                tp(v, 50),
+                                tp(v, 90),
+                                tp(v, 95),
+                                tp(v, 99),
+                                tp(v, 99.99),
+                                v.get(v.size() - 1),
+                                tv.get(tv.size() - 1),
+                                hooktime,
+                                runtime
+                        )
+                );
+            });
+        }
+    }
+    public void record(int classID, int methodID, long time,long totaltime) {
+        synchronized (records) {
+            records.computeIfAbsent(new ImmutablePair<>(classID, methodID), k -> new ArrayList<>()).add(time);
+        }
+        synchronized (recordsTotal) {
+            recordsTotal.computeIfAbsent(new ImmutablePair<>(classID, methodID), k -> new ArrayList<>()).add(totaltime);
+        }
+        synchronized (hooktimeRecords) {
+            hooktimeRecords.computeIfAbsent(new ImmutablePair<>(classID, methodID), k -> time);
+            hooktimeRecords.computeIfPresent(new ImmutablePair<>(classID, methodID),(k,v) -> v+time);
+        }
+        synchronized (runtimeRecords) {
+            runtimeRecords.computeIfAbsent(new ImmutablePair<>(classID, methodID), k -> totaltime);
+            runtimeRecords.computeIfPresent(new ImmutablePair<>(classID, methodID),(k,v) -> v+totaltime);
         }
     }
 

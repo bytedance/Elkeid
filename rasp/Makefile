@@ -6,7 +6,7 @@ DEBUG_SYMBOLS ?= debug
 LIB_OUTPUT ?= $(OUTPUT)/lib-$(VERSION)
 VCPKG_OVERLAY_PORTS ?= $(abspath overlay-ports)
 
-.PHONY: all help install clean set-version agent-plugin nsenter pangolin jattach JVMProbe python-probe python-loader go-probe go-probe-ebpf node-probe php-probe librasp rasp-server NSMount
+.PHONY: all help install clean check_benchmark set-version agent-plugin nsenter pangolin jattach JVMProbe python-probe python-loader go-probe go-probe-ebpf node-probe php-probe librasp rasp-server NSMount
 
 all: rasp-linux-default-x86_64-$(VERSION).tar.gz rasp-linux-default-x86_64-$(VERSION)-debug.tar.gz SHA256SUMS
 
@@ -41,6 +41,15 @@ rasp-linux-default-x86_64-$(VERSION)-debug.tar.gz: | $(DEBUG_SYMBOLS)
 SHA256SUMS: rasp-linux-default-x86_64-$(VERSION).tar.gz
 	sha256sum $(OUTPUT)/rasp rasp-linux-default-x86_64-$(VERSION).tar.gz > $@
 
+# for benchmark
+check_benchmark:
+	if echo $(VERSION) | grep -q benchmark; then \
+		echo "Version contains benchmark. Modifying files..."; \
+		sed -i "s/isBenchMark = false/isBenchMark = true/g" "jvm/JVMProbe/src/main/java/com/security/smith/SmithProbe.java" \
+		sed -i "s/isBenchMark = false/isBenchMark = true/g" "jvm/JVMProbe/src/main/java/com/security/smith/asm/SmithMethodVisitor.java" \
+	else \
+		echo "Version does not contain benchmark. Skipping modification."; \
+	fi
 
 set-version:
 	sed -i "s/1.0.0.1/${VERSION}/g" "librasp/src/settings.rs"
