@@ -682,7 +682,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
 
     public void record(int classID, int methodID, long time,long totaltime) {
-        SmithLogger.logger.info("record: " + classID + " " + methodID + " " + time);
+        // SmithLogger.logger.info("record: " + classID + " " + methodID + " " + time);
         synchronized (records) {
             records.computeIfAbsent(new ImmutablePair<>(classID, methodID), k -> new ArrayList<>()).add(time);
         }
