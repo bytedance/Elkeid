@@ -101,7 +101,7 @@ public class SmithAgent {
         return obj;
     }
 
-    public static void RecordProxy(int classID, int methodID, Long t1, Long t2) {
+    public static void RecordProxy(int classID, int methodID, long t1, long t2) {
         if (isBenchMark) {
             try {
                 if (checkRecursive != null && checkRecursive.get() == true) {
@@ -111,7 +111,7 @@ public class SmithAgent {
                     checkRecursive.set(true);
                 }
                 if(SmithProberObj != null) {
-                    Class<?>[]  argType = new Class[]{int.class,int.class, Long.class, Long.class};
+                    Class<?>[]  argType = new Class[]{int.class,int.class, long.class, long.class};
                     Reflection.invokeMethod(SmithProberObj,"record",argType,classID,methodID,t1,t2);
                 }
                 if (checkRecursive != null && checkRecursive.get() == true) {
