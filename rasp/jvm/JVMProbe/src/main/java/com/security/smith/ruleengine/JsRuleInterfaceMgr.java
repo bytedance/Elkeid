@@ -1,8 +1,8 @@
 package com.security.smith.ruleengine;
 
 
-// import jdk.nashorn.api.scripting.ScriptObjectMirror;
-import jdk.nashorn.internal.objects.NativeArray;
+// import rasp.jdk.nashorn.api.scripting.ScriptObjectMirror;
+import rasp.jdk.nashorn.internal.objects.NativeArray;
 import com.security.smith.log.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,9 +41,9 @@ public class JsRuleInterfaceMgr {
     }
 
     private String[] Convert_JsStringArray_To_JavaStringArray(Object jsArray) {
-        if (jsArray  instanceof jdk.nashorn.internal.objects.NativeArray) {
+        if (jsArray  instanceof rasp.jdk.nashorn.internal.objects.NativeArray) {
             try {
-                jdk.nashorn.internal.objects.NativeArray array = (jdk.nashorn.internal.objects.NativeArray)jsArray;
+                rasp.jdk.nashorn.internal.objects.NativeArray array = (rasp.jdk.nashorn.internal.objects.NativeArray)jsArray;
 
                 List<String> javaList = new ArrayList<>();
                 for (Object obj : array.values()) {
