@@ -12,7 +12,7 @@ public class Heartbeat {
     private String patch;
     private String class_filter_version;
     private String switches;
-    private int discard_count;
+    private int discard_send;
 
     public Heartbeat() {
         filter = "";
@@ -21,7 +21,7 @@ public class Heartbeat {
         patch = "";
         class_filter_version = "";
         switches = "";
-        discard_count = 0;
+        discard_send = 0;
     }
 
     public String getFilter() {
@@ -72,12 +72,12 @@ public class Heartbeat {
         this.switches = switches;
     }
 
-    public synchronized int  getDiscardCount() {
-        return discard_count;
+    public synchronized int  getDiscardSend() {
+        return discard_send;
     }
 
-    public synchronized void setDiscardCount(int discard_count) {
-        this.discard_count = discard_count;
+    public synchronized void setDiscardSend(int discard_send) {
+        this.discard_send = discard_send;
     }
 
     public static Heartbeat fromJson(String json) {
