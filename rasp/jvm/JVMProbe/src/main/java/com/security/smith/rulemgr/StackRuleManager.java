@@ -202,7 +202,7 @@ public class StackRuleManager {
                 needClearStack = true;
                 formatStack();
             }
-            SmithLogger.logger.info("isWhite: " + isWhite + " ruleId: " + ruleId);
+           // SmithLogger.logger.info("isWhite: " + isWhite + " ruleId: " + ruleId);
 
             try {
                 StackRule stackRule = stackRuleMaps.get(ruleId);
@@ -223,7 +223,7 @@ public class StackRuleManager {
                                         for (Map.Entry<Long, String> entry : curStack.entrySet()) {
                                             String value = entry.getValue();
                                             if (value.contains(stack.substring(0, stack.length() - 1))) {
-                                                SmithLogger.logger.info("find the match, string: " + value + " hashcode: " + entry.getKey());
+                                                // SmithLogger.logger.info("find the match, string: " + value + " hashcode: " + entry.getKey());
                                                 return true;
                                             }
                                         }
@@ -234,7 +234,7 @@ public class StackRuleManager {
                                 } else {
                                     try {
                                         if (curStack.containsKey(item.getHashcode())) {
-                                            SmithLogger.logger.info("find the match, string: " + curStack.get(item.getHashcode()) + " hashcode: " + item.getHashcode());
+                                            // SmithLogger.logger.info("find the match, string: " + curStack.get(item.getHashcode()) + " hashcode: " + item.getHashcode());
                                             return true;
                                         }
                                     } catch (Exception e) {
@@ -253,7 +253,7 @@ public class StackRuleManager {
                 }
             }
             
-            SmithLogger.logger.info("not find the match");
+            // SmithLogger.logger.info("not find the match");
         } catch (Exception e) {
             SmithLogger.exception(e);
         }
@@ -266,8 +266,8 @@ public class StackRuleManager {
         }
         try {
             Map<Long, String> cur1Stack = currentStack.get();
-            SmithLogger.logger.info("curStack size: " + cur1Stack.size());
-            SmithLogger.logger.info("now to get current stack");
+           // SmithLogger.logger.info("curStack size: " + cur1Stack.size());
+            //SmithLogger.logger.info("now to get current stack");
             StackTraceElement[] stack_str  =  Thread.currentThread().getStackTrace();
             String[] stackTraceStrings = new String[stack_str.length];
             Map<Long, String> curStack = new HashMap<>();
@@ -293,9 +293,9 @@ public class StackRuleManager {
         }
         try {
             Map<Long, String> curStack = currentStack.get();
-            SmithLogger.logger.info("curStack size: " + curStack.size());
+            //SmithLogger.logger.info("curStack size: " + curStack.size());
             curStack.clear();
-            SmithLogger.logger.info("clear currentStack");
+            //SmithLogger.logger.info("clear currentStack");
         } catch (Exception e) {
             SmithLogger.exception(e);
         }

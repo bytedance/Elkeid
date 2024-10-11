@@ -48,6 +48,7 @@ public class SmithLogger {
 
                 if (logger != null) {
                     logger.removeHandler(fileHandler);
+                    logger = null;
                 }
                 fileHandler.close();
                 fileHandler = null;

@@ -167,8 +167,8 @@ public class SmithProbeProxy {
 
             JsRuleResult result = SmithProbeObj.getJsRuleEngine().detect(2, argsX);
             if (result != null) {
-                SmithLogger.logger.info("classname = " + classname + ", fieldname = " + fieldname + ", result = " + result.rulename);
-                SmithLogger.logger.info("classname = " + classname + ", fieldname = " + fieldname + ", result = " + result.ruleid);
+                // SmithLogger.logger.info("classname = " + classname + ", fieldname = " + fieldname + ", result = " + result.rulename);
+                // SmithLogger.logger.info("classname = " + classname + ", fieldname = " + fieldname + ", result = " + result.ruleid);
                 return true;
             }
         } catch (Throwable e) {
