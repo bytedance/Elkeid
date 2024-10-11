@@ -69,9 +69,7 @@ func (c *ConfigExtHandler) autoRefreshRelease() {
 
 func (c *ConfigExtHandler) VerifyAndUpdateRelease(ri []*common.ConfigReleaseInfo) {
 	for _, fp := range ri {
-		ylog.Infof("VerifyAndUpdateRelease", "%s %s %d %d", fp.AgentID, fp.Plugin, fp.Release, fp.Status)
 		localFP := c.GetFingerPrint(fp.AgentID, fp.Plugin)
-		ylog.Infof("VerifyAndUpdateRelease", "localFP %#v", *localFP)
 		if localFP == nil || fp.Release != localFP.Release {
 
 			//校验release号失败，请求远端获取详情
