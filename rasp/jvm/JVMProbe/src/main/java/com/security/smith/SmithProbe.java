@@ -383,12 +383,12 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     }
 
     public boolean isFunctionEnabled(int classId, int methodId) {
-        String key = classId + "-" + methodId;
-        Set<String> types = hookTypes.get(key);
-        
+ 
         if (switchConfig == null || switchConfig.isEmpty()) {
             return true;
         }
+        String key = classId + "-" + methodId;
+        Set<String> types = hookTypes.get(key);
 
         if (types != null) {
             for (String type : types) {
