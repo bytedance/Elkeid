@@ -26,8 +26,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.GsonBuilder;
 public class SmithProbeProxy {
-    private final int CLASS_MAX_ID = 50;
-    private final int METHOD_MAX_ID = 20;
+    private final int CLASS_MAX_ID;
+    private final int METHOD_MAX_ID;
     private final int DEFAULT_QUOTA = 12000;
     
     private SmithProbe SmithProbeObj = null;
@@ -117,9 +117,11 @@ public class SmithProbeProxy {
         }
     }
 
-    public SmithProbeProxy() {
+    public SmithProbeProxy(int classMaxID, int methodMaxID) {
         stopX = false;
 
+        CLASS_MAX_ID = classMaxID;
+        METHOD_MAX_ID = methodMaxID;
         quotas = new AtomicIntegerArray[CLASS_MAX_ID];
         for (int i = 0; i < CLASS_MAX_ID; i++) {
             quotas[i] = new AtomicIntegerArray(METHOD_MAX_ID);
@@ -280,7 +282,7 @@ public class SmithProbeProxy {
 
         JsRuleResult result = SmithProbeObj.getJsRuleEngine().detect(1,argsX);
         if(result != null) {
-            SmithLogger.logger.info("Js Rule Result +" + result.toString());
+            // SmithLogger.logger.info("Js Rule Result +" + result.toString());
             ClassFilter classFilter = new ClassFilter();
             SmithHandler.queryClassFilter(cla, classFilter);
             classFilter.setTransId();
@@ -803,7 +805,7 @@ public class SmithProbeProxy {
      }
 
      public void handleReflectField(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
-        if(stopX) {
+        if(stopX || SmithProbeObj.isFunctionEnabled(classID, methodID) == false) {
             return;
         }
         if (args.length < 2) {

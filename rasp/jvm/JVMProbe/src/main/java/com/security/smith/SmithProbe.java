@@ -160,6 +160,8 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     private SmithProbe ourInstance = null;
     private SmithProbeProxy smithProxy = null;
     private int TRACE_BUFFER_SIZE = 1024;
+    private final int CLASS_MAX_ID = 50;
+    private final int METHOD_MAX_ID = 20;
 
     private Object  xClassLoaderObj;
     private Boolean disable;
@@ -177,7 +179,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     private final Map<Pair<Integer, Integer>, List<Long>> recordsTotal;
     private final Map<Pair<Integer, Integer>, Long> hooktimeRecords;
     private final Map<Pair<Integer, Integer>, Long> runtimeRecords;
-    private Map<String, Set<String>> hookTypes;
+    private Set<String> [][] hookTypes;
     private Disruptor<Trace> disruptor;
     private Map<String, Boolean> switchConfig;
     
@@ -244,10 +246,15 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         filters = new ConcurrentHashMap<>();
         blocks = new ConcurrentHashMap<>();
         limits = new ConcurrentHashMap<>();
-        hookTypes = new ConcurrentHashMap<>();
         switchConfig = new ConcurrentHashMap<>();
         
+        hookTypes = new Set[CLASS_MAX_ID][METHOD_MAX_ID];
 
+        for (int i = 0; i < CLASS_MAX_ID; i++) {
+            for (int j = 0; j < METHOD_MAX_ID; j++) {
+                hookTypes[i][j] = new HashSet<>();
+            }
+        }
         MessageSerializer.initInstance(proberVersion);
         MessageEncoder.initInstance();
         MessageDecoder.initInstance();
@@ -271,7 +278,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         rulemgr = new Rule_Mgr();
         ruleconfig = new Rule_Config(rulemgr);
 
-        smithProxy = new SmithProbeProxy();
+        smithProxy = new SmithProbeProxy(CLASS_MAX_ID, METHOD_MAX_ID);
         
         
         InputStream inputStream = getResourceAsStream("class.yaml");
@@ -285,7 +292,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     for (SmithMethod smithMethod : smithClass.getMethods()) {
             
                         if (smithMethod.getTypes() != null && !smithMethod.getTypes().isEmpty())
-                            hookTypes.put(smithClass.getId() + "-" + smithMethod.getId(), smithMethod.getTypes());
+                            hookTypes[smithClass.getId()][smithMethod.getId()] = smithMethod.getTypes();
                     }
                     smithClasses.put(smithClass.getName(), smithClass);
                 }
@@ -298,7 +305,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         }
     
         try {
-            SmithLogger.logger.info("jsRuleEngine init");
+            // SmithLogger.logger.info("jsRuleEngine init");
             jsRuleEngine = JsRuleEngine.InitializeEngine();
             if (jsRuleEngine != null) {
                 SmithLogger.logger.info("jsRuleEngine init success");
@@ -314,16 +321,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         boolean ret = false;
         try {
             if (scriptFilePath != null && jsRuleEngine != null) {
-                SmithLogger.logger.info("add js rule enter");
                 int result = jsRuleEngine.addJsRule(scriptFilePath);
                 if (result == 0) {
-                    SmithLogger.logger.info("add js rule success");
                     ret = true;
-                } else {
-                    SmithLogger.logger.info("add js rule failed, ret :" + result);
                 }
-            } else {
-                SmithLogger.logger.info("not find js rule path: " + scriptFilePath);
             }
         }
         catch (Throwable e) {
@@ -384,11 +385,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
     public boolean isFunctionEnabled(int classId, int methodId) {
  
-        if (switchConfig == null || switchConfig.isEmpty()) {
+        if (switchConfig == null || switchConfig.isEmpty() || classId >= CLASS_MAX_ID || methodId >= METHOD_MAX_ID || hookTypes == null) {
             return true;
         }
-        String key = classId + "-" + methodId;
-        Set<String> types = hookTypes.get(key);
+        Set<String> types = hookTypes[classId][methodId];
 
         if (types != null) {
             for (String type : types) {
@@ -404,7 +404,6 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         SmithLogger.logger.info("probe start");
         AttachInfo.info();
 
-        SmithLogger.logger.info("init ClassUploadTransformer");
         ClassUploadTransformer.getInstance().start(client, inst);
 
         
@@ -451,6 +450,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         smithProxy.setDisruptor(disruptor);
         smithProxy.setProbe(this);
 
+
         try {
             addJsRule();
         } catch (Exception e) {
@@ -470,32 +470,25 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
         inst.removeTransformer(this);
         reloadClasses();
-        SmithLogger.logger.info("Transformer stop");
 
         disable = true;
         scanswitch = false;
 
         ClassUploadTransformer.getInstance().stop();
 
-        SmithLogger.logger.info("Upload Transformer stop");
 
         detectTimer.cancel();
         smithproxyTimer.cancel();
-        SmithLogger.logger.info("detect Timer stop");
 
         if (isBenchMark) {
             benchMarkTimer.cancel();
-            SmithLogger.logger.info("benchMark Timer stop");
         }
         
         client.stop();
-        SmithLogger.logger.info("client stop");
         
         ruleconfig.destry();
-        SmithLogger.logger.info("ruleconfig stop");
 
         rulemgr.destry();
-        SmithLogger.logger.info("rulemgr stop");
 
         detectTimerTask = null;
         detectTimer =null;
@@ -537,11 +530,18 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
             value.removeAll();
             blocks.remove(key);
         }
+        for (int i = 0; i < hookTypes.length; i++) {
+            for (int j = 0; j < hookTypes[i].length; j++) {
+                hookTypes[i][j].clear();
+                hookTypes[i][j] = null; 
+            }
+        }
+        hookTypes = null;
         blocks.clear();
         blocks = null;
         limits.clear();
         limits = null;
-        SmithLogger.logger.info("probe uninit 0");
+
         
         disruptor = null;
         ruleconfig = null;
@@ -1343,10 +1343,12 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
     public String getFuncTypes(int classId, int methodId) {
         String types = "";
+        if (classId < 0 || methodId < 0 || classId >= CLASS_MAX_ID || methodId >= METHOD_MAX_ID ) {
+            return types;
+        }
         try {
-            
-            if (hookTypes.containsKey(classId + "-" + methodId)) {
-                for (String type: hookTypes.get(classId + "-" + methodId)) {
+            if (hookTypes[classId][methodId] != null) {
+                for (String type: hookTypes[classId][methodId]) {
                     types += type + ",";
                 }
             }
