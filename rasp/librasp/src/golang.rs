@@ -4,7 +4,6 @@ use std::{fs, path::PathBuf, process::Command};
 use regex::Regex;
 use anyhow::{anyhow, Result};
 use goblin::elf::Elf;
-use memmap::MmapOptions;
 
 use crate::async_command::run_async_process;
 use crate::process::ProcessInfo;
@@ -125,7 +124,7 @@ pub fn golang_attach(pid: i32) -> Result<bool> {
     };
 }
 
-pub fn golang_bin_inspect(bin_file: &PathBuf) -> Result<u64> {
+pub fn golang_bin_inspect(bin_file: &PathBuf, elf: &Elf) -> Result<u64> {
     let metadata = match fs::metadata(bin_file.clone()) {
         Ok(md) => md,
         Err(e) => {
@@ -136,11 +135,7 @@ pub fn golang_bin_inspect(bin_file: &PathBuf) -> Result<u64> {
     // if size >= (500 * 1024 * 1024) {
     //     return Err(anyhow!("bin file oversize"));
     // }
-
-    let file = File::open(bin_file)?;
-    let bin = unsafe { MmapOptions::new().map(&file)? };
-    let elf = Elf::parse(&bin)?;
-    let shstrtab = elf.shdr_strtab;
+    let shstrtab = &elf.shdr_strtab;
     for section in elf.section_headers.iter() {
         let offset = section.sh_name;
         if let Some(name) = shstrtab.get_at(offset) {
@@ -165,21 +160,7 @@ pub fn parse_version(version: &String) -> Result<String> {
     return Err(anyhow::anyhow!("Failed to extract version number, from: {}", version));
 }
 
-pub fn golang_version(bin_file: &PathBuf) -> Result<String> {
-    let file = File::open(bin_file)?;
-    let buffer  = unsafe { MmapOptions::new().map(&file)? };
-
-    // parse elf
-    let elf = match Elf::parse(&buffer) {
-        Ok(elf) => elf,
-        Err(err) => {
-            let msg = format!(
-               "Failed to parse ELF file: {}", err
-            );
-            warn!("{}", msg);
-            return Err(anyhow!("{}", msg));
-        }
-    };
+pub fn golang_version(file: &File, elf: &Elf) -> Result<String> {
     
     if let Ok(version) = find_by_section(&elf, &file) {
         return parse_version(&version);
