@@ -5,7 +5,7 @@ use byteorder::{ByteOrder, LittleEndian, BigEndian};
 use anyhow::{anyhow, Result};
 use std::io::{Read, Seek, SeekFrom};
 use log::*;
-
+use memmap::Mmap;
 const MAGIC: &[u8] = b"\xff Go buildinf:";
 const RUNTIME_VERSION_MAGIC: &str = "runtime.buildVersion";
 const EXPECTED_MAGIC_LEN: usize = 14;
@@ -143,7 +143,7 @@ pub fn find_by_symbol(elf: &Elf, file: &File) -> Result<String> {
     }
 }
 
-pub fn find_by_section(elf: &Elf, buffer:&Vec<u8>, file: &File) -> Result<String> {
+pub fn find_by_section(elf: &Elf, file: &File) -> Result<String> {
     let mut version: String = String::new();
     
     // find .go.buildinfo 
@@ -154,13 +154,21 @@ pub fn find_by_section(elf: &Elf, buffer:&Vec<u8>, file: &File) -> Result<String
             false
         }
     }) {
-         // read ".go.buildinfo" section data
-        if buffer.len() < (go_buildinfo_section.sh_offset as usize + go_buildinfo_section.sh_size as usize)  || go_buildinfo_section.sh_size < BUILDINFO_HEADER_SIZE as u64 {
-            return Err(anyhow!("buidinfo size too large: size: {}, offset: {}",go_buildinfo_section.sh_offset, go_buildinfo_section.sh_size));
+        // read ".go.buildinfo" section data
+        let start = go_buildinfo_section.sh_offset as usize;
+        let end = (go_buildinfo_section.sh_offset + go_buildinfo_section.sh_size) as usize;
+  
+        // Memory map the specific section
+        let mmap = match unsafe { Mmap::map(file) } {
+            Ok(m) => m,
+            Err(e) => {return Err(anyhow!(e));}// Return empty string if mmap fails
+        };
+        if mmap.len() < end {
+            return Err(anyhow!("mmap length invaild")); // Return empty string if the section is out of bounds
         }
-
-        let buildinfo_data = &buffer[go_buildinfo_section.sh_offset as usize
-        ..(go_buildinfo_section.sh_offset + go_buildinfo_section.sh_size) as usize];
+  
+        // Extract the data of the section
+        let buildinfo_data = &mmap[start..end];
 
         // check Magic
         let magic_header = &buildinfo_data[0..EXPECTED_MAGIC_LEN];

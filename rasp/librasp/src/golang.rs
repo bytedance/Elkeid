@@ -1,7 +1,6 @@
 use log::*;
 use std::fs::File;
 use std::{fs, path::PathBuf, process::Command};
-use std::io::Read;
 use regex::Regex;
 use anyhow::{anyhow, Result};
 use goblin::elf::Elf;
@@ -167,9 +166,8 @@ pub fn parse_version(version: &String) -> Result<String> {
 }
 
 pub fn golang_version(bin_file: &PathBuf) -> Result<String> {
-    let mut file = File::open(bin_file)?;
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer)?;
+    let file = File::open(bin_file)?;
+    let buffer  = unsafe { MmapOptions::new().map(&file)? };
 
     // parse elf
     let elf = match Elf::parse(&buffer) {
@@ -183,7 +181,7 @@ pub fn golang_version(bin_file: &PathBuf) -> Result<String> {
         }
     };
     
-    if let Ok(version) = find_by_section(&elf, &buffer, &file) {
+    if let Ok(version) = find_by_section(&elf, &file) {
         return parse_version(&version);
     } else {
         if let Ok(version) = find_by_symbol(&elf, &file) {
