@@ -29,6 +29,8 @@ public class TraceSerializer implements JsonSerializer<Trace> {
     }
 
     private String[] convertArgs(Object[] value) {
+        if (value == null)
+            return new String[0];
         String[] result = new String[value.length];
         for (int i = 0; i < value.length; i++) {
             result[i] = String.valueOf(value[i]);
@@ -37,8 +39,8 @@ public class TraceSerializer implements JsonSerializer<Trace> {
     }
 
    private String[] convertStackTrace(StackTraceElement[] stackTrace) {
-        if (stackTrace.length <= 2)
-            return null;
+        if (stackTrace == null || stackTrace.length <= 2)
+            return new String[0];
 
         StackTraceElement[] elements = Arrays.copyOfRange(stackTrace, 2, stackTrace.length);
         String[] result = new String[elements.length];
