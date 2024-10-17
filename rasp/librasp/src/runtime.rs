@@ -2,10 +2,13 @@ use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fmt::{self, Display, Formatter};
 use std::path::PathBuf;
+use memmap::MmapOptions;
+use goblin::elf::Elf;
 use anyhow::{anyhow, Result};
 use log::*;
 use serde_json;
 use std::fs;
+use std::fs::File;
 use std::path::Path;
 use crate::cpython;
 use crate::golang::{golang_bin_inspect, golang_version};
@@ -205,10 +208,14 @@ pub trait RuntimeInspect {
                 path.push(p);
             }
         }
-        match golang_bin_inspect(&path) {
+        
+        let file = File::open(&path)?;
+        let bin = unsafe { MmapOptions::new().map(&file)? };
+        let elf = Elf::parse(&bin)?;
+        match golang_bin_inspect(&path, &elf) {
             Ok(res) => {
                 if res > 0 {
-                    let version = match golang_version(&path) {
+                    let version = match golang_version(&file, &elf) {
                         Ok(v) => {
                             v
                         }
