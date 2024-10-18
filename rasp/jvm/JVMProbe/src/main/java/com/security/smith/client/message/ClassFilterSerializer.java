@@ -31,7 +31,7 @@ public class ClassFilterSerializer implements JsonSerializer<ClassFilter> {
 
     private String[] convertStackTrace(StackTraceElement[] stackTrace) {
         if (stackTrace.length <= 2)
-            return null;
+            return new String[0];
 
         StackTraceElement[] elements = Arrays.copyOfRange(stackTrace, 2, stackTrace.length);
         String[] result = new String[elements.length];
