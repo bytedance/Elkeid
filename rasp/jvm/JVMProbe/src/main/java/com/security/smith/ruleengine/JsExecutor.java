@@ -16,7 +16,8 @@ import rasp.jdk.nashorn.api.scripting.NashornScriptEngineFactory;
 public class JsExecutor {
     public static final int COMMON_TYPE = 1;
     public static final int REFLECT_TYPE  = 2;
-    public static final int MAX_TYPE = 2;
+    public static final int EXPRESSION_TYPE = 3;
+    public static final int MAX_TYPE = 3;
     private static String LANGUAGE_ES6 = "--language=es6";
     private NashornScriptEngineFactory jsEngineFactory;
     private ScriptEngine jsEngine;
@@ -234,6 +235,10 @@ public class JsExecutor {
                 break;
                 case REFLECT_TYPE: {
                     argsNum = 3;
+                }
+                break;
+                case EXPRESSION_TYPE: {
+                    argsNum = 2;
                 }
                 break;
                 default: {

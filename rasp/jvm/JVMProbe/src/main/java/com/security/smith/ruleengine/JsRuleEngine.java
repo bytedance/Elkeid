@@ -25,10 +25,11 @@ public class JsRuleEngine {
             enterCount = new AtomicInteger(0);
             instance = new JsRuleEngine();
             jsExecuterMgrLock = new ReentrantReadWriteLock();
-            jsExecuterMgr = new ConcurrentHashMap[3];
-            jsExecuterMgr[0] = null;
-            jsExecuterMgr[1] = new ConcurrentHashMap<>();
-            jsExecuterMgr[2] = new ConcurrentHashMap<>();
+            jsExecuterMgr = new ConcurrentHashMap[JsExecutor.MAX_TYPE + 1];
+            for (int i = 0; i < jsExecuterMgr.length; i++) {
+                jsExecuterMgr[i] = new ConcurrentHashMap<>();
+            }
+
             stackRuleMgr = new StackRuleMgr();
             stackRuleMgr.Initialize();
 
@@ -208,7 +209,7 @@ public class JsRuleEngine {
 
         try {
             // only format stack when ruletype is common type
-            if (ruletype == JsExecutor.COMMON_TYPE) {
+            if (ruletype == JsExecutor.COMMON_TYPE || ruletype == JsExecutor.EXPRESSION_TYPE) {
                 bInitStack = stackRuleMgr.InitCallStack(ruletype);
             }
 
