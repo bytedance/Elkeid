@@ -25,30 +25,47 @@ public class TraceSerializer implements JsonSerializer<Trace> {
     }
 
     private String convertRet(Object value) {
-        return String.valueOf(value);
+        String ret = "";
+        if (value == null)
+            return ret;
+        try {
+            ret = String.valueOf(value);
+        } catch (Exception e) {
+        }
+        return ret;
     }
 
     private String[] convertArgs(Object[] value) {
+        String[] ret = new String[0];
         if (value == null)
-            return new String[0];
+            return ret;
         String[] result = new String[value.length];
-        for (int i = 0; i < value.length; i++) {
-            result[i] = String.valueOf(value[i]);
+        try {
+            for (int i = 0; i < value.length; i++) {
+                result[i] = String.valueOf(value[i]);
+            }
+        } catch (Exception e) {
         }
+        
         return result;
     }
 
    private String[] convertStackTrace(StackTraceElement[] stackTrace) {
+        String[] ret = new String[0];
         if (stackTrace == null || stackTrace.length <= 2)
-            return new String[0];
+            return ret;
 
-        StackTraceElement[] elements = Arrays.copyOfRange(stackTrace, 2, stackTrace.length);
-        String[] result = new String[elements.length];
+        try {
+            StackTraceElement[] elements = Arrays.copyOfRange(stackTrace, 2, stackTrace.length);
+            String[] result = new String[elements.length];
 
-        for (int i = 0; i < elements.length; i++) {
-            result[i] = elements[i].toString();
-        } 
+            for (int i = 0; i < elements.length; i++) {
+                result[i] = elements[i].toString();
+            } 
 
-        return result;
+            return result;
+        } catch (Exception e) {
+        }
+        return ret;
     }
 }

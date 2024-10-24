@@ -56,7 +56,15 @@ public class SmithAgent {
         if(SmithProberProxyObj != null) {
             String MethodName = (String)MethodNameObj;
             Class<?>[]  argType = new Class[]{int.class,int.class,Object[].class};
-            Reflection.invokeMethod(SmithProberProxyObj,MethodName,argType,classID,methodID,args);
+            try {
+                Reflection.invokeMethod(SmithProberProxyObj,MethodName,argType,classID,methodID,args);
+            } catch (Throwable e) {
+                if (checkRecursive != null && checkRecursive.get() == true) {
+                    checkRecursive.set(false);
+                }
+                throw e;
+            }
+            
         }
         if (checkRecursive != null && checkRecursive.get() == true) {
             checkRecursive.set(false);
@@ -254,6 +262,7 @@ public class SmithAgent {
         public String call() throws Exception {
              xLoaderLock.lock();
                 try {
+                    System.setProperty("smith.rasp", "");
                     if(SmithProberObj != null) {
                         String agent = System.getProperty("rasp.probe");
 
@@ -268,7 +277,7 @@ public class SmithAgent {
                         SmithProberClazz = null;
                     }
     
-                    System.setProperty("smith.rasp", "");
+                    
                     if (!checkMemoryAvailable()) {
                         System.setProperty("smith.status",  "memory not enough");
                         SmithAgentLogger.logger.warning("checkMemory failed");

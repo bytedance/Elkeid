@@ -23,21 +23,26 @@ public class TraceDeserializer implements com.google.gson.JsonDeserializer<Trace
     }
 
     private StackTraceElement[] convertStackTrace(String[] stackTrace) {
+        StackTraceElement[] ret = new StackTraceElement[0];
         if (stackTrace == null)
-            return new StackTraceElement[0];
+            return ret;
 
-        StackTraceElement[] result = new StackTraceElement[stackTrace.length];
-        for (int i = 0; i < stackTrace.length; i++) {
-            String[] parts = stackTrace[i].split(",");
-            if (parts.length != 4) {
-                continue;
+        try {
+            StackTraceElement[] result = new StackTraceElement[stackTrace.length];
+            for (int i = 0; i < stackTrace.length; i++) {
+                String[] parts = stackTrace[i].split(",");
+                if (parts.length != 4) {
+                    continue;
+                }
+                String className = parts[0].trim();
+                String methodName = parts[1].trim();
+                String fileName = parts[2].trim();
+                int lineNumber = Integer.parseInt(parts[3].trim());
+                result[i] = new StackTraceElement(className, methodName, fileName, lineNumber);
             }
-            String className = parts[0].trim();
-            String methodName = parts[1].trim();
-            String fileName = parts[2].trim();
-            int lineNumber = Integer.parseInt(parts[3].trim());
-            result[i] = new StackTraceElement(className, methodName, fileName, lineNumber);
+            return result;
+        } catch (Exception e) {
         }
-        return result;
+        return ret;
     }
 }
