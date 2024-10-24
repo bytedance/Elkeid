@@ -32,14 +32,17 @@ public class ClassFilterSerializer implements JsonSerializer<ClassFilter> {
     private String[] convertStackTrace(StackTraceElement[] stackTrace) {
         if (stackTrace.length <= 2)
             return new String[0];
+        try {
+            StackTraceElement[] elements = Arrays.copyOfRange(stackTrace, 2, stackTrace.length);
+            String[] result = new String[elements.length];
 
-        StackTraceElement[] elements = Arrays.copyOfRange(stackTrace, 2, stackTrace.length);
-        String[] result = new String[elements.length];
+            for (int i = 0; i < elements.length; i++) {
+                result[i] = elements[i].toString();
+            }
 
-        for (int i = 0; i < elements.length; i++) {
-            result[i] = elements[i].toString();
+            return result;
+        } catch (Exception e) {
         }
-
-        return result;
+        return new String[0];
     }
 }
