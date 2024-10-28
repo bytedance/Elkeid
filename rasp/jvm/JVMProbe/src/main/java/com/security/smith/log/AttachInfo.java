@@ -2,7 +2,6 @@ package com.security.smith.log;
 
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -30,7 +29,7 @@ public class AttachInfo {
                     }
                 }
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.out.println(e.getMessage());
         }
     }
