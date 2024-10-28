@@ -2,10 +2,8 @@ package com.security.smith.log;
 
 import com.security.smith.common.ProcessHelper;
 
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.time.Instant;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
@@ -16,9 +14,9 @@ public class SmithLogger {
 
 
     public static void loggerProberInit() {
-        logger.setUseParentHandlers(false);
-
+        
         try {
+            logger.setUseParentHandlers(false);
             String filename = String.format("/tmp/JVMProbe.%d.log", ProcessHelper.getCurrentPID());
 
             fileHandler = new FileHandler(filename, 5 * 1024 * 1024, 5, true);
@@ -27,7 +25,7 @@ public class SmithLogger {
             SimpleFormatter formatter = new SimpleFormatter();
             fileHandler.setFormatter(formatter);
 
-        } catch (IOException | NumberFormatException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
