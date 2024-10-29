@@ -869,5 +869,8 @@ public class SmithProbeProxy {
 
         return null;
     }
+    public void noNeedSend(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        return;
+    }
 }
 

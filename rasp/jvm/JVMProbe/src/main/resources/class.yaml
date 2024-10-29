@@ -472,6 +472,7 @@
       name: findClass
       desc: (Ljava/lang/String;ZZ)Ljava/lang/Class;
       exceptionHook: processWildflyClassLoaderException
+      postHook: noNeedSend
       types:
         - memshell
 - id: 35
@@ -534,12 +535,14 @@
       name: findClass
       desc: (Ljava/lang/String;)Ljava/lang/Class;
       exceptionHook: processGlassfishClassLoaderfindClassException
+      postHook: noNeedSend
       types:
         - memshell
     - id: 1
       name: loadClass
       desc: (Ljava/lang/String;Z)Ljava/lang/Class;
       exceptionHook: processGlassfishClassLoaderfindClassException
+      postHook: noNeedSend
       types:
         - memshell
 - id: 42
