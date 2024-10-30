@@ -108,7 +108,7 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 		}
 
 		//延迟6秒删除，避免状态被Join覆盖
-		time.AfterFunc(time.Second*6, func() {
+		time.AfterFunc(time.Second*10, func() {
 			ylog.Infof("Evict", "HeartBeatEvict AgentID %s, AgentAddr: %s.", agentID, addr)
 			client.HBWriter.Evict(client.HeartBeatEvictModel{
 				AgentID:   agentID,
