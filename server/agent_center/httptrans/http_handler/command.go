@@ -77,7 +77,7 @@ func PostCommand(c *gin.Context) {
 	err = grpc_handler.GlobalGRPCPool.PostCommand(taskModel.AgentID, mgCommand)
 	if err != nil {
 		CreateResponse(c, UnknownErrorCode, err.Error())
-		ylog.Errorf("PostCommand", "error : %s, agentid: %s", err.Error(), taskModel.AgentID)
+		ylog.Warnf("PostCommand", "error : %s, agentid: %s", err.Error(), taskModel.AgentID)
 		return
 	}
 	CreateResponse(c, SuccessCode, "")

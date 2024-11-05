@@ -199,7 +199,7 @@ func (c *Connection) updateConnStat() {
 
 func (c *Connection) connStatWorker() {
 	ylog.Infof("GRPCPool", "%s connStatWorker start!", c.AgentID)
-	tk := time.NewTicker(10 * time.Second)
+	tk := time.NewTicker(5 * time.Second)
 	defer tk.Stop()
 	for {
 		select {
@@ -265,7 +265,7 @@ func (g *GRPCPool) checkConfig() {
 		case agentID := <-g.confChan:
 			conn, err := g.GetByID(agentID)
 			if err != nil {
-				ylog.Errorf("GRPCPool", "GetByID Error %s %s", agentID, err.Error())
+				ylog.Warnf("GRPCPool", "GetByID Error %s %s", agentID, err.Error())
 				continue
 			}
 
@@ -531,7 +531,7 @@ func (g *GRPCPool) refreshIaasInfo(interval time.Duration) {
 		g.iaasInfoLock.RUnlock()
 
 		//重新拉取
-		for k, _ := range emptyInfos {
+		for k := range emptyInfos {
 			//load from manager
 			info, err := client.GetIaasInfoFromRemote(k)
 			if err != nil {

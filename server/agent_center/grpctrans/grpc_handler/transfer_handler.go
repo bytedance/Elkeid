@@ -83,10 +83,10 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 		CancelFuc:    cancelButton,
 	}
 	connection.Init()
-	ylog.Infof("Transfer", ">>>>now set %s %v", agentID, connection)
+	ylog.Infof("Transfer", ">>>>now set %s %+v", agentID, &connection)
 	err = GlobalGRPCPool.Add(agentID, &connection)
 	if err != nil {
-		ylog.Errorf("Transfer", "Transfer %s, error: %s", agentID, err.Error())
+		ylog.Errorf("Transfer", "Transfer %s,%s,%s, error: %s", agentID, data.Hostname, data.AccountID, err.Error())
 		return err
 	}
 	defer func() {

@@ -241,12 +241,15 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 	if len(conn.GetAgentDetail()) == 0 {
 		conn.SetAgentDetail(detail)
 
-		//Every time the agent connects to the server
-		//it needs to push the latest configuration to agent
-		err = GlobalGRPCPool.PostLatestConfig(req.AgentID)
-		if err != nil {
-			ylog.Errorf("Transfer", "send config error, %s %s", req.AgentID, err.Error())
-		}
+		//延迟30秒，确保首次心跳已经写入manager
+		time.AfterFunc(time.Second*30, func() {
+			//Every time the agent connects to the server
+			//it needs to push the latest configuration to agent
+			err = GlobalGRPCPool.PostLatestConfig(req.AgentID)
+			if err != nil {
+				ylog.Errorf("Transfer", "send config error, %s %s", req.AgentID, err.Error())
+			}
+		})
 	} else {
 		conn.SetAgentDetail(detail)
 	}

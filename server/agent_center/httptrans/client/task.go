@@ -20,7 +20,7 @@ func PostTask(postList []map[string]string) {
 	ylog.Debugf("PostTask", "post %#v", postList)
 	resp, err := grequests.Post(fmt.Sprintf(TaskUrl, common.GetRandomManageAddr()), &grequests.RequestOptions{
 		JSON:           postList,
-		RequestTimeout: 2 * time.Second,
+		RequestTimeout: 5 * time.Second,
 		Headers:        map[string]string{"token": GetToken()},
 	})
 	if err != nil {
