@@ -215,7 +215,7 @@ pub trait RuntimeInspect {
         match golang_bin_inspect(&path, &elf) {
             Ok(res) => {
                 if res > 0 {
-                    let version = match golang_version(&file, &elf) {
+                    let version = match golang_version(&file, &elf, &bin) {
                         Ok(v) => {
                             v
                         }
