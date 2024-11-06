@@ -9,6 +9,9 @@ use anyhow::{anyhow, Result};
 use log::*;
 use regex::Regex;
 use wait_timeout::ChildExt;
+use std::fs::File;
+use std::io::BufReader;
+use std::io::BufRead;
 
 const NODEJS_INSPECT_PORT_MIN:u16 = 19230;
 const NODEJS_INSPECT_PORT_MAX:u16 = 19235;
@@ -42,23 +45,30 @@ fn parse_port_from_address(address: &str) -> Option<u16> {
 }
 
 pub fn get_process_listening_port(pid: i32) -> u16 {
-    let tcp_path = format!("/proc/{}/net/tcp", pid);
 
     // frist get ipv4 listen port
-    if let Ok(content) = std::fs::read_to_string(tcp_path) {
-        
-        for line in content.lines().skip(1) {
-            let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() >= 3 {
-                let local_address = parts[1];
-                let status = parts[3];
+    let file_path = format!("/proc/{}/net/tcp", pid);
+    let file = match File::open(&file_path) {
+        Ok(f) => f,
+        Err(_) => return 0,
+    };
+    let reader = BufReader::new(file);
 
-                if status == "0A" {
-                    if let Some(port) = parse_port_from_address(local_address) {
-                        if (NODEJS_INSPECT_PORT_MIN..= NODEJS_INSPECT_PORT_MAX).contains(&port) {
-                            info!("Found  IPv4 listen port {} for pid {}", port, pid);
-                            return port;
-                        }
+    for line in reader.lines().skip(1) {
+        let line = match line {
+            Ok(l) => l,
+            Err(_) => return 0,
+        };
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() >= 4 {
+            let local_address = parts[1];
+
+            let status = parts[3];
+            if status == "0A" {
+                if let Some(port) = parse_port_from_address(local_address) {
+                    if (NODEJS_INSPECT_PORT_MIN..= NODEJS_INSPECT_PORT_MAX).contains(&port) {
+                        info!("Found  IPv4 listen port {} for pid {}", port, pid);
+                        return port;
                     }
                 }
             }
@@ -67,20 +77,26 @@ pub fn get_process_listening_port(pid: i32) -> u16 {
 
     // get ipv6 listen port
     let tcp6_path = format!("/proc/{}/net/tcp6", pid);
-    if let Ok(content) = std::fs::read_to_string(tcp6_path) {
-        
-        for line in content.lines().skip(1) {
-            let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() >= 3 {
-                let local_address = parts[1];
-                let status = parts[3];
+    let file = match File::open(&tcp6_path) {
+        Ok(f) => f,
+        Err(_) => return 0,
+    };
+    let reader = BufReader::new(file);
+    for line in reader.lines().skip(1)  {
+        let line = match line {
+            Ok(l) => l,
+            Err(_) => return 0,
+        };
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() >= 4 {
+            let local_address = parts[1];
+            let status = parts[3];
 
-                if status == "0A" {
-                    if let Some(port) = parse_port_from_address(local_address) {
-                        if (16680..= NODEJS_INSPECT_PORT_MAX).contains(&port) {
-                            info!("Found IPv6 listen port {} for pid {}", port, pid);
-                            return port;
-                        }
+            if status == "0A" {
+                if let Some(port) = parse_port_from_address(local_address) {
+                    if (NODEJS_INSPECT_PORT_MIN..= NODEJS_INSPECT_PORT_MAX).contains(&port) {
+                        info!("Found IPv6 listen port {} for pid {}", port, pid);
+                        return port;
                     }
                 }
             }
@@ -91,31 +107,44 @@ pub fn get_process_listening_port(pid: i32) -> u16 {
 }
 
 
-pub fn get_inspect_port(pid: i32) -> u16 {
+pub fn get_inspect_port(process_info: &ProcessInfo) -> u16 {
+    let process = match procfs::process::Process::new(process_info.pid) {
+        Ok(p) => p,
+        Err(_) => {return 0;}
+    };
+    
     let re = regex::Regex::new(r"inspect(?:-brk|-port)?=(?:(?:[0-9]{1,3}\.){3}[0-9]{1,3}:)?(\d+)")
         .expect("Invalid regex pattern");
     
-    let cmdline = std::fs::read_to_string(format!("/proc/{}/cmdline", pid)).unwrap_or_default();
-    
+
+    let cmdline = process_info.cmdline.clone().unwrap_or(String::new());
+
     if let Some(captures) = re.captures(&cmdline) {
         if let Some(port) = captures.get(1) {
             info!("inspect port: {}", port.as_str());
             return port.as_str().parse().unwrap_or(0);
         }
     }
-    
-    let environ = std::fs::read_to_string(format!("/proc/{}/environ", pid)).unwrap_or_default();
-    let options = environ.split('\0').find(|element| element.starts_with("NODE_OPTIONS="));
-    
-    if let Some(options) = options {
-        if let Some(captures) = re.captures(options) {
-            if let Some(port) = captures.get(1) {
-                info!("inspect port: {}", port.as_str());
-                return port.as_str().parse().unwrap_or(0);
+    let env = match process.environ() {
+        Ok(env) => env,
+        Err(_) =>  {return 0;}
+    };
+
+    match env.get(&std::ffi::OsString::from("NODE_OPTIONS")) {
+        Some(v) => match v.clone().into_string() {
+            Ok(s) => {
+                if let Some(captures) = re.captures(s.as_str()) {
+                    if let Some(port) = captures.get(1) {
+                        info!("inspect port: {}", port.as_str());
+                        return port.as_str().parse().unwrap_or(0);
+                    }
+                }
             }
-        }
-    }
-    
+            Err(_) => {}
+        },
+        None => {}
+    };
+
     0
 }
 
