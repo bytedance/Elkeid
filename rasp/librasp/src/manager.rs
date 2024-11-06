@@ -528,7 +528,7 @@ impl RASPManager {
                             .exe_path
                             .clone()
                             .ok_or(anyhow!("process exe path not found: {}", pid))?;
-                        let inspect_port = get_inspect_port(pid);
+                        let inspect_port = get_inspect_port(&process_info);
                         if inspect_port != 0 {
                             match nodejs_attach(pid, &environ, &process_exe_file, Some(inspect_port)) {
                                Ok(result) => {Ok(result)}
