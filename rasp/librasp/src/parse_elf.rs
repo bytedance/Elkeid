@@ -143,7 +143,7 @@ pub fn find_by_symbol(elf: &Elf, file: &File) -> Result<String> {
     }
 }
 
-pub fn find_by_section(elf: &Elf, file: &File) -> Result<String> {
+pub fn find_by_section(elf: &Elf, file: &File, mmap: &Mmap) -> Result<String> {
     let mut version: String = String::new();
     
     // find .go.buildinfo 
@@ -159,10 +159,6 @@ pub fn find_by_section(elf: &Elf, file: &File) -> Result<String> {
         let end = (go_buildinfo_section.sh_offset + go_buildinfo_section.sh_size) as usize;
   
         // Memory map the specific section
-        let mmap = match unsafe { Mmap::map(file) } {
-            Ok(m) => m,
-            Err(e) => {return Err(anyhow!(e));}// Return empty string if mmap fails
-        };
         if mmap.len() < end {
             return Err(anyhow!("mmap length invaild")); // Return empty string if the section is out of bounds
         }

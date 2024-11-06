@@ -1,4 +1,5 @@
 use log::*;
+use memmap::Mmap;
 use std::fs::File;
 use std::{fs, path::PathBuf, process::Command};
 use regex::Regex;
@@ -160,9 +161,9 @@ pub fn parse_version(version: &String) -> Result<String> {
     return Err(anyhow::anyhow!("Failed to extract version number, from: {}", version));
 }
 
-pub fn golang_version(file: &File, elf: &Elf) -> Result<String> {
+pub fn golang_version(file: &File, elf: &Elf, bin: &Mmap) -> Result<String> {
     
-    if let Ok(version) = find_by_section(&elf, &file) {
+    if let Ok(version) = find_by_section(&elf, &file, &bin) {
         return parse_version(&version);
     } else {
         if let Ok(version) = find_by_symbol(&elf, &file) {
