@@ -210,7 +210,7 @@ impl RASPManager {
                 })
             }
         }
-        let mut need_write_config = true;
+        let mut need_write_config = false;
         for m in messages.iter() {
             if m.message_type >= 12 && m.message_type <= 14 {
                 need_write_config = false;
