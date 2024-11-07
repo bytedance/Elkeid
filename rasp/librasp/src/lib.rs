@@ -20,7 +20,7 @@ pub mod async_command {
     use anyhow::{anyhow, Result};
     use libc::{kill, SIGKILL};
     use log::*;
-
+    use cgroups_rs::{self, cgroup_builder::CgroupBuilder, CgroupPid, Controller};
     use crate::comm::Control;
 
     pub fn set_child_cgroup(pid: i32) -> Result<()> {

@@ -30,6 +30,7 @@ version-compare = "0.0.10"
 coarsetime = "0.1"
 wait-timeout = "0.2.0"
 lazy_static = "1.4.0"
+cgroups-rs = "0.2.6"
 
 # plugins
 plugins = { path = "../../plugins/lib/rust"}
