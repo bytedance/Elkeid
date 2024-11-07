@@ -142,6 +142,7 @@ type RawData struct {
 	Hostname             string    `protobuf:"bytes,7,opt,name=Hostname,proto3" json:"Hostname,omitempty"`
 	Version              string    `protobuf:"bytes,8,opt,name=Version,proto3" json:"Version,omitempty"`
 	Product              string    `protobuf:"bytes,9,opt,name=Product,proto3" json:"Product,omitempty"`
+	AccountID            string    `protobuf:"bytes,10,opt,name=AccountID,proto3" json:"AccountID,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
 	XXX_sizecache        int32     `json:"-"`

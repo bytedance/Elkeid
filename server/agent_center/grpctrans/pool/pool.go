@@ -40,10 +40,6 @@ type GRPCPool struct {
 
 	dynamicLimit        int32
 	dynamicLimitEndTime int64
-
-	//iaas info
-	iaasInfoMap  map[string]string
-	iaasInfoLock sync.RWMutex
 }
 
 // Connection Info
@@ -55,6 +51,7 @@ type Connection struct {
 	//otherwise, send the command to the agent.
 	CommandChan chan *Command `json:"-"`
 
+	AccountID    string   `json:"account_id"`
 	AgentID      string   `json:"agent_id"`
 	IntranetIPv4 []string `json:"intranet_ipv4,omitempty"`
 	ExtranetIPv4 []string `json:"extranet_ipv4,omitempty"`
@@ -119,7 +116,7 @@ func (c *Connection) SetAgentDetail(detail map[string]interface{}) {
 			onlineTime := time.Now().Add(-120 * time.Second).Unix()
 			for k := range c.pluginDetail {
 				if c.pluginDetail[k]["last_heartbeat_time"].(int64) < onlineTime {
-					metrics.ReleaseAgentHeartbeatMetrics(c.AgentID, k)
+					metrics.ReleaseAgentHeartbeatMetrics(c.AccountID, c.AgentID, k)
 					c.pluginDetail[k]["online"] = false
 					c.updateConnStat()
 					break
@@ -237,7 +234,6 @@ func NewGRPCPool(config *Config) *GRPCPool {
 		taskList:            make([]map[string]string, 0, config.ChanLen),
 		extraInfoChan:       make(chan string, config.ChanLen),
 		extraInfoCache:      make(map[string]client.AgentExtraInfo),
-		iaasInfoMap:         make(map[string]string, 0),
 		conf:                config,
 		dynamicLimit:        -1,
 		dynamicLimitEndTime: 0,
@@ -253,9 +249,6 @@ func NewGRPCPool(config *Config) *GRPCPool {
 	//Tags
 	go g.loadExtraInfoWorker()
 	go g.refreshExtraInfo(config.Interval)
-
-	//定期刷新iaas信息
-	go g.refreshIaasInfo(10 * time.Minute)
 	return g
 }
 
@@ -508,70 +501,6 @@ func (g *GRPCPool) GetDynamicLimit() (val int32, lastSecond int64) {
 		return -1, 0
 	}
 	return val, atomic.LoadInt64(&g.dynamicLimitEndTime) - time.Now().Unix()
-}
-
-func (g *GRPCPool) refreshIaasInfo(interval time.Duration) {
-	for {
-		time.Sleep(interval + time.Duration(rand.Intn(30))*time.Second)
-		emptyInfos := make(map[string]string, 10)
-		deleteIDs := make([]string, 0, 10)
-
-		g.iaasInfoLock.RLock()
-		for k, v := range g.iaasInfoMap {
-			if _, ok := g.connPool.Get(k); !ok {
-				//AgentID已经不存在
-				deleteIDs = append(deleteIDs, k)
-			}
-
-			//列出所有AccountID为空的AgentID列表
-			if v == "" {
-				emptyInfos[k] = v
-			}
-		}
-		g.iaasInfoLock.RUnlock()
-
-		//重新拉取
-		for k, _ := range emptyInfos {
-			//load from manager
-			info, err := client.GetIaasInfoFromRemote(k)
-			if err != nil {
-				ylog.Errorf("refreshIaasInfo", "%s %s %s error %s", k, err.Error())
-			} else {
-				emptyInfos[k] = info
-			}
-		}
-
-		//回写
-		g.iaasInfoLock.Lock()
-		for _, k := range deleteIDs {
-			delete(g.iaasInfoMap, k)
-		}
-		for k, v := range emptyInfos {
-			g.iaasInfoMap[k] = v
-		}
-		g.iaasInfoLock.Unlock()
-	}
-}
-
-func (g *GRPCPool) GetIaasInfo(agentID string) string {
-	g.iaasInfoLock.RLock()
-	tmp, ok := g.iaasInfoMap[agentID]
-	g.iaasInfoLock.RUnlock()
-	if ok {
-		return tmp
-	}
-
-	//load from manager
-	info, err := client.GetIaasInfoFromRemote(agentID)
-	if err != nil {
-		//TODO 增加重试
-		ylog.Errorf("GetIaasInfo", "%s error %s", agentID, err.Error())
-	}
-
-	g.iaasInfoLock.Lock()
-	g.iaasInfoMap[agentID] = info
-	g.iaasInfoLock.Unlock()
-	return info
 }
 
 func areAllEqual(local map[string]interface{}, remote map[string]interface{}, keys []string) bool {

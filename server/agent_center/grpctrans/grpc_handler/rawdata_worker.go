@@ -24,7 +24,6 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 	var exIpv6 = strings.Join(req.ExtranetIPv6, ",")
 	var SvrTime = time.Now().Unix()
 	var extraInfo = GlobalGRPCPool.GetExtraInfoByID(req.AgentID)
-	var accountID = GlobalGRPCPool.GetIaasInfo(req.AgentID)
 
 	for k, v := range req.GetData() {
 		ylog.Debugf("handleRawData", "Num:%d Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
@@ -45,7 +44,7 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 		mqMsg.SvrTime = SvrTime
 		mqMsg.PSMName = ""
 		mqMsg.PSMPath = ""
-		mqMsg.AccountID = accountID
+		mqMsg.AccountID = conn.AccountID
 		if extraInfo != nil {
 			mqMsg.Tag = extraInfo.Tags
 			mqMsg.Enhanced = extraInfo.Enhanced
@@ -54,8 +53,8 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 			mqMsg.Enhanced = "false"
 		}
 
-		metrics.OutputDataTypeCounter.With(prometheus.Labels{"data_type": fmt.Sprint(mqMsg.DataType)}).Add(float64(1))
-		metrics.OutputAgentIDCounter.With(prometheus.Labels{"agent_id": mqMsg.AgentID}).Add(float64(1))
+		metrics.OutputDataTypeCounter.With(prometheus.Labels{"account_id": conn.AccountID, "data_type": fmt.Sprint(mqMsg.DataType)}).Add(float64(1))
+		metrics.OutputAgentIDCounter.With(prometheus.Labels{"account_id": conn.AccountID, "agent_id": mqMsg.AgentID}).Add(float64(1))
 
 		switch mqMsg.DataType {
 		case 900:
@@ -69,14 +68,14 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 		case 1000:
 			//parse the agent heartbeat data
 			detail := parseAgentHeartBeat(req.GetData()[k], req, conn)
-			metrics.UpdateFromAgentHeartBeat(req.AgentID, "agent", detail)
+			metrics.UpdateFromAgentHeartBeat(conn.AccountID, req.AgentID, "agent", detail)
 		case 1001:
 			//
 			//parse the agent plugins heartbeat data
 			detail := parsePluginHeartBeat(req.GetData()[k], req, conn)
 			if detail != nil {
 				if name, ok := detail["name"].(string); ok {
-					metrics.UpdateFromAgentHeartBeat(req.AgentID, name, detail)
+					metrics.UpdateFromAgentHeartBeat(conn.AccountID, req.AgentID, name, detail)
 				}
 			}
 		case 2001, 2003, 6000, 5100, 5101, 8010, 1021, 1022, 1023, 1024, 1025, 1101, 1031:
@@ -167,7 +166,9 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 			detail[k] = fv
 		}
 	}
-
+	if req.AccountID != "" {
+		detail["account_id"] = req.AccountID
+	}
 	detail["agent_id"] = req.AgentID
 	detail["agent_addr"] = conn.SourceAddr
 	detail["create_at"] = conn.CreateAt
