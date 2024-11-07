@@ -67,10 +67,21 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 	addr := fmt.Sprintf("%s-%s", p.Addr.String(), xid.New().String())
 	ylog.Infof("Transfer", ">>>>connection %s, addr: %s", agentID, addr)
 
+	// 使用封装的重试函数
+	var accountID = data.AccountID
+	if accountID == "" {
+		accountID, err = getAccountIDWithRetry(agentID, 3, 2*time.Second)
+		if err != nil {
+			ylog.Errorf("Transfer", "getAccountIDWithRetry %s error after retries: %s", agentID, err.Error())
+			return err
+		}
+	}
+
 	//add connection info to the GlobalGRPCPool
 	ctx, cancelButton := context.WithCancel(context.Background())
 	createAt := time.Now().UnixNano() / (1000 * 1000 * 1000)
 	connection := pool.Connection{
+		AccountID:    accountID,
 		AgentID:      agentID,
 		IntranetIPv4: data.IntranetIPv4,
 		IntranetIPv6: data.IntranetIPv6,
@@ -83,10 +94,10 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 		CancelFuc:    cancelButton,
 	}
 	connection.Init()
-	ylog.Infof("Transfer", ">>>>now set %s %+v", agentID, &connection)
+	ylog.Infof("Transfer", ">>>>now set %s %s %+v", accountID, agentID, &connection)
 	err = GlobalGRPCPool.Add(agentID, &connection)
 	if err != nil {
-		ylog.Errorf("Transfer", "Transfer %s,%s,%s, error: %s", agentID, data.Hostname, data.AccountID, err.Error())
+		ylog.Errorf("Transfer", "Transfer %s,%s,%s, error: %s", agentID, data.Hostname, accountID, err.Error())
 		return err
 	}
 	defer func() {
@@ -98,9 +109,9 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 			GlobalConfigHandler.Delete(agentID)
 		}
 
-		metrics.ReleaseAgentHeartbeatMetrics(agentID, "agent")
+		metrics.ReleaseAgentHeartbeatMetrics(accountID, agentID, "agent")
 		for _, v := range connection.GetPluginNameList() {
-			metrics.ReleaseAgentHeartbeatMetrics(agentID, v)
+			metrics.ReleaseAgentHeartbeatMetrics(accountID, agentID, v)
 		}
 
 		if connection.IsNewDriverHeartbeat.CompareAndSwap(true, false) {
@@ -130,6 +141,22 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 	return nil
 }
 
+// 定义一个重试函数，用于获取 accountID
+func getAccountIDWithRetry(agentID string, maxRetries int, delay time.Duration) (string, error) {
+	var accountID string
+	var err error
+
+	for i := 0; i < maxRetries; i++ {
+		accountID, err = client.GetIaasInfoFromRemote(agentID)
+		if err == nil {
+			return accountID, nil
+		}
+		ylog.Warnf("GetIaasInfoFromRemote", "Attempt %d failed for agentID %s with error: %s", i+1, agentID, err.Error())
+		time.Sleep(delay)
+	}
+	return "", errors.New("account not found after multiple attempts")
+}
+
 func recvData(stream pb.Transfer_TransferServer, conn *pool.Connection) {
 	defer conn.CancelFuc()
 
@@ -144,7 +171,7 @@ func recvData(stream pb.Transfer_TransferServer, conn *pool.Connection) {
 				ylog.Warnf("recvData", "Transfer Recv Error %s, now close the recv direction of the tcp, %s ", err.Error(), conn.AgentID)
 				return
 			}
-			metrics.RecvCounter.Inc()
+			metrics.RecvCounter.With(prometheus.Labels{"account_id": conn.AccountID}).Inc()
 			handleRawData(data, conn)
 		}
 	}
@@ -171,7 +198,7 @@ func sendData(stream pb.Transfer_TransferServer, conn *pool.Connection) {
 				close(cmd.Ready)
 				return
 			}
-			metrics.SendCounter.Inc()
+			metrics.SendCounter.With(prometheus.Labels{"account_id": conn.AccountID}).Inc()
 			ylog.Infof("sendData", "Transfer Send %s %v ", conn.AgentID, cmd)
 			cmd.Error = nil
 			close(cmd.Ready)
