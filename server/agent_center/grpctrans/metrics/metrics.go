@@ -58,7 +58,7 @@ func initPrometheusOutputAgentIDCounter() *prometheus.CounterVec {
 		Name: "elkeid_ac_output_count",
 		Help: "Elkeid AC output data count for agent_id",
 	}
-	vec := prometheus.NewCounterVec(prometheusOpts, []string{"agent_id"})
+	vec := prometheus.NewCounterVec(prometheusOpts, []string{"account_id", "agent_id"})
 	prometheus.MustRegister(vec)
 	return vec
 }
@@ -68,7 +68,7 @@ func initPrometheusAgentCpuGauge() *prometheus.GaugeVec {
 		Name: "elkeid_ac_agent_cpu",
 		Help: "Elkeid AC agent cpu",
 	}
-	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"agent_id", "name"})
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id", "name"})
 	prometheus.MustRegister(vec)
 	return vec
 }
@@ -78,7 +78,7 @@ func initPrometheusAgentRssGauge() *prometheus.GaugeVec {
 		Name: "elkeid_ac_agent_rss",
 		Help: "Elkeid AC agent rss",
 	}
-	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"agent_id", "name"})
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id", "name"})
 	prometheus.MustRegister(vec)
 	return vec
 }
@@ -88,7 +88,7 @@ func initPrometheusAgentDuGauge() *prometheus.GaugeVec {
 		Name: "elkeid_ac_agent_du",
 		Help: "Elkeid AC agent du",
 	}
-	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"agent_id", "name"})
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id", "name"})
 	prometheus.MustRegister(vec)
 	return vec
 }
@@ -98,7 +98,7 @@ func initPrometheusAgentReadSpeedGauge() *prometheus.GaugeVec {
 		Name: "elkeid_ac_agent_read_speed",
 		Help: "Elkeid AC agent read speed",
 	}
-	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"agent_id", "name"})
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id", "name"})
 	prometheus.MustRegister(vec)
 	return vec
 }
@@ -108,7 +108,7 @@ func initPrometheusAgentWriteSpeedGauge() *prometheus.GaugeVec {
 		Name: "elkeid_ac_agent_write_speed",
 		Help: "Elkeid AC agent write speed",
 	}
-	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"agent_id", "name"})
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id", "name"})
 	prometheus.MustRegister(vec)
 	return vec
 }
@@ -118,7 +118,7 @@ func initPrometheusAgentTxSpeedGauge() *prometheus.GaugeVec {
 		Name: "elkeid_ac_agent_tx_speed",
 		Help: "Elkeid AC agent tx speed",
 	}
-	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"agent_id", "name"})
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id", "name"})
 	prometheus.MustRegister(vec)
 	return vec
 }
@@ -128,7 +128,7 @@ func initPrometheusAgentRxSpeedGauge() *prometheus.GaugeVec {
 		Name: "elkeid_ac_agent_rx_speed",
 		Help: "Elkeid AC agent rx speed",
 	}
-	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"agent_id", "name"})
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id", "name"})
 	prometheus.MustRegister(vec)
 	return vec
 }
@@ -138,7 +138,7 @@ func initPrometheusAgentTxTpsGauge() *prometheus.GaugeVec {
 		Name: "elkeid_ac_agent_tx_tps",
 		Help: "Elkeid AC agent tx tps",
 	}
-	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"agent_id", "name"})
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id", "name"})
 	prometheus.MustRegister(vec)
 	return vec
 }
@@ -148,25 +148,25 @@ func initPrometheusAgentRxTpsGauge() *prometheus.GaugeVec {
 		Name: "elkeid_ac_agent_rx_tps",
 		Help: "Elkeid AC agent rx tps",
 	}
-	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"agent_id", "name"})
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id", "name"})
 	prometheus.MustRegister(vec)
 	return vec
 }
 
-func ReleaseAgentHeartbeatMetrics(agentID, pluginName string) {
+func ReleaseAgentHeartbeatMetrics(accountID, agentID, pluginName string) {
 	for _, v := range AgentGauge {
-		_ = v.Delete(prometheus.Labels{"agent_id": agentID, "name": pluginName})
+		_ = v.Delete(prometheus.Labels{"account_id": accountID, "agent_id": agentID, "name": pluginName})
 	}
 }
 
-func UpdateFromAgentHeartBeat(agentID, name string, detail map[string]interface{}) {
+func UpdateFromAgentHeartBeat(accountID, agentID, name string, detail map[string]interface{}) {
 	if detail == nil {
 		return
 	}
 	for k, v := range AgentGauge {
 		if cpu, ok := detail[k]; ok {
 			if fv, ok2 := cpu.(float64); ok2 {
-				v.With(prometheus.Labels{"agent_id": agentID, "name": name}).Set(fv)
+				v.With(prometheus.Labels{"account_id": accountID, "agent_id": agentID, "name": name}).Set(fv)
 			}
 		}
 	}
