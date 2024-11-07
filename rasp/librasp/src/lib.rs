@@ -23,6 +23,25 @@ pub mod async_command {
 
     use crate::comm::Control;
 
+    pub fn set_child_cgroup(pid: i32) -> Result<()> {
+        let hier = cgroups_rs::hierarchies::auto();
+        let child_cg = CgroupBuilder::new("rasp_child_cgroup")
+            .memory()
+                .memory_hard_limit(1024 * 1024 * 200)
+                .done()
+            .cpu()
+                .quota(1000 * 10).done()
+            .build(hier);
+        // start
+        
+
+        let mems: &cgroups_rs::memory::MemController = child_cg.controller_of().unwrap();
+        mems.add_task(&CgroupPid::from(pid as u64))?;
+        let cpus: &cgroups_rs::cpu::CpuController = child_cg.controller_of().unwrap();
+        cpus.add_task(&CgroupPid::from(pid as u64))?;
+        return Ok(());
+    }
+
     pub fn run_async_process(command: &mut Command) -> Result<(ExitStatus, String, String)> {
         // start
         let mut child = match command
@@ -37,6 +56,7 @@ pub mod async_command {
             }
         };
         let pid = child.id();
+        set_child_cgroup(pid)?;
         let (stdout, stderr) = (child.stdout.take(), child.stderr.take());
         let child_ctrl = Control::new();
         let mut wait_child_ctrl = child_ctrl.clone();
@@ -53,7 +73,7 @@ pub mod async_command {
                             return Ok(status);
                         }
                         Ok(None) => {
-                            sleep(Duration::from_secs(1));
+                            // sleep(Duration::from_secs(1));
                         }
                         Err(e) => {
                             warn!("attempting wait failed: {}", e);
