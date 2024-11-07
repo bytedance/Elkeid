@@ -56,7 +56,7 @@ pub mod async_command {
             }
         };
         let pid = child.id();
-        set_child_cgroup(pid)?;
+        set_child_cgroup(pid as i32)?;
         let (stdout, stderr) = (child.stdout.take(), child.stderr.take());
         let child_ctrl = Control::new();
         let mut wait_child_ctrl = child_ctrl.clone();
