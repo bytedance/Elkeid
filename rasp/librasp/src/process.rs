@@ -119,7 +119,18 @@ impl ProcessInfo {
         self.sgid = status.sgid;
         self.fuid = status.fuid;
         self.fgid = status.fgid;
-        self.nspid = Self::read_nspid(process.pid).unwrap_or_default().unwrap();
+        self.nspid =  match Self::read_nspid(process.pid) {
+            Ok(nspid_option) => {
+                if let Some(nspid) = nspid_option {
+                    nspid
+                } else {
+                    process.pid
+                }
+            }
+            Err(e) => {
+                return Err(anyhow!(e));
+            }
+        };
         Ok(())
     }
     pub fn update_start_time(&mut self, process: &Process) -> AnyhowResult<f32> {
