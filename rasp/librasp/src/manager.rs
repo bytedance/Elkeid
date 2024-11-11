@@ -332,7 +332,7 @@ impl RASPManager {
                 let runtime_info = &process_info.runtime.clone().unwrap();
                 let root_dir = format!("/proc/{}/root", process_info.pid);
                 let pid = process_info.pid;
-                let nspid = process_info.nspid;
+                // let nspid = process_info.nspid;
                 // delete config
                 // self.delete_config_file(pid, nspid)?;
                 let attach_result = match runtime_info.name {

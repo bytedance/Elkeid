@@ -81,8 +81,8 @@ fn read_data_at_address(mut file: &File, elf: &Elf, address: u64, size: usize) -
 
 fn find_symbol<'a>(elf: &'a Elf<'a>, symbol_name: &str) -> Option<Sym> {
     for sym in &elf.syms {
-        if let Some(name) = elf.strtab.get_at(sym.st_name) {
-            if name == symbol_name {
+        if let Some(name) = elf.strtab.get(sym.st_name) {
+            if name.unwrap_or_default() == symbol_name {
                 return Some(sym.clone());
             }
         }
@@ -148,8 +148,8 @@ pub fn find_by_section(elf: &Elf, file: &File, mmap: &Mmap) -> Result<String> {
     
     // find .go.buildinfo 
     if let Some(go_buildinfo_section) = elf.section_headers.iter().find(|section| {
-        if let Some(sect_name) = elf.shdr_strtab.get_at(section.sh_name) {
-            sect_name == ".go.buildinfo"
+        if let Some(sect_name) = elf.shdr_strtab.get(section.sh_name) {
+            sect_name.unwrap_or_default() == ".go.buildinfo"
         } else {
             false
         }
