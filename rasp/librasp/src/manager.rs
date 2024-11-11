@@ -210,7 +210,8 @@ impl RASPManager {
                 })
             }
         }
-        let mut need_write_config = true;
+        // issue: may case oom
+        let mut need_write_config = false;
         for m in messages.iter() {
             if m.message_type >= 12 && m.message_type <= 14 {
                 need_write_config = false;
@@ -333,7 +334,7 @@ impl RASPManager {
                 let pid = process_info.pid;
                 let nspid = process_info.nspid;
                 // delete config
-                self.delete_config_file(pid, nspid)?;
+                // self.delete_config_file(pid, nspid)?;
                 let attach_result = match runtime_info.name {
                     "JVM" => match JVMProbeState::inspect_process(process_info)? {
                         ProbeState::Attached => {
