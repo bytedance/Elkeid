@@ -12,11 +12,7 @@ use wait_timeout::ChildExt;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::BufRead;
-
-use anyhow::Result as Anyhow;
-// cgroup
-use cgroups_rs::{self, cgroup_builder::CgroupBuilder, CgroupPid, Controller};
-
+use crate::async_command::setup_cgroup;
 const NODEJS_INSPECT_PORT_MIN:u16 = 19230;
 const NODEJS_INSPECT_PORT_MAX:u16 = 19235;
 pub struct NodeJSProbe {}
@@ -150,22 +146,6 @@ pub fn get_inspect_port(process_info: &ProcessInfo) -> u16 {
     };
 
     0
-}
-
-fn setup_cgroup(pid: u32, cg_name: &str) -> Anyhow<()> {
-    let hier = cgroups_rs::hierarchies::auto();
-    let rasp_child_cg = CgroupBuilder::new(cg_name)
-        .memory()
-            .memory_hard_limit(1024 * 1024 * 200)
-            .done()
-        .cpu()
-            .quota(1000 * 10).done()
-        .build(hier);
-    let mems: &cgroups_rs::memory::MemController = rasp_child_cg.controller_of().unwrap();
-    mems.add_task(&CgroupPid::from(pid as u64))?;
-    let cpus: &cgroups_rs::cpu::CpuController = rasp_child_cg.controller_of().unwrap();
-    cpus.add_task(&CgroupPid::from(pid as u64))?;
-    Ok(())
 }
 
 pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str, port: Option<u16>) -> Result<bool> {
