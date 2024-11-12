@@ -13,6 +13,10 @@ use std::fs::File;
 use std::io::BufReader;
 use std::io::BufRead;
 
+use anyhow::Result as Anyhow;
+// cgroup
+use cgroups_rs::{self, cgroup_builder::CgroupBuilder, CgroupPid, Controller};
+
 const NODEJS_INSPECT_PORT_MIN:u16 = 19230;
 const NODEJS_INSPECT_PORT_MAX:u16 = 19235;
 pub struct NodeJSProbe {}
@@ -148,6 +152,22 @@ pub fn get_inspect_port(process_info: &ProcessInfo) -> u16 {
     0
 }
 
+fn setup_cgroup(pid: u32, cg_name: &str) -> Anyhow<()> {
+    let hier = cgroups_rs::hierarchies::auto();
+    let rasp_child_cg = CgroupBuilder::new(cg_name)
+        .memory()
+            .memory_hard_limit(1024 * 1024 * 200)
+            .done()
+        .cpu()
+            .quota(1000 * 10).done()
+        .build(hier);
+    let mems: &cgroups_rs::memory::MemController = rasp_child_cg.controller_of().unwrap();
+    mems.add_task(&CgroupPid::from(pid as u64))?;
+    let cpus: &cgroups_rs::cpu::CpuController = rasp_child_cg.controller_of().unwrap();
+    cpus.add_task(&CgroupPid::from(pid as u64))?;
+    Ok(())
+}
+
 pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str, port: Option<u16>) -> Result<bool> {
     let pid_string = pid.to_string();
     let nsenter = settings::RASP_NS_ENTER_BIN();
@@ -205,6 +225,7 @@ pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str, port: Opti
     .stdout(Stdio::piped())
     .spawn()?;
 
+    setup_cgroup(child.id(), "rasp_nodejs_attach_cg")?;
     let timeout = Duration::from_secs(30);
 
     match child.wait_timeout(timeout).unwrap() {
@@ -261,34 +282,52 @@ pub fn nodejs_version(pid: i32, nodejs_bin_path: &String) -> Result<(u32, u32, S
         nodejs_bin_path,
         "-v",
     ];
-    let output = match Command::new(nsenter).args(&args).output() {
-        Ok(s) => s,
-        Err(e) => return Err(anyhow!(e.to_string())),
-    };
-    let output_string = String::from_utf8(output.stdout).unwrap_or(String::new());
-    if output_string.is_empty() {
-        return Err(anyhow!("empty stdout"));
-    }
-    // parse nodejs version
-    let re = Regex::new(r"v((\d+)\.(\d+)\.\d+)").unwrap();
-    let (major, minor, version) = match re.captures(&output_string) {
-        Some(c) => {
-            let major = c.get(2).map_or("", |m| m.as_str());
-            let minor = c.get(3).map_or("", |m| m.as_str());
-            let version = c.get(1).map_or("", |m| m.as_str());
-            (major, minor, version)
+    let mut child = Command::new(nsenter)
+    .args(&args)
+    .stderr(Stdio::piped())
+    .stdout(Stdio::piped())
+    .spawn()?;
+   
+    setup_cgroup(child.id(), "rasp_nodejs_inspect_cg")?;
+
+    let timeout = Duration::from_secs(30);
+
+    match child.wait_timeout(timeout).unwrap() {
+        Some(_) => {
+            let out = child.wait_with_output()?;
+
+            let output_string = String::from_utf8(out.stdout).unwrap_or(String::new());
+            if output_string.is_empty() {
+                return Err(anyhow!("empty stdout"));
+            }
+            // parse nodejs version
+            let re = Regex::new(r"v((\d+)\.(\d+)\.\d+)").unwrap();
+            let (major, minor, version) = match re.captures(&output_string) {
+                Some(c) => {
+                    let major = c.get(2).map_or("", |m| m.as_str());
+                    let minor = c.get(3).map_or("", |m| m.as_str());
+                    let version = c.get(1).map_or("", |m| m.as_str());
+                    (major, minor, version)
+                }
+                None => return Err(anyhow!(String::from("can not find version"))),
+            };
+            let major_number = match major.parse::<u32>() {
+                Ok(n) => n,
+                Err(e) => return Err(anyhow!(e.to_string())),
+            };
+            let minor_number = match minor.parse::<u32>() {
+                Ok(n) => n,
+                Err(e) => return Err(anyhow!(e.to_string())),
+            };
+            return Ok((major_number, minor_number, String::from(version)));
+        },
+        None => {
+            // child hasn't exited yet within 30s, kill the child process
+            child.kill()?;
+            child.wait()?;
+            return Err(anyhow!("command execution timeout"));
         }
-        None => return Err(anyhow!(String::from("can not find version"))),
-    };
-    let major_number = match major.parse::<u32>() {
-        Ok(n) => n,
-        Err(e) => return Err(anyhow!(e.to_string())),
-    };
-    let minor_number = match minor.parse::<u32>() {
-        Ok(n) => n,
-        Err(e) => return Err(anyhow!(e.to_string())),
-    };
-    Ok((major_number, minor_number, String::from(version)))
+    }
 }
 
 pub fn check_nodejs_version(ver: &String) -> Result<()> {
