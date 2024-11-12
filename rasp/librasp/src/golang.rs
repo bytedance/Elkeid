@@ -139,8 +139,8 @@ pub fn golang_bin_inspect(bin_file: &PathBuf, elf: &Elf) -> Result<u64> {
     let shstrtab = &elf.shdr_strtab;
     for section in elf.section_headers.iter() {
         let offset = section.sh_name;
-        if let Some(name) = shstrtab.get_at(offset) {
-            if name == ".gopclntab" {
+        if let Some(name) = shstrtab.get(offset) {
+            if name.unwrap_or_default() == ".gopclntab" {
                 return Ok(size);
             }
         }

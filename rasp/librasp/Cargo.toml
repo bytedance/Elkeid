@@ -18,7 +18,7 @@ libc = "0.2.80"
 nix = "0.24"
 anyhow = "1.0.38"
 # elf
-goblin = "0.8.0"
+goblin = "0.3.4"
 byteorder = "1.0"
 # lru cache
 lru_time_cache = "0.11.8"
@@ -31,6 +31,7 @@ coarsetime = "0.1"
 wait-timeout = "0.2.0"
 lazy_static = "1.4.0"
 
+cgroups-rs = "0.2.6"
 # plugins
 plugins = { path = "../../plugins/lib/rust"}
 
