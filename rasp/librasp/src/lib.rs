@@ -22,6 +22,24 @@ pub mod async_command {
     use log::*;
 
     use crate::comm::Control;
+    use cgroups_rs::{self, cgroup_builder::CgroupBuilder, CgroupPid, Controller};
+    use anyhow::Result as Anyhow;
+
+    pub fn setup_cgroup(pid: u32, cg_name: &str) -> Anyhow<()> {
+        let hier = cgroups_rs::hierarchies::auto();
+        let rasp_child_cg = CgroupBuilder::new(cg_name)
+            .memory()
+                .memory_hard_limit(1024 * 1024 * 200)
+                .done()
+            .cpu()
+                .quota(1000 * 10).done()
+            .build(hier);
+        let mems: &cgroups_rs::memory::MemController = rasp_child_cg.controller_of().unwrap();
+        mems.add_task(&CgroupPid::from(pid as u64))?;
+        let cpus: &cgroups_rs::cpu::CpuController = rasp_child_cg.controller_of().unwrap();
+        cpus.add_task(&CgroupPid::from(pid as u64))?;
+        Ok(())
+    }
 
     pub fn run_async_process(command: &mut Command) -> Result<(ExitStatus, String, String)> {
         // start
@@ -37,6 +55,7 @@ pub mod async_command {
             }
         };
         let pid = child.id();
+        setup_cgroup(pid, "rasp_child")?;
         let (stdout, stderr) = (child.stdout.take(), child.stderr.take());
         let child_ctrl = Control::new();
         let mut wait_child_ctrl = child_ctrl.clone();
