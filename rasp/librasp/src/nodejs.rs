@@ -183,7 +183,6 @@ pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str, port: Opti
             let out = child.wait_with_output()?;
 
             if status.success() {
-                sleep(Duration::from_secs(1));
                 return Ok(true);
             }
 
@@ -201,7 +200,6 @@ pub fn nodejs_run(pid: i32, node_path: &str, smith_module_path: &str, port: Opti
                     let output = format!("{}\n{}", stdout, stderr);
                     // port
                     if n == 1 {
-                        sleep(Duration::from_secs(1));
                         error!("can not attach nodejs, exit code: {}, output: {}", n, output);
                         return Err(anyhow!(output));
                     }

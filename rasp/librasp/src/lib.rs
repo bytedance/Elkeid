@@ -53,7 +53,8 @@ pub mod async_command {
                             return Ok(status);
                         }
                         Ok(None) => {
-                            sleep(Duration::from_secs(1));
+                            info!("command wait not exited yet");
+                            sleep(Duration::from_millis(100));
                         }
                         Err(e) => {
                             warn!("attempting wait failed: {}", e);
@@ -78,6 +79,7 @@ pub mod async_command {
                     kill_child(pid as i32);
                     return;
                 }
+                info!("wait count: {}", wait_count);
                 sleep(Duration::from_secs(1));
             })
             .unwrap();

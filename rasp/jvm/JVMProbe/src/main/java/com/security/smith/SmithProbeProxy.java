@@ -1,5 +1,6 @@
 package com.security.smith;
                            
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -868,6 +869,68 @@ public class SmithProbeProxy {
         }
 
         return null;
+    }
+    public void noNeedSend(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        return;
+    }
+
+    public void handleMvel2Post(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        if (stopX || SmithProbeObj.isFunctionEnabled(classID, methodID) == false) {
+            return;
+        }
+        try {
+            String className = null;
+            String methodName = null;
+            if (args.length > 2 && args[1] != null && args[2] instanceof String) {
+                if (args[1] instanceof Class) {
+                    className = ((Class<?>)args[1]).getName();
+                } else {
+                    className = args[1].getClass().getName();
+                }
+                methodName = args[2].toString();
+                SmithLogger.logger.info("className = " + className + ", methodName = " + methodName);
+                Object[] argsX = new Object[2];
+                argsX[0] = (Object)className;
+                argsX[1] = (Object)methodName;
+
+                JsRuleResult result = SmithProbeObj.getJsRuleEngine().detect(3, argsX);
+                if (result != null) {
+                    trace(classID, methodID, argsX, ret, blocked);
+                    return ;
+                }
+            }
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+    }
+
+    public void handleConstructorPost(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        if (stopX || SmithProbeObj.isFunctionEnabled(classID, methodID) == false) {
+            return;
+        }
+        try {
+            String className = null;
+            String methodName = "<init>";
+            if (args.length > 1 && args[1] instanceof char[]) {
+                className = new String((char[])args[1]);
+                SmithLogger.logger.info("className = " + className);
+            }
+            
+            if (className != null) {
+                Object[] argsX = new Object[2];
+                argsX[0] = (Object)className;
+                argsX[1] = (Object)methodName;
+
+                JsRuleResult result = SmithProbeObj.getJsRuleEngine().detect(3, argsX);
+                if (result!= null) {
+                    trace(classID, methodID, args, ret, blocked);
+                    return ;
+                }
+            }
+            
+        } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
     }
 }
 

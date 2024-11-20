@@ -472,6 +472,7 @@
       name: findClass
       desc: (Ljava/lang/String;ZZ)Ljava/lang/Class;
       exceptionHook: processWildflyClassLoaderException
+      postHook: noNeedSend
       types:
         - memshell
 - id: 35
@@ -534,12 +535,14 @@
       name: findClass
       desc: (Ljava/lang/String;)Ljava/lang/Class;
       exceptionHook: processGlassfishClassLoaderfindClassException
+      postHook: noNeedSend
       types:
         - memshell
     - id: 1
       name: loadClass
       desc: (Ljava/lang/String;Z)Ljava/lang/Class;
       exceptionHook: processGlassfishClassLoaderfindClassException
+      postHook: noNeedSend
       types:
         - memshell
 - id: 42
@@ -560,3 +563,51 @@
       postHook: handleReflectMethod
       types:
         - reflect
+- id: 44
+  name: org.mvel2.PropertyAccessor
+  methods:
+    - id: 0
+      name: getMethod
+      desc: (Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+      postHook: handleMvel2Post
+      types:
+        - expression
+- id: 45
+  name: org.mvel2.optimizers.impl.refl.ReflectiveAccessorOptimizer
+  methods:
+    - id: 0
+      name: getMethod
+      desc: (Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+      postHook: handleMvel2Post
+      types:
+        - expression
+    - id: 1
+      name: compileConstructor
+      desc: ([CLjava/lang/Object;Lorg/mvel2/integration/VariableResolverFactory;)Lorg/mvel2/compiler/AccessorNode;
+      postHook: handleConstructorPost
+      types:
+        - expression
+- id: 46
+  name: org.mvel.PropertyAccessor
+  methods:
+    - id: 0
+      name: getMethod
+      desc: (Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+      postHook: handleMvel2Post
+      types:
+        - expression
+- id: 47
+  name: org.mvel.optimizers.impl.refl.ReflectiveAccessorOptimizer
+  methods:
+    - id: 0
+      name: getMethod
+      desc: (Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+      postHook: handleMvel2Post
+      types:
+        - expression
+    - id: 1
+      name: compileConstructor
+      desc: ([CLjava/lang/Object;Lorg/mvel/integration/VariableResolverFactory;)Lorg/mvel/AccessorNode;
+      postHook: handleConstructorPost
+      types:
+        - expression

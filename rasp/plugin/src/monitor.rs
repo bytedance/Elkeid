@@ -88,23 +88,23 @@ pub fn rasp_monitor_start(client: Client) -> Anyhow<()> {
     }
     let mut interval_ctrl = ctrl.clone();
     
-    let interval_thread =
-    Builder::new()
-        .name("interval".to_string())
-        .spawn(move || -> Anyhow<()> {
-            info!("starting interval thread");
-            loop {
-                if !interval_ctrl.check() {
-                    warn!("interval thread recv stop signal, quiting");
-                    break;
-                }
-                let messages = total_messages.load(Ordering::SeqCst);
-                info!("Total messages send: {}", messages);
-                sleep(Duration::from_secs(60));
-            }
-            let _ = interval_ctrl.stop();
-            Ok(())
-        })?;
+    // let interval_thread =
+    // Builder::new()
+    //     .name("interval".to_string())
+    //     .spawn(move || -> Anyhow<()> {
+    //         info!("starting interval thread");
+    //         loop {
+    //             if !interval_ctrl.check() {
+    //                 warn!("interval thread recv stop signal, quiting");
+    //                 break;
+    //             }
+    //             let messages = total_messages.load(Ordering::SeqCst);
+    //             info!("Total messages send: {}", messages);
+    //             sleep(Duration::from_secs(60));
+    //         }
+    //         let _ = interval_ctrl.stop();
+    //         Ok(())
+    //     })?;
 
     let (external_message_sender, external_message_receiver): (
         Sender<RASPCommand>,
@@ -276,7 +276,7 @@ fn internal_main(
                 Err(_) => Vec::new(),
             };
             if pids.len() == 0 {
-                sleep(Duration::from_secs(20));
+                sleep(Duration::from_secs(10));
                 continue;
             }
             for pid in pids.iter() {
@@ -316,7 +316,7 @@ fn internal_main(
                     break;
                 }
                 Err(crossbeam::channel::TryRecvError::Empty) => {
-                    sleep(Duration::from_secs(10));
+                    sleep(Duration::from_secs(1));
                     continue;
                 }
             };
@@ -325,7 +325,7 @@ fn internal_main(
                 Ok(p) => p,
                 Err(e) => {
                     debug!("process information collect failed: {} {}", pid, e);
-                    sleep(Duration::from_millis(50));
+                    // sleep(Duration::from_millis(50));
                     continue;
                 }
             };
@@ -333,13 +333,13 @@ fn internal_main(
                 Ok(opt) => match opt {
                     Some(r) => r,
                     None => {
-                        sleep(Duration::from_millis(50));
+                        // sleep(Duration::from_millis(50));
                         continue;
                     }
                 },
                 Err(e) => {
                     debug!("inspect process: {} failed: {}", pid, e);
-                    sleep(Duration::from_millis(50));
+                    // sleep(Duration::from_millis(50));
                     continue;
                 }
             };
@@ -371,7 +371,7 @@ fn internal_main(
             }
             (*ip).insert(pid, process);
             drop(ip);
-            sleep(Duration::from_millis(100));
+            // sleep(Duration::from_millis(100));
         })?;
     let mut reporter_ctrl = ctrl.clone();
     let reporter_sender = internal_message_sender.clone();

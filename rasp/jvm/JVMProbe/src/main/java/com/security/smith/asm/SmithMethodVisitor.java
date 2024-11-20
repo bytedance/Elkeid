@@ -360,8 +360,10 @@ public class SmithMethodVisitor extends AdviceAdapter {
 
         if (exceptionHook == null || exceptionHook == "") {
 
-            if (xHook == null || xHook == "") {
+            if (postHook == null || postHook == "") {
                 xHook = "trace";
+            } else {
+                xHook = postHook;
             }
 
             Type[] types = Type.getArgumentTypes(methodDesc);
