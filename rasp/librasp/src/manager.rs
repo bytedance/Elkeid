@@ -997,11 +997,12 @@ mod tests {
         fake_configs.push(PidMissingProbeConfig {
             message_type: 9,
             data: ProbeConfigData {
-                uuid: "fake".to_string(),
+                uuid: Some("fake".to_string()),
                 blocks: None,
                 filters: None,
                 limits: None,
                 patches: Some(fake_patches),
+               ..Default::default()
             },
         });
         let fake_manager = RASPManager {
@@ -1009,6 +1010,7 @@ mod tests {
             thread_comm: None,
             process_comm: None,
             runtime_dir: false,
+            ebpf_comm: None,
         };
         println!("{:?}", fake_configs);
         let _ = fake_manager

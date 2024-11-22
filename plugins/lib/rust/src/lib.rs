@@ -217,7 +217,7 @@ impl Client {
                 w.write_all(rec.timestamp.to_string().as_bytes())?;
                 w.write_all(b",\"data\":")?;
                 serde_json::to_writer(w.by_ref(), rec.get_data().get_fields())?;
-                w.write_all(b"}\n")
+                w.write_all(b"}\n")?
             }
             Ok(())
        }
