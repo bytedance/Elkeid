@@ -371,6 +371,9 @@ mod php_test {
                     Ok(ProbeState::NotAttach) => {
                         println!("probe NotATTACH");
                     }
+                    Ok(ProbeState::AttachedVersionNotMatch) => {
+                        println!("probe AttachedVersionNotMatch");
+                    }
                     Err(e) => {
                         println!("{} check probe state failed: {}", process_info.pid, e);
                     }
