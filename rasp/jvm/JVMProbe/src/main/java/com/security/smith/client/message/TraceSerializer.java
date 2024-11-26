@@ -56,11 +56,10 @@ public class TraceSerializer implements JsonSerializer<Trace> {
             return ret;
 
         try {
-            StackTraceElement[] elements = Arrays.copyOfRange(stackTrace, 2, stackTrace.length);
-            String[] result = new String[elements.length];
+            String[] result = new String[stackTrace.length];
 
-            for (int i = 0; i < elements.length; i++) {
-                result[i] = elements[i].toString();
+            for (int i = 0; i < stackTrace.length; i++) {
+                result[i] = stackTrace[i].toString();
             } 
 
             return result;

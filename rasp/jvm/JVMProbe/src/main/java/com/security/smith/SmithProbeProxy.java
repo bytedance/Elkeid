@@ -248,7 +248,7 @@ public class SmithProbeProxy {
             trace.setBlocked(blocked);
             trace.setRet(ret);
             trace.setArgs(args);
-            trace.setStackTrace(Thread.currentThread().getStackTrace());
+            trace.setStackTrace(SmithProbeObj.formatCurrentStackTrace());
             trace.setTypes(SmithProbeObj.getFuncTypes(classID, methodID));
 
             ringBuffer.publish(sequence);
@@ -290,7 +290,7 @@ public class SmithProbeProxy {
             classFilter.setClassId(classID);
             classFilter.setMethodId(methodID);
             classFilter.setTypes(SmithProbeObj.getFuncTypes(classID, methodID));
-            classFilter.setStackTrace(Thread.currentThread().getStackTrace());
+            classFilter.setStackTrace(SmithProbeObj.formatCurrentStackTrace());
             if (client != null) {
                 Gson gson = new GsonBuilder()
                 .registerTypeAdapter(ClassFilter.class, new ClassFilterSerializer())

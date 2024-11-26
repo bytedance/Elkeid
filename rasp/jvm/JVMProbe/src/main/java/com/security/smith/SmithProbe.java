@@ -444,7 +444,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         smithproxyTimer.schedule(
                 smithproxyTimerTask,
                 0,
-                TimeUnit.MINUTES.toMillis(1)
+                TimeUnit.MINUTES.toMillis(10)
         );
         smithProxy.setClient(client);
         smithProxy.setDisruptor(disruptor);
@@ -737,6 +737,22 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         client.write(Operate.TRACE, jsonElement);
     }
 
+    public StackTraceElement[] formatCurrentStackTrace() {
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+        if (stackTrace == null) {
+            return new StackTraceElement[0];
+        }
+        int startIndex = 0;
+        for (int i = 0; i < stackTrace.length; i++) {
+            StackTraceElement element = stackTrace[i];
+            if (element.getClassName().startsWith("com.security.smithloader.SmithAgent")) {
+                startIndex = i;
+                break;
+            }
+        }
+        return Arrays.copyOfRange(stackTrace, startIndex + 1, stackTrace.length);
+    }
+
     public void printClassfilter(ClassFilter data) {
         SmithLogger.logger.info("------------------------------------------------------------------------");
         SmithLogger.logger.info("className:" + data.getClassName());
@@ -833,7 +849,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
 
                 classFilter.setRuleId(rule_id);
                 classFilter.setTransId();
-                classFilter.setStackTrace(Thread.currentThread().getStackTrace());
+                classFilter.setStackTrace(formatCurrentStackTrace());
 
                 Gson gson = new GsonBuilder()
                 .registerTypeAdapter(ClassFilter.class, new ClassFilterSerializer())
@@ -1219,7 +1235,7 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
                     }
                     classFilter.setTransId();
                     classFilter.setRuleId(rule_id);
-                    classFilter.setStackTrace(Thread.currentThread().getStackTrace());
+                    classFilter.setStackTrace(formatCurrentStackTrace());
 
                     Gson gson = new GsonBuilder()
                     .registerTypeAdapter(ClassFilter.class, new ClassFilterSerializer())
