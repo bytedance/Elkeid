@@ -794,7 +794,7 @@ public class SmithProbeProxy {
 
                 if(filterName != null) {
                     if (filterClass != null) {
-                        sendMetadataObject(filterClass, classID, methodID);
+                        sendMetadataClass(filterClass, classID, methodID);
                     } else {
                         SmithLogger.logger.warning("can't find "+filterName);
                     }
