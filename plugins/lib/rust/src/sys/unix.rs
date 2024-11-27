@@ -26,7 +26,7 @@ pub fn get_writer() -> Arc<Mutex<BufWriter<File>>> {
 
 pub fn get_high_writer() -> Arc<Mutex<BufWriter<File>>> {
     Arc::new(Mutex::new(BufWriter::with_capacity(512 * 1024, unsafe {
-        File::from_raw_fd(WRITE_PIPE_FD)
+        File::from_raw_fd(HIGH_PRIORIT_FD)
     })))
 }
 
@@ -37,7 +37,7 @@ pub fn get_reader() -> Arc<Mutex<BufReader<File>>> {
 }
 
 extern "C" fn signal_handler(signal: i32) {
-    eprintln!("catched signal {:?}, exit", signal);
+    eprintln!("catched signal {:?}, wait 3 seconds and exit", signal);
     unsafe {
         libc::sleep(3);
         libc::close(WRITE_PIPE_FD);
