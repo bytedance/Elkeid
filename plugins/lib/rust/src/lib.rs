@@ -1,12 +1,3 @@
-pub mod bridge;
-pub mod logger;
-
-pub use bridge::*;
-use crossbeam::channel::{select, tick};
-use log::{debug, info};
-use parking_lot::Mutex;
-use protobuf::Message;
-use signal_hook::consts::SIGTERM;
 use std::{
     env,
     fs::File,
@@ -16,15 +7,17 @@ use std::{
     time::Duration,
 };
 
-#[cfg(target_family = "unix")]
-use signal_hook::{consts::SIGUSR1, iterator::Signals};
-#[cfg(target_family = "unix")]
-use std::os::unix::prelude::FromRawFd;
+use crossbeam::channel::{select, tick};
+use log::debug;
+use parking_lot::Mutex;
+use protobuf::Message;
 
-#[cfg(target_family = "windows")]
-use std::os::windows::prelude::{FromRawHandle, RawHandle};
-#[cfg(target_family = "windows")]
-use windows::Win32::System::Console::{GetStdHandle, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE};
+pub mod logger;
+
+pub mod bridge;
+pub use bridge::*;
+
+pub mod sys;
 
 #[derive(Clone)]
 pub enum EncodeType {
@@ -37,62 +30,26 @@ pub struct Client {
     writer: Arc<Mutex<BufWriter<File>>>,
     reader: Arc<Mutex<BufReader<File>>>,
 }
-#[cfg(feature = "debug")]
-const READ_PIPE_FD: i32 = 0;
-#[cfg(not(feature = "debug"))]
-const READ_PIPE_FD: i32 = 3;
-#[cfg(feature = "debug")]
-const WRITE_PIPE_FD: i32 = 1;
-#[cfg(not(feature = "debug"))]
-const WRITE_PIPE_FD: i32 = 4;
-const HIGH_PRIORIT_FD: i32 = 5;
 
 impl Client {
- 
     pub fn can_use_high() -> bool {
         match env::var("ELKEID_PLUGIN_HIGH_PRIORITY_PIPE") {
             Ok(value) => {
                 if !value.is_empty() {
                     return true;
                 }
-                
             }
             Err(_) => {
                 return false;
             }
-            
         }
         false
     }
     pub fn new(ignore_terminate: bool) -> Self {
-        
-        let writer = Arc::new(Mutex::new(BufWriter::with_capacity(512 * 1024, unsafe {
-            #[cfg(target_family = "unix")]
-            {
-                File::from_raw_fd(WRITE_PIPE_FD)
-            }
-
-            #[cfg(target_family = "windows")]
-            {
-                let raw_handle = GetStdHandle(STD_OUTPUT_HANDLE).unwrap();
-                File::from_raw_handle(raw_handle.0 as _)
-            }
-        })));
+        let writer = sys::get_writer();
         let mut high_writer = writer.clone();
-        if  Self::can_use_high() {
-            high_writer = Arc::new(Mutex::new(BufWriter::with_capacity(512 * 1024, unsafe {
-                #[cfg(target_family = "unix")]
-                {
-                     File::from_raw_fd(HIGH_PRIORIT_FD)
-                }
-    
-                #[cfg(target_family = "windows")]
-                {
-                    let raw_handle = GetStdHandle(STD_OUTPUT_HANDLE).unwrap();
-                    File::from_raw_handle(raw_handle.0 as _)
-                }
-            })));
-
+        if Self::can_use_high() {
+            high_writer = sys::get_high_writer();
             let high_writer_c = high_writer.clone();
             thread::spawn(move || {
                 let ticker = tick(Duration::from_millis(200));
@@ -109,19 +66,8 @@ impl Client {
             });
         }
 
-        let reader = Arc::new(Mutex::new(BufReader::new(unsafe {
-            #[cfg(target_family = "unix")]
-            {
-                File::from_raw_fd(READ_PIPE_FD)
-            }
+        let reader = sys::get_reader();
 
-            #[cfg(target_family = "windows")]
-            {
-                let raw_handle = GetStdHandle(STD_INPUT_HANDLE).unwrap();
-                File::from_raw_handle(raw_handle.0 as _)
-            }
-        })));
-        
         let writer_c = writer.clone();
         thread::spawn(move || {
             let ticker = tick(Duration::from_millis(200));
@@ -136,26 +82,18 @@ impl Client {
                 }
             }
         });
-        #[cfg(target_family = "unix")]
+
+        sys::regist_exception_handler();
+
         if ignore_terminate {
-            let mut signals = Signals::new(&[SIGTERM, SIGUSR1]).unwrap();
-            thread::spawn(move || {
-                for sig in signals.forever() {
-                    if sig == SIGTERM {
-                        info!("received signal: {:?}, wait 3 secs to exit", sig);
-                        thread::sleep(Duration::from_secs(3));
-                        unsafe {
-                            if  Self::can_use_high() {
-                                libc::close(HIGH_PRIORIT_FD);
-                            }
-                            libc::close(WRITE_PIPE_FD);
-                            libc::close(READ_PIPE_FD);
-                        }
-                    }
-                }
-            });
+            sys::ignore_terminate()
         }
-        Self { high_writer, writer, reader }
+
+        Self {
+            high_writer,
+            writer,
+            reader,
+        }
     }
     pub fn send_record(&mut self, rec: &Record) -> Result<(), Error> {
         let mut w = self.writer.lock();
@@ -176,7 +114,6 @@ impl Client {
         }
     }
     pub fn send_record_high_priority(&mut self, rec: &Record) -> Result<(), Error> {
-
         let mut w = self.high_writer.lock();
         #[cfg(not(feature = "debug"))]
         {
@@ -209,7 +146,6 @@ impl Client {
         }
         #[cfg(feature = "debug")]
         {
-            
             for rec in recs.iter() {
                 w.write_all(b"{\"data_type\":")?;
                 w.write_all(rec.data_type.to_string().as_bytes())?;
@@ -220,7 +156,7 @@ impl Client {
                 w.write_all(b"}\n")?
             }
             Ok(())
-       }
+        }
     }
 
     pub fn send_records(&mut self, recs: &Vec<Record>) -> Result<(), Error> {
