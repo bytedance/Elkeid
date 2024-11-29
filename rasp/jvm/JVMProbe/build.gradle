@@ -1,6 +1,7 @@
 plugins {
     id 'java-library'
     id 'com.github.johnrengelman.shadow' version '6.0.0'
+    id 'jacoco'
 }
 
 group 'com.security'
@@ -9,6 +10,29 @@ version '1.0-SNAPSHOT'
 repositories {
     mavenCentral()
 }
+
+jacoco {
+    toolVersion = "0.8.5"
+}
+
+test {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport // report is always generated after tests run
+}
+
+jacocoTestReport {
+    dependencies {
+        testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
+        testImplementation 'org.mockito:mockito-core:4.11.0'
+    }
+    dependsOn test // tests are required to run before generating the report
+    reports {
+        xml.enabled true
+        csv.enabled false
+        html.destination file("${buildDir}/reports/jacoco")
+    }
+}
+
 
 dependencies {
     implementation files('lib/nashorn.jar') 
