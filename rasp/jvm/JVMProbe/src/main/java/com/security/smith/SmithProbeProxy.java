@@ -932,5 +932,128 @@ public class SmithProbeProxy {
             SmithLogger.exception(e);
         }
     }
+
+    /*
+      
+       public static Object invokeMethod(Object target, Method method, Object[] argsArray) throws InvocationTargetException, IllegalAccessException
+     
+     */
+
+    public void handleOgnlInvokeMethodPost(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        if (stopX || SmithProbeObj.isFunctionEnabled(classID, methodID) == false) {
+            return;
+        }
+
+        try {
+            if(args[0] != null) {
+                String className;
+                String methodName;
+
+                Method method = (Method)args[1];
+
+                if (args[0] instanceof Class) {
+                    className = ((Class<?>)args[0]).getName();
+                } else {
+                    className = args[0].getClass().getName();
+                }
+
+                methodName = method.getName();
+                SmithLogger.logger.info("className = " + className + ", methodName = " + methodName);
+                Object[] argsX = new Object[2];
+                argsX[0] = (Object)className;
+                argsX[1] = (Object)methodName;
+                JsRuleResult result = SmithProbeObj.getJsRuleEngine().detect(3, argsX);
+                if (result!= null) {
+                    trace(classID, methodID, args, ret, blocked);
+                    return ;
+                }
+            }
+            else {
+                SmithLogger.logger.warning("target == null");
+            }
+        } catch(Exception e) {
+            SmithLogger.exception(e);
+        }
+    }
+
+      /*
+      
+       public static Object callConstructor(OgnlContext context, String className, Object[] args) throws OgnlException
+     
+     */
+
+    public void handleOgnlIcallConstructorPost(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        if (stopX || SmithProbeObj.isFunctionEnabled(classID, methodID) == false) {
+            return;
+        }
+
+        try {
+            if(args[1] != null)  {
+                String className;
+
+                if (args[2] instanceof Class) {
+                    className = ((Class<?>)args[1]).getName();
+                } else {
+                    className = args[1].getClass().getName();
+                }
+
+                String methodName = "<init>";
+                SmithLogger.logger.info("className = " + className + ", methodName = " + methodName);
+                Object[] argsX = new Object[2];
+                argsX[0] = (Object)className;
+                argsX[1] = (Object)methodName;
+                JsRuleResult result = SmithProbeObj.getJsRuleEngine().detect(3, argsX);
+                if (result!= null) {
+                    trace(classID, methodID, args, ret, blocked);
+                    return ;
+                }
+            }
+        } catch(Exception e) {
+            SmithLogger.exception(e);
+        }
+    }
+
+       /*
+      
+       public TypedValue execute(EvaluationContext context, Object target, Object... arguments) throws AccessException 
+     
+     */
+
+    public void handleSpelExecutePost(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        if (stopX || SmithProbeObj.isFunctionEnabled(classID, methodID) == false) {
+            return;
+        }
+
+        try {
+            if(args[2] != null)  {
+                String className;
+                String methodName = "unknow";
+
+                if (args[2] instanceof Class) {
+                    className = ((Class<?>)args[2]).getName();
+                } else {
+                    className = args[2].getClass().getName();
+                }
+
+                Object xthis = args[0];
+                Method method = (Method)Reflection.getField(xthis,"originalMethod");
+                if(method != null) {
+                    methodName = method.getName();
+                }
+
+                SmithLogger.logger.info("className = " + className + ", methodName = " + methodName);
+                Object[] argsX = new Object[2];
+                argsX[0] = (Object)className;
+                argsX[1] = (Object)methodName;
+                JsRuleResult result = SmithProbeObj.getJsRuleEngine().detect(3, argsX);
+                if (result!= null) {
+                    trace(classID, methodID, args, ret, blocked);
+                    return ;
+                }
+            }
+        } catch(Exception e) {
+            SmithLogger.exception(e);
+        }
+    }
 }
 
