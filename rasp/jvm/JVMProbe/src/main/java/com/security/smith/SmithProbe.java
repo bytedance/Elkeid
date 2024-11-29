@@ -215,6 +215,26 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
         return smithProxy;
     }
 
+    public Map<String, Boolean> getSwitchConfig() {
+        return this.switchConfig;
+    }
+
+    public Map<Pair<Integer, Integer>, Filter> getFilter() {
+        return this.filters;
+    }
+
+    public Rule_Mgr  getRuleMgr() {
+        return this.rulemgr;
+    }
+
+    public  Rule_Config getRuleConfig() {
+        return this.ruleconfig;
+    }
+
+    public SmithProbeProxy getSmithProxy() {
+        return this.smithProxy;
+    }
+
     public void setClassLoader(Object classLoaderObj) {
         xClassLoaderObj = classLoaderObj;
     }
@@ -235,6 +255,10 @@ public class SmithProbe implements ClassFileTransformer, MessageHandler, EventHa
     public String getProbePath() {
         return proberPath;
 
+    }
+
+    public Set<String>[][] getHookTypes() {
+        return hookTypes;
     }
 
     public void init() {
