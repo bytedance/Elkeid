@@ -794,7 +794,7 @@ public class SmithProbeProxy {
 
                 if(filterName != null) {
                     if (filterClass != null) {
-                        sendMetadataObject(filterClass, classID, methodID);
+                        sendMetadataClass(filterClass, classID, methodID);
                     } else {
                         SmithLogger.logger.warning("can't find "+filterName);
                     }
@@ -929,6 +929,130 @@ public class SmithProbeProxy {
             }
             
         } catch (Exception e) {
+            SmithLogger.exception(e);
+        }
+    }
+
+    /*
+      
+       public static Object invokeMethod(Object target, Method method, Object[] argsArray) throws InvocationTargetException, IllegalAccessException
+     
+     */
+
+    public void handleOgnlInvokeMethodPost(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        if (stopX || SmithProbeObj.isFunctionEnabled(classID, methodID) == false) {
+            return;
+        }
+
+        try {
+            if(args.length >= 3 &&args[0] != null) {
+                String className;
+                String methodName;
+
+                Method method = (Method)args[1];
+
+                if (args[0] instanceof Class) {
+                    className = ((Class<?>)args[0]).getName();
+                }
+                else {
+                    className = args[0].getClass().getName();
+                }
+
+                methodName = method.getName();
+                SmithLogger.logger.info("className = " + className + ", methodName = " + methodName);
+                Object[] argsX = new Object[2];
+                argsX[0] = (Object)className;
+                argsX[1] = (Object)methodName;
+                JsRuleResult result = SmithProbeObj.getJsRuleEngine().detect(3, argsX);
+                if (result!= null) {
+                    trace(classID, methodID, args, ret, blocked);
+                    return ;
+                }
+            }
+        } catch(Exception e) {
+            SmithLogger.exception(e);
+        }
+    }
+
+      /*
+      
+       public static Object callConstructor(OgnlContext context, String className, Object[] args) throws OgnlException
+     
+     */
+
+    public void handleOgnlIcallConstructorPost(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        if (stopX || SmithProbeObj.isFunctionEnabled(classID, methodID) == false) {
+            return;
+        }
+
+        try {
+            if(args.length >= 3) {
+                String className = (String)args[1];
+
+                String methodName = "<init>";
+                SmithLogger.logger.info("className = " + className + ", methodName = " + methodName);
+                Object[] argsX = new Object[2];
+                argsX[0] = (Object)className;
+                argsX[1] = (Object)methodName;
+                JsRuleResult result = SmithProbeObj.getJsRuleEngine().detect(3, argsX);
+                if (result!= null) {
+                    trace(classID, methodID, args, ret, blocked);
+                    return ;
+                }
+            }
+        } catch(Exception e) {
+            SmithLogger.exception(e);
+        }
+    }
+
+       /*
+      
+       public TypedValue execute(EvaluationContext context, Object target, Object... arguments) throws AccessException 
+     
+     */
+
+    public void handleSpelExecutePost(int classID, int methodID, Object[] args, Object ret, boolean blocked) {
+        if (stopX || SmithProbeObj.isFunctionEnabled(classID, methodID) == false) {
+            return;
+        }
+
+        try {
+            if(args.length >= 3 && args[2] != null)  {
+                String className;
+                String methodName;
+
+                if (args[2] instanceof Class) {
+                    className = ((Class<?>)args[2]).getName();
+                } else {
+                    className = args[2].getClass().getName();
+                }
+
+                Object xthis = args[0];
+                Method method = (Method)Reflection.getField(xthis,"originalMethod");
+                if(method != null) {
+                    methodName = method.getName();
+                }
+                else {
+                    Method methodX = (Method)Reflection.getField(xthis,"methodToInvoke");
+                    if(methodX != null) {
+                        methodName = methodX.getName();
+                    }
+                    else {
+                        methodName = "unknow";
+                    }
+                }
+
+                SmithLogger.logger.info("className = " + className + ", methodName = " + methodName);
+                Object[] argsX = new Object[2];
+                argsX[0] = (Object)className;
+                argsX[1] = (Object)methodName;
+                JsRuleResult result = SmithProbeObj.getJsRuleEngine().detect(3, argsX);
+                if (result!= null) {
+                    trace(classID, methodID, args, ret, blocked);
+                    return ;
+                }
+            }
+        } catch(Exception e) {
             SmithLogger.exception(e);
         }
     }

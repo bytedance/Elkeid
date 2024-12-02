@@ -611,3 +611,27 @@
       postHook: handleConstructorPost
       types:
         - expression
+- id: 48
+  name: ognl.OgnlRuntime
+  methods:
+    - id: 0
+      name: invokeMethod
+      desc: (Ljava/lang/Object;Ljava/lang/reflect/Method;[Ljava/lang/Object;)Ljava/lang/Object;
+      postHook: handleOgnlInvokeMethodPost
+      types:
+        - expression
+    - id: 1
+      name: callConstructor
+      desc: (Lognl/OgnlContext;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/Object;
+      postHook: handleOgnlIcallConstructorPost
+      types:
+        - expression
+- id: 49
+  name: org.springframework.expression.spel.support.ReflectiveMethodExecutor
+  methods:
+    - id: 0
+      name: execute
+      desc: (Lorg/springframework/expression/EvaluationContext;Ljava/lang/Object;[Ljava/lang/Object;)Lorg/springframework/expression/TypedValue;
+      postHook: handleSpelExecutePost
+      types:
+        - expression
