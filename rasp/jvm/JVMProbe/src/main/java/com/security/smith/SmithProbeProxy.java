@@ -945,7 +945,7 @@ public class SmithProbeProxy {
         }
 
         try {
-            if(args[0] != null) {
+            if(args.length >= 3 &&args[0] != null) {
                 String className;
                 String methodName;
 
@@ -969,9 +969,6 @@ public class SmithProbeProxy {
                     return ;
                 }
             }
-            else {
-                SmithLogger.logger.warning("target == null + args num:"+args.length);
-            }
         } catch(Exception e) {
             SmithLogger.exception(e);
         }
@@ -989,17 +986,19 @@ public class SmithProbeProxy {
         }
 
         try {
-            String className = (String)args[1];
+            if(args.length >= 3) {
+                String className = (String)args[1];
 
-            String methodName = "<init>";
-            SmithLogger.logger.info("className = " + className + ", methodName = " + methodName);
-            Object[] argsX = new Object[2];
-            argsX[0] = (Object)className;
-            argsX[1] = (Object)methodName;
-            JsRuleResult result = SmithProbeObj.getJsRuleEngine().detect(3, argsX);
-            if (result!= null) {
-                trace(classID, methodID, args, ret, blocked);
-                return ;
+                String methodName = "<init>";
+                SmithLogger.logger.info("className = " + className + ", methodName = " + methodName);
+                Object[] argsX = new Object[2];
+                argsX[0] = (Object)className;
+                argsX[1] = (Object)methodName;
+                JsRuleResult result = SmithProbeObj.getJsRuleEngine().detect(3, argsX);
+                if (result!= null) {
+                    trace(classID, methodID, args, ret, blocked);
+                    return ;
+                }
             }
         } catch(Exception e) {
             SmithLogger.exception(e);
@@ -1018,7 +1017,7 @@ public class SmithProbeProxy {
         }
 
         try {
-            if(args[2] != null)  {
+            if(args.length >= 3 && args[2] != null)  {
                 String className;
                 String methodName;
 
