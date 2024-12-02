@@ -357,6 +357,18 @@ impl Detector {
                                             t.get_token(),
                                             t.get_data()
                                         );
+                                    let end_flag = ScanFinished {
+                                        data: "failed".to_string(),
+                                        error: format!(
+                                            "scanner task chan is full with {:?}",
+                                            task_sender.len()
+                                        ),
+                                    };
+                                    if let Err(e) = r_client
+                                            .send_record(&end_flag.to_record_token(&t.get_token()))
+                                        {
+                                            warn!("send err, should exit : {:?}", e);
+                                        };
                                     continue;
                                 }
                                 let task_map: HashMap<String, String> =
@@ -367,6 +379,11 @@ impl Detector {
                                             let end_flag = ScanFinished {
                                                 data: "failed".to_string(),
                                                 error: format!("recv serde_json err {:?}", t.data),
+                                            };
+                                            if let Err(e) = r_client
+                                                .send_record(&end_flag.to_record_token(&t.get_token()))
+                                            {
+                                                warn!("send err, should exit : {:?}", e);
                                             };
                                             continue;
                                         }
@@ -453,7 +470,7 @@ impl Detector {
                                                 };
                                                 break; 
                                                 */
-                                                warn!("walkdir err, should continue: {:?}", _err);
+                                                warn!("walkdir continue with: {:?}", _err);
                                                 continue
                                             }
                                             Some(Ok(entry)) => entry,
