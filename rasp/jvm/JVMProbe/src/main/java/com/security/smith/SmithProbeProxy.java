@@ -953,7 +953,8 @@ public class SmithProbeProxy {
 
                 if (args[0] instanceof Class) {
                     className = ((Class<?>)args[0]).getName();
-                } else {
+                }
+                else {
                     className = args[0].getClass().getName();
                 }
 
@@ -969,7 +970,7 @@ public class SmithProbeProxy {
                 }
             }
             else {
-                SmithLogger.logger.warning("target == null");
+                SmithLogger.logger.warning("target == null + args num:"+args.length);
             }
         } catch(Exception e) {
             SmithLogger.exception(e);
@@ -988,25 +989,17 @@ public class SmithProbeProxy {
         }
 
         try {
-            if(args[1] != null)  {
-                String className;
+            String className = (String)args[1];
 
-                if (args[2] instanceof Class) {
-                    className = ((Class<?>)args[1]).getName();
-                } else {
-                    className = args[1].getClass().getName();
-                }
-
-                String methodName = "<init>";
-                SmithLogger.logger.info("className = " + className + ", methodName = " + methodName);
-                Object[] argsX = new Object[2];
-                argsX[0] = (Object)className;
-                argsX[1] = (Object)methodName;
-                JsRuleResult result = SmithProbeObj.getJsRuleEngine().detect(3, argsX);
-                if (result!= null) {
-                    trace(classID, methodID, args, ret, blocked);
-                    return ;
-                }
+            String methodName = "<init>";
+            SmithLogger.logger.info("className = " + className + ", methodName = " + methodName);
+            Object[] argsX = new Object[2];
+            argsX[0] = (Object)className;
+            argsX[1] = (Object)methodName;
+            JsRuleResult result = SmithProbeObj.getJsRuleEngine().detect(3, argsX);
+            if (result!= null) {
+                trace(classID, methodID, args, ret, blocked);
+                return ;
             }
         } catch(Exception e) {
             SmithLogger.exception(e);
@@ -1027,7 +1020,7 @@ public class SmithProbeProxy {
         try {
             if(args[2] != null)  {
                 String className;
-                String methodName = "unknow";
+                String methodName;
 
                 if (args[2] instanceof Class) {
                     className = ((Class<?>)args[2]).getName();
@@ -1039,6 +1032,15 @@ public class SmithProbeProxy {
                 Method method = (Method)Reflection.getField(xthis,"originalMethod");
                 if(method != null) {
                     methodName = method.getName();
+                }
+                else {
+                    Method methodX = (Method)Reflection.getField(xthis,"methodToInvoke");
+                    if(methodX != null) {
+                        methodName = methodX.getName();
+                    }
+                    else {
+                        methodName = "unknow";
+                    }
                 }
 
                 SmithLogger.logger.info("className = " + className + ", methodName = " + methodName);
