@@ -201,6 +201,23 @@ std::string toString(
             return zero::strings::format("{%s}", zero::strings::join(items, ", ").c_str());
         }
 
+#if PHP_MAJOR_VERSION >= 8
+        case IS_OBJECT: {
+            const char *type = ZSTR_VAL(Z_OBJ_P(val)->ce->name);
+            if (!type)
+                break;
+
+            if (strcmp(type, "CurlHandle") == 0)
+                return curlInfo(
+                        val
+#if PHP_MAJOR_VERSION <= 5
+                        TSRMLS_CC
+#endif
+                );
+            return zero::strings::format("object(%s)", type);
+        }
+#endif
+
         case IS_RESOURCE: {
             const char *type = zend_rsrc_list_get_rsrc_type(
 #if PHP_MAJOR_VERSION > 5
