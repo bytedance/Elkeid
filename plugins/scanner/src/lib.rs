@@ -8,6 +8,7 @@
 
 use crate::config::FULLSCAN_CPU_IDLE_100PCT;
 use anyhow::{anyhow, Result};
+use procfs::CurrentSI;
 use regex::Regex;
 use sha2::{Digest, Sha256};
 use std::{
@@ -186,7 +187,7 @@ pub fn setup_cgroup(pid: u32, mem: i64, cpu: i64) -> Result<()> {
         .cpu()
         .quota(cpu) //  n / MAX 100 000 = x% CPU
         .done()
-        .build(hier1);
+        .build(hier1)?;
 
     scanner_cg.add_task(cgroups_rs::CgroupPid::from(pid as u64))?;
     return Ok(());
@@ -236,9 +237,9 @@ pub fn get_available_worker_cpu_quota(
     if cpu_idle <= 0 || cpu_idle > 100 {
         cpu_usage = *FULLSCAN_CPU_IDLE_100PCT;
     }
-    let kstats = procfs::KernelStats::new()?;
+    let kstats = procfs::KernelStats::current()?;
     thread::sleep(std::time::Duration::from_secs(interval_secs));
-    let kstate = procfs::KernelStats::new()?;
+    let kstate = procfs::KernelStats::current()?;
 
     let idle_s = kstats.total.idle_ms();
     let idle_e = kstate.total.idle_ms();

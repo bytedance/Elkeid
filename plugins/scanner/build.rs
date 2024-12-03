@@ -10,7 +10,7 @@ mod bindings {
     pub const LINK_STATIC_LIBS: &[&str] = &[
         "clamav_static",
         "json-c",
-        "bz2_static",
+        "bz2",
         "crypto",
         "ssl",
         "xml2",

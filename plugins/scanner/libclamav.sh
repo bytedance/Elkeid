@@ -1,6 +1,11 @@
 #!/bin/bash
 
 # TARGET_ARCH="aarch64"
+if [ -z "$TARGET_ARCH" ]; then
+    echo "TARGET_ARCH set default: x86_64"
+    export TARGET_ARCH="x86_64"
+fi
+
 if [ "$TARGET_ARCH" == "x86_64" ]; then
     echo "build x86_64"
 else
@@ -8,30 +13,23 @@ else
     sed -i "s|x86_64-linux-musl|$TARGET_ARCH-linux-musl|gi" ` grep -rl x86_64-linux-musl ./clamav-mussels-cookbook`
 fi
 
-cd clamav-mussels-cookbook
-rm -rf  mussels/* &> /dev/null
-mkdir mussels &> /dev/null
 
-msl build libclamav_deps -t host-static -w mussels/work -i mussels/install
+if [ -d clamav ]; then 
+    cd clamav
+        rm -rf  ./build/* &> /dev/null
+        git pull 
+        git checkout rel/0.104
+    cd ..
+else 
+    git clone https://github.com/kulukami/clamav.git
+    cd clamav
+        git checkout rel/0.104
+    cd ..
 
-if [ $? -ne 0 ]; then
-    echo "mussels clamav_deps build failed"
-    exit -1
-else
-    echo "mussels clamav_deps build succeed"
 fi
 
-cd -
-
-rm -rf clamav
-
-# make get clamav source code
-git clone https://github.com/kulukami/clamav.git
 cd clamav
-git checkout rel/0.104
-
-rm -rf  ./build/* &> /dev/null
-mkdir build &> /dev/null
+    mkdir build &> /dev/null
 cd -
 
 export CLAMAV_DEPENDENCIES="$(pwd)/clamav-mussels-cookbook/mussels/install/" 

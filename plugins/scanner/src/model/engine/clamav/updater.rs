@@ -219,7 +219,7 @@ fn extract(src: &str, dst: &str, passwd: &str) -> Result<()> {
     let mut archive = zip::ZipArchive::new(file)?;
 
     for i in 0..archive.len() {
-        let mut file = archive.by_index_decrypt(i, passwd.as_bytes())??;
+        let mut file = archive.by_index_decrypt(i, passwd.as_bytes())?;
         let zfilename = match file.enclosed_name() {
             Some(path) => match path.file_name() {
                 Some(fname) => fname.to_owned().to_string_lossy().to_string(),

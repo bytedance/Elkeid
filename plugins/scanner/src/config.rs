@@ -83,7 +83,7 @@ pub fn settings_vec_string(table: &'static str, key: &'static str) -> Result<Vec
     }
     let mut v = Vec::new();
     for value in values.unwrap().clone().into_array()? {
-        v.push(value.into_str()?);
+        v.push(value.into_string()?);
     }
     Ok(v)
 }

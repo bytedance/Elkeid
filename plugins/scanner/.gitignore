@@ -1,0 +1,6 @@
+.vscode/
+clamav/
+clamav-mussels-cookbook/
+dev.sh
+lib/
+include/

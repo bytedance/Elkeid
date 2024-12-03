@@ -21,7 +21,7 @@ use crate::{
 use lru_cache::LruCache;
 
 lazy_static! {
-    static ref CPU_TICKS: f32 = procfs::ticks_per_second().unwrap() as f32;
+    static ref CPU_TICKS: f32 = procfs::ticks_per_second() as f32;
     static ref CPU_BOOTTIME: u64 = procfs::boot_time_secs().unwrap();
 }
 
@@ -195,10 +195,7 @@ impl Cronjob {
                         Ok(st) => st,
                         Err(_) => continue,
                     };
-                    let process_starttime = match process_stat.starttime() {
-                        Ok(st) => st.timestamp() as u64,
-                        Err(_) => continue,
-                    };
+                    let process_starttime = process_stat.starttime;
                     if process_starttime < last_scaned_timestamp {
                         continue;
                     }
