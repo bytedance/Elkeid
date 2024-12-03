@@ -1,4 +1,4 @@
-FROM kulukami/libclamav_icm_aarch64 as scanner_compiler
+FROM kulukami/libclamav_icm_aarch64:0.104 as scanner_compiler
 
 ADD . /Elkeid
 WORKDIR /Elkeid/plugins/scanner
