@@ -48,7 +48,7 @@ libc = "0.2"
 
 fs2 = "0.4.3"
 
-cgroups-rs = "0.3"
+cgroups-rs = "0.2"
 
 zip = { version = "2.2" }
 
