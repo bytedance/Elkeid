@@ -46,27 +46,41 @@ SMITH_HOOK(SETSID, 1);
 SMITH_HOOK(PRCTL, 1);
 SMITH_HOOK(MEMFD_CREATE, 1);
 SMITH_HOOK(MOUNT, 1);
-SMITH_HOOK(DNS, 1);
 SMITH_HOOK(USERMODEHELPER, 1);
 SMITH_HOOK(UDEV, 1);
 SMITH_HOOK(CHMOD, 1);
-
-SMITH_HOOK(WRITE, 0);
-SMITH_HOOK(ACCEPT, 0);
-SMITH_HOOK(OPEN, 0);
-SMITH_HOOK(MPROTECT, 0);
 SMITH_HOOK(NANOSLEEP, 0);
-SMITH_HOOK(KILL, 0);
-SMITH_HOOK(RM, 0);
-SMITH_HOOK(EXIT, 0);
 
-static int FAKE_SLEEP = 0;
-static int FAKE_RM = 0;
+SMITH_HOOK(WRITE, SANDBOX);
+SMITH_HOOK(ACCEPT, SANDBOX);
+SMITH_HOOK(OPEN, SANDBOX);
+SMITH_HOOK(MPROTECT, SANDBOX);
+SMITH_HOOK(KILL, SANDBOX);
+SMITH_HOOK(RM, SANDBOX);
+SMITH_HOOK(EXIT, SANDBOX);
 
+/*
+ *
+ * raw tracepoint brings severe performance penalty for syscall-intensive ops.
+ * so disabled by default, and enabled only for SANDBOX or kernels >= 5.4.210
+ *
+ */
+SMITH_HOOK(RAWTP, SANDBOX || (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 210)));
+SMITH_HOOK(DNS, SANDBOX || (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 210)));
+
+static int FAKE_RM = SANDBOX;
+
+#if SANDBOX
+static int PID_TREE_LIMIT = 100;
+static int PID_TREE_LIMIT_LOW = 100;
+static int EXECVE_GET_SOCK_PID_LIMIT = 100;
+static int EXECVE_GET_SOCK_FD_LIMIT = 100;
+#else
 static int PID_TREE_LIMIT = 12;
 static int PID_TREE_LIMIT_LOW = 8;
 static int EXECVE_GET_SOCK_PID_LIMIT = 4;
 static int EXECVE_GET_SOCK_FD_LIMIT = 12;  /* maximum fd numbers to be queried */
+#endif
 
 static char connect_syscall_kprobe_state = 0x0;
 static char execve_kretprobe_state = 0x0;
@@ -2702,6 +2716,10 @@ static int __init smith_sysret_init(void)
 {
     int i, rc;
 
+    /* skip raw tracepoint registration */
+    if (!RAWTP_HOOK)
+        return 0;
+
     /* check the tracepoints of our interest */
     rc = smith_assert_tracepoints();
     if (rc) {
@@ -2731,6 +2749,10 @@ cleanup:
 static void smith_sysret_fini(void)
 {
     int i;
+
+    /* skip raw tracepoint unregistration */
+    if (!RAWTP_HOOK)
+        return;
 
     /* register callbacks for the tracepoints of our interest */
     for (i = NUM_TRACE_POINTS; i > 0; i--)
@@ -4803,28 +4825,6 @@ static void uninstall_kprobe(void)
 static void __init install_kprobe(void)
 {
     int ret;
-
-    if (SANDBOX == 1) {
-        DNS_HOOK = 1;
-        USERMODEHELPER_HOOK = 1;
-        //MPROTECT_HOOK = 1;
-        ACCEPT_HOOK = 1;
-        OPEN_HOOK = 1;
-        MPROTECT_HOOK = 1;
-        //NANOSLEEP_HOOK = 1;
-        KILL_HOOK = 1;
-        RM_HOOK = 1;
-        EXIT_HOOK = 1;
-        WRITE_HOOK = 1;
-
-        PID_TREE_LIMIT = 100;
-        PID_TREE_LIMIT_LOW = 100;
-        EXECVE_GET_SOCK_PID_LIMIT = 100;
-        EXECVE_GET_SOCK_FD_LIMIT = 100;
-
-        FAKE_SLEEP = 1;
-        FAKE_RM = 1;
-    }
 
     if (UDEV_HOOK == 1) {
         static void (*smith_usb_register_notify) (struct notifier_block * nb);
