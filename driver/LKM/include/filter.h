@@ -20,4 +20,8 @@ int execve_argv_check(char *data, int len);
 
 size_t filter_process_allowlist(const __user char *buff, size_t len);
 
+/* opened-instances tracing for trace proc entry and filter device */
+void filter_show_instances(void);
+void trace_show_instances(void);
+
 #endif /* FILTER_H */

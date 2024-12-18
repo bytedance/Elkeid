@@ -16,6 +16,7 @@
 #include <linux/string.h>
 #include <linux/rbtree.h>
 #include <linux/namei.h>
+#include <linux/utsname.h>
 
 #include "../include/util.h"
 #include "../include/filter.h"
@@ -30,6 +31,9 @@
 #define DEL_EXECVE_ARGV_ALLOWLIST 74        /* J */
 #define DEL_ALL_EXECVE_ARGV_ALLOWLIST 117   /* u */
 #define EXECVE_ARGV_CHECK 122               /* z */
+#define OPEN_INSTANCES_LIST_ALL 79          /* O */
+#define OPEN_INSTANCES_LIST_TRACE 116       /* t */
+#define OPEN_INSTANCES_LIST_FILTER 102      /* f */
 
 #define ALLOWLIST_NODE_MIN 5
 #define ALLOWLIST_NODE_MAX 4090
@@ -37,7 +41,6 @@
 
 static struct class *filter_class;
 static int filter_major;
-static char *sh_mem = NULL;
 
 static struct rb_root execve_exe_allowlist = RB_ROOT;
 static struct rb_root execve_argv_allowlist = RB_ROOT;
@@ -48,17 +51,6 @@ static int execve_argv_allowlist_limit = 0;
 
 static DEFINE_RWLOCK(exe_allowlist_lock);
 static DEFINE_RWLOCK(argv_allowlist_lock);
-
-static int device_mmap(struct file *filp, struct vm_area_struct *vma);
-
-static ssize_t device_write(struct file *filp, const __user char *buff,
-                            size_t len, loff_t * off);
-
-static const struct file_operations mchar_fops = {
-        .owner = THIS_MODULE,
-        .mmap = device_mmap,
-        .write = device_write,
-};
 
 struct allowlist_node {
     struct rb_node node;
@@ -347,10 +339,23 @@ size_t filter_process_allowlist(const __user char *buff, size_t len)
 {
     char *data_main;
     int res;
-    char flag;
+    char flag = 0;
 
     if (smith_get_user(flag, buff))
         return len;
+
+    /* diagnosis cases: enmerate opened instances */
+    if (flag == OPEN_INSTANCES_LIST_ALL) {
+        trace_show_instances();
+        filter_show_instances();
+        return len;
+    } else if (flag == OPEN_INSTANCES_LIST_FILTER) {
+        filter_show_instances();
+        return len;
+    } else if (flag == OPEN_INSTANCES_LIST_TRACE) {
+        trace_show_instances();
+        return len;
+    }
 
     /* check whether length is valid */
     if (len < ALLOWLIST_NODE_MIN || len > ALLOWLIST_NODE_MAX)
@@ -436,28 +441,93 @@ static ssize_t device_write(struct file *filp, const __user char *buff,
     return filter_process_allowlist(buff, len);
 }
 
-static int device_mmap(struct file *filp, struct vm_area_struct *vma)
+struct filter_instance {
+    struct list_head next;
+    char comm[TASK_COMM_LEN];
+    char node[__NEW_UTS_LEN];
+    pid_t owner;
+};
+
+static LIST_HEAD(filter_list);
+static struct mutex filter_lock;
+static int filter_n_instances;
+
+void filter_show_instances(void)
 {
-    struct page *page;
-    unsigned long size = (unsigned long)(vma->vm_end - vma->vm_start);
+    struct filter_instance *iter;
+    int niters = 0;
 
-    if ((vma_pages(vma) + vma->vm_pgoff) > (SHMEM_MAX_SIZE >> PAGE_SHIFT)) {
-        return -EINVAL;
+    mutex_lock(&filter_lock);
+    printk("filter device opened %d times:\n", filter_n_instances);
+    list_for_each_entry(iter, &filter_list, next) {
+        niters++;
+        printk("%6d: %u %16s %s\n", niters, iter->owner, iter->comm, iter->node);
     }
-
-    page = virt_to_page((unsigned long)sh_mem + (vma->vm_pgoff << PAGE_SHIFT));
-
-    return remap_pfn_range(vma, vma->vm_start, page_to_pfn(page), size,
-                           vma->vm_page_prot);
+    if (niters != filter_n_instances)
+        printk("inconsistent values: %d %d\n", niters, filter_n_instances);
+    mutex_unlock(&filter_lock);
 }
+
+/* handling device open */
+static int device_open(struct inode *inode, struct file *filp)
+{
+    struct filter_instance *iter;
+
+    iter = kzalloc(sizeof(*iter), GFP_KERNEL);
+    if (!iter)
+        return -ENOMEM;
+
+    /* tracing current task for this opened instance */
+    iter->owner = current->pid;
+    memcpy(iter->comm, current->comm, TASK_COMM_LEN);
+    memcpy(iter->node, current->nsproxy->uts_ns->name.nodename, __NEW_UTS_LEN),
+
+    mutex_lock(&filter_lock);
+    filter_n_instances++;
+    list_add_tail(&iter->next, &filter_list);
+    mutex_unlock(&filter_lock);
+
+    filp->private_data = iter;
+    nonseekable_open(inode, filp);
+    __module_get(THIS_MODULE);
+
+    return 0;
+}
+
+/* handling deivce close */
+static int device_release(struct inode *inode, struct file *filp)
+{
+    struct filter_instance *iter = filp->private_data;
+
+    if (!iter)
+        return 0;
+
+    /* removing iter from trace_list */
+    mutex_lock(&filter_lock);
+    list_del(&iter->next);
+    filter_n_instances--;
+    mutex_unlock(&filter_lock);
+
+    kfree(iter);
+    module_put(THIS_MODULE);
+
+    return 0;
+}
+
+static const struct file_operations mchar_fops = {
+    .owner = THIS_MODULE,
+    .write = device_write,
+    .open = device_open,
+    .release = device_release
+};
 
 int filter_init(void)
 {
     int ret;
     struct device *dev;
 
+    mutex_init(&filter_lock);
     filter_major = register_chrdev(0, FILTER_DEVICE_NAME, &mchar_fops);
-
     if (filter_major < 0) {
         pr_err("[ELKEID FILTER] REGISTER_CHRDEV_ERROR\n");
         return filter_major;
@@ -476,27 +546,19 @@ int filter_init(void)
 
     dev = device_create(filter_class, NULL, MKDEV(filter_major, 0),
                         NULL, FILTER_DEVICE_NAME);
-
     if (IS_ERR(dev)) {
         pr_err("[ELKEID FILTER] DEVICE_CREATE_ERROR");
         ret = PTR_ERR(dev);
         goto class_destroy;
     }
 
-    sh_mem = smith_kzalloc(SHMEM_MAX_SIZE, GFP_KERNEL);
-    if (sh_mem == NULL) {
-        pr_err("[ELKEID FILTER] SHMEM_INIT_ERROR\n");
-        ret = -ENOMEM;
-        goto device_destroy;
-    }
     return 0;
 
-device_destroy:
-    device_destroy(filter_class, MKDEV(filter_major, 0));
 class_destroy:
     class_destroy(filter_class);
 chrdev_unregister:
     unregister_chrdev(filter_major, FILTER_DEVICE_NAME);
+    mutex_destroy(&filter_lock);
 
     return ret;
 }
@@ -506,7 +568,11 @@ void filter_cleanup(void)
     device_destroy(filter_class, MKDEV(filter_major, 0));
     class_destroy(filter_class);
     unregister_chrdev(filter_major, FILTER_DEVICE_NAME);
+
+    if (filter_n_instances)
+        filter_show_instances();
+    mutex_destroy(&filter_lock);
+
     del_all_execve_exe_allowlist();
     del_all_execve_argv_allowlist();
-    smith_kfree(sh_mem);
 }

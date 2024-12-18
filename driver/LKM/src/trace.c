@@ -9,6 +9,7 @@
 #include <linux/proc_fs.h>
 #include <linux/slab.h>
 #include <linux/version.h>
+#include <linux/utsname.h>
 
 #include "../include/util.h"
 #include "../include/trace.h"
@@ -21,8 +22,12 @@
 	((1 << (sizeof(((struct print_event_entry *)0)->id) * 8)) - 1)
 
 struct print_event_iterator {
+    struct list_head next;
     struct mutex mutex;
     struct tb_ring *ring;
+    char comm[TASK_COMM_LEN];
+    char node[__NEW_UTS_LEN];
+    pid_t owner;
 
     /* The below is zeroed out in pipe_read */
     struct trace_seq seq;
@@ -34,6 +39,9 @@ struct print_event_iterator {
 };
 
 static struct tb_ring *trace_ring;
+static LIST_HEAD(trace_list);
+static struct mutex trace_lock;
+static int trace_n_instances;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0)
 static ssize_t(*trace_seq_to_user_sym) (struct trace_seq * s,
@@ -54,6 +62,22 @@ static int trace_lookup_symbols(void)
     return 0;
 }
 
+void trace_show_instances(void)
+{
+    struct print_event_iterator *iter;
+    int niters = 0;
+
+    mutex_lock(&trace_lock);
+    printk("trace proc_entry opened %d times:\n", trace_n_instances);
+    list_for_each_entry(iter, &trace_list, next) {
+        niters++;
+        printk("%6d: %u %16s %s\n", niters, iter->owner, iter->comm, iter->node);
+    }
+    if (niters != trace_n_instances)
+        printk("inconsistent values: %d %d\n", niters, trace_n_instances);
+    mutex_unlock(&trace_lock);
+}
+
 static int trace_open_pipe(struct inode *inode, struct file *filp)
 {
     struct print_event_iterator *iter;
@@ -72,6 +96,17 @@ static int trace_open_pipe(struct inode *inode, struct file *filp)
 #else
     iter->ring = PDE(inode)->data;
 #endif
+
+    /* tracing current task for this opened instance */
+    iter->owner = current->pid;
+    memcpy(iter->comm, current->comm, TASK_COMM_LEN);
+    memcpy(iter->node, current->nsproxy->uts_ns->name.nodename, __NEW_UTS_LEN),
+
+    mutex_lock(&trace_lock);
+    trace_n_instances++;
+    list_add_tail(&iter->next, &trace_list);
+    mutex_unlock(&trace_lock);
+
     filp->private_data = iter;
     nonseekable_open(inode, filp);
     __module_get(THIS_MODULE);
@@ -344,6 +379,15 @@ static int trace_release_pipe(struct inode *inode, struct file *file)
 {
     struct print_event_iterator *iter = file->private_data;
 
+    if (!iter)
+        return 0;
+
+    /* removing iter from trace_list */
+    mutex_lock(&trace_lock);
+    list_del(&iter->next);
+    trace_n_instances--;
+    mutex_unlock(&trace_lock);
+
     mutex_destroy(&iter->mutex);
     kfree(iter);
     module_put(THIS_MODULE);
@@ -415,6 +459,7 @@ static int __init print_event_init(void)
     trace_ring = tb_alloc(RB_BUFFER_SIZE, TB_FL_OVERWRITE);
     if (!trace_ring)
         return -ENOMEM;
+    mutex_init(&trace_lock);
 
     if (!proc_create_data(PROC_ENDPOINT, S_IRUSR, NULL,
                           &trace_pipe_fops, trace_ring))
@@ -437,6 +482,7 @@ static int __init print_event_init(void)
 
 errorout:
     tb_free(trace_ring);
+    mutex_destroy(&trace_lock);
 
     return -ENOMEM;
 }
@@ -446,6 +492,10 @@ static void print_event_exit(void)
     remove_proc_entry(PROC_ENDPOINT, NULL);
     if (trace_ring)
         tb_free(trace_ring);
+
+    if (trace_n_instances)
+        trace_show_instances();
+    mutex_destroy(&trace_lock);
 
     pr_info("destroy %d print event class\n", num_print_event_class());
 }
