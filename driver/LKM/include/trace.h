@@ -24,6 +24,7 @@
 #define DEL_EXECVE_ARGV_ALLOWLIST 109       /* m */
 #define DEL_ALL_EXECVE_ARGV_ALLOWLIST 110   /* n */
 #define EXECVE_ARGV_CHECK 125               /* k */
+#define OPEN_INSTANCES_LIST_ALL 79          /* O */
 #define IMAGE_MD5_ADD  0x41                 /* A */
 #define IMAGE_MD5_DEL  0x42                 /* B */
 #define IMAGE_MD5_CLR  0x61                 /* a */

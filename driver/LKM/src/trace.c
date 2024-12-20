@@ -10,6 +10,7 @@
 #include <linux/slab.h>
 #include <linux/file.h>
 #include <linux/anon_inodes.h>
+#include <linux/utsname.h>
 
 #include "../include/util.h"
 #include "../include/trace.h"
@@ -100,10 +101,18 @@ static struct sd_event_point g_sd_events[] = {
 
 struct tb_ring *g_trace_ring;
 static DEFINE_MUTEX(g_trace_lock);
+static LIST_HEAD(trace_list);
+static int trace_n_instances;
 
 struct trace_instance {
+    struct list_head next;
     struct tb_ring *ring;
     struct tb_event *event;
+
+    /* opened instance tracking */
+    char comm[TASK_COMM_LEN]; /* comm of owner process */
+    char node[__NEW_UTS_LEN]; /* hostname or container name */
+    pid_t owner; /* pid of the owner process */
 
     unsigned long lost_events;
     int cpu;
@@ -310,6 +319,8 @@ out:
     return rc;
 }
 
+
+
 static int trace_release_pipe(struct inode *inode, struct file *file)
 {
     struct trace_instance *ti = file->private_data;
@@ -321,6 +332,8 @@ static int trace_release_pipe(struct inode *inode, struct file *file)
     tb_wake_up(ti->ring);
 
     mutex_lock(&g_trace_lock);
+    list_del(&ti->next);
+    trace_n_instances--;
     file->private_data = NULL;
     kfree(ti);
     fput(file);
@@ -410,9 +423,37 @@ static int trace_init_pipe(void)
         return -ENOMEM;
     }
 
+    /* tracing current task for this opened instance */
+    ti->owner = current->pid;
+    memcpy(ti->comm, current->comm, TASK_COMM_LEN);
+    memcpy(ti->node, current->nsproxy->uts_ns->name.nodename, __NEW_UTS_LEN),
+
+    mutex_lock(&g_trace_lock);
+    trace_n_instances++;
+    list_add_tail(&ti->next, &trace_list);
+    mutex_unlock(&g_trace_lock);
+
     fd_install(fd, filp);
     __module_get(THIS_MODULE);
     return fd;
+}
+
+static int trace_show_instances(void)
+{
+    struct trace_instance *ti;
+    int niters = 0;
+
+    mutex_lock(&g_trace_lock);
+    printk("trace proc_entry opened %d times:\n", trace_n_instances);
+    list_for_each_entry(ti, &trace_list, next) {
+        niters++;
+        printk("%6d: %u %16s %s\n", niters, ti->owner, ti->comm, ti->node);
+    }
+    if (niters != trace_n_instances)
+        printk("inconsistent values: %d %d\n", niters, trace_n_instances);
+    mutex_unlock(&g_trace_lock);
+
+    return 0;
 }
 
 static int __init print_event_init(void)
@@ -458,6 +499,7 @@ static int trace_get_control(char *val, K_PARAM_CONST struct kernel_param *kp)
      *    - /opt/proxima/plugin/driver/driver
      * 2, rst: the diagnostic program to show kernel events
      *    - .../LKM/test/rst
+     *    - renamed to elkeid-'arch' for v1.9
      */
     char *agents[] = {"driver", "rst", NULL};
     int rc = 0, fd = -1;
@@ -475,10 +517,35 @@ static int trace_get_control(char *val, K_PARAM_CONST struct kernel_param *kp)
     return rc;
 }
 
+/* module prameters set callback */
+static int trace_cmd_handler(const char *buf, int len)
+{
+    int rc = -EINVAL, cmd, i;
+
+    /* remove spaces in prefix or suffix */
+    for (i = 0; i < len; i++) {
+        if (!isspace(buf[i]))
+            break;
+    }
+    if (i >= len)
+        return rc;
+    cmd = buf[i];
+    if (cmd <= 0)
+        return rc;
+
+    buf = buf + i + 1;
+    if (cmd == OPEN_INSTANCES_LIST_ALL)
+        rc = trace_show_instances();
+
+    return rc;
+}
+
+
 static int trace_set_control(const char *val, K_PARAM_CONST struct kernel_param *kp) 
 {
     if (0 == strcmp(kp->name, "control_trace"))
-        return g_flt_ops.store(val, PAGE_SIZE);
+        if (trace_cmd_handler(val, PAGE_SIZE))
+            return g_flt_ops.store(val, PAGE_SIZE);
     return 0;
 }
 
