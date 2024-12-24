@@ -279,6 +279,28 @@ func (g *GRPCPool) checkConfig() {
 			config, err := client.GetConfigFromRemote(agentID, conn.GetAgentDetail())
 			if err != nil {
 				ylog.Errorf("GRPCPool", "postConfig Error %s %s", agentID, err.Error())
+
+				//拉取配置失败，随机断开TCP链接
+				go func() {
+					afterTime := common.RandomDuration(2, 5)
+					timer := time.NewTimer(afterTime)
+					ylog.Infof("GRPCPool", "scheduled to disconnect %s after:%s", agentID, afterTime.String())
+					select {
+					case <-timer.C:
+						ylog.Infof("GRPCPool", "now disconnect %s:", agentID)
+						conn.CancelFuc()
+						ylog.Infof("GRPCPool", "disconnect %s: done", agentID)
+					case <-conn.Ctx.Done():
+						if !timer.Stop() {
+							select {
+							case <-timer.C:
+							default:
+							}
+						}
+						ylog.Infof("GRPCPool", "disconnect %s: done", agentID)
+					}
+				}()
+
 				continue
 			}
 
