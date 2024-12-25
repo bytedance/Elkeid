@@ -106,7 +106,7 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 			if err != nil {
 				ylog.Errorf("handleRawData", "PushTask2Manager error %s", err.Error())
 			}
-		case 1010, 1011:
+		case 1010:
 			//agent or plugin error log
 			item, err := parseRecord(req.GetData()[k])
 			if err != nil {
