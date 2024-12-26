@@ -38,7 +38,7 @@ var (
 			for _, path := range []string{
 				"/usr/local/apache2/conf/httpd.conf", "/etc/apache2/apache2.conf",
 				"/etc/httpd/conf/httpd.conf", "/etc/apache2/httpd.conf"} {
-				if _, err := os.Stat(filepath.Join(rootPath, path)); err == nil {
+				if existsFile(rc.enterContainer, filepath.Join(rootPath, path)) {
 					return path
 				}
 			}
@@ -60,7 +60,7 @@ var (
 			if rc.enterContainer {
 				rootPath = filepath.Join("/proc", rc.proc.Pid(), "root")
 			}
-			if _, err := os.Stat(filepath.Join(rootPath, "/etc/nginx/nginx.conf")); err == nil {
+			if existsFile(rc.enterContainer, filepath.Join(rootPath, "/etc/nginx/nginx.conf")) {
 				return "/etc/nginx/nginx.conf"
 			}
 			return ""
@@ -80,7 +80,7 @@ var (
 				if rc.enterContainer {
 					rootPath = filepath.Join("/proc", rc.proc.Pid(), "root")
 				}
-				if _, err := os.Stat(filepath.Join(rootPath, "/etc/nginx/nginx.conf")); err == nil {
+				if existsFile(rc.enterContainer, filepath.Join(rootPath, "/etc/nginx/nginx.conf")) {
 					return "/etc/nginx/nginx.conf"
 				}
 				return ""
@@ -100,7 +100,7 @@ var (
 					if rc.enterContainer {
 						rootPath = filepath.Join("/proc", rc.proc.Pid(), "root")
 					}
-					if _, err := os.Stat(filepath.Join(rootPath, "/etc/nginx/nginx.conf")); err == nil {
+					if existsFile(rc.enterContainer, filepath.Join(rootPath, "/etc/nginx/nginx.conf")) {
 						return "/etc/nginx/nginx.conf"
 					}
 					return ""
@@ -142,7 +142,7 @@ var (
 			}
 			if cwd, err := rc.proc.Cwd(); err == nil {
 				confPath := filepath.Join(cwd, "/conf/defaults.ini")
-				if _, err := os.Stat(filepath.Join(rootPath, confPath)); err == nil {
+				if existsFile(rc.enterContainer, filepath.Join(rootPath, confPath)) {
 					return confPath
 				}
 			}
@@ -169,7 +169,7 @@ var (
 				rootPath = filepath.Join("/proc", rc.proc.Pid(), "root")
 			}
 			for _, path := range []string{"/etc/my.cnf", "/etc/mysql/my.cnf", "/usr/etc/my.cnf"} {
-				if _, err := os.Stat(filepath.Join(rootPath, path)); err == nil {
+				if existsFile(rc.enterContainer, filepath.Join(rootPath, path)) {
 					return path
 				}
 			}
@@ -193,14 +193,14 @@ var (
 			pgdata := regexp.MustCompile(`-D\s\S+`).Find([]byte(rc.cmdline))
 			if pgdata != nil {
 				path := filepath.Join(strings.TrimPrefix(string(pgdata), "-D "), "postgresql.conf")
-				if _, err := os.Stat(filepath.Join(rootPath, path)); err == nil {
+				if existsFile(rc.enterContainer, filepath.Join(rootPath, path)) {
 					return path
 				}
 			}
 			if envs, err := rc.proc.Envs(); err == nil {
 				if pgdata, ok := envs["PGDATA"]; ok {
 					path := filepath.Join(pgdata, "postgresql.conf")
-					if _, err := os.Stat(filepath.Join(rootPath, path)); err == nil {
+					if existsFile(rc.enterContainer, filepath.Join(rootPath, path)) {
 						return path
 					}
 				}
@@ -243,7 +243,7 @@ var (
 			}
 			if envs, err := rc.proc.Envs(); err == nil {
 				if path, ok := envs["ETCD_CONFIG_FILE"]; ok {
-					if _, err := os.Stat(filepath.Join(rootPath, path)); err == nil {
+					if existsFile(rc.enterContainer, filepath.Join(rootPath, path)) {
 						return path
 					}
 				}
@@ -266,7 +266,7 @@ var (
 			if rc.enterContainer {
 				rootPath = filepath.Join("/proc", rc.proc.Pid(), "root")
 			}
-			if _, err := os.Stat(filepath.Join(rootPath, "/etc/prometheus/prometheus.yml")); err == nil {
+			if existsFile(rc.enterContainer, filepath.Join(rootPath, "/etc/prometheus/prometheus.yml")) {
 				return "/etc/prometheus/prometheus.yml"
 			}
 			return ""
@@ -283,7 +283,7 @@ var (
 			if rc.enterContainer {
 				rootPath = filepath.Join("/proc", rc.proc.Pid(), "root")
 			}
-			if _, err := os.Stat(filepath.Join(rootPath, "/var/opt/mssql/mssql-conf")); err == nil {
+			if existsFile(rc.enterContainer, filepath.Join(rootPath, "/var/opt/mssql/mssql-conf")) {
 				return "/var/opt/mssql/mssql-conf"
 			}
 			return ""
@@ -318,7 +318,7 @@ var (
 			if rc.enterContainer {
 				rootPath = filepath.Join("/proc", rc.proc.Pid(), "root")
 			}
-			if _, err := os.Stat(filepath.Join(rootPath, "/etc/docker/daemon.json")); err == nil {
+			if existsFile(rc.enterContainer, filepath.Join(rootPath, "/etc/docker/daemon.json")) {
 				return "/etc/docker/daemon.json"
 			}
 			return ""
@@ -343,7 +343,7 @@ var (
 			if rc.enterContainer {
 				rootPath = filepath.Join("/proc", rc.proc.Pid(), "root")
 			}
-			if _, err := os.Stat(filepath.Join(rootPath, "/etc/containerd/config.toml")); err == nil {
+			if existsFile(rc.enterContainer, filepath.Join(rootPath, "/etc/containerd/config.toml")) {
 				return "/etc/containerd/config.toml"
 			}
 			return ""
@@ -364,11 +364,19 @@ var (
 			if rc.enterContainer {
 				rootPath = filepath.Join("/proc", rc.proc.Pid(), "root")
 			}
-			if _, err := os.Stat(filepath.Join(rootPath, "/var/lib/kubelet/config")); err == nil {
+			if existsFile(rc.enterContainer, filepath.Join(rootPath, "/var/lib/kubelet/config")) {
 				return "/var/lib/kubelet/config"
 			}
 			return ""
 		},
+	}
+	existsFile = func(enterContainer bool, file string) bool {
+		if enterContainer {
+			_, err := os.Lstat(file)
+			return err == nil
+		}
+		_, err := os.Stat(file)
+		return err == nil
 	}
 	ruleMap = map[string]*AppRule{
 		"apache2":         apacheRule,
