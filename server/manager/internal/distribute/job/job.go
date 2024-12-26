@@ -329,7 +329,7 @@ func (sj *SimpleJob) push2Redis(ctx context.Context, key string, list []interfac
 		if i+gradient < len(list) {
 			err := sj.Rds.LPush(context.Background(), key, list[i:i+gradient]...).Err()
 			if err != nil {
-				ylog.Errorf("SimpleJob", "[job] %s error %s, len of key list %d", sj.Id, err.Error(), key, len(list[i:i+gradient]))
+				ylog.Errorf("SimpleJob", "[job] %s error %s, key %s len of list %d", sj.Id, err.Error(), key, len(list[i:i+gradient]))
 			}
 		} else {
 			if len(list[i:]) == 0 {
