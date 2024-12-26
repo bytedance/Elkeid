@@ -219,7 +219,8 @@ pub fn FullScan(
     let job = thread::spawn(move || {
         // step-1
         // proc scan
-        info!("[FullScan] step-1: /proc/pid/exe");
+        info!("[FullScan] step-1: /proc/pid/exe skiped");
+        /*
         let dir_p = fs::read_dir("/proc").unwrap();
 
         for each in dir_p {
@@ -273,7 +274,7 @@ pub fn FullScan(
                 }
             };
         }
-
+        */
         // step-2
         info!("[FullScan] step-2: fulldisk");
         match fullscan_mode {

@@ -144,6 +144,8 @@ impl Cronjob {
         let mut proc_crobjob_is_first_run = true;
         let mut scaned_cache = LruCache::new(20480);
         let job_proc = thread::spawn(move || loop {
+            std::thread::sleep(Duration::from_secs(30));
+            continue;
             let start_timestamp = Clock::now_since_epoch().as_secs();
             info!("[CronjobProc] Scan started at : {}", start_timestamp);
 
@@ -230,7 +232,6 @@ impl Cronjob {
                 };
             }
             last_scaned_timestamp = Clock::now_since_epoch().as_secs();
-            std::thread::sleep(Duration::from_secs(30));
             proc_crobjob_is_first_run = false;
         });
         return Self { job_dir, job_proc };

@@ -328,6 +328,7 @@ impl Detector {
         clamav::clamav_init().unwrap();
         let recv_worker = thread::spawn(move || {
             let mut _arf_t: Option<HoneyPot> = None;
+            /*
             let s_arf_worker = task_sender.clone();
             let s_arf_lock = recv_worker_s_locker.clone();
 
@@ -342,6 +343,7 @@ impl Detector {
                     None
                 }
             };
+            */
 
             loop {
                 match r_client.receive() {
@@ -365,10 +367,10 @@ impl Detector {
                                         ),
                                     };
                                     if let Err(e) = r_client
-                                            .send_record(&end_flag.to_record_token(&t.get_token()))
-                                        {
-                                            warn!("send err, should exit : {:?}", e);
-                                        };
+                                        .send_record(&end_flag.to_record_token(&t.get_token()))
+                                    {
+                                        warn!("send err, should exit : {:?}", e);
+                                    };
                                     continue;
                                 }
                                 let task_map: HashMap<String, String> =
@@ -380,9 +382,9 @@ impl Detector {
                                                 data: "failed".to_string(),
                                                 error: format!("recv serde_json err {:?}", t.data),
                                             };
-                                            if let Err(e) = r_client
-                                                .send_record(&end_flag.to_record_token(&t.get_token()))
-                                            {
+                                            if let Err(e) = r_client.send_record(
+                                                &end_flag.to_record_token(&t.get_token()),
+                                            ) {
                                                 warn!("send err, should exit : {:?}", e);
                                             };
                                             continue;
@@ -458,7 +460,7 @@ impl Detector {
                                                 break;
                                             }
                                             Some(Err(_err)) => {
-                                                /* 
+                                                /*
                                                 let end_flag = ScanFinished {
                                                     data: "failed".to_string(),
                                                     error: _err.to_string(),
@@ -468,10 +470,10 @@ impl Detector {
                                                 ) {
                                                     warn!("send err, should exit : {:?}", e);
                                                 };
-                                                break; 
+                                                break;
                                                 */
                                                 warn!("walkdir continue with: {:?}", _err);
-                                                continue
+                                                continue;
                                             }
                                             Some(Ok(entry)) => entry,
                                         };
@@ -484,8 +486,8 @@ impl Detector {
                                             if fsize <= 4 || fsize > 1024 * 1024 * 100 {
                                                 continue;
                                             }
-                                        }else{
-                                            continue
+                                        } else {
+                                            continue;
                                         }
 
                                         let task = ScanTaskUserTask::with_path(

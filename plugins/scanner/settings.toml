@@ -5,7 +5,7 @@ flock_path = "/var/run/elkeid_scanners_plugin.pid"
 ### cgroup max mem limit, defult 256Mb
 cgroup_name = "clamav_"
 ### mega byte
-cgroup_mem_limit = 256
+cgroup_mem_limit = 300
 ### %
 cgroup_cpu_limit = 39
 
