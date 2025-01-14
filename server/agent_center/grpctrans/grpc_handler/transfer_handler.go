@@ -108,10 +108,22 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 		if GlobalConfigHandler != nil {
 			GlobalConfigHandler.Delete(agentID)
 		}
-
-		metrics.ReleaseAgentHeartbeatMetrics(accountID, agentID, "agent")
-		for _, v := range connection.GetPluginNameList() {
-			metrics.ReleaseAgentHeartbeatMetrics(accountID, agentID, v)
+		// plugin version
+		pversion := data.Version
+		metrics.ReleaseAgentHeartbeatMetrics(accountID, agentID, "agent", pversion)
+		for _, v := range connection.GetPluginsList() {
+			var name string
+			if t1, ok1 := v["name"]; ok1 {
+				if t2, ok2 := t1.(string); ok2 {
+					name = t2
+				}
+			}
+			if t1, ok1 := v["pversion"]; ok1 {
+				if t2, ok2 := t1.(string); ok2 {
+					pversion = t2
+				}
+			}
+			metrics.ReleaseAgentHeartbeatMetrics(accountID, agentID, name, pversion)
 		}
 
 		if connection.IsNewDriverHeartbeat.CompareAndSwap(true, false) {

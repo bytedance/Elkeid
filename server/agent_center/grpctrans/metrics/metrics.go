@@ -1,26 +1,29 @@
 package metrics
 
 import (
+	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
-	RecvCounter           = initPrometheusGrpcReceiveCounter()
-	SendCounter           = initPrometheusGrpcSendCounter()
-	OutputDataTypeCounter = initPrometheusOutputDataTypeCounter()
-	OutputAgentIDCounter  = initPrometheusOutputAgentIDCounter()
+	RecvCounter          = initPrometheusGrpcReceiveCounter()
+	SendCounter          = initPrometheusGrpcSendCounter()
+	OutputAgentIDCounter = initPrometheusOutputAgentIDCounter()
 )
 
 var AgentGauge = map[string]*prometheus.GaugeVec{
-	"cpu":         initPrometheusAgentCpuGauge(),
-	"rss":         initPrometheusAgentRssGauge(),
-	"du":          initPrometheusAgentDuGauge(),
-	"read_speed":  initPrometheusAgentReadSpeedGauge(),
-	"write_speed": initPrometheusAgentWriteSpeedGauge(),
-	"tx_speed":    initPrometheusAgentTxSpeedGauge(),
-	"rx_speed":    initPrometheusAgentRxSpeedGauge(),
-	"tx_tps":      initPrometheusAgentTxTpsGauge(),
-	"rx_tpx":      initPrometheusAgentRxTpsGauge(),
+	common.MetricsTypePluginCpu:          initPrometheusAgentCpuGauge(),
+	common.MetricsTypePluginRss:          initPrometheusAgentRssGauge(),
+	common.MetricsTypePluginDu:           initPrometheusAgentDuGauge(),
+	common.MetricsTypePluginReadSpeed:    initPrometheusAgentReadSpeedGauge(),
+	common.MetricsTypePluginWriteSpeed:   initPrometheusAgentWriteSpeedGauge(),
+	common.MetricsTypePluginAgentTxSpeed: initPrometheusAgentTxSpeedGauge(),
+	common.MetricsTypePluginAgentRxSpeed: initPrometheusAgentRxSpeedGauge(),
+	common.MetricsTypePluginTxTps:        initPrometheusAgentTxTpsGauge(),
+	common.MetricsTypePluginRxTps:        initPrometheusAgentRxTpsGauge(),
+	common.MetricsTypePluginNfd:          initPrometheusAgentNfdGauge(),
+	common.MetricsTypeAgentDiscardCnt:    initPrometheusAgentDiscardCntGauge(),
+	common.MetricsTypeAgentDiskFreeBytes: initPrometheusAgentDiskFreeBytesGauge(),
 }
 
 func initPrometheusGrpcReceiveCounter() *prometheus.CounterVec {
@@ -43,7 +46,7 @@ func initPrometheusGrpcSendCounter() *prometheus.CounterVec {
 	return vec
 }
 
-func initPrometheusOutputDataTypeCounter() *prometheus.CounterVec {
+func initPrometheusOutputDataTypeCounter() *prometheus.CounterVec { // 取消上报
 	prometheusOpts := prometheus.CounterOpts{
 		Name: "elkeid_ac_output_data_type_count",
 		Help: "Elkeid AC output data count for data_type",
@@ -68,7 +71,7 @@ func initPrometheusAgentCpuGauge() *prometheus.GaugeVec {
 		Name: "elkeid_ac_agent_cpu",
 		Help: "Elkeid AC agent cpu",
 	}
-	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id", "name"})
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id", "name", "pversion"})
 	prometheus.MustRegister(vec)
 	return vec
 }
@@ -118,7 +121,7 @@ func initPrometheusAgentTxSpeedGauge() *prometheus.GaugeVec {
 		Name: "elkeid_ac_agent_tx_speed",
 		Help: "Elkeid AC agent tx speed",
 	}
-	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id", "name"})
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id"})
 	prometheus.MustRegister(vec)
 	return vec
 }
@@ -128,7 +131,7 @@ func initPrometheusAgentRxSpeedGauge() *prometheus.GaugeVec {
 		Name: "elkeid_ac_agent_rx_speed",
 		Help: "Elkeid AC agent rx speed",
 	}
-	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id", "name"})
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id"})
 	prometheus.MustRegister(vec)
 	return vec
 }
@@ -153,9 +156,49 @@ func initPrometheusAgentRxTpsGauge() *prometheus.GaugeVec {
 	return vec
 }
 
-func ReleaseAgentHeartbeatMetrics(accountID, agentID, pluginName string) {
-	for _, v := range AgentGauge {
-		_ = v.Delete(prometheus.Labels{"account_id": accountID, "agent_id": agentID, "name": pluginName})
+func initPrometheusAgentNfdGauge() *prometheus.GaugeVec {
+	prometheusOpts := prometheus.GaugeOpts{
+		Name: "elkeid_ac_agent_nfd",
+		Help: "Elkeid AC agent nfd",
+	}
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id", "name"})
+	prometheus.MustRegister(vec)
+	return vec
+}
+
+func initPrometheusAgentDiscardCntGauge() *prometheus.GaugeVec {
+	prometheusOpts := prometheus.GaugeOpts{
+		Name: "elkeid_ac_agent_discard_cnt",
+		Help: "Elkeid AC agent discard cnt",
+	}
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id"})
+	prometheus.MustRegister(vec)
+	return vec
+}
+
+func initPrometheusAgentDiskFreeBytesGauge() *prometheus.GaugeVec {
+	prometheusOpts := prometheus.GaugeOpts{
+		Name: "elkeid_ac_agent_disk_free_bytes",
+		Help: "Elkeid AC agent disk free bytes",
+	}
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id"})
+	prometheus.MustRegister(vec)
+	return vec
+}
+
+func ReleaseAgentHeartbeatMetrics(accountID, agentID, pluginName string, pversion string) {
+	for k, v := range AgentGauge {
+		switch k {
+		case common.MetricsTypePluginCpu:
+			_ = v.Delete(prometheus.Labels{"account_id": accountID, "agent_id": agentID, "name": pluginName, "pversion": pversion})
+		case common.MetricsTypePluginAgentRxSpeed,
+			common.MetricsTypePluginAgentTxSpeed,
+			common.MetricsTypeAgentDiscardCnt,
+			common.MetricsTypeAgentDiskFreeBytes:
+			_ = v.Delete(prometheus.Labels{"account_id": accountID, "agent_id": agentID})
+		default:
+			_ = v.Delete(prometheus.Labels{"account_id": accountID, "agent_id": agentID, "name": pluginName})
+		}
 	}
 }
 
@@ -164,9 +207,33 @@ func UpdateFromAgentHeartBeat(accountID, agentID, name string, detail map[string
 		return
 	}
 	for k, v := range AgentGauge {
-		if cpu, ok := detail[k]; ok {
-			if fv, ok2 := cpu.(float64); ok2 {
-				v.With(prometheus.Labels{"account_id": accountID, "agent_id": agentID, "name": name}).Set(fv)
+		if t, ok := detail[k]; ok {
+			if fv, ok2 := t.(float64); ok2 {
+				switch k {
+				case common.MetricsTypePluginCpu: // plugin cpu指标补充上报plugin version
+					pversion := ""
+					key := "pversion"
+					if name == "agent" {
+						key = "version"
+					}
+					if t1, ok3 := detail[key]; ok3 {
+						if t2, ok4 := t1.(string); ok4 {
+							pversion = t2
+						}
+					}
+					v.With(prometheus.Labels{"account_id": accountID, "agent_id": agentID, "name": name, "pversion": pversion}).Set(fv)
+				case common.MetricsTypePluginAgentRxSpeed,
+					common.MetricsTypePluginAgentTxSpeed,
+					common.MetricsTypeAgentDiscardCnt,
+					common.MetricsTypeAgentDiskFreeBytes: // 只上报agent指标
+					if name != "agent" {
+						continue
+					} else {
+						v.With(prometheus.Labels{"account_id": accountID, "agent_id": agentID}).Set(fv)
+					}
+				default:
+					v.With(prometheus.Labels{"account_id": accountID, "agent_id": agentID, "name": name}).Set(fv)
+				}
 			}
 		}
 	}
