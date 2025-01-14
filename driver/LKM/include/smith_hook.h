@@ -120,6 +120,7 @@ static inline int smith_query_sid(void)
 {
     return smith_query_tid(current);
 }
+
 uint64_t smith_query_mntns(void);
 int smith_put_tid(struct smith_tid *tid);
 int smith_drop_tid(struct task_struct *task);
@@ -134,7 +135,7 @@ int smith_drop_tid(struct task_struct *task);
 #define SE_ENT_BUFLEN  (SE_ENT_LENGTH - offsetof(struct smith_ent, se_buf))
 
 struct smith_ent {
-    struct tt_node      se_node;    /* rbtree of cached img */
+    struct tt_node      se_node;    /* rbtree of cached path */
     struct list_head    se_link;    /* lru list for reaper */
     uint64_t            se_hash;
     char               *se_path;
@@ -147,5 +148,39 @@ struct smith_ent {
 
 int smith_insert_ent(char *path);
 int smith_remove_ent(char *path);
+
+
+/*
+ * LRU cache list for tcp connections (for MaaS tcp connection auditing)
+ */
+struct smith_conn {
+    struct tt_node      sc_node;    /* rbtree of cached path */
+    struct list_head    sc_link;    /* lru list for reaper */
+    struct smith_tid   *sc_tid;
+    struct sock        *sc_sock;
+    uint32_t            sc_flags:31;
+    uint32_t            sc_flag_ipv6:1;
+    uint32_t            sc_sid;
+    int                 sc_uid;
+    uint32_t            sc_pid;
+    uint32_t            sc_ppid;
+    uint32_t            sc_pgid;
+    char                sc_comm[TASK_COMM_LEN];
+    char                sc_utsname[__NEW_UTS_LEN];
+    uint64_t            sc_mntns;
+    uint32_t            sc_age;     /* timestamp for LRU */
+    uint16_t            sc_sport;
+    uint16_t            sc_dport;
+    union {
+        struct {
+            uint32_t sip4;
+            uint32_t dip4;
+        };
+        struct {
+            struct in6_addr sip6;
+            struct in6_addr dip6;
+        };
+    } sc_ip;
+};
 
 #endif /* SMITH_HOOK_H */

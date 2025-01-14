@@ -313,7 +313,7 @@ struct tt_node {
           uint32_t  flag_usr3:1;
           uint32_t  flag_usr4:1;
           uint32_t  flag_usr5:1;
-          uint32_t  flag_usr6:1;
+          uint32_t  flag_ipv6:1;
         };
     };
 };

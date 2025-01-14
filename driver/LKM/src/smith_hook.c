@@ -48,6 +48,8 @@ static uint64_t ROOT_MNT_NS_ID;
 // Hookpoint switch defintions
 
 SMITH_HOOK(CONNECT, 1);
+SMITH_HOOK(TCPCONN, 1); /* MaaS tcp connection auditing */
+
 SMITH_HOOK(BIND, 1);
 SMITH_HOOK(EXECVE, 1);
 SMITH_HOOK(CREATE_FILE, 1);
@@ -97,6 +99,7 @@ static char security_path_rmdir_kprobe_state = 0x0;
 static char security_path_unlink_kprobe_state = 0x0;
 static char call_usermodehelper_exec_kprobe_state = 0x0;
 static char write_kprobe_state = 0x0;
+static char tcp_connect_kprobe_state = 0x0;
 
 #if (EXIT_PROTECT == 1) && defined(MODULE)
 static void exit_protect_action(void)
@@ -1037,6 +1040,370 @@ out:
         smith_put_tid(tid);
 }
 
+
+/*************************************
+ *    LRU list for tcp connections   *
+ *************************************/
+
+/*
+ * rbtree defs for tcp connect record
+ */
+static struct tt_rb g_rb_conn;  /* rbtree of cached conns */
+static LIST_HEAD(g_lru_conn);   /* lru list of cached conns */
+
+#define SMITH_CONN_REAPER (300)       /* 300 seconds */
+#define SMITH_CONN_MAX    (1UL << 16) /* max conn records */
+
+static struct tt_node *smith_init_conn(struct tt_rb *rb, void *key)
+{
+    struct tt_node *node = key;
+    struct smith_conn *conn, *obj;
+    struct smith_tid *tid;
+
+    tid = smith_lookup_tid(current);
+    if (!tid)
+        return NULL;
+
+    conn = (struct smith_conn *)tt_rb_alloc_node(rb);
+    if (!conn) {
+        smith_put_tid(tid);
+        return NULL;
+    }
+
+    /* initialize file entry */
+    obj = container_of(node, struct smith_conn, sc_node);
+    obj->sc_node.flags |= conn->sc_node.flags;
+    *conn = *obj; /* sc_node.flags should be included */
+    conn->sc_tid = tid;
+    INIT_LIST_HEAD(&conn->sc_link);
+    atomic_set(&conn->sc_node.refs, 0);
+    return &conn->sc_node;
+}
+
+static int smith_cmp_conn(struct tt_rb *rb, struct tt_node *tnod, void *key)
+{
+    struct tt_node *node = key;
+    struct smith_conn *conn1, *conn2;
+
+    conn1 = container_of(tnod, struct smith_conn, sc_node);
+    conn2 = container_of(node, struct smith_conn, sc_node);
+    if (conn2->sc_sock > conn1->sc_sock)
+        return 1;
+    if (conn2->sc_sock < conn1->sc_sock)
+        return -1;
+    return 0;
+}
+
+static void smith_release_conn(struct tt_rb *rb, struct tt_node *tnod)
+{
+    struct smith_conn *conn = container_of(tnod, struct smith_conn, sc_node);
+
+    list_del(&conn->sc_link);
+    if (conn->sc_tid)
+        smith_put_tid(conn->sc_tid);
+    conn->sc_tid = NULL;
+    tt_rb_free_node(rb, tnod);
+}
+
+static int smith_drop_head_conn(void)
+{
+    struct list_head *link;
+    struct smith_conn *conn;
+    unsigned long flags;
+    int reaper = -1;
+
+    read_lock_irqsave(&g_rb_conn.lock, flags);
+    if (!list_empty(&g_lru_conn)) {
+        link = g_lru_conn.next;
+        conn = list_entry(link, struct smith_conn, sc_link);
+        if (smith_get_delta(0) < conn->sc_age)
+            reaper = 0;
+    }
+    read_unlock_irqrestore(&g_rb_conn.lock, flags);
+
+    if (reaper < 0)
+        goto errout;
+
+    write_lock_irqsave(&g_rb_conn.lock, flags);
+    while (!list_empty(&g_lru_conn)) {
+        struct smith_tid *tid;
+        char *exe_path;
+
+        link = g_lru_conn.next;
+        conn = list_entry(link, struct smith_conn, sc_link);
+        if (smith_get_delta(0) < conn->sc_age)
+            break;
+
+        tid = conn->sc_tid;
+        exe_path = tid->st_img->si_path;
+        if (conn->sc_node.flag_ipv6)
+            tcpconn6_print(conn, tid, exe_path, -ETIME);
+        else
+            tcpconn4_print(conn, tid, exe_path, -ETIME);
+
+        /* remove entry from lru list */
+        list_del_init(&conn->sc_link);
+        /* this entry hasn't been touched for seconds */
+        /* so remove the entry from rbtree and drop it */
+        tt_rb_remove_node_nolock(&g_rb_conn, &conn->sc_node);
+        reaper++;
+    }
+    write_unlock_irqrestore(&g_rb_conn.lock, flags);
+
+errout:
+    return reaper;
+}
+
+static struct smith_conn *smith_lookup_conn(struct sock *sk)
+{
+    struct smith_conn *conn;
+    struct tt_node *tnod;
+    struct smith_conn obj;
+    unsigned long flags;
+
+    /* check whether the entry was already inserted ? */
+    memset(&obj, 0, sizeof(obj));
+    obj.sc_sock = sk;
+
+    read_lock_irqsave(&g_rb_conn.lock, flags);
+    tnod = tt_rb_lookup_nolock(&g_rb_conn, &obj);
+    read_unlock_irqrestore(&g_rb_conn.lock, flags);
+    if (tnod)
+        conn = container_of(tnod, struct smith_conn, sc_node);
+    else
+        conn = NULL;
+
+    return conn;
+}
+
+static int smith_insert_conn(struct smith_conn *obj)
+{
+    struct smith_conn *conn;
+    struct tt_node *tnod = NULL;
+    unsigned long flags;
+
+    /* check whether the entry was already inserted ? */
+    read_lock_irqsave(&g_rb_conn.lock, flags);
+    tnod = tt_rb_lookup_nolock(&g_rb_conn, obj);
+    read_unlock_irqrestore(&g_rb_conn.lock, flags);
+    if (tnod)
+        goto out;
+
+    /* insert new node to rbtree */
+    write_lock_irqsave(&g_rb_conn.lock, flags);
+    tnod = tt_rb_insert_key_nolock(&g_rb_conn, &obj->sc_node);
+    if (tnod) {
+        conn = container_of(tnod, struct smith_conn, sc_node);
+        /* remove ent from LRU if it's already LRUed */
+        list_del_init(&conn->sc_link);
+        conn->sc_age = smith_get_delta(SMITH_CONN_REAPER);
+        /* insert ent to the tail of LRU list */
+        list_add_tail(&conn->sc_link, &g_lru_conn);
+    }
+    write_unlock_irqrestore(&g_rb_conn.lock, flags);
+
+    /* drop stale entries */
+    smith_drop_head_conn();
+
+out:
+    return (!!tnod);
+}
+
+static int smith_remove_conn(struct sock *sk)
+{
+    struct smith_conn obj, *conn;
+    struct tt_node *tnod = NULL;
+    unsigned long flags;
+
+    /* init conn obj */
+    memset(&obj, 0, sizeof(obj));
+    obj.sc_sock = sk;
+
+    /* check whether the entry was already inserted ? */
+    read_lock_irqsave(&g_rb_conn.lock, flags);
+    tnod = tt_rb_lookup_nolock(&g_rb_conn, &obj);
+    read_unlock_irqrestore(&g_rb_conn.lock, flags);
+    if (!tnod)
+        goto out;
+
+    write_lock_irqsave(&g_rb_conn.lock, flags);
+    /* do 2nd search to assure it's in lru list */
+    tnod = tt_rb_lookup_nolock(&g_rb_conn, &obj);
+    if (tnod) {
+        conn = container_of(tnod, struct smith_conn, sc_node);
+        list_del_init(&conn->sc_link);
+        tt_rb_remove_node_nolock(&g_rb_conn, tnod);
+    }
+    write_unlock_irqrestore(&g_rb_conn.lock, flags);
+
+out:
+    smith_drop_head_conn();
+    return (!!tnod);
+}
+
+static void smith_show_conn(struct tt_node *tnod)
+{
+    struct smith_conn *conn;
+
+    if (!tnod)
+        return;
+
+    conn = container_of(tnod, struct smith_conn, sc_node);
+    if (conn->sc_node.flag_ipv6) {
+        uint16_t *s = (uint16_t *)(&conn->sc_ip.sip6);
+        uint16_t *d = (uint16_t *)(&conn->sc_ip.dip6);
+        printk("%s (%u) %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d -> "
+                "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d\n",
+                conn->sc_comm, conn->sc_tid->st_tgid,
+                ntohs(s[0]), ntohs(s[1]), ntohs(s[2]), ntohs(s[3]), ntohs(s[4]),
+                ntohs(s[5]), ntohs(s[6]), ntohs(s[7]), conn->sc_sport,
+                ntohs(d[0]), ntohs(d[1]), ntohs(d[2]), ntohs(d[3]), ntohs(d[4]),
+                ntohs(d[5]), ntohs(d[6]), ntohs(d[7]), conn->sc_dport);
+    } else {
+        uint8_t *s = (uint8_t *)(&conn->sc_ip.sip4);
+        uint8_t *d = (uint8_t *)(&conn->sc_ip.dip4);
+        printk("%s (%u) %u.%u.%u.%u:%d -> %u.%u.%u.%u:%d\n",
+                conn->sc_comm, conn->sc_tid->st_tgid,
+                s[0], s[1], s[2], s[3], conn->sc_sport,
+                d[0], d[1], d[2], d[3], conn->sc_dport);
+    }
+}
+
+static void smith_enum_conn(void)
+{
+    unsigned long flags;
+
+    printk("smith_enum_conn: pended connections (%u):\n",
+            atomic_read(&g_rb_conn.count));
+    read_lock_irqsave(&g_rb_conn.lock, flags);
+    tt_rb_enum(&g_rb_conn, smith_show_conn);
+    read_unlock_irqrestore(&g_rb_conn.lock, flags);
+    printk("smith_enum_conn: done\n");
+}
+
+static void smith_enum_conn_lru(void)
+{
+    struct list_head *link;
+    struct smith_conn *conn;
+    unsigned long flags;
+
+    printk("enum all conns in lru (%d):\n", atomic_read(&g_rb_conn.count));
+    read_lock_irqsave(&g_rb_conn.lock, flags);
+    link = g_lru_conn.next;
+    while (link != &g_lru_conn) {
+        conn = list_entry(link, struct smith_conn, sc_link);
+        link = link->next;
+        smith_show_conn(&conn->sc_node);
+    }
+    read_unlock_irqrestore(&g_rb_conn.lock, flags);
+}
+
+static int connect4_lru_cache_insert(struct sock *sk,
+                                     uint16_t dport, uint32_t dip,
+                                     uint16_t sport, uint32_t sip)
+{
+    struct smith_conn conn;
+
+    memset(&conn, 0, sizeof(struct smith_conn));
+    conn.sc_uid = __get_current_uid();
+    conn.sc_sid = __get_sid();
+    conn.sc_pid = current->pid;
+    conn.sc_ppid = current->real_parent->tgid;
+    conn.sc_pgid = __get_pgid();
+    memcpy(conn.sc_comm, current->comm, TASK_COMM_LEN);
+    memcpy(conn.sc_utsname, current->nsproxy->uts_ns->name.nodename, __NEW_UTS_LEN);
+    conn.sc_mntns = smith_query_mntns();
+    conn.sc_sock = sk;
+    conn.sc_sport = sport;
+    conn.sc_dport = dport;
+    conn.sc_ip.sip4 = sip;
+    conn.sc_ip.dip4 = dip;
+    return smith_insert_conn(&conn);
+}
+
+static int connect6_lru_cache_insert(struct sock *sk,
+                                     uint16_t dport, struct in6_addr *dip,
+                                     uint16_t sport, struct in6_addr *sip)
+{
+    struct smith_conn conn;
+
+    memset(&conn, 0, sizeof(struct smith_conn));
+    conn.sc_node.flag_ipv6 = 1;
+    conn.sc_flag_ipv6 = 1;
+    conn.sc_uid = __get_current_uid();
+    conn.sc_sid = __get_sid();
+    conn.sc_pid = current->pid;
+    conn.sc_ppid = current->real_parent->tgid;
+    conn.sc_pgid = __get_pgid();
+    memcpy(conn.sc_comm, current->comm, TASK_COMM_LEN);
+    memcpy(conn.sc_utsname, current->nsproxy->uts_ns->name.nodename, __NEW_UTS_LEN);
+    conn.sc_mntns = smith_query_mntns();
+    conn.sc_sock = sk;
+    conn.sc_sport = sport;
+    conn.sc_dport = dport;
+    conn.sc_ip.sip6 = *sip;
+    conn.sc_ip.dip6 = *dip;
+    return smith_insert_conn(&conn);
+}
+
+/*
+ * tcp connect hooking: tcp_finish_connect
+ *
+ * void tcp_finish_connect(struct sock *sk, struct sk_buff *skb);
+ */
+static int tcp_finish_connect_handler(struct kprobe *p, struct pt_regs *regs)
+{
+    struct smith_tid *tid = NULL;
+    struct smith_conn *conn;
+    char *exe_path = DEFAULT_RET_STR;
+    struct sock *sk;
+
+    sk = (void *)p_regs_get_arg1(regs);
+    if (IS_ERR_OR_NULL(sk))
+        return 0;
+
+    conn = smith_lookup_conn(sk);
+    if (!conn)
+        return 0;
+
+    tid = conn->sc_tid;
+    exe_path = tid->st_img->si_path;
+    if (conn->sc_node.flag_ipv6)
+        tcpconn6_print(conn, tid, exe_path, 0);
+    else
+        tcpconn4_print(conn, tid, exe_path, 0);
+
+    smith_remove_conn(sk);
+    return 0;
+}
+
+static struct kprobe tcp_connect_kprobe = {
+    .symbol_name = "tcp_finish_connect",
+    .pre_handler = tcp_finish_connect_handler,
+};
+
+static int register_tcp_connect_kprobe(void)
+{
+    int ret;
+    ret = register_kprobe(&tcp_connect_kprobe);
+    if (ret == 0)
+        tcp_connect_kprobe_state = 0x1;
+
+    return ret;
+}
+
+static void unregister_tcp_connect_kprobe(void)
+{
+    if (tcp_connect_kprobe_state)
+        unregister_kprobe(&tcp_connect_kprobe);
+}
+
+/* whether socket connection is udp (dgram) ? */
+static int smith_sock_is_udp(struct socket *sock)
+{
+    return (sock && sock->sk && sock->sk->sk_protocol == IPPROTO_UDP);
+}
+
 static void smith_trace_sysret_connect(long sockfd, long saddr, int len, int retval)
 {
     struct socket *sock = NULL;
@@ -1053,10 +1420,14 @@ static void smith_trace_sysret_connect(long sockfd, long saddr, int len, int ret
         /* to avoid overflow access of kernel_getsockname */
         struct __kernel_sockaddr_storage kss;
     } sa;
-    int err, dport, sport;
+    int err = 0, dport, sport;
 
     sock = sockfd_lookup(sockfd, &err);
     if (IS_ERR_OR_NULL(sock))
+        goto out;
+
+    /* we only care tcp connect requests */
+    if (smith_sock_is_udp(sock))
         goto out;
 
     tid = smith_lookup_tid(current);
@@ -1093,7 +1464,11 @@ static void smith_trace_sysret_connect(long sockfd, long saddr, int len, int ret
             dip4 = sa.si4.sin_addr.s_addr;
             dport = ntohs(sa.si4.sin_port);
         }
-        connect4_print(dport, dip4, exe_path, sip4, sport, retval, pid_tree);
+
+        if (TCPCONN_HOOK && retval == -EINPROGRESS)
+            err = connect4_lru_cache_insert(sock->sk, dport, dip4, sip4, sport);
+        if (!err)
+            connect4_print(dport, dip4, exe_path, sip4, sport, retval, pid_tree);
 
 #if IS_ENABLED(CONFIG_IPV6)
     } else if (family == AF_INET6) {
@@ -1119,7 +1494,10 @@ static void smith_trace_sysret_connect(long sockfd, long saddr, int len, int ret
             dport = ntohs(sa.si6.sin6_port);
             dip6 = sa.si6.sin6_addr;
         }
-        connect6_print(dport, &dip6, exe_path, &sip6, sport, retval, pid_tree);
+        if (TCPCONN_HOOK && retval == -EINPROGRESS)
+            err = connect6_lru_cache_insert(sock->sk, dport, &dip6, sport, &sip6);
+        if (!err)
+            connect6_print(dport, &dip6, exe_path, &sip6, sport, retval, pid_tree);
 #endif
     }
 
@@ -1576,13 +1954,6 @@ out:
  * DNS query hooking
  */
 
-
-/* whether socket connection is udp (dgram) ? */
-static int smith_socket_is_udp(struct socket *sock)
-{
-    return (sock && sock->sk && sock->sk->sk_protocol == IPPROTO_UDP);
-}
-
 static void dns_data_transport(char *query, __be32 dip, __be32 sip, int dport,
                                int sport, int opcode, int rcode, int type)
 {
@@ -1841,7 +2212,7 @@ static void smith_trace_sysret_recvdat(long sockfd, unsigned long userp, long le
         goto out;
 
     /* skip tcp connections */
-    if (!smith_socket_is_udp(sock))
+    if (!smith_sock_is_udp(sock))
         goto out;
 
     /* query ip addresses */
@@ -1898,7 +2269,7 @@ static void smith_trace_sysret_recvmsg(long sockfd, unsigned long umsg, long len
         goto out;
 
     /* skip tcp connections */
-    if (!smith_socket_is_udp(sock))
+    if (!smith_sock_is_udp(sock))
         goto out;
 
     /* query ip addresses */
@@ -3589,6 +3960,9 @@ static void unregister_write_kprobe(void)
 
 static void uninstall_kprobe(void)
 {
+    if (tcp_connect_kprobe_state)
+        unregister_tcp_connect_kprobe();
+
     if (UDEV_HOOK == 1) {
         static void (*smith_usb_unregister_notify) (struct notifier_block * nb);
         smith_usb_unregister_notify = (void *)__symbol_get("usb_unregister_notify");
@@ -3754,6 +4128,14 @@ static void install_kprobe(void)
         ret = register_update_cred_kprobe();
         if (ret < 0)
             printk(KERN_INFO "[ELKEID] update_cred register_kprobe failed, returned %d\n", ret);
+    }
+
+    if (CONNECT_HOOK && TCPCONN_HOOK) {
+        /* finialize g_rb_conn and release all resources */
+        if (register_tcp_connect_kprobe()) {
+            tt_rb_fini(&g_rb_conn);
+            TCPCONN_HOOK = 0;
+        }
     }
 }
 
@@ -4056,12 +4438,12 @@ static void smith_enum_img_lru(void)
 
 #if SMITH_FILE_CREATION_TRACK
 
-/*
- * cache for newly created file entries
- */
+/*****************************************
+ *  cache for newly created file entries *
+ *****************************************/
 
 /*
- * rbtree defs for exectuable images
+ * rbtree defs for newly created entries
  */
 static struct tt_rb g_rb_ent;  /* rbtree of cached ents */
 static LIST_HEAD(g_lru_ent);   /* lru list of cached ents */
@@ -5691,6 +6073,15 @@ static int __init smith_tid_init(void)
     if (rc)
         goto fini_rb_ent;
 #endif
+    if (CONNECT_HOOK && TCPCONN_HOOK) {
+        rc = tt_rb_init(&g_rb_conn, 0, SMITH_CONN_MAX,
+                    sizeof(struct smith_conn),
+                    GFP_ATOMIC, 0,
+                    smith_init_conn, smith_cmp_conn,
+                    smith_release_conn);
+        if (rc)
+            goto fini_rb_conn;
+    }
 
     /* register callbacks for the tracepoints of our interest */
     for (i = 0; i < NUM_TRACE_POINTS; i++) {
@@ -5720,6 +6111,10 @@ clean_trace:
     while (--i >= 0)
         smith_unregister_tracepoint(&g_smith_tracepoints[i]);
 
+if (CONNECT_HOOK && TCPCONN_HOOK)
+    tt_rb_fini(&g_rb_conn);
+fini_rb_conn:
+
 #if SMITH_FILE_CREATION_TRACK
     tt_rb_fini(&g_rb_ent);
 fini_rb_ent:
@@ -5742,6 +6137,10 @@ static void smith_tid_fini(void)
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0))
     unregister_kprobe(&set_task_comm_kprobe);
 #endif
+
+    /* release conn before tid since conn could refer tid */
+    if (tcp_connect_kprobe_state)
+        tt_rb_fini(&g_rb_conn);
 
     hlist_fini(&g_hlist_tid);
     tt_rb_fini(&g_rb_img);
@@ -6514,6 +6913,7 @@ static struct smith_obj_stat {
 #else
     {"ents", &g_atomic_zero, &g_nobjs_zero},
 #endif
+    {"conns", &g_rb_conn.count, &g_rb_conn.pool.nr_objs},
     {NULL, },
 };
 
@@ -6545,15 +6945,23 @@ static int drvstats_set_params(const char *val, K_PARAM_CONST struct kernel_para
     if (0 == strcmp(kp->name, "mem_stats")) {
         int i, l = strnlen(val, 4095);
         for (i = 0; i < l; i++) {
-            if (val[i] == 'I' || val[i] == 'i') {
+            if (val[i] == 'I') {
+                smith_enum_img_lru();
+            } else if (val[i] == 'i') {
                 smith_enum_img();
             } else if (val[i] == 'L' || val[i] == 'l') {
                 smith_enum_img_lru();
             } else if (val[i] == 'E' || val[i] == 'e') {
                 smith_enum_img_lru();
                 smith_enum_img();
+                smith_enum_conn_lru();
+                smith_enum_conn();
             } else if (val[i] == 'T' || val[i] == 't') {
                 smith_enum_tid();
+            } else if (val[i] == 'C') {
+                smith_enum_conn_lru();
+            } else if (val[i] == 'c') {
+                smith_enum_conn();
             } else if (val[i] != ' ' && val[i] != 0x0a) {
                 return -EINVAL;
             }

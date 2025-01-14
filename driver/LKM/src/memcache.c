@@ -110,6 +110,7 @@ static void memcache_fini_percpu_slots(struct memcache_head *pool)
 		vfree(pool->cpu_slots[i]);
 	}
 	kfree(pool->cpu_slots);
+	pool->cpu_slots = NULL;
 }
 
 /* initialize object pool and pre-allocate objects */

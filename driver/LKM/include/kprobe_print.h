@@ -815,6 +815,70 @@ SD_XFER_DEFINE( NAME(file_creation),
                 )
 )
 
+SD_XFER_DEFINE( NAME(tcpconn4),
+
+                PROT(ELEMENT(struct smith_conn *, conn),
+                     ELEMENT(struct smith_tid *, tid),
+                     ELEMENT(char *, exe_path),
+                     ELEMENT(int, retval)
+                 ),
+
+                XFER(ENTRY_XID(42),
+                     ENTRY_U32(uid, conn->sc_uid),
+                     ENTRY_STR(exe_path, exe_path),
+                     ENTRY_U32(pid, conn->sc_pid),
+                     ENTRY_U32(ppid, conn->sc_ppid),
+                     ENTRY_U32(pgid, conn->sc_pgid),
+                     ENTRY_U32(tgid, tid->st_tgid),
+                     ENTRY_U32(sid, conn->sc_sid),
+                     ENTRY_U32(epoch, tid->st_sid),
+                     ENTRY_STL(comm, conn->sc_comm, TASK_COMM_LEN),
+                     ENTRY_STL(nodename, conn->sc_utsname, __NEW_UTS_LEN),
+                     ENTRY_U64(mntns_id, conn->sc_mntns),
+                     ENTRY_U64(root_mntns_id, ROOT_MNT_NS_ID),
+                     ENTRY_U16(sa_family, 2),
+                     ENTRY_IP4(dip, conn->sc_ip.dip4),
+                     ENTRY_U16(dport, conn->sc_dport),
+                     ENTRY_IP4(sip, conn->sc_ip.sip4),
+                     ENTRY_U16(sport, conn->sc_sport),
+                     ENTRY_INT(retval, retval),
+                     ENTRY_STR(pid_tree, tid->st_pid_tree)
+                )
+)
+
+#if IS_ENABLED(CONFIG_IPV6)
+SD_XFER_DEFINE( NAME(tcpconn6),
+
+                PROT(ELEMENT(struct smith_conn *, conn),
+                     ELEMENT(struct smith_tid *, tid),
+                     ELEMENT(char *, exe_path),
+                     ELEMENT(int, retval)
+                 ),
+
+                XFER(ENTRY_XID(42),
+                     ENTRY_U32(uid, conn->sc_uid),
+                     ENTRY_STR(exe_path, exe_path),
+                     ENTRY_U32(pid, conn->sc_pid),
+                     ENTRY_U32(ppid, conn->sc_ppid),
+                     ENTRY_U32(pgid, conn->sc_pgid),
+                     ENTRY_U32(tgid, tid->st_tgid),
+                     ENTRY_U32(sid, conn->sc_sid),
+                     ENTRY_U32(epoch, tid->st_sid),
+                     ENTRY_STL(comm, conn->sc_comm, TASK_COMM_LEN),
+                     ENTRY_STL(nodename, conn->sc_utsname, __NEW_UTS_LEN),
+                     ENTRY_U64(mntns_id, conn->sc_mntns),
+                     ENTRY_U64(root_mntns_id, ROOT_MNT_NS_ID),
+                     ENTRY_U16(sa_family, 10),
+                     ENTRY_IP6(dip, &conn->sc_ip.dip6),
+                     ENTRY_U16(dport, conn->sc_dport),
+                     ENTRY_IP6(sip, &conn->sc_ip.sip6),
+                     ENTRY_U16(sport, conn->sc_sport),
+                     ENTRY_INT(retval, retval),
+                     ENTRY_STR(pid_tree, tid->st_pid_tree)
+                )
+)
+#endif
+
 SD_XFER_DEFINE( NAME(exe_warn_dns),
 
                 PROT(ELEMENT(char *, exe_path),
