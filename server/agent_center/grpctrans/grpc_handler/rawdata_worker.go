@@ -53,12 +53,11 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 			mqMsg.Enhanced = "false"
 		}
 
-		metrics.OutputDataTypeCounter.With(prometheus.Labels{"account_id": conn.AccountID, "data_type": fmt.Sprint(mqMsg.DataType)}).Add(float64(1))
 		metrics.OutputAgentIDCounter.With(prometheus.Labels{"account_id": conn.AccountID, "agent_id": mqMsg.AgentID}).Add(float64(1))
 
 		switch mqMsg.DataType {
 		case 900:
-			driverLabels, ok := metrics.UpdateFromDriverHeartbeat(req.GetAgentID(), req.GetVersion(), req.GetData()[k])
+			driverLabels, ok := metrics.UpdateFromDriverHeartbeat(mqMsg.AccountID, req.GetAgentID(), req.GetVersion(), req.GetData()[k])
 			if ok {
 				if conn.IsNewDriverHeartbeat.CompareAndSwap(false, true) {
 					conn.NewDriverHeartbeatLabels = driverLabels
