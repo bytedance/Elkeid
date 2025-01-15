@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	ConfigUrl             = `http://%s/api/v6/component/GetComponentInstances`
+	ConfigUrl             = `http://%s/api/v6/component/DescribeHostPolicy`
 	TagsUrl               = `http://%s/api/v1/agent/queryInfo`
 	CheckCommonConfigUrl  = `http://%s/api/v6/investigate/auto_defense/CheckAgentConfig`
 	VerifyCommonConfigUrl = `http://%s/api/v6/investigate/auto_defense/VerifyAgentConfigRelease`

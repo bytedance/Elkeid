@@ -60,6 +60,8 @@ type Connection struct {
 	SourceAddr   string   `json:"addr"`
 	CreateAt     int64    `json:"create_at"`
 
+	configs atomic.Value // 原子值，存储Agent下发的心跳配置
+
 	agentDetailLock  sync.RWMutex
 	agentDetail      map[string]interface{}
 	pluginDetailLock sync.RWMutex
@@ -175,6 +177,18 @@ func (c *Connection) SetPluginDetail(name string, detail map[string]interface{})
 	c.pluginDetail[name] = detail
 }
 
+func (c *Connection) SetConfigs(configs []*pb.ConfigItem) {
+	c.configs.Store(configs)
+}
+
+func (c *Connection) GetConfigs() []*pb.ConfigItem {
+	value := c.configs.Load()
+	if value == nil {
+		return nil
+	}
+	return value.([]*pb.ConfigItem)
+}
+
 func (c *Connection) GetPluginsList() []map[string]interface{} {
 	c.pluginDetailLock.Lock()
 	defer c.pluginDetailLock.Unlock()
@@ -275,6 +289,9 @@ func (g *GRPCPool) checkConfig() {
 			err = g.PostCommand(agentID, cmd)
 			if err != nil {
 				ylog.Errorf("GRPCPool", "postConfig Error %s %s", agentID, err)
+			} else {
+				//记录config
+				conn.SetConfigs(config)
 			}
 		}
 	}
