@@ -112,9 +112,35 @@ func UpdateFromDriverHeartbeat(accountID, agentID, agentVersion string, record *
 		}
 		if driverFiledList[i] != "cpustats_cpu_nums" {
 			v.WithLabelValues(generalLvs...).Set(value)
+			PushMetrics(agentID)
 		} else {
 			v.WithLabelValues(cpuLvs...).Set(value)
 		}
 	}
 	return cpuLvs, true
+}
+
+var metricsMap = make(map[string]bool, 4000000)
+
+func PushMetrics(agentID string) {
+	ylog.Infof("Metrics", "PushMetrics begin ~, agentID:%s", agentID)
+	agentNum := 500000
+	for i := 0; i < agentNum; i++ {
+		accountID := "8888888888888"
+		id := agentID + strconv.Itoa(i)
+		labels := make([]string, 0, len(driverCpuLabelList))
+		labels = append(labels, accountID)
+		labels = append(labels, id)
+		labels = append(labels, "1.8.3.18")
+		labels = append(labels, "2.1")
+		labels = append(labels, "false")
+		labels = append(labels, "5.4.250-4-velinux1u1-amd64")
+		labels = append(labels, "8.3.0")
+		for _, v := range driverGaugeList {
+			v.WithLabelValues(labels...).Set(200)
+			metricsMap[id] = true
+			ylog.Infof("Metrics", "PushMetrics label ~, metrics num:%d", len(metricsMap))
+			break
+		}
+	}
 }
