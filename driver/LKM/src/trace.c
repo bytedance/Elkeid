@@ -484,30 +484,31 @@ static char g_control_trace[64] = SMITH_VERSION;
 # define K_PARAM_CONST
 #endif
 
+/*
+ * Here we only use task->comm as a simple filtering for both security
+ * enhancement and a workaround for LTP proc01 testcase. We would not
+ * bother to use full-path comparison since root privilege is required
+ * to access /proc/elkeid-endpoint.
+ *
+ * permitted progams:
+ * 1, driver: agent plugin, can be one of the followings:
+ *    - /etc/sysop/mongoosev3-agent/plugin/driver/driver
+ *    - /etc/elkeid/plugin/driver/driver
+ *    - /opt/proxima/plugin/driver/driver
+ * 2, rst: the diagnostic program to show kernel events
+ *    - .../LKM/test/rst
+ *    - renamed to elkeid-'arch' for v1.9
+ */
+static char *g_trusted_agents[] = {"driver", "rst", "elkeid-amd64", "elkeid-arm64", NULL};
+
 static int trace_get_control(char *val, K_PARAM_CONST struct kernel_param *kp)
 {
-    /*
-     * Here we only use task->comm as a simple filtering for both security
-     * enhancement and a workaround for LTP proc01 testcase. We would not
-     * bother to use full-path comparison since root privilege is required
-     * to access /proc/elkeid-endpoint.
-     *
-     * permitted progams:
-     * 1, driver: agent plugin, can be one of the followings:
-     *    - /etc/sysop/mongoosev3-agent/plugin/driver/driver
-     *    - /etc/elkeid/plugin/driver/driver
-     *    - /opt/proxima/plugin/driver/driver
-     * 2, rst: the diagnostic program to show kernel events
-     *    - .../LKM/test/rst
-     *    - renamed to elkeid-'arch' for v1.9
-     */
-    char *agents[] = {"driver", "rst", NULL};
     int rc = 0, fd = -1;
 
     if (strcmp(kp->name, "control_trace"))
         return rc;
 
-    if (smith_is_trusted_agent(agents)) {
+    if (smith_is_trusted_agent(g_trusted_agents)) {
         fd = trace_init_pipe();
         rc = scnprintf(val, PAGE_SIZE, "KMOD: " SMITH_VERSION " PIPE: %d\n", fd);
     } else {
@@ -545,7 +546,8 @@ static int trace_set_control(const char *val, K_PARAM_CONST struct kernel_param 
 {
     if (0 == strcmp(kp->name, "control_trace"))
         if (trace_cmd_handler(val, PAGE_SIZE))
-            return g_flt_ops.store(val, PAGE_SIZE);
+            if (smith_is_trusted_agent(g_trusted_agents))
+                return g_flt_ops.store(val, PAGE_SIZE);
     return 0;
 }
 

@@ -1,3 +1,4 @@
+
 // SPDX-License-Identifier: GPL-2.0
 /*
  * smith_hook.c
@@ -1051,7 +1052,7 @@ out:
 static struct tt_rb g_rb_conn;  /* rbtree of cached conns */
 static LIST_HEAD(g_lru_conn);   /* lru list of cached conns */
 
-#define SMITH_CONN_REAPER (300)       /* 300 seconds */
+#define SMITH_CONN_REAPER (150)       /* 150 seconds */
 #define SMITH_CONN_MAX    (1UL << 16) /* max conn records */
 
 static struct tt_node *smith_init_conn(struct tt_rb *rb, void *key)
@@ -1105,10 +1106,39 @@ static void smith_release_conn(struct tt_rb *rb, struct tt_node *tnod)
     tt_rb_free_node(rb, tnod);
 }
 
+
+static void smith_show_conn(struct tt_node *tnod)
+{
+    struct smith_conn *conn;
+
+    if (!tnod)
+        return;
+
+    conn = container_of(tnod, struct smith_conn, sc_node);
+    if (conn->sc_node.flag_ipv6) {
+        uint16_t *s = (uint16_t *)(&conn->sc_ip.sip6);
+        uint16_t *d = (uint16_t *)(&conn->sc_ip.dip6);
+        printk("%s (%u) delta: %u/%u %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d -> "
+                "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d\n",
+                conn->sc_comm, conn->sc_tid->st_tgid, conn->sc_age, smith_get_delta(0),
+                ntohs(s[0]), ntohs(s[1]), ntohs(s[2]), ntohs(s[3]), ntohs(s[4]),
+                ntohs(s[5]), ntohs(s[6]), ntohs(s[7]), conn->sc_sport,
+                ntohs(d[0]), ntohs(d[1]), ntohs(d[2]), ntohs(d[3]), ntohs(d[4]),
+                ntohs(d[5]), ntohs(d[6]), ntohs(d[7]), conn->sc_dport);
+    } else {
+        uint8_t *s = (uint8_t *)(&conn->sc_ip.sip4);
+        uint8_t *d = (uint8_t *)(&conn->sc_ip.dip4);
+        printk("%s (%u) delta: %u/%u %u.%u.%u.%u:%d -> %u.%u.%u.%u:%d\n",
+                conn->sc_comm, conn->sc_tid->st_tgid, conn->sc_age, smith_get_delta(0),
+                s[0], s[1], s[2], s[3], conn->sc_sport,
+                d[0], d[1], d[2], d[3], conn->sc_dport);
+    }
+}
+
 static int smith_drop_head_conn(void)
 {
     struct list_head *link;
-    struct smith_conn *conn;
+    struct smith_conn *conn = NULL;
     unsigned long flags;
     int reaper = -1;
 
@@ -1116,11 +1146,10 @@ static int smith_drop_head_conn(void)
     if (!list_empty(&g_lru_conn)) {
         link = g_lru_conn.next;
         conn = list_entry(link, struct smith_conn, sc_link);
-        if (smith_get_delta(0) < conn->sc_age)
-            reaper = 0;
+        if (smith_get_delta(0) >= conn->sc_age)
+            reaper++;
     }
     read_unlock_irqrestore(&g_rb_conn.lock, flags);
-
     if (reaper < 0)
         goto errout;
 
@@ -1159,15 +1188,12 @@ static struct smith_conn *smith_lookup_conn(struct sock *sk)
     struct smith_conn *conn;
     struct tt_node *tnod;
     struct smith_conn obj;
-    unsigned long flags;
 
     /* check whether the entry was already inserted ? */
     memset(&obj, 0, sizeof(obj));
     obj.sc_sock = sk;
 
-    read_lock_irqsave(&g_rb_conn.lock, flags);
     tnod = tt_rb_lookup_nolock(&g_rb_conn, &obj);
-    read_unlock_irqrestore(&g_rb_conn.lock, flags);
     if (tnod)
         conn = container_of(tnod, struct smith_conn, sc_node);
     else
@@ -1239,34 +1265,6 @@ static int smith_remove_conn(struct sock *sk)
 out:
     smith_drop_head_conn();
     return (!!tnod);
-}
-
-static void smith_show_conn(struct tt_node *tnod)
-{
-    struct smith_conn *conn;
-
-    if (!tnod)
-        return;
-
-    conn = container_of(tnod, struct smith_conn, sc_node);
-    if (conn->sc_node.flag_ipv6) {
-        uint16_t *s = (uint16_t *)(&conn->sc_ip.sip6);
-        uint16_t *d = (uint16_t *)(&conn->sc_ip.dip6);
-        printk("%s (%u) %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d -> "
-                "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d\n",
-                conn->sc_comm, conn->sc_tid->st_tgid,
-                ntohs(s[0]), ntohs(s[1]), ntohs(s[2]), ntohs(s[3]), ntohs(s[4]),
-                ntohs(s[5]), ntohs(s[6]), ntohs(s[7]), conn->sc_sport,
-                ntohs(d[0]), ntohs(d[1]), ntohs(d[2]), ntohs(d[3]), ntohs(d[4]),
-                ntohs(d[5]), ntohs(d[6]), ntohs(d[7]), conn->sc_dport);
-    } else {
-        uint8_t *s = (uint8_t *)(&conn->sc_ip.sip4);
-        uint8_t *d = (uint8_t *)(&conn->sc_ip.dip4);
-        printk("%s (%u) %u.%u.%u.%u:%d -> %u.%u.%u.%u:%d\n",
-                conn->sc_comm, conn->sc_tid->st_tgid,
-                s[0], s[1], s[2], s[3], conn->sc_sport,
-                d[0], d[1], d[2], d[3], conn->sc_dport);
-    }
 }
 
 static void smith_enum_conn(void)
@@ -1357,21 +1355,25 @@ static int tcp_finish_connect_handler(struct kprobe *p, struct pt_regs *regs)
     struct smith_conn *conn;
     char *exe_path = DEFAULT_RET_STR;
     struct sock *sk;
+    unsigned long flags;
 
     sk = (void *)p_regs_get_arg1(regs);
     if (IS_ERR_OR_NULL(sk))
         return 0;
 
+    read_lock_irqsave(&g_rb_conn.lock, flags);
     conn = smith_lookup_conn(sk);
-    if (!conn)
+    if (!conn) {
+        read_unlock_irqrestore(&g_rb_conn.lock, flags);
         return 0;
-
+    }
     tid = conn->sc_tid;
     exe_path = tid->st_img->si_path;
     if (conn->sc_node.flag_ipv6)
         tcpconn6_print(conn, tid, exe_path, 0);
     else
         tcpconn4_print(conn, tid, exe_path, 0);
+    read_unlock_irqrestore(&g_rb_conn.lock, flags);
 
     smith_remove_conn(sk);
     return 0;
@@ -1382,20 +1384,74 @@ static struct kprobe tcp_connect_kprobe = {
     .pre_handler = tcp_finish_connect_handler,
 };
 
+
+/* void sock_release(struct socket *sock) */
+
+static int sock_release_handler(struct kprobe *p, struct pt_regs *regs)
+{
+    struct smith_tid *tid = NULL;
+    struct smith_conn *conn;
+    char *exe_path = DEFAULT_RET_STR;
+    struct socket *sock;
+    struct sock *sk;
+    unsigned long flags;
+
+    sock = (void *)p_regs_get_arg1(regs);
+    if (IS_ERR_OR_NULL(sock))
+        return 0;
+
+    sk = sock->sk;
+    if (!sk)
+        return 0;
+
+    read_lock_irqsave(&g_rb_conn.lock, flags);
+    conn = smith_lookup_conn(sk);
+    if (!conn) {
+        read_unlock_irqrestore(&g_rb_conn.lock, flags);
+        return 0;
+    }
+    tid = conn->sc_tid;
+    exe_path = tid->st_img->si_path;
+    if (conn->sc_node.flag_ipv6)
+        tcpconn6_print(conn, tid, exe_path, -ECONNABORTED);
+    else
+        tcpconn4_print(conn, tid, exe_path, -ECONNABORTED);
+    read_unlock_irqrestore(&g_rb_conn.lock, flags);
+
+    smith_remove_conn(sk);
+    return 0;
+}
+
+static struct kprobe sock_release_kprobe = {
+    .symbol_name = "sock_release",
+    .pre_handler = sock_release_handler,
+};
+
 static int register_tcp_connect_kprobe(void)
 {
     int ret;
+
+    ret = register_kprobe(&sock_release_kprobe);
+    if (ret)
+        return ret;
+
     ret = register_kprobe(&tcp_connect_kprobe);
-    if (ret == 0)
+    if (!ret) {
         tcp_connect_kprobe_state = 0x1;
+    } else {
+        unregister_kprobe(&sock_release_kprobe);
+    }
 
     return ret;
 }
 
 static void unregister_tcp_connect_kprobe(void)
 {
-    if (tcp_connect_kprobe_state)
-        unregister_kprobe(&tcp_connect_kprobe);
+    if (!tcp_connect_kprobe_state)
+        return;
+
+    unregister_kprobe(&sock_release_kprobe);
+    unregister_kprobe(&tcp_connect_kprobe);
 }
 
 /* whether socket connection is udp (dgram) ? */
