@@ -118,7 +118,13 @@ func (c *Connection) SetAgentDetail(detail map[string]interface{}) {
 			onlineTime := time.Now().Add(-120 * time.Second).Unix()
 			for k := range c.pluginDetail {
 				if c.pluginDetail[k]["last_heartbeat_time"].(int64) < onlineTime {
-					metrics.ReleaseAgentHeartbeatMetrics(c.AccountID, c.AgentID, k)
+					var pversion string
+					if t1, ok1 := c.pluginDetail[k]["pversion"]; ok1 {
+						if t2, ok2 := t1.(string); ok2 {
+							pversion = t2
+						}
+					}
+					metrics.ReleaseAgentHeartbeatMetrics(c.AccountID, c.AgentID, k, pversion)
 					c.pluginDetail[k]["online"] = false
 					c.updateConnStat()
 					break

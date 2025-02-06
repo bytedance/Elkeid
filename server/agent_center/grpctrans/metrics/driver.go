@@ -1,46 +1,41 @@
 package metrics
 
 import (
-	"strconv"
-
+	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
+	"strconv"
 )
 
-var driverFiledList = []string{"cpustats_cpu_nums",
-	"cpustats_dput_cpu",
-	"memstats_dput_t",
+var driverFiledList = []string{
+	"cpustats_cpu_nums",
 	"memstats_dput_u",
-	"memstats_ents_t",
 	"memstats_ents_u",
-	"memstats_imgs_t",
 	"memstats_imgs_u",
-	"memstats_tids_t",
 	"memstats_tids_u",
 	"slab_files_cache_active_objs",
-	"slab_files_cache_num_objs",
 	"slab_kmalloc_128_active_objs",
-	"slab_kmalloc_128_num_objs",
 	"slab_kmalloc_192_active_objs",
-	"slab_kmalloc_192_num_objs",
 	"slab_kmalloc_1k_active_objs",
-	"slab_kmalloc_1k_num_objs",
 	"slab_kmalloc_256_active_objs",
-	"slab_kmalloc_256_num_objs",
 	"slab_kmalloc_512_active_objs",
-	"slab_kmalloc_512_num_objs",
 }
 
-var driverLabelList = []string{
+var driverCpuLabelList = []string{
+	"account_id",
 	"agent_id",
 	"agent_version",
 	"slabinfo_version",
 	"kmod_sig_enable",
 	"kernel_version",
 	"proc_gcc_version",
-	"cpustats_dput_pid",
+}
+
+var driverGeneralLabelList = []string{
+	"account_id",
+	"agent_id",
 }
 
 func initDriverGauge() []*prometheus.GaugeVec {
@@ -50,7 +45,12 @@ func initDriverGauge() []*prometheus.GaugeVec {
 			Name: "elkeid_ac_driver_" + v,
 			Help: "Elkeid AC Driver filed for " + v,
 		}
-		vec := prometheus.NewGaugeVec(prometheusOpts, driverLabelList)
+		var vec *prometheus.GaugeVec
+		if v != "cpustats_cpu_nums" {
+			vec = prometheus.NewGaugeVec(prometheusOpts, driverGeneralLabelList)
+		} else {
+			vec = prometheus.NewGaugeVec(prometheusOpts, driverCpuLabelList)
+		}
 		prometheus.MustRegister(vec)
 		ret = append(ret, vec)
 	}
@@ -65,41 +65,56 @@ func ReleaseDriverHeartbeat(labels []string) {
 	}
 }
 
-func UpdateFromDriverHeartbeat(agentID, agentVersion string, record *pb.Record) ([]string, bool) {
+func UpdateFromDriverHeartbeat(accountID, agentID, agentVersion string, record *pb.Record) ([]string, bool) {
 	item := new(pb.Item)
 	err := proto.Unmarshal(record.Body, item)
 	if err != nil {
 		ylog.Errorf("parseRecord", "driver heartbeat parseRecord Error %s", err.Error())
 		return nil, false
 	}
-
 	fields := item.GetFields()
 	// old data_type=900 msg
 	if _, ok := fields["slabinfo_version"]; !ok {
 		return nil, false
 	}
+	generalLvs := make([]string, 0)
+	generalLvs = append(generalLvs, accountID)
+	generalLvs = append(generalLvs, agentID)
 
-	labels := make([]string, 0, len(driverLabelList))
-	labels = append(labels, agentID)
-	labels = append(labels, agentVersion)
-	for _, v := range driverLabelList[2:] {
-		labels = append(labels, fields[v])
+	cpuLvs := make([]string, 0)
+	cpuLvs = append(cpuLvs, accountID)
+	cpuLvs = append(cpuLvs, agentID)
+	cpuLvs = append(cpuLvs, agentVersion)
+	for _, v := range driverCpuLabelList[3:] {
+		cpuLvs = append(cpuLvs, fields[v])
 	}
 
 	for i, v := range driverGaugeList {
 		valueStr := fields[driverFiledList[i]]
 		if valueStr == "" {
-			ylog.Warnf("parseRecord", "driver heartbeat %s is null",
-				driverFiledList[i])
+			ylog.Warnf("parseRecord", "driver heartbeat %s is null", driverFiledList[i])
 			continue
 		}
 		value, err := strconv.ParseFloat(valueStr, 64)
 		if err != nil {
-			ylog.Errorf("parseRecord", "driver heartbeat parse %s Error %s",
-				driverFiledList[i], err.Error())
+			ylog.Errorf("parseRecord", "driver heartbeat parse %s Error %s", driverFiledList[i], err.Error())
 			continue
 		}
-		v.WithLabelValues(labels...).Set(value)
+		// memstats_ents_u: kernel_version >= 4.19 不上报
+		var kernelVersion string
+		if t, ok := fields["kernel_version"]; ok {
+			if len(t) > 4 {
+				kernelVersion = t[:4]
+			}
+		}
+		if driverFiledList[i] == "memstats_ents_u" && kernelVersion >= common.HighKernelVersion {
+			continue
+		}
+		if driverFiledList[i] != "cpustats_cpu_nums" {
+			v.WithLabelValues(generalLvs...).Set(value)
+		} else {
+			v.WithLabelValues(cpuLvs...).Set(value)
+		}
 	}
-	return labels, true
+	return cpuLvs, true
 }
