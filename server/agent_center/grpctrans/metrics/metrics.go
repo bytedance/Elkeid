@@ -9,6 +9,8 @@ var (
 	RecvCounter          = initPrometheusGrpcReceiveCounter()
 	SendCounter          = initPrometheusGrpcSendCounter()
 	OutputAgentIDCounter = initPrometheusOutputAgentIDCounter()
+	StartCounter         = initPrometheusAgentStartCounter()
+	ExitCounter          = initPrometheusAgentExitCounter()
 )
 
 var AgentGauge = map[string]*prometheus.GaugeVec{
@@ -62,6 +64,26 @@ func initPrometheusOutputAgentIDCounter() *prometheus.CounterVec {
 		Help: "Elkeid AC output data count for agent_id",
 	}
 	vec := prometheus.NewCounterVec(prometheusOpts, []string{"account_id", "agent_id"})
+	prometheus.MustRegister(vec)
+	return vec
+}
+
+func initPrometheusAgentStartCounter() *prometheus.CounterVec {
+	prometheusOpts := prometheus.CounterOpts{
+		Name: "elkeid_ac_agent_start_qps",
+		Help: "Elkeid AC agent start qps",
+	}
+	vec := prometheus.NewCounterVec(prometheusOpts, []string{"account_id", "agent_id", "name", "pversion"})
+	prometheus.MustRegister(vec)
+	return vec
+}
+
+func initPrometheusAgentExitCounter() *prometheus.CounterVec {
+	prometheusOpts := prometheus.CounterOpts{
+		Name: "elkeid_ac_agent_exit_qps",
+		Help: "Elkeid AC agent exit qps",
+	}
+	vec := prometheus.NewCounterVec(prometheusOpts, []string{"account_id", "agent_id", "name", "pversion", "exit_code"})
 	prometheus.MustRegister(vec)
 	return vec
 }

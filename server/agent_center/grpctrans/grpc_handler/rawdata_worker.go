@@ -107,6 +107,15 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 				item["hostname"] = mqMsg.Hostname
 				item["product"] = mqMsg.Product
 				item["token"] = "token" //适配格式
+				// plugin start/exit report metrics
+				if mqMsg.DataType == 1021 || mqMsg.DataType == 1022 {
+					// parse the agent plugins heartbeat data
+					detail := parsePluginHeartBeat(req.GetData()[k], req, conn)
+					if detail != nil {
+						//todo del log
+						ylog.Infof("handleRawData", "agentID:%s, detail:%#v", mqMsg.AgentID, detail)
+					}
+				}
 			default:
 			}
 
