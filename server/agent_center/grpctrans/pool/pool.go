@@ -60,6 +60,8 @@ type Connection struct {
 	SourceAddr   string   `json:"addr"`
 	CreateAt     int64    `json:"create_at"`
 
+	configs atomic.Value // 原子值，存储Agent下发的心跳配置
+
 	agentDetailLock  sync.RWMutex
 	agentDetail      map[string]interface{}
 	pluginDetailLock sync.RWMutex
@@ -181,6 +183,18 @@ func (c *Connection) SetPluginDetail(name string, detail map[string]interface{})
 	c.pluginDetail[name] = detail
 }
 
+func (c *Connection) SetConfigs(configs []*pb.ConfigItem) {
+	c.configs.Store(configs)
+}
+
+func (c *Connection) GetConfigs() []*pb.ConfigItem {
+	value := c.configs.Load()
+	if value == nil {
+		return nil
+	}
+	return value.([]*pb.ConfigItem)
+}
+
 func (c *Connection) GetPluginsList() []map[string]interface{} {
 	c.pluginDetailLock.Lock()
 	defer c.pluginDetailLock.Unlock()
@@ -271,6 +285,28 @@ func (g *GRPCPool) checkConfig() {
 			config, err := client.GetConfigFromRemote(agentID, conn.GetAgentDetail())
 			if err != nil {
 				ylog.Errorf("GRPCPool", "postConfig Error %s %s", agentID, err.Error())
+
+				//拉取配置失败，随机断开TCP链接
+				go func() {
+					afterTime := common.RandomDuration(2, 5)
+					timer := time.NewTimer(afterTime)
+					ylog.Infof("GRPCPool", "scheduled to disconnect %s after:%s", agentID, afterTime.String())
+					select {
+					case <-timer.C:
+						ylog.Infof("GRPCPool", "now disconnect %s:", agentID)
+						conn.CancelFuc()
+						ylog.Infof("GRPCPool", "disconnect %s: done", agentID)
+					case <-conn.Ctx.Done():
+						if !timer.Stop() {
+							select {
+							case <-timer.C:
+							default:
+							}
+						}
+						ylog.Infof("GRPCPool", "disconnect %s: done", agentID)
+					}
+				}()
+
 				continue
 			}
 
@@ -281,6 +317,9 @@ func (g *GRPCPool) checkConfig() {
 			err = g.PostCommand(agentID, cmd)
 			if err != nil {
 				ylog.Errorf("GRPCPool", "postConfig Error %s %s", agentID, err)
+			} else {
+				//记录config
+				conn.SetConfigs(config)
 			}
 		}
 	}

@@ -215,25 +215,13 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 	detail["source_port"] = common.HttpPort
 
 	os, ok1 := detail["os"].(string)
-	info, ok2 := detail["plugins_brief_info"].(string)
+	pluginSummary, ok2 := detail["plugin_summary"].(string)
 	if !ok1 || !ok2 {
-		ylog.Errorf("parseAgentHeartBeat", "plugins_brief_info/os is not exists")
+		ylog.Errorf("parseAgentHeartBeat", "plugin_summary/os is not exists")
 	} else {
-		//oldInfo, _ := conn.GetAgentDetail()["plugins_brief_info"].(string)
-		//if info != oldInfo {
-		//	//如果插件信息不一致则重新生成字段
-		//	status, list, err := parseBriefPluginsInfo(info, os)
-		//	if err != nil {
-		//		ylog.Errorf("parseAgentHeartBeat", "parseBriefPluginsInfo error %s", err.Error())
-		//	} else {
-		//		detail["plugins_status"] = status
-		//		detail["abnormal_plugins_list"] = list
-		//	}
-		//}
-
-		status, list, err := parseBriefPluginsInfo(info, os)
+		status, list, err := generatePluginsInfoWithConfig(pluginSummary, os, conn.GetConfigs())
 		if err != nil {
-			ylog.Errorf("parseAgentHeartBeat", "parseBriefPluginsInfo error %s", err.Error())
+			ylog.Errorf("parseAgentHeartBeat", "generatePluginsInfoWithConfig error %s", err.Error())
 		} else {
 			detail["plugins_status"] = status
 			detail["abnormal_plugins_list"] = list
@@ -243,8 +231,8 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 	if len(conn.GetAgentDetail()) == 0 {
 		conn.SetAgentDetail(detail)
 
-		//延迟30秒，确保首次心跳已经写入manager
-		time.AfterFunc(time.Second*30, func() {
+		//延迟60秒，确保首次心跳已经写入manager
+		time.AfterFunc(time.Second*60, func() {
 			//Every time the agent connects to the server
 			//it needs to push the latest configuration to agent
 			err = GlobalGRPCPool.PostLatestConfig(req.AgentID)
@@ -257,6 +245,58 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 	}
 
 	return detail
+}
+
+func generatePluginsInfoWithConfig(pluginSummary string, os string, configs []*pb.ConfigItem) (status, abnormalInfo string, err error) {
+	if configs == nil {
+		return common.PluginsStatusAllOnline, "", nil
+	}
+
+	// 解析 pluginSummary
+	var plugins map[string]map[string]string
+	if err = json.Unmarshal([]byte(pluginSummary), &plugins); err != nil {
+		ylog.Errorf("generatePluginsInfoWithConfig", "Unmarshal error for pluginSummary [%s]: %s", pluginSummary[:100], err.Error())
+		return "", "", err
+	}
+
+	// 移除非正常运行的插件
+	for key, value := range plugins {
+		if status, ok := value["status"]; !ok || status != "running" {
+			delete(plugins, key)
+		}
+	}
+
+	var abnormalList, onlineList []string
+	for _, config := range configs {
+		if config == nil {
+			continue
+		}
+		//只校验在配置文件中的插件
+		if os == "linux" {
+			if _, ok := common.LinuxPluginsList[config.Name]; !ok {
+				continue
+			}
+		} else {
+			if _, ok := common.WindowsPluginsList[config.Name]; !ok {
+				continue
+			}
+		}
+		//校验插件是否在运行
+		if _, ok := plugins[config.Name]; !ok {
+			abnormalList = append(abnormalList, config.Name)
+		} else {
+			onlineList = append(onlineList, config.Name)
+		}
+	}
+
+	switch {
+	case len(abnormalList) == 0:
+		return common.PluginsStatusAllOnline, "", nil
+	case len(onlineList) > 0:
+		return common.PluginsStatusAllSomeOnline, strings.Join(abnormalList, ","), nil
+	default:
+		return common.PluginsStatusAllOffline, strings.Join(abnormalList, ","), nil
+	}
 }
 
 func parseBriefPluginsInfo(briefInfo string, os string) (status, abnormalInfo string, err error) {

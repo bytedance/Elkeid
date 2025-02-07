@@ -73,3 +73,13 @@ func Contains(items []string, item string) bool {
 	}
 	return false
 }
+
+// RandomDuration generates a random duration between min and max minutes.
+func RandomDuration(minMinutes, maxMinutes int) time.Duration {
+	if minMinutes > maxMinutes {
+		minMinutes, maxMinutes = maxMinutes, minMinutes
+	}
+	rand.Seed(time.Now().UnixNano()) // Ensure randomness
+	randomMinutes := rand.Intn(maxMinutes-minMinutes+1) + minMinutes
+	return time.Duration(randomMinutes) * time.Minute
+}
