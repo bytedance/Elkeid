@@ -26,7 +26,8 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 	var extraInfo = GlobalGRPCPool.GetExtraInfoByID(req.AgentID)
 
 	for k, v := range req.GetData() {
-		ylog.Debugf("handleRawData", "Num:%d Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
+		// todo change log level
+		ylog.Infof("handleRawData", "Num:%d Timestamp:%d, DataType:%d, AgentID:%s, Hostname:%s", k, v.GetTimestamp(), v.GetDataType(), req.AgentID, req.Hostname)
 
 		mqMsg := &pb.MQData{}
 		mqMsg.DataType = req.GetData()[k].DataType
@@ -87,10 +88,14 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 			//1031: 文件主动上传
 			//1021-1025: Agent/Plugins status
 			//需要发送给manager的数据
+			// todo del log
+			ylog.Infof("handleRawData", "DataType:%d", v.GetDataType())
 			item, err := parseRecord(req.GetData()[k])
 			if err != nil {
 				continue
 			}
+			// todo del log
+			ylog.Infof("handleRawData", "item:%#v", item)
 
 			item["data_type"] = fmt.Sprintf("%d", mqMsg.DataType)
 			switch mqMsg.DataType {
@@ -111,10 +116,8 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 				if mqMsg.DataType == 1021 || mqMsg.DataType == 1022 {
 					// parse the agent plugins heartbeat data
 					detail := parsePluginHeartBeat(req.GetData()[k], req, conn)
-					if detail != nil {
-						//todo del log
-						ylog.Infof("handleRawData", "agentID:%s, detail:%#v", mqMsg.AgentID, detail)
-					}
+					//todo del log
+					ylog.Infof("handleRawData", "agentID:%s, detail:%#v", mqMsg.AgentID, detail)
 				}
 			default:
 			}
@@ -244,6 +247,8 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 		conn.SetAgentDetail(detail)
 	}
 
+	//todo del log
+	ylog.Infof("parseAgentHeartBeat", "detail:%#v", detail)
 	return detail
 }
 
@@ -397,6 +402,8 @@ func parsePluginHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connect
 	}
 
 	conn.SetPluginDetail(pluginName, detail)
+	// todo del log
+	ylog.Infof("parsePluginHeartBeat", "detail:%#v", detail)
 	return detail
 }
 
@@ -407,5 +414,6 @@ func parseRecord(hb *pb.Record) (map[string]string, error) {
 		ylog.Errorf("parseRecord", "parseRecord Error %s", err.Error())
 		return nil, err
 	}
+	ylog.Infof("parseRecord", "item.Fields:%#v", item.Fields)
 	return item.Fields, nil
 }

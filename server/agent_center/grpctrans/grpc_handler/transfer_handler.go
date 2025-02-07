@@ -183,6 +183,8 @@ func recvData(stream pb.Transfer_TransferServer, conn *pool.Connection) {
 				ylog.Warnf("recvData", "Transfer Recv Error %s, now close the recv direction of the tcp, %s ", err.Error(), conn.AgentID)
 				return
 			}
+			//todo del log
+			ylog.Infof("recvData", "data:%#v", data)
 			metrics.RecvCounter.With(prometheus.Labels{"account_id": conn.AccountID}).Inc()
 			handleRawData(data, conn)
 		}
@@ -206,6 +208,7 @@ func sendData(stream pb.Transfer_TransferServer, conn *pool.Connection) {
 			err := stream.Send(cmd.Command)
 			if err != nil {
 				ylog.Errorf("sendData", "Send Task Error %s %v ", conn.AgentID, cmd)
+				// todo add send fail metrics, fields: accountID, agentID, Counter类型
 				cmd.Error = err
 				close(cmd.Ready)
 				return
