@@ -1095,6 +1095,41 @@ static int smith_cmp_conn(struct tt_rb *rb, struct tt_node *tnod, void *key)
     return 0;
 }
 
+static int smith_compare_conns(struct smith_conn *conn1, struct smith_conn *conn2)
+{
+    if (conn1->sc_tid != conn2->sc_tid)
+        return 1;
+    if (conn1->sc_pid != conn2->sc_pid)
+        return 1;
+    if (conn1->sc_pgid != conn2->sc_pgid)
+        return 2;
+    if (conn1->sc_node.flag_ipv6 != conn2->sc_node.flag_ipv6)
+        return 3;
+    if (conn1->sc_sport != conn2->sc_sport)
+        return 4;
+    if (conn1->sc_dport != conn2->sc_dport)
+        return 5;
+    if (conn1->sc_node.flag_ipv6) {
+        uint16_t *s1 = (uint16_t *)(&conn1->sc_ip.sip6);
+        uint16_t *d1 = (uint16_t *)(&conn1->sc_ip.dip6);
+        uint16_t *s2 = (uint16_t *)(&conn2->sc_ip.sip6);
+        uint16_t *d2 = (uint16_t *)(&conn2->sc_ip.dip6);
+        int i;
+        for (i = 0; i < 8; i++) {
+            if (s1[i] != s2[i])
+                return 6;
+            if (d1[i] != d2[i])
+                return 7;
+        }
+    } else {
+        if (conn1->sc_ip.sip4 != conn2->sc_ip.sip4)
+            return 6;
+        if (conn1->sc_ip.dip4 != conn2->sc_ip.dip4)
+            return 7;
+    }
+    return 0;
+}
+
 static void smith_release_conn(struct tt_rb *rb, struct tt_node *tnod)
 {
     struct smith_conn *conn = container_of(tnod, struct smith_conn, sc_node);
@@ -1135,6 +1170,18 @@ static void smith_show_conn(struct tt_node *tnod)
     }
 }
 
+static void smith_log_conn(struct smith_conn *conn, int rc)
+{
+    struct smith_tid *tid = conn->sc_tid;
+    char *exe_path;
+
+    exe_path = tid->st_img->si_path;
+    if (conn->sc_node.flag_ipv6)
+        tcpconn6_print(conn, tid, exe_path, rc);
+    else
+        tcpconn4_print(conn, tid, exe_path, rc);
+}
+
 static int smith_drop_head_conn(void)
 {
     struct list_head *link;
@@ -1155,20 +1202,12 @@ static int smith_drop_head_conn(void)
 
     write_lock_irqsave(&g_rb_conn.lock, flags);
     while (!list_empty(&g_lru_conn)) {
-        struct smith_tid *tid;
-        char *exe_path;
-
         link = g_lru_conn.next;
         conn = list_entry(link, struct smith_conn, sc_link);
         if (smith_get_delta(0) < conn->sc_age)
             break;
 
-        tid = conn->sc_tid;
-        exe_path = tid->st_img->si_path;
-        if (conn->sc_node.flag_ipv6)
-            tcpconn6_print(conn, tid, exe_path, -ETIME);
-        else
-            tcpconn4_print(conn, tid, exe_path, -ETIME);
+        smith_log_conn(conn, -ETIME);
 
         /* remove entry from lru list */
         list_del_init(&conn->sc_link);
@@ -1211,15 +1250,37 @@ static int smith_insert_conn(struct smith_conn *obj)
     /* check whether the entry was already inserted ? */
     read_lock_irqsave(&g_rb_conn.lock, flags);
     tnod = tt_rb_lookup_nolock(&g_rb_conn, obj);
+    if (tnod) {
+        conn = container_of(tnod, struct smith_conn, sc_node);
+        if (!smith_compare_conns(conn, obj)) {
+            read_unlock_irqrestore(&g_rb_conn.lock, flags);
+            goto out;
+        }
+    }
     read_unlock_irqrestore(&g_rb_conn.lock, flags);
-    if (tnod)
-        goto out;
 
     /* insert new node to rbtree */
     write_lock_irqsave(&g_rb_conn.lock, flags);
+    tnod = tt_rb_lookup_nolock(&g_rb_conn, obj);
+    if (tnod) {
+        conn = container_of(tnod, struct smith_conn, sc_node);
+        if (!smith_compare_conns(conn, obj)) {
+            write_unlock_irqrestore(&g_rb_conn.lock, flags);
+            goto out;
+        }
+
+        /* socket resued, now mark connection stale */
+        smith_log_conn(conn, -ESTALE);
+
+        /* remove tnod from lru and rbtree */
+        list_del_init(&conn->sc_link);
+        tt_rb_remove_node_nolock(&g_rb_conn, tnod);
+    }
+
     tnod = tt_rb_insert_key_nolock(&g_rb_conn, &obj->sc_node);
     if (tnod) {
         conn = container_of(tnod, struct smith_conn, sc_node);
+
         /* remove ent from LRU if it's already LRUed */
         list_del_init(&conn->sc_link);
         conn->sc_age = smith_get_delta(SMITH_CONN_REAPER);
@@ -1351,9 +1412,7 @@ static int connect6_lru_cache_insert(struct sock *sk,
  */
 static int tcp_finish_connect_handler(struct kprobe *p, struct pt_regs *regs)
 {
-    struct smith_tid *tid = NULL;
     struct smith_conn *conn;
-    char *exe_path = DEFAULT_RET_STR;
     struct sock *sk;
     unsigned long flags;
 
@@ -1367,12 +1426,7 @@ static int tcp_finish_connect_handler(struct kprobe *p, struct pt_regs *regs)
         read_unlock_irqrestore(&g_rb_conn.lock, flags);
         return 0;
     }
-    tid = conn->sc_tid;
-    exe_path = tid->st_img->si_path;
-    if (conn->sc_node.flag_ipv6)
-        tcpconn6_print(conn, tid, exe_path, 0);
-    else
-        tcpconn4_print(conn, tid, exe_path, 0);
+    smith_log_conn(conn, 0);
     read_unlock_irqrestore(&g_rb_conn.lock, flags);
 
     smith_remove_conn(sk);
@@ -1385,13 +1439,11 @@ static struct kprobe tcp_connect_kprobe = {
 };
 
 
-/* void sock_release(struct socket *sock) */
+/* void inet_release(struct socket *sock) */
 
-static int sock_release_handler(struct kprobe *p, struct pt_regs *regs)
+static int inet_release_handler(struct kprobe *p, struct pt_regs *regs)
 {
-    struct smith_tid *tid = NULL;
     struct smith_conn *conn;
-    char *exe_path = DEFAULT_RET_STR;
     struct socket *sock;
     struct sock *sk;
     unsigned long flags;
@@ -1410,28 +1462,23 @@ static int sock_release_handler(struct kprobe *p, struct pt_regs *regs)
         read_unlock_irqrestore(&g_rb_conn.lock, flags);
         return 0;
     }
-    tid = conn->sc_tid;
-    exe_path = tid->st_img->si_path;
-    if (conn->sc_node.flag_ipv6)
-        tcpconn6_print(conn, tid, exe_path, -ECONNABORTED);
-    else
-        tcpconn4_print(conn, tid, exe_path, -ECONNABORTED);
+    smith_log_conn(conn, -ECONNABORTED);
     read_unlock_irqrestore(&g_rb_conn.lock, flags);
 
     smith_remove_conn(sk);
     return 0;
 }
 
-static struct kprobe sock_release_kprobe = {
-    .symbol_name = "sock_release",
-    .pre_handler = sock_release_handler,
+static struct kprobe inet_release_kprobe = {
+    .symbol_name = "inet_release",
+    .pre_handler = inet_release_handler,
 };
 
 static int register_tcp_connect_kprobe(void)
 {
     int ret;
 
-    ret = register_kprobe(&sock_release_kprobe);
+    ret = register_kprobe(&inet_release_kprobe);
     if (ret)
         return ret;
 
@@ -1439,7 +1486,7 @@ static int register_tcp_connect_kprobe(void)
     if (!ret) {
         tcp_connect_kprobe_state = 0x1;
     } else {
-        unregister_kprobe(&sock_release_kprobe);
+        unregister_kprobe(&inet_release_kprobe);
     }
 
     return ret;
@@ -1450,7 +1497,7 @@ static void unregister_tcp_connect_kprobe(void)
     if (!tcp_connect_kprobe_state)
         return;
 
-    unregister_kprobe(&sock_release_kprobe);
+    unregister_kprobe(&inet_release_kprobe);
     unregister_kprobe(&tcp_connect_kprobe);
 }
 
