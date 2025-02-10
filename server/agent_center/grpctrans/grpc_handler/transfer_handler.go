@@ -208,7 +208,8 @@ func sendData(stream pb.Transfer_TransferServer, conn *pool.Connection) {
 			err := stream.Send(cmd.Command)
 			if err != nil {
 				ylog.Errorf("sendData", "Send Task Error %s %v ", conn.AgentID, cmd)
-				// todo add send fail metrics, fields: accountID, agentID, Counter类型
+				// todo add send fail metrics, fields: accountID, agentID Counter类型
+				metrics.SendFailCounter.With(prometheus.Labels{"account_id": conn.AccountID, "agent_id": conn.AgentID}).Inc()
 				cmd.Error = err
 				close(cmd.Ready)
 				return

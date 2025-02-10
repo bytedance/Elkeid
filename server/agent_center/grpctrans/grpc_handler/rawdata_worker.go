@@ -112,12 +112,31 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 				item["hostname"] = mqMsg.Hostname
 				item["product"] = mqMsg.Product
 				item["token"] = "token" //适配格式
+
+				//todo del log
+				ylog.Infof("handleRawData", "agentID:%s, item:%#v", mqMsg.AgentID, item)
+				pluginName, ok := item["plugin_name"]
 				// plugin start/exit report metrics
-				if mqMsg.DataType == 1021 || mqMsg.DataType == 1022 {
-					// parse the agent plugins heartbeat data
-					detail := parsePluginHeartBeat(req.GetData()[k], req, conn)
-					//todo del log
-					ylog.Infof("handleRawData", "agentID:%s, detail:%#v", mqMsg.AgentID, detail)
+				if (mqMsg.DataType == 1021 || mqMsg.DataType == 1022) && ok {
+					if mqMsg.DataType == 1021 {
+						metrics.StartCounter.With(prometheus.Labels{"account_id": conn.AccountID, "name": pluginName}).Inc()
+						// del old metrics
+						_ = metrics.ExitCounter.Delete(prometheus.Labels{
+							"account_id": conn.AccountID,
+							"agent_id":   mqMsg.AgentID,
+							"name":       pluginName,
+						})
+					} else {
+						exitCode, ok := item["exit_code"]
+						if mqMsg.DataType == 1022 && ok {
+							metrics.ExitCounter.With(prometheus.Labels{
+								"account_id": conn.AccountID,
+								"agent_id":   mqMsg.AgentID,
+								"name":       pluginName,
+								"exit_code":  exitCode,
+							}).Inc()
+						}
+					}
 				}
 			default:
 			}
