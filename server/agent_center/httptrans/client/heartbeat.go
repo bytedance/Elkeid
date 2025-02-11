@@ -138,6 +138,7 @@ func (w *hbWriter) flushEvict(hb []HeartBeatEvictModel) error {
 
 func PostToServer(urlTemplate string, body interface{}, dataLen int, timeout time.Duration) error {
 	url := fmt.Sprintf(urlTemplate, common.GetRandomManageAddr())
+	ylog.Infof("PostToServer", "Send Data to URL %s, Body: %#v", url, body)
 	resp, err := grequests.Post(url, &grequests.RequestOptions{
 		JSON:           body,
 		RequestTimeout: timeout,
