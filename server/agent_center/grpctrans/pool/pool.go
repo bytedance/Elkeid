@@ -117,6 +117,12 @@ func (c *Connection) SetAgentDetail(detail map[string]interface{}) {
 			defer c.pluginDetailLock.Unlock()
 			onlineTime := time.Now().Add(-120 * time.Second).Unix()
 			for k := range c.pluginDetail {
+				//已离线
+				online, ok := c.pluginDetail[k]["online"].(bool)
+				if ok && !online {
+					continue
+				}
+				//检测是否离线
 				if c.pluginDetail[k]["last_heartbeat_time"].(int64) < onlineTime {
 					var pversion string
 					if t1, ok1 := c.pluginDetail[k]["pversion"]; ok1 {
