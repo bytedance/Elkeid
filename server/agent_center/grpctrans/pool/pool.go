@@ -3,6 +3,7 @@ package pool
 import (
 	"context"
 	"errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"math/rand"
 	"reflect"
 	"sync"
@@ -320,6 +321,22 @@ func (g *GRPCPool) checkConfig() {
 			} else {
 				//记录config
 				conn.SetConfigs(config)
+				// check plugin metrics, del plugin exit metrics
+				pluginNameMap := make(map[string]string)
+				for _, value := range config {
+					pluginNameMap[value.Name] = value.Name
+				}
+				for pluginName, _ := range metrics.PluginNameMap {
+					if _, ok := pluginNameMap[pluginName]; !ok {
+						res := metrics.ExitGauge.Delete(prometheus.Labels{
+							"account_id": conn.AccountID,
+							"agent_id":   agentID,
+							"name":       pluginName,
+						})
+						// todo del log
+						ylog.Infof("checkConfig", "agentID:%s, name:%s delete metrics res:%t", agentID, pluginName, res)
+					}
+				}
 			}
 		}
 	}

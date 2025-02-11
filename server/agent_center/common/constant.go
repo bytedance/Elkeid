@@ -26,4 +26,22 @@ var (
 	MetricsTypeAgentDiskFreeBytes = "disk_free_bytes"
 
 	HighKernelVersion = "4.19"
+
+	PluginCollector = "collector"
+
+	PluginDriver = "driver"
+
+	PluginJournalWatcher = "journal_watcher"
+
+	PluginScanner = "scanner"
+
+	PluginRasp = "rasp"
+
+	PluginCollectorMlp = "collector_mlp"
+
+	PluginEvents = "events"
+
+	PluginContainerMonitor = "container_monitor"
+
+	PluginAgent = "agent"
 )

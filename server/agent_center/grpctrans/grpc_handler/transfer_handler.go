@@ -111,6 +111,15 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 		// plugin version
 		pversion := data.Version
 		metrics.ReleaseAgentHeartbeatMetrics(accountID, agentID, "agent", pversion)
+		// add agent exit metrics
+		metrics.UpdateAgentExitMetrics(accountID, agentID, -1)
+		// todo del log
+		ylog.Infof("Transfer", "agentID:%s update agent exit metrics", agentID)
+
+		// del plugin exit metrics
+		metrics.ReleasePluginExitMetrics(accountID, agentID)
+		// todo del log
+		ylog.Infof("Transfer", "agentID:%s delete plugin exit metrics", agentID)
 		for _, v := range connection.GetPluginsList() {
 			var name string
 			if t1, ok1 := v["name"]; ok1 {

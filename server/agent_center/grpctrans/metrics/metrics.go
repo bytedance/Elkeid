@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"github.com/bytedance/Elkeid/server/agent_center/common"
+	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -27,6 +28,17 @@ var AgentGauge = map[string]*prometheus.GaugeVec{
 	common.MetricsTypePluginNfd:          initPrometheusAgentNfdGauge(),
 	common.MetricsTypeAgentDiscardCnt:    initPrometheusAgentDiscardCntGauge(),
 	common.MetricsTypeAgentDiskFreeBytes: initPrometheusAgentDiskFreeBytesGauge(),
+}
+
+var PluginNameMap = map[string]string{
+	common.PluginContainerMonitor: common.PluginContainerMonitor,
+	common.PluginDriver:           common.PluginDriver,
+	common.PluginCollectorMlp:     common.PluginCollectorMlp,
+	common.PluginCollector:        common.PluginCollector,
+	common.PluginEvents:           common.PluginEvents,
+	common.PluginJournalWatcher:   common.PluginJournalWatcher,
+	common.PluginRasp:             common.PluginRasp,
+	common.PluginScanner:          common.PluginScanner,
 }
 
 func initPrometheusGrpcReceiveCounter() *prometheus.CounterVec {
@@ -269,5 +281,25 @@ func UpdateFromAgentHeartBeat(accountID, agentID, name string, detail map[string
 				}
 			}
 		}
+	}
+}
+
+func UpdateAgentExitMetrics(accountID string, agentID string, exitCode float64) {
+	ExitGauge.With(prometheus.Labels{
+		"account_id": accountID,
+		"agent_id":   agentID,
+		"name":       common.PluginAgent,
+	}).Set(-1)
+}
+
+func ReleasePluginExitMetrics(accountID string, agentID string) {
+	for pluginName, _ := range PluginNameMap {
+		res := ExitGauge.Delete(prometheus.Labels{
+			"account_id": accountID,
+			"agent_id":   agentID,
+			"name":       pluginName,
+		})
+		// todo del log
+		ylog.Infof("ReleasePluginExitMetrics", "agentID:%s, name:%s delete metrics res:%t", agentID, pluginName, res)
 	}
 }
