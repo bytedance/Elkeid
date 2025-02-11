@@ -210,6 +210,10 @@ func sendData(stream pb.Transfer_TransferServer, conn *pool.Connection) {
 				close(cmd.Ready)
 				return
 			}
+			//记录最新配置
+			if cmd.Command.Config != nil {
+				conn.SetConfigs(cmd.Command.Config)
+			}
 			metrics.SendCounter.With(prometheus.Labels{"account_id": conn.AccountID}).Inc()
 			ylog.Infof("sendData", "Transfer Send %s %v ", conn.AgentID, cmd)
 			cmd.Error = nil

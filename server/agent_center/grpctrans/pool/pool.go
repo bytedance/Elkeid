@@ -317,9 +317,6 @@ func (g *GRPCPool) checkConfig() {
 			err = g.PostCommand(agentID, cmd)
 			if err != nil {
 				ylog.Errorf("GRPCPool", "postConfig Error %s %s", agentID, err)
-			} else {
-				//记录config
-				conn.SetConfigs(config)
 			}
 		}
 	}
@@ -441,7 +438,6 @@ func (g *GRPCPool) PostCommand(agentID string, command *pb.Command) (err error) 
 	if err != nil {
 		return err
 	}
-
 	cmdToSend := &Command{
 		Command: command,
 		Error:   nil,
