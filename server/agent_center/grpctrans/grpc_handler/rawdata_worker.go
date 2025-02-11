@@ -211,6 +211,7 @@ func parseAgentHeartBeat(record *pb.Record, req *pb.RawData, conn *pool.Connecti
 		ylog.Errorf("parseAgentHeartBeat", "plugin_summary/os is not exists")
 	} else {
 		status, list, err := generatePluginsInfoWithConfig(pluginSummary, os, conn.GetConfigs())
+		ylog.Infof("parseAgentHeartBeat", "generatePluginsInfoWithConfig %s, %s, %s, %#v", status, list, pluginSummary, conn.GetConfigs())
 		if err != nil {
 			ylog.Errorf("parseAgentHeartBeat", "generatePluginsInfoWithConfig error %s", err.Error())
 		} else {
