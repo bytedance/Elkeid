@@ -121,20 +121,24 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 					if mqMsg.DataType == 1021 {
 						metrics.StartCounter.With(prometheus.Labels{"account_id": conn.AccountID, "name": pluginName}).Inc()
 						// del old metrics
-						_ = metrics.ExitCounter.Delete(prometheus.Labels{
+						res := metrics.ExitGauge.Delete(prometheus.Labels{
 							"account_id": conn.AccountID,
 							"agent_id":   mqMsg.AgentID,
 							"name":       pluginName,
 						})
+						// todo del log
+						ylog.Infof("handleRawData", "agentID:%s, name:%s delete metrics res:%t", agentID, pluginName, res)
 					} else {
 						exitCode, ok := item["exit_code"]
 						if mqMsg.DataType == 1022 && ok {
-							metrics.ExitCounter.With(prometheus.Labels{
+							value, _ := strconv.ParseFloat(exitCode, 64)
+							// todo del log
+							ylog.Infof("handleRawData", "agentID:%s, name:%s set gauge value:%f", agentID, pluginName, value)
+							metrics.ExitGauge.With(prometheus.Labels{
 								"account_id": conn.AccountID,
 								"agent_id":   mqMsg.AgentID,
 								"name":       pluginName,
-								"exit_code":  exitCode,
-							}).Inc()
+							}).Set(value)
 						}
 					}
 				}
