@@ -119,9 +119,9 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 				// plugin start/exit report metrics
 				if (mqMsg.DataType == 1021 || mqMsg.DataType == 1022) && ok {
 					if mqMsg.DataType == 1021 {
-						metrics.StartCounter.With(prometheus.Labels{"account_id": conn.AccountID, "name": pluginName}).Inc()
+						metrics.PluginStartCounter.With(prometheus.Labels{"account_id": conn.AccountID, "name": pluginName}).Inc()
 						// del old metrics
-						res := metrics.ExitGauge.Delete(prometheus.Labels{
+						res := metrics.PluginExitGauge.Delete(prometheus.Labels{
 							"account_id": conn.AccountID,
 							"agent_id":   mqMsg.AgentID,
 							"name":       pluginName,
@@ -134,7 +134,7 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 							value, _ := strconv.ParseFloat(exitCode, 64)
 							// todo del log
 							ylog.Infof("handleRawData", "agentID:%s, name:%s set gauge value:%f", agentID, pluginName, value)
-							metrics.ExitGauge.With(prometheus.Labels{
+							metrics.PluginExitGauge.With(prometheus.Labels{
 								"account_id": conn.AccountID,
 								"agent_id":   mqMsg.AgentID,
 								"name":       pluginName,

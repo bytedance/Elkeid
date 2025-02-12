@@ -112,7 +112,7 @@ func (h *TransferHandler) Transfer(stream pb.Transfer_TransferServer) error {
 		pversion := data.Version
 		metrics.ReleaseAgentHeartbeatMetrics(accountID, agentID, "agent", pversion)
 		// add agent exit metrics
-		metrics.UpdateAgentExitMetrics(accountID, agentID, -1)
+		metrics.UpdateAgentDiscMetrics(accountID, agentID)
 		// todo del log
 		ylog.Infof("Transfer", "agentID:%s update agent exit metrics", agentID)
 

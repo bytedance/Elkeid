@@ -10,8 +10,9 @@ var (
 	RecvCounter          = initPrometheusGrpcReceiveCounter()
 	SendCounter          = initPrometheusGrpcSendCounter()
 	OutputAgentIDCounter = initPrometheusOutputAgentIDCounter()
-	StartCounter         = initPrometheusAgentStartCounter()
-	ExitGauge            = initPrometheusAgentExitGauge()
+	PluginStartCounter   = initPrometheusPluginStartCounter()
+	PluginExitGauge      = initPrometheusPluginExitGauge()
+	AgentDiscGauge       = initPrometheusAgentDiscGauge()
 	SendFailCounter      = initPrometheusGrpcSendFailCounter()
 )
 
@@ -91,22 +92,32 @@ func initPrometheusOutputAgentIDCounter() *prometheus.CounterVec {
 	return vec
 }
 
-func initPrometheusAgentStartCounter() *prometheus.CounterVec {
+func initPrometheusPluginStartCounter() *prometheus.CounterVec {
 	prometheusOpts := prometheus.CounterOpts{
-		Name: "elkeid_ac_agent_start_qps",
-		Help: "Elkeid AC agent start qps",
+		Name: "elkeid_ac_plugin_start_qps",
+		Help: "Elkeid AC plugin start qps",
 	}
 	vec := prometheus.NewCounterVec(prometheusOpts, []string{"account_id", "name"})
 	prometheus.MustRegister(vec)
 	return vec
 }
 
-func initPrometheusAgentExitGauge() *prometheus.GaugeVec {
+func initPrometheusPluginExitGauge() *prometheus.GaugeVec {
 	prometheusOpts := prometheus.GaugeOpts{
-		Name: "elkeid_ac_agent_exit",
-		Help: "Elkeid AC agent exit",
+		Name: "elkeid_ac_plugin_exit",
+		Help: "Elkeid AC plugin exit",
 	}
 	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id", "name"})
+	prometheus.MustRegister(vec)
+	return vec
+}
+
+func initPrometheusAgentDiscGauge() *prometheus.GaugeVec {
+	prometheusOpts := prometheus.GaugeOpts{
+		Name: "elkeid_ac_agent_disc",
+		Help: "Elkeid AC Agent disc",
+	}
+	vec := prometheus.NewGaugeVec(prometheusOpts, []string{"account_id", "agent_id"})
 	prometheus.MustRegister(vec)
 	return vec
 }
@@ -284,17 +295,16 @@ func UpdateFromAgentHeartBeat(accountID, agentID, name string, detail map[string
 	}
 }
 
-func UpdateAgentExitMetrics(accountID string, agentID string, exitCode float64) {
-	ExitGauge.With(prometheus.Labels{
+func UpdateAgentDiscMetrics(accountID string, agentID string) {
+	AgentDiscGauge.With(prometheus.Labels{
 		"account_id": accountID,
 		"agent_id":   agentID,
-		"name":       common.PluginAgent,
-	}).Set(-1)
+	}).Set(1)
 }
 
 func ReleasePluginExitMetrics(accountID string, agentID string) {
 	for pluginName, _ := range PluginNameMap {
-		res := ExitGauge.Delete(prometheus.Labels{
+		res := PluginExitGauge.Delete(prometheus.Labels{
 			"account_id": accountID,
 			"agent_id":   agentID,
 			"name":       pluginName,

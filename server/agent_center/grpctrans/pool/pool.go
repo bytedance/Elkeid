@@ -328,7 +328,7 @@ func (g *GRPCPool) checkConfig() {
 				}
 				for pluginName, _ := range metrics.PluginNameMap {
 					if _, ok := pluginNameMap[pluginName]; !ok {
-						res := metrics.ExitGauge.Delete(prometheus.Labels{
+						res := metrics.PluginExitGauge.Delete(prometheus.Labels{
 							"account_id": conn.AccountID,
 							"agent_id":   agentID,
 							"name":       pluginName,
