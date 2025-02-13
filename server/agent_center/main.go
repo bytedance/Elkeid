@@ -5,6 +5,7 @@ import (
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	"github.com/bytedance/Elkeid/server/agent_center/grpctrans"
+	"github.com/bytedance/Elkeid/server/agent_center/grpctrans/metrics"
 	"github.com/bytedance/Elkeid/server/agent_center/httptrans"
 	"github.com/bytedance/Elkeid/server/agent_center/svr_registry"
 	"net/http"
@@ -26,6 +27,9 @@ func main() {
 
 	//start pprof for debug
 	go debug()
+
+	// init metrics client
+	go metrics.InitMetrics()
 
 	//register to service discovery center
 	regGrpc := svr_registry.NewGRPCServerRegistry()

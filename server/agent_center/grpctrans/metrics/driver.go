@@ -1,12 +1,14 @@
 package metrics
 
 import (
+	m "code.byted.org/gopkg/metrics/v4"
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	"strconv"
+	"strings"
 )
 
 var driverFiledList = []string{
@@ -57,7 +59,29 @@ func initDriverGauge() []*prometheus.GaugeVec {
 	return ret
 }
 
+func initDriverMetric() []m.Metric {
+	res := make([]m.Metric, 0)
+	for _, v := range driverFiledList {
+		var metric m.Metric
+		var err error
+		value := strings.Replace(v, "_", ".", -1)
+		if value != "cpustats.cpu.nums" {
+			metric, err = Client.NewMetricWithOps(value, driverGeneralLabelList)
+		} else {
+			metric, err = Client.NewMetricWithOps(value, driverCpuLabelList)
+		}
+		if err != nil {
+			ylog.Infof("initDriverMetric", "v:%s error:%s", v, err.Error())
+		} else {
+			res = append(res, metric)
+		}
+	}
+	return res
+}
+
 var driverGaugeList = initDriverGauge()
+
+var driverGaugeMetricList = initDriverMetric()
 
 func ReleaseDriverHeartbeat(labels []string) {
 	for _, v := range driverGaugeList {
@@ -114,6 +138,35 @@ func UpdateFromDriverHeartbeat(accountID, agentID, agentVersion string, record *
 			v.WithLabelValues(generalLvs...).Set(value)
 		} else {
 			v.WithLabelValues(cpuLvs...).Set(value)
+		}
+	}
+
+	// update driver heartbeat metric
+	for i, v := range driverGaugeMetricList {
+		valueStr := fields[driverFiledList[i]]
+		if valueStr == "" {
+			ylog.Warnf("parseRecord", "driver heartbeat %s is null", driverFiledList[i])
+			continue
+		}
+		value, err := strconv.ParseFloat(valueStr, 64)
+		if err != nil {
+			ylog.Errorf("parseRecord", "driver heartbeat parse %s Error %s", driverFiledList[i], err.Error())
+			continue
+		}
+		// memstats_ents_u: kernel_version >= 4.19 不上报
+		var kernelVersion string
+		if t, ok := fields["kernel_version"]; ok {
+			if len(t) > 4 {
+				kernelVersion = t[:4]
+			}
+		}
+		if driverFiledList[i] == "memstats_ents_u" && kernelVersion >= common.HighKernelVersion {
+			continue
+		}
+		if driverFiledList[i] != "cpustats_cpu_nums" {
+			v.WithTagValues(generalLvs...).Emit(m.Storef(value))
+		} else {
+			v.WithTagValues(cpuLvs...).Emit(m.Storef(value))
 		}
 	}
 	return cpuLvs, true

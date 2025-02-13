@@ -1,6 +1,7 @@
 package grpc_handler
 
 import (
+	m "code.byted.org/gopkg/metrics/v4"
 	"context"
 	"errors"
 	"fmt"
@@ -184,6 +185,12 @@ func recvData(stream pb.Transfer_TransferServer, conn *pool.Connection) {
 				return
 			}
 			metrics.RecvCounter.With(prometheus.Labels{"account_id": conn.AccountID}).Inc()
+			// todo add region metrics
+			err = metrics.RecvCounterMetric.WithTags(m.T{Name: "account_id", Value: conn.AccountID}).Emit(m.IncrCounter(1))
+			if err != nil {
+				ylog.Errorf("recvData", "RecvCounterMetric error:%s", err.Error())
+			}
+			// metrics sdk report metrics
 			handleRawData(data, conn)
 		}
 	}
@@ -215,6 +222,10 @@ func sendData(stream pb.Transfer_TransferServer, conn *pool.Connection) {
 				conn.SetConfigs(cmd.Command.Config)
 			}
 			metrics.SendCounter.With(prometheus.Labels{"account_id": conn.AccountID}).Inc()
+			err = metrics.SendCounterMetric.WithTags(m.T{Name: "account_id", Value: conn.AccountID}).Emit(m.IncrCounter(1))
+			if err != nil {
+				ylog.Errorf("sendData", "SendCounterMetric error:%s", err.Error())
+			}
 			ylog.Infof("sendData", "Transfer Send %s %v ", conn.AgentID, cmd)
 			cmd.Error = nil
 			close(cmd.Ready)

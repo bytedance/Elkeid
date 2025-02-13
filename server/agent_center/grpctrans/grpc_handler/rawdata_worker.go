@@ -1,6 +1,7 @@
 package grpc_handler
 
 import (
+	m "code.byted.org/gopkg/metrics/v4"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -54,6 +55,14 @@ func handleRawData(req *pb.RawData, conn *pool.Connection) (agentID string) {
 		}
 
 		metrics.OutputAgentIDCounter.With(prometheus.Labels{"account_id": conn.AccountID, "agent_id": mqMsg.AgentID}).Add(float64(1))
+
+		err := metrics.OutputAgentIDCounterMetric.WithTags(
+			m.T{Name: "account_id", Value: conn.AccountID},
+			m.T{Name: "agent_id", Value: mqMsg.AgentID},
+		).Emit(m.IncrCounter(1))
+		if err != nil {
+			ylog.Errorf("handleRawData", "OutputAgentIDCounterMetric error:%s", err.Error())
+		}
 
 		switch mqMsg.DataType {
 		case 900:
