@@ -211,7 +211,7 @@ static struct tt_node *tt_rb_insert_node_nolock(struct tt_rb *rb, struct tt_node
 
 struct tt_node *tt_rb_insert_key_nolock(struct tt_rb *rb, void *key)
 {
-    struct tt_node *tnod, *nnod = ERR_PTR(-ENOMEM);
+    struct tt_node *tnod, *nnod = NULL;
 
     /* initialize tnod from key */
     tnod = rb->init(rb, key);
@@ -238,12 +238,7 @@ int tt_rb_insert_key(struct tt_rb *rb, void *key)
     write_lock_irqsave(&rb->lock, flags);
     tnod = tt_rb_insert_key_nolock(rb, key);
     write_unlock_irqrestore(&rb->lock, flags);
-    if (IS_ERR(tnod)) {
-        return PTR_ERR(tnod);
-    } else if (!tnod) {
-        return -ENOMEM;
-    }
-    return 0;
+    return !!tnod;
 }
 
 struct tt_node *tt_rb_lookup_key(struct tt_rb *rb, void *key)
