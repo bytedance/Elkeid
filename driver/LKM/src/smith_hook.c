@@ -37,7 +37,8 @@ static uint64_t ROOT_MNT_NS_ID;
 #include "../include/kprobe_print.h"
 
 #define EXIT_PROTECT 0
-#define SANDBOX 0
+static int SANDBOX;
+module_param(SANDBOX, int, S_IRUSR|S_IRGRP|S_IROTH);
 
 #define SMITH_MAX_ARG_STRINGS (16)
 #define SMITH_MAX_CMDLINE     SD_STR_MAX
@@ -625,7 +626,7 @@ ssize_t (*smith_strscpy)(char *dest, const char *src, size_t count);
 
 static struct task_struct *(*smith_get_pid_task)(struct pid *pid, enum pid_type type);
 
-static int __init kernel_symbols_init(void)
+static int __init kernel_init_symbols(void)
 {
     void *ptr;
 
@@ -4061,10 +4062,12 @@ static void unregister_write_kprobe(void)
     unregister_kprobe(&write_kprobe);
 }
 
-static void uninstall_kprobe(void)
+static void smith_fini_kprobe(void)
 {
-    if (tcp_connect_kprobe_state)
-        unregister_tcp_connect_kprobe();
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0))
+    unregister_kprobe(&set_task_comm_kprobe);
+#endif
 
     if (UDEV_HOOK == 1) {
         static void (*smith_usb_unregister_notify) (struct notifier_block * nb);
@@ -4118,31 +4121,9 @@ static void uninstall_kprobe(void)
         unregister_link_kprobe();
 }
 
-static void install_kprobe(void)
+static void smith_init_kprobe(void)
 {
     int ret;
-
-    if (SANDBOX == 1) {
-        DNS_HOOK = 1;
-        USERMODEHELPER_HOOK = 1;
-        //MPROTECT_HOOK = 1;
-        ACCEPT_HOOK = 1;
-        OPEN_HOOK = 1;
-        MPROTECT_HOOK = 1;
-        //NANOSLEEP_HOOK = 1;
-        KILL_HOOK = 1;
-        RM_HOOK = 1;
-        EXIT_HOOK = 1;
-        WRITE_HOOK = 1;
-
-        PID_TREE_LIMIT = 100;
-        PID_TREE_LIMIT_LOW = 100;
-        EXECVE_GET_SOCK_PID_LIMIT = 100;
-        EXECVE_GET_SOCK_FD_LIMIT = 100;
-
-        FAKE_SLEEP = 1;
-        FAKE_RM = 1;
-    }
 
     if (UDEV_HOOK == 1) {
         static void (*smith_usb_register_notify) (struct notifier_block * nb);
@@ -4233,13 +4214,16 @@ static void install_kprobe(void)
             printk(KERN_INFO "[ELKEID] update_cred register_kprobe failed, returned %d\n", ret);
     }
 
-    if (CONNECT_HOOK && TCPCONN_HOOK) {
-        /* finialize g_rb_conn and release all resources */
-        if (register_tcp_connect_kprobe()) {
-            tt_rb_fini(&g_rb_conn);
-            TCPCONN_HOOK = 0;
-        }
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0))
+    /*
+     * try __set_task_comm first, then set_task_comm. kernels >= 3.16 should work
+     * with __set_task_comm, and the 2nd try should work for kernels < 3.16
+     */
+    if (register_kprobe(&set_task_comm_kprobe)) {
+        set_task_comm_kprobe.symbol_name = &set_task_comm_kprobe.symbol_name[2];
+        register_kprobe(&set_task_comm_kprobe);
     }
+#endif
 }
 
 /*
@@ -6134,9 +6118,9 @@ static int smith_unregister_tracepoint(struct smith_tracepoint *tp)
 }
 #endif
 
-static int __init smith_tid_init(void)
+static int __init smith_init_cache(void)
 {
-    int i, rc, nimgs, ntids;
+    int rc, nimgs, ntids;
 
     /* check the tracepoints of our interest */
     rc = smith_assert_tracepoints();
@@ -6186,38 +6170,10 @@ static int __init smith_tid_init(void)
             goto fini_rb_conn;
     }
 
-    /* register callbacks for the tracepoints of our interest */
-    for (i = 0; i < NUM_TRACE_POINTS; i++) {
-        rc = smith_register_tracepoint(&g_smith_tracepoints[i]);
-        if (rc)
-            goto clean_trace;
-    }
-
-    /* enum active tasks and build tid for each user task */
-    smith_process_tasks(&g_hlist_tid);
-
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0))
-    /*
-     * try __set_task_comm first, then set_task_comm. kernels >= 3.16 should work
-     * with __set_task_comm, and the 2nd try should work for kernels < 3.16
-     */
-    if (register_kprobe(&set_task_comm_kprobe)) {
-        set_task_comm_kprobe.symbol_name = &set_task_comm_kprobe.symbol_name[2];
-        register_kprobe(&set_task_comm_kprobe);
-    }
-#endif
-
 errorout:
     return rc;
 
-clean_trace:
-    while (--i >= 0)
-        smith_unregister_tracepoint(&g_smith_tracepoints[i]);
-
-if (CONNECT_HOOK && TCPCONN_HOOK)
-    tt_rb_fini(&g_rb_conn);
 fini_rb_conn:
-
 #if SMITH_FILE_CREATION_TRACK
     tt_rb_fini(&g_rb_ent);
 fini_rb_ent:
@@ -6229,20 +6185,10 @@ fini_rb_img:
     return rc;
 }
 
-static void smith_tid_fini(void)
+static void smith_fini_cache(void)
 {
-    int i;
-
-    /* register callbacks for the tracepoints of our interest */
-    for (i = NUM_TRACE_POINTS; i > 0; i--)
-        smith_unregister_tracepoint(&g_smith_tracepoints[i - 1]);
-
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0))
-    unregister_kprobe(&set_task_comm_kprobe);
-#endif
-
     /* release conn before tid since conn could refer tid */
-    if (tcp_connect_kprobe_state)
+    if (CONNECT_HOOK && TCPCONN_HOOK)
         tt_rb_fini(&g_rb_conn);
 
     hlist_fini(&g_hlist_tid);
@@ -6251,6 +6197,53 @@ static void smith_tid_fini(void)
     tt_rb_fini(&g_rb_ent);
 #endif
 }
+
+static int __init smith_init_trace(void)
+{
+    int i, rc;
+
+    if (CONNECT_HOOK && TCPCONN_HOOK) {
+        /* finialize g_rb_conn and release all resources */
+        if (register_tcp_connect_kprobe()) {
+            WRITE_ONCE(TCPCONN_HOOK, 0);
+            tt_rb_fini(&g_rb_conn);
+        }
+    }
+
+    /* register callbacks for the tracepoints of our interest */
+    for (i = 0; i < NUM_TRACE_POINTS; i++) {
+        rc = smith_register_tracepoint(&g_smith_tracepoints[i]);
+        if (rc)
+            goto clean_trace;
+    }
+
+    /* enum active tasks and build tid for each user task */
+    smith_process_tasks(&g_hlist_tid);
+
+    return rc;
+
+clean_trace:
+    while (--i >= 0)
+        smith_unregister_tracepoint(&g_smith_tracepoints[i]);
+    if (tcp_connect_kprobe_state)
+        unregister_tcp_connect_kprobe();
+
+    return rc;
+}
+
+static void __init smith_fini_trace(void)
+{
+    int i;
+
+    /* cleanup callbacks for the tracepoints of our interest */
+    for (i = NUM_TRACE_POINTS; i > 0; i--)
+        smith_unregister_tracepoint(&g_smith_tracepoints[i - 1]);
+
+    /* unregister tcp_connect kprobes */
+    if (tcp_connect_kprobe_state)
+        unregister_tcp_connect_kprobe();
+}
+
 
 static void __init smith_init_systemd_ns(void)
 {
@@ -7102,6 +7095,33 @@ static int __init kprobe_hook_init(void)
 {
     int ret;
 
+    /* enable sandbox mode if necessary */
+    if (SANDBOX == 1) {
+        DNS_HOOK = 1;
+        USERMODEHELPER_HOOK = 1;
+        //MPROTECT_HOOK = 1;
+        ACCEPT_HOOK = 1;
+        OPEN_HOOK = 1;
+        MPROTECT_HOOK = 1;
+        //NANOSLEEP_HOOK = 1;
+        KILL_HOOK = 1;
+        RM_HOOK = 1;
+        EXIT_HOOK = 1;
+        WRITE_HOOK = 1;
+
+        PID_TREE_LIMIT = 100;
+        PID_TREE_LIMIT_LOW = 100;
+        EXECVE_GET_SOCK_PID_LIMIT = 100;
+        EXECVE_GET_SOCK_FD_LIMIT = 100;
+
+        FAKE_SLEEP = 1;
+        FAKE_RM = 1;
+    }
+
+    /* TCPCONN_HOOK depends on CONNECT_HOOK */
+    if (!CONNECT_HOOK && TCPCONN_HOOK)
+        TCPCONN_HOOK = 0;
+
     g_loaded_jiffies = smith_get_jiffies();
 
 #if defined(MODULE)
@@ -7112,7 +7132,7 @@ static int __init kprobe_hook_init(void)
 #endif
     printk(KERN_INFO "[ELKEID] srcid: %s\n", smith_srcid);
 
-    ret = kernel_symbols_init();
+    ret = kernel_init_symbols();
     if (ret)
         return ret;
 
@@ -7124,20 +7144,26 @@ static int __init kprobe_hook_init(void)
         return ret;
 
     /* need ROOT_MNT_NS inited by smith_init_systemd_ns */
-    ret = smith_tid_init();
+    ret = smith_init_cache();
     if (ret) {
+        smith_stop_delayed_put();
+        return ret;
+    }
+
+    /* initialize tracepoints */
+    ret = smith_init_trace();
+    if (ret) {
+        smith_fini_cache();
         smith_stop_delayed_put();
         return ret;
     }
 
     printk(KERN_INFO "[ELKEID] Filter Init Success \n");
 
-#if (EXIT_PROTECT == 1) && defined(MODULE)
-    exit_protect_action();
-#endif
-
     /* install kprobe & kretprobe hookpoints */
-    install_kprobe();
+    smith_init_kprobe();
+
+    /* psad skipped, to be dynamically turned on */
 
     /* register binfmt callback for image checking */
     smith_register_exec_load();
@@ -7155,6 +7181,10 @@ static int __init kprobe_hook_init(void)
             PRCTL_HOOK, OPEN_HOOK, UDEV_HOOK, NANOSLEEP_HOOK, KILL_HOOK, RM_HOOK, EXIT_HOOK, WRITE_HOOK,
             EXIT_PROTECT);
 
+#if (EXIT_PROTECT == 1) && defined(MODULE)
+    exit_protect_action();
+#endif
+
     return 0;
 }
 
@@ -7169,11 +7199,12 @@ static void kprobe_hook_exit(void)
         unregister_pernet_subsys(&smith_psad_net_ops);
     mutex_unlock(&g_nf_psad_lock);
 
-    /* cleaning up kprobe hook points */
-    uninstall_kprobe();
+    /* cleaning up hook points: kprobe * trace */
+    smith_fini_kprobe();
+    smith_fini_trace();
 
     /* cleaning up tid & img cache */
-    smith_tid_fini();
+    smith_fini_cache();
     smith_stop_delayed_put();
 
     printk(KERN_INFO "[ELKEID] uninstall_kprobe success\n");
