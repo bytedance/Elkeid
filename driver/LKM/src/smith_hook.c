@@ -50,7 +50,7 @@ module_param(SANDBOX, int, S_IRUSR|S_IRGRP|S_IROTH);
 // Hookpoint switch defintions
 
 SMITH_HOOK(CONNECT, 1);
-SMITH_HOOK(TCPCONN, 1); /* MaaS tcp connection auditing */
+SMITH_HOOK(TCPCONN, 0); /* MaaS tcp connection auditing */
 
 SMITH_HOOK(BIND, 1);
 SMITH_HOOK(EXECVE, 1);
