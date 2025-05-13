@@ -562,6 +562,10 @@ void (*__smith_put_task_struct)(struct task_struct *tsk);
 
 static const struct cred *(*get_task_cred_sym) (struct task_struct *);
 
+/* to be called by smith_query_args in load_binary callback */
+struct page * (*smith_get_arg_page)(struct linux_binprm *bprm,
+                                 unsigned long pos, int write);
+
 #if !defined(SMITH_HAVE_NO_MNTNS_OPS) && !defined(SMITH_HAVE_MNTNS_PROCFS)
 /* proc_ns.h introduced from v3.10, originated from proc_fs.h */
 #include <linux/proc_ns.h> /* proc_ns_operations */
@@ -631,8 +635,10 @@ static int __init kernel_init_symbols(void)
     void *ptr;
 
     ptr = (void *)smith_kallsyms_lookup_name("get_pid_task");
-    if (!ptr)
+    if (!ptr) {
+        printk("smith:fatal: get_pid_task not exported.\n");
         return -ENODEV;
+    }
     smith_get_pid_task = ptr;
 
     /* sized_strscpy introduced from v6.9 to replace strscpy */
@@ -641,30 +647,40 @@ static int __init kernel_init_symbols(void)
         ptr = (void *)smith_kallsyms_lookup_name("sized_strscpy");
     if (!ptr)
         ptr = (void *)smith_kallsyms_lookup_name("strlcpy");
-    if (!ptr)
+    if (!ptr) {
+        printk("smith:fatal: strs/lcpy not exported.\n");
         return -ENODEV;
+    }
     smith_strscpy = ptr;
 
     ptr = (void *)smith_kallsyms_lookup_name("put_files_struct");
-    if (!ptr)
+    if (!ptr) {
+        printk("smith:fatal: put_files_struct not exported.\n");
         return -ENODEV;
+    }
     put_files_struct_sym = ptr;
 
     ptr = (void *)smith_kallsyms_lookup_name("get_task_cred");
-    if (!ptr)
+    if (!ptr) {
+        printk("smith:fatal: get_task_cred not exported.\n");
         return -ENODEV;
+    }
     get_task_cred_sym = ptr;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
     ptr = (void *)smith_kallsyms_lookup_name("__put_task_struct");
-    if (!ptr)
+    if (!ptr) {
+        printk("smith:fatal: __put_task_struct not exported.\n");
         return -ENODEV;
+    }
     __smith_put_task_struct = ptr;
 #endif
 
     ptr = (void *)smith_kallsyms_lookup_name("ktime_get_real");
-    if (!ptr)
+    if (!ptr) {
+        printk("smith:fatal: ktime_get_real not exported.\n");
         return -ENODEV;
+    }
     smith_ktime_get_real_ns = ptr;
 
 /*
@@ -694,6 +710,14 @@ static int __init kernel_init_symbols(void)
     ptr = (void *)smith_kallsyms_lookup_name("mntns_operations");
     if (ptr)
         smith_mntns_ops = ptr;
+
+
+    ptr = (void *)smith_kallsyms_lookup_name("get_arg_page");
+    if (!ptr) {
+        printk("smith:fatal: get_arg_page not exported.\n");
+        return -ENODEV;
+    }
+    smith_get_arg_page = ptr;
 
     return 0;
 }
@@ -6761,35 +6785,16 @@ static void md5_block_notify(image_hash_t *hash, char *file_path, char *args)
 static char *smith_query_args(struct linux_binprm *bprm)
 {
     struct page *page = NULL;
-    struct mm_struct *mm = bprm->mm;
     char *kaddr, *cmd = NULL;
     unsigned long pos = bprm->p;
-    int ret, i, nargs = 0;
 
-    /* remap args page, should be already mapped by copy_strings */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)
-    ret = get_user_pages_remote(mm, pos, 1, FOLL_FORCE, &page, NULL);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0)
-    ret = get_user_pages_remote(mm, pos, 1, FOLL_FORCE, &page, NULL, NULL);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
-    ret = get_user_pages_remote(current, mm, pos, 1, FOLL_FORCE, &page, NULL, NULL);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
-    ret = get_user_pages_remote(current, mm, pos, 1, FOLL_FORCE, &page, NULL);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 6, 0)
-    ret = get_user_pages_remote(current, mm, pos, 1, 0, 1, &page, NULL);
-#elif defined(MM_GUP_FLAGS_SUPPORT)
-    ret = get_user_pages(current, mm, pos, 1, FOLL_FORCE, &page, NULL);
-#else
-    ret = get_user_pages(current, mm, pos, 1, 0, 1, &page, NULL);
-#endif
-    if (ret <= 0)
-        return cmd;
+    page = smith_get_arg_page(bprm, pos, 0);
     if (!page)
         return cmd;
 
     kaddr = kmap(page);
     if (kaddr) {
-        uint32_t offset = (uint32_t)(pos % PAGE_SIZE);
+        int offset = (int)(pos & PAGE_MASK), i, nargs = 0;
         for (i = offset + 1; i < PAGE_SIZE; i++) {
             if (kaddr[i] == 0) {
                 nargs++;
