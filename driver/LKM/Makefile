@@ -101,15 +101,32 @@ ccflags-y += -D SMITH_HAVE_FCHECK_FILES
 endif
 
 USER_MSGHDR_FILES := $(shell find -L $(K_I_PATH) -path \*/linux/socket.h) /dev/null
-USER_MSGHDR_STRUT := $(shell sh -c "grep -sE struct[[:space:]]\+user_msghdr[[:space:]]\+\{ $(USER_MSGHDR_FILES)")
+USER_MSGHDR_STRUT := $(shell sh -c "grep -sE struct[[:space:]]\+user_msghdr[[:space:]]\+[\{\}] $(USER_MSGHDR_FILES)")
 ifeq ($(USER_MSGHDR_STRUT),)
 ccflags-y += -D USER_MSGHDR_SUPPORT
 endif
 
-MM_GUP_FILES := $(shell find -L $(K_I_PATH) -path \*/linux/mm.h) /dev/null
-MM_GUP_STRUT := $(shell sh -c "grep -sE -A2 long[[:space:]]\+get_user_pages[\(\)] $(MM_GUP_FILES) | grep gup_flags")
+MM_H_FILES := $(shell find -L $(K_I_PATH) -path \*/linux/mm.h) /dev/null
+MM_GUP_STRUT := $(shell sh -c "grep -sE -A2 long[[:space:]]\+get_user_pages[\(\)] $(MM_H_FILES) | grep gup_flags")
 ifneq ($(MM_GUP_STRUT),)
 ccflags-y += -D MM_GUP_FLAGS_SUPPORT
+endif
+MM_GUPR_TASK := $(shell sh -c "grep -sE -A3 long[[:space:]]\+get_user_pages_remote[\(\)] $(MM_H_FILES) | grep task_struct")
+ifneq ($(MM_GUPR_TASK),)
+ccflags-y += -D MM_GUPR_FLAGS_TASK
+endif
+MM_GUPR_VMAS := $(shell sh -c "grep -sE -A3 long[[:space:]]\+get_user_pages_remote[\(\)] $(MM_H_FILES) | grep vm_area_struct")
+ifneq ($(MM_GUPR_VMAS),)
+ccflags-y += -D MM_GUPR_FLAGS_VMAS
+endif
+MM_GUPR_LOCK := $(shell sh -c "grep -sE -A3 long[[:space:]]\+get_user_pages_remote[\(\)] $(MM_H_FILES) | grep locked")
+ifneq ($(MM_GUPR_LOCK),)
+ccflags-y += -D MM_GUPR_FLAGS_LOCK
+endif
+MMAP_LOCK_FILES := $(shell find -L $(K_I_PATH) -path \*/linux/mmap_lock.h) /dev/null
+MM_MMAP_LOCK := $(shell sh -c "grep -sE void[[:space:]]\+mmap_read_lock[\(\)] $(MM_H_FILES) $(MMAP_LOCK_FILES) | grep mmap_read_lock")
+ifneq ($(MM_MMAP_LOCK),)
+ccflags-y += -D MM_MMAP_FLAGS_LOCK
 endif
 
 else
