@@ -563,8 +563,8 @@ void (*__smith_put_task_struct)(struct task_struct *tsk);
 static const struct cred *(*get_task_cred_sym) (struct task_struct *);
 
 /* to be called by smith_query_args in load_binary callback */
-struct page * (*smith_get_arg_page)(struct linux_binprm *bprm,
-                                 unsigned long pos, int write);
+static struct page * (*smith_get_arg_page_krnl)(struct linux_binprm *bprm,
+                                            unsigned long pos, int write);
 
 #if !defined(SMITH_HAVE_NO_MNTNS_OPS) && !defined(SMITH_HAVE_MNTNS_PROCFS)
 /* proc_ns.h introduced from v3.10, originated from proc_fs.h */
@@ -714,10 +714,9 @@ static int __init kernel_init_symbols(void)
 
     ptr = (void *)smith_kallsyms_lookup_name("get_arg_page");
     if (!ptr) {
-        printk("smith:fatal: get_arg_page not exported.\n");
-        return -ENODEV;
+        printk("smith WARNING: get_arg_page not exported.\n");
     }
-    smith_get_arg_page = ptr;
+    smith_get_arg_page_krnl = ptr;
 
     return 0;
 }
@@ -6782,13 +6781,158 @@ static void md5_block_notify(image_hash_t *hash, char *file_path, char *args)
         smith_put_tid(tid);
 }
 
+#if 0
+matt@devz1 /BUILD> grep -rn -A3 ^long\ get_user_pages_remote\( (find . -path \*/include/linux/mm.h)
+--
+linux-3.10.0-1160.el7/include/linux/mm.h:1396:long get_user_pages_remote(struct task_struct *tsk, struct mm_struct *mm,
+linux-3.10.0-1160.el7/include/linux/mm.h-1397-			    unsigned long start, unsigned long nr_pages,
+linux-3.10.0-1160.el7/include/linux/mm.h-1398-			    int write, int force, struct page **pages,
+linux-3.10.0-1160.el7/include/linux/mm.h-1399-			    struct vm_area_struct **vmas);
+--
+linux-headers-4.13.0-41/include/linux/mm.h:1339:long get_user_pages_remote(struct task_struct *tsk, struct mm_struct *mm,
+linux-headers-4.13.0-41/include/linux/mm.h-1340-			    unsigned long start, unsigned long nr_pages,
+linux-headers-4.13.0-41/include/linux/mm.h-1341-			    unsigned int gup_flags, struct page **pages,
+linux-headers-4.13.0-41/include/linux/mm.h-1342-			    struct vm_area_struct **vmas, int *locked);
+--
+4.15.0-1.el7.elrepo.x86_64/include/linux/mm.h:1372:long get_user_pages_remote(struct task_struct *tsk, struct mm_struct *mm,
+4.15.0-1.el7.elrepo.x86_64/include/linux/mm.h-1373-			    unsigned long start, unsigned long nr_pages,
+4.15.0-1.el7.elrepo.x86_64/include/linux/mm.h-1374-			    unsigned int gup_flags, struct page **pages,
+4.15.0-1.el7.elrepo.x86_64/include/linux/mm.h-1375-			    struct vm_area_struct **vmas, int *locked);
+--
+4.18.0-553.51.1.el8_10.x86_64/include/linux/mm.h:1673:long get_user_pages_remote(struct task_struct *tsk, struct mm_struct *mm,
+4.18.0-553.51.1.el8_10.x86_64/include/linux/mm.h-1674-                      unsigned long start, unsigned long nr_pages,
+4.18.0-553.51.1.el8_10.x86_64/include/linux/mm.h-1675-                      unsigned int gup_flags, struct page **pages,
+4.18.0-553.51.1.el8_10.x86_64/include/linux/mm.h-1676-                      struct vm_area_struct **vmas, int *locked);
+__
+./linux-5.4.8-rpi4/include/linux/mm.h:1532:long get_user_pages_remote(struct task_struct *tsk, struct mm_struct *mm,
+./linux-5.4.8-rpi4/include/linux/mm.h-1533-			    unsigned long start, unsigned long nr_pages,
+./linux-5.4.8-rpi4/include/linux/mm.h-1534-			    unsigned int gup_flags, struct page **pages,
+./linux-5.4.8-rpi4/include/linux/mm.h-1535-			    struct vm_area_struct **vmas, int *locked);
+--
+./linux-image-bsk/include/linux/mm.h:1527:long get_user_pages_remote(struct task_struct *tsk, struct mm_struct *mm,
+./linux-image-bsk/include/linux/mm.h-1528-			    unsigned long start, unsigned long nr_pages,
+./linux-image-bsk/include/linux/mm.h-1529-			    unsigned int gup_flags, struct page **pages,
+./linux-image-bsk/include/linux/mm.h-1530-			    struct vm_area_struct **vmas, int *locked);
+--
+./linux-5.4.210.bsk.6/include/linux/mm.h:1527:long get_user_pages_remote(struct task_struct *tsk, struct mm_struct *mm,
+./linux-5.4.210.bsk.6/include/linux/mm.h-1528-			    unsigned long start, unsigned long nr_pages,
+./linux-5.4.210.bsk.6/include/linux/mm.h-1529-			    unsigned int gup_flags, struct page **pages,
+./linux-5.4.210.bsk.6/include/linux/mm.h-1530-			    struct vm_area_struct **vmas, int *locked);
+--
+./linux-5.12/include/linux/mm.h:1769:long get_user_pages_remote(struct mm_struct *mm,
+./linux-5.12/include/linux/mm.h-1770-			    unsigned long start, unsigned long nr_pages,
+./linux-5.12/include/linux/mm.h-1771-			    unsigned int gup_flags, struct page **pages,
+./linux-5.12/include/linux/mm.h-1772-			    struct vm_area_struct **vmas, int *locked);
+--
+./linux-5.13rc/include/linux/mm.h:1811:long get_user_pages_remote(struct mm_struct *mm,
+./linux-5.13rc/include/linux/mm.h-1812-			    unsigned long start, unsigned long nr_pages,
+./linux-5.13rc/include/linux/mm.h-1813-			    unsigned int gup_flags, struct page **pages,
+./linux-5.13rc/include/linux/mm.h-1814-			    struct vm_area_struct **vmas, int *locked);
+--
+5.14.0-373.el9.x86_64/include/linux/mm.h:1903:long get_user_pages_remote(struct mm_struct *mm,
+5.14.0-373.el9.x86_64/include/linux/mm.h-1904-			    unsigned long start, unsigned long nr_pages,
+5.14.0-373.el9.x86_64/include/linux/mm.h-1905-			    unsigned int gup_flags, struct page **pages,
+5.14.0-373.el9.x86_64/include/linux/mm.h-1906-			    struct vm_area_struct **vmas, int *locked);
+--
+5.14.0-580.el9.x86_64/include/linux/mm.h:2464:long get_user_pages_remote(struct mm_struct *mm,
+5.14.0-580.el9.x86_64/include/linux/mm.h-2465-			   unsigned long start, unsigned long nr_pages,
+5.14.0-580.el9.x86_64/include/linux/mm.h-2466-			   unsigned int gup_flags, struct page **pages,
+5.14.0-580.el9.x86_64/include/linux/mm.h-2467-			   int *locked);
+--
+./linux-5.18.9/include/linux/mm.h:1912:long get_user_pages_remote(struct mm_struct *mm,
+./linux-5.18.9/include/linux/mm.h-1913-			    unsigned long start, unsigned long nr_pages,
+./linux-5.18.9/include/linux/mm.h-1914-			    unsigned int gup_flags, struct page **pages,
+./linux-5.18.9/include/linux/mm.h-1915-			    struct vm_area_struct **vmas, int *locked);
+--
+./linux-5.14/include/linux/mm.h:1815:long get_user_pages_remote(struct mm_struct *mm,
+./linux-5.14/include/linux/mm.h-1816-			    unsigned long start, unsigned long nr_pages,
+./linux-5.14/include/linux/mm.h-1817-			    unsigned int gup_flags, struct page **pages,
+./linux-5.14/include/linux/mm.h-1818-			    struct vm_area_struct **vmas, int *locked);
+--
+./linux-6.1-objpool_v8/include/linux/mm.h:1964:long get_user_pages_remote(struct mm_struct *mm,
+./linux-6.1-objpool_v8/include/linux/mm.h-1965-			    unsigned long start, unsigned long nr_pages,
+./linux-6.1-objpool_v8/include/linux/mm.h-1966-			    unsigned int gup_flags, struct page **pages,
+./linux-6.1-objpool_v8/include/linux/mm.h-1967-			    struct vm_area_struct **vmas, int *locked);
+--
+./linux-6.3.8/include/linux/mm.h:2228:long get_user_pages_remote(struct mm_struct *mm,
+./linux-6.3.8/include/linux/mm.h-2229-			    unsigned long start, unsigned long nr_pages,
+./linux-6.3.8/include/linux/mm.h-2230-			    unsigned int gup_flags, struct page **pages,
+./linux-6.3.8/include/linux/mm.h-2231-			    struct vm_area_struct **vmas, int *locked);
+--
+./linux-6.4.3/include/linux/mm.h:2368:long get_user_pages_remote(struct mm_struct *mm,
+./linux-6.4.3/include/linux/mm.h-2369-			    unsigned long start, unsigned long nr_pages,
+./linux-6.4.3/include/linux/mm.h-2370-			    unsigned int gup_flags, struct page **pages,
+./linux-6.4.3/include/linux/mm.h-2371-			    struct vm_area_struct **vmas, int *locked);
+--
+./linux-6.5rc/include/linux/mm.h:2397:long get_user_pages_remote(struct mm_struct *mm,
+./linux-6.5rc/include/linux/mm.h-2398-			   unsigned long start, unsigned long nr_pages,
+./linux-6.5rc/include/linux/mm.h-2399-			   unsigned int gup_flags, struct page **pages,
+./linux-6.5rc/include/linux/mm.h-2400-			   int *locked);
+--
+./linux-6.6/include/linux/mm.h:2419:long get_user_pages_remote(struct mm_struct *mm,
+./linux-6.6/include/linux/mm.h-2420-			   unsigned long start, unsigned long nr_pages,
+./linux-6.6/include/linux/mm.h-2421-			   unsigned int gup_flags, struct page **pages,
+./linux-6.6/include/linux/mm.h-2422-			   int *locked);
+--
+./linux-6.7-rc5/include/linux/mm.h:2428:long get_user_pages_remote(struct mm_struct *mm,
+./linux-6.7-rc5/include/linux/mm.h-2429-			   unsigned long start, unsigned long nr_pages,
+./linux-6.7-rc5/include/linux/mm.h-2430-			   unsigned int gup_flags, struct page **pages,
+./linux-6.7-rc5/include/linux/mm.h-2431-			   int *locked);
+--
+./linux-6.8.1/include/linux/mm.h:2440:long get_user_pages_remote(struct mm_struct *mm,
+./linux-6.8.1/include/linux/mm.h-2441-			   unsigned long start, unsigned long nr_pages,
+./linux-6.8.1/include/linux/mm.h-2442-			   unsigned int gup_flags, struct page **pages,
+./linux-6.8.1/include/linux/mm.h-2443-			   int *locked);
+
+#endif
+
+static struct page * smith_get_arg_page(struct linux_binprm *bprm, unsigned long pos)
+{
+    struct mm_struct *mm = bprm->mm;
+    struct page *page = NULL;
+    int ret = 0;
+
+    if (smith_get_arg_page_krnl)
+        return smith_get_arg_page_krnl(bprm, pos, 0);
+
+    /* remap args page, should be already mapped by copy_strings */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+# if defined(MM_MMAP_FLAGS_LOCK)
+    mmap_read_lock(mm);
+# endif
+    ret = get_user_pages_remote(
+# if defined(MM_GUPR_FLAGS_TASK)
+        current,
+# endif
+        mm, pos, 1, FOLL_FORCE, &page
+# if defined(MM_GUPR_FLAGS_VMAS)
+        , NULL
+# endif
+# if defined(MM_GUPR_FLAGS_LOCK)
+        , NULL
+# endif
+    );
+# if defined(MM_MMAP_FLAGS_LOCK)
+    mmap_read_unlock(mm);
+# endif
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 6, 0)
+    ret = get_user_pages_remote(current, mm, pos, 1, 0, 1, &page, NULL);
+#elif defined(MM_GUP_FLAGS_SUPPORT)
+    ret = get_user_pages(current, mm, pos, 1, FOLL_FORCE, &page, NULL);
+#else
+    ret = get_user_pages(current, mm, pos, 1, 0, 1, &page, NULL);
+#endif
+
+    return page;
+}
+
 static char *smith_query_args(struct linux_binprm *bprm)
 {
     struct page *page = NULL;
     char *kaddr, *cmd = NULL;
     unsigned long pos = bprm->p;
 
-    page = smith_get_arg_page(bprm, pos, 0);
+    page = smith_get_arg_page(bprm, pos);
     if (!page)
         return cmd;
 
