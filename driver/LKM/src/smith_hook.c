@@ -6943,7 +6943,7 @@ static char *smith_query_args(struct linux_binprm *bprm)
 
     kaddr = kmap(page);
     if (kaddr) {
-        int offset = (int)(pos & PAGE_MASK), i, nargs = 0;
+        int offset = (int)(pos & (PAGE_SIZE - 1)), i, nargs = 0;
         for (i = offset + 1; i < PAGE_SIZE; i++) {
             if (kaddr[i] == 0) {
                 nargs++;
