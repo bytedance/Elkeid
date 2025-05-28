@@ -3685,37 +3685,23 @@ out:
     return;
 }
 
-struct update_cred_data {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
-    uid_t old_uid;
-#else
-    int old_uid;
-#endif
-};
-
-static int update_cred_entry_handler(struct kretprobe_instance *ri,
-                              struct pt_regs *regs)
-{
-    struct update_cred_data *data;
-    data = (struct update_cred_data *)ri->data;
-    data->old_uid = __get_current_uid();
-    return 0;
-}
-
-static int update_cred_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+static int update_cred_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     struct smith_tid *tid = NULL;
-    char *exe_path = DEFAULT_RET_STR;
     char *pid_tree = NULL;
-    struct update_cred_data *data;
-    int now_uid;
-    int retval;
+    char *exe_path = DEFAULT_RET_STR;
+    struct cred *cred;
+    int new_uid, old_uid;
 
-    now_uid = __get_current_uid();
-    retval = regs_return_value(regs);
+    cred = (void *)p_regs_get_arg1(regs);
+    if (IS_ERR_OR_NULL(cred))
+        return 0;
 
-    //only get old uid ≠0 && new uid == 0
-    if (now_uid != 0)
+    new_uid = _XID_VALUE(cred->uid);
+    old_uid = __get_current_uid();
+
+    // only report if old uid ≠0 && new uid == 0
+    if (new_uid != 0 || old_uid == 0)
         return 0;
 
     tid = smith_lookup_tid(current);
@@ -3727,11 +3713,8 @@ static int update_cred_handler(struct kretprobe_instance *ri, struct pt_regs *re
         pid_tree = tid->st_pid_tree;
     }
 
-    data = (struct update_cred_data *)ri->data;
-    if (data->old_uid != 0) {
-        smith_check_privilege_escalation(PID_TREE_LIMIT, pid_tree);
-        update_cred_print(exe_path, pid_tree, data->old_uid, retval);
-    }
+    smith_check_privilege_escalation(PID_TREE_LIMIT, pid_tree);
+    update_cred_print(exe_path, pid_tree, old_uid, 0);
 
 out:
     if (tid)
@@ -3791,11 +3774,9 @@ static struct kprobe link_kprobe = {
         .pre_handler = link_pre_handler,
 };
 
-static struct kretprobe update_cred_kretprobe = {
-        .kp.symbol_name = "commit_creds",
-        .data_size = sizeof(struct update_cred_data),
-        .handler = update_cred_handler,
-        .entry_handler = update_cred_entry_handler,
+static struct kprobe update_cred_kprobe = {
+        .symbol_name = "commit_creds",
+        .pre_handler = update_cred_pre_handler,
 };
 
 static struct kprobe security_inode_create_kprobe = {
@@ -4021,7 +4002,7 @@ static void unregister_mount_kprobe(void)
 static int register_update_cred_kprobe(void)
 {
     int ret;
-    ret = smith_register_kretprobe(&update_cred_kretprobe);
+    ret = register_kprobe(&update_cred_kprobe);
     if (ret == 0)
         update_cred_kprobe_state = 0x1;
 
@@ -4030,7 +4011,7 @@ static int register_update_cred_kprobe(void)
 
 static void unregister_update_cred_kprobe(void)
 {
-    smith_unregister_kretprobe(&update_cred_kretprobe);
+    unregister_kprobe(&update_cred_kprobe);
 }
 
 static int register_mprotect_kprobe(void)
