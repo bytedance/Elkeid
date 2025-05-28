@@ -3849,6 +3849,44 @@ static struct notifier_block smith_usb_notifier = {
         .notifier_call = smith_usb_ncb,
 };
 
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
+
+static void smith_update_comm(struct smith_tid *tid, char *comm_new);
+
+/*
+ * 3.16 and later:
+ * void __set_task_comm(struct task_struct *tsk, const char *buf, bool exec);
+ *
+ * pre 3.16:
+ * void set_task_comm(struct task_struct *tsk, char *buf);
+ */
+static int set_task_comm_pre_handler(struct kprobe *kp, struct pt_regs *regs)
+{
+    struct task_struct *task = (void *)p_regs_get_arg1(regs);
+    struct smith_tid *tid = NULL;
+
+    /* ignore __set_task_comm callings in exec */
+    if (kp->symbol_name[0] == '_' && (char)p_regs_get_arg3(regs))
+        return 0;
+
+    tid = smith_lookup_tid(task);
+    if (tid) {
+        if (task->tgid == task->pid)
+            smith_update_comm(tid, (char *)p_regs_get_arg2(regs));
+        smith_put_tid(tid);
+    }
+
+    return 0;
+}
+
+struct kprobe  set_task_comm_kprobe = {
+        .symbol_name = "__set_task_comm",
+        .pre_handler = set_task_comm_pre_handler,
+};
+
+#endif
+
 /*
  * set minimal of maxactive as 32 to avoid possible missings
  * of kretprobe events, especially for NON-PREEMPTED systems
@@ -4088,7 +4126,7 @@ static void unregister_write_kprobe(void)
 static void smith_fini_kprobe(void)
 {
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0))
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
     unregister_kprobe(&set_task_comm_kprobe);
 #endif
 
@@ -4237,7 +4275,7 @@ static void smith_init_kprobe(void)
             printk(KERN_INFO "[ELKEID] update_cred register_kprobe failed, returned %d\n", ret);
     }
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0))
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
     /*
      * try __set_task_comm first, then set_task_comm. kernels >= 3.16 should work
      * with __set_task_comm, and the 2nd try should work for kernels < 3.16
@@ -6004,7 +6042,7 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
 #endif /* BITS_PER_LONG == 64 */
 }
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0))
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0)
 
 TRACEPOINT_PROBE(smith_trace_task_rename,
                  struct task_struct *task,
@@ -6023,39 +6061,6 @@ TRACEPOINT_PROBE(smith_trace_task_rename,
         smith_put_tid(tid);
     }
 }
-
-#else
-
-/*
- * 3.16 and later:
- * void __set_task_comm(struct task_struct *tsk, const char *buf, bool exec);
- *
- * pre 3.16:
- * void set_task_comm(struct task_struct *tsk, char *buf);
- */
-static int set_task_comm_pre_handler(struct kprobe *kp, struct pt_regs *regs)
-{
-    struct task_struct *task = (void *)p_regs_get_arg1(regs);
-    struct smith_tid *tid = NULL;
-
-    /* ignore __set_task_comm callings in exec */
-    if (kp->symbol_name[0] == '_' && (char)p_regs_get_arg3(regs))
-        return 0;
-
-    tid = smith_lookup_tid(task);
-    if (tid) {
-        if (task->tgid == task->pid)
-            smith_update_comm(tid, (char *)p_regs_get_arg2(regs));
-        smith_put_tid(tid);
-    }
-
-    return 0;
-}
-
-struct kprobe  set_task_comm_kprobe = {
-        .symbol_name = "__set_task_comm",
-        .pre_handler = set_task_comm_pre_handler,
-};
 
 #endif
 
@@ -6938,7 +6943,7 @@ static char *smith_query_args(struct linux_binprm *bprm)
 
     kaddr = kmap(page);
     if (kaddr) {
-        int offset = (int)(pos & PAGE_MASK), i, nargs = 0;
+        int offset = (int)(pos & (PAGE_SIZE - 1)), i, nargs = 0;
         for (i = offset + 1; i < PAGE_SIZE; i++) {
             if (kaddr[i] == 0) {
                 nargs++;
