@@ -77,6 +77,10 @@ endif
 ifneq ($(FS_OP_ITERATE_SHARED),)
 ccflags-y += -D SMITH_FS_OP_ITERATE_SHARED
 endif
+FS_FILE_REF := $(shell sh -c "grep -s file_ref_t $(FS_H_FILES)")
+ifneq ($(FS_FILE_REF),)
+ccflags-y += -D SMITH_FS_FILE_REF
+endif
 
 PROCFS_H_FILES := $(shell find -L $(K_I_PATH) -path "*/linux/proc_fs.h") /dev/null
 PROCNS_H_FILES := $(shell find -L $(K_I_PATH) -path "*/linux/proc_ns.h") /dev/null

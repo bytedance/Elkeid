@@ -340,6 +340,14 @@ static struct files_struct *smith_get_files_struct(struct task_struct *task)
     return files;
 }
 
+/* only inc f_count when it's not 0 to avoid races upon exe_file */
+#ifdef SMITH_FS_FILE_REF
+#define smith_get_file(x) (file_ref_read(&(x)->f_ref) && \
+                    atomic_long_inc_not_zero(&(x)->f_ref.refcnt))
+#else
+#define smith_get_file(x) atomic_long_inc_not_zero(&(x)->f_count)
+#endif
+
 #ifdef SMITH_HAVE_FCHECK_FILES
 #define smith_lookup_fd          fcheck_files /* < 5.10.220 */
 #else
@@ -359,7 +367,7 @@ static struct file *smith_fget_raw(unsigned int fd)
 	file = smith_lookup_fd(files, fd);
 	if (file) {
 		/* File object ref couldn't be taken */
-		if (!atomic_long_inc_not_zero(&file->f_count))
+		if (!smith_get_file(file))
 			file = NULL;
 	}
 	rcu_read_unlock();
@@ -434,9 +442,6 @@ Elong:
     return ERR_PTR(-ENAMETOOLONG);
 }
 #endif /* < 2.6.38 */
-
-/* only inc f_count when it's not 0 to avoid races upon exe_file */
-#define smith_get_file(x) atomic_long_inc_not_zero(&(x)->f_count)
 
 /*
  * query task's executable image file, with mmap lock avoided, just because
