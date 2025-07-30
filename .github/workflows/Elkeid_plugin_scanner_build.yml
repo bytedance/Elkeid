@@ -12,7 +12,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
 
@@ -34,7 +34,7 @@ jobs:
         path: /Elkeid/plugins/scanner/output/.
 
     - name: Upload Scanner
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         path: ${{ steps.extract-scanner.outputs.destination }}
         name: scanner

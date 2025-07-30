@@ -18,18 +18,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx aliyun_linux2
       uses: docker/setup-buildx-action@v3
     - name: Build aliyun_linux2
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -38,7 +38,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_aliyun_linux2_x86_64:latest
     - name: Docker Hub Description aliyun_linux2
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_aliyun_linux2_x86_64
@@ -47,12 +47,12 @@ jobs:
     - name: Extract aliyun_linux2
       if: always()
       id: extract-aliyun_linux2
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_aliyun_linux2_x86_64:latest
         path: /ko_output/.
     - name: Upload aliyun_linux2
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_aliyun_linux2_x86_64
@@ -61,11 +61,11 @@ jobs:
     runs-on: [self-hosted,linux,ARM64]
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
@@ -74,7 +74,7 @@ jobs:
       with:
         config: /etc/buildkitd.toml
     - name: Build aliyun_linux3
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -87,12 +87,12 @@ jobs:
     - name: Extract aliyun_linux3
       if: always()
       id: extract-aliyun_linux3
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_aliyun_linux3_aarch64:latest
         path: /ko_output/.
     - name: Upload aliyun_linux3
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_aliyun_linux3_aarch64
@@ -101,18 +101,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx aliyun_linux3
       uses: docker/setup-buildx-action@v3
     - name: Build aliyun_linux3
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -121,7 +121,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_aliyun_linux3_x86_64:latest
     - name: Docker Hub Description aliyun_linux3
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_aliyun_linux3_x86_64
@@ -130,12 +130,12 @@ jobs:
     - name: Extract aliyun_linux3
       if: always()
       id: extract-aliyun_linux3
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_aliyun_linux3_x86_64:latest
         path: /ko_output/.
     - name: Upload aliyun_linux3
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_aliyun_linux3_x86_64
@@ -144,18 +144,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx almalinux8
       uses: docker/setup-buildx-action@v3
     - name: Build almalinux8
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -164,7 +164,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_almalinux8_x86_64:latest
     - name: Docker Hub Description almalinux8
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_almalinux8_x86_64
@@ -173,12 +173,12 @@ jobs:
     - name: Extract almalinux8
       if: always()
       id: extract-almalinux8
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_almalinux8_x86_64:latest
         path: /ko_output/.
     - name: Upload almalinux8
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_almalinux8_x86_64
@@ -187,18 +187,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx almalinux9
       uses: docker/setup-buildx-action@v3
     - name: Build almalinux9
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -207,7 +207,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_almalinux9_x86_64:latest
     - name: Docker Hub Description almalinux9
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_almalinux9_x86_64
@@ -216,12 +216,12 @@ jobs:
     - name: Extract almalinux9
       if: always()
       id: extract-almalinux9
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_almalinux9_x86_64:latest
         path: /ko_output/.
     - name: Upload almalinux9
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_almalinux9_x86_64
@@ -230,18 +230,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx amazonlinux1
       uses: docker/setup-buildx-action@v3
     - name: Build amazonlinux1
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -250,7 +250,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_amazonlinux1_x86_64:latest
     - name: Docker Hub Description amazonlinux1
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_amazonlinux1_x86_64
@@ -259,12 +259,12 @@ jobs:
     - name: Extract amazonlinux1
       if: always()
       id: extract-amazonlinux1
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_amazonlinux1_x86_64:latest
         path: /ko_output/.
     - name: Upload amazonlinux1
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_amazonlinux1_x86_64
@@ -273,18 +273,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx amazonlinux2
       uses: docker/setup-buildx-action@v3
     - name: Build amazonlinux2
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -293,7 +293,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_amazonlinux2_x86_64:latest
     - name: Docker Hub Description amazonlinux2
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_amazonlinux2_x86_64
@@ -302,12 +302,12 @@ jobs:
     - name: Extract amazonlinux2
       if: always()
       id: extract-amazonlinux2
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_amazonlinux2_x86_64:latest
         path: /ko_output/.
     - name: Upload amazonlinux2
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_amazonlinux2_x86_64
@@ -316,18 +316,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx amazonlinux2_510
       uses: docker/setup-buildx-action@v3
     - name: Build amazonlinux2_510
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -336,7 +336,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_amazonlinux2_510_x86_64:latest
     - name: Docker Hub Description amazonlinux2_510
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_amazonlinux2_510_x86_64
@@ -345,12 +345,12 @@ jobs:
     - name: Extract amazonlinux2_510
       if: always()
       id: extract-amazonlinux2_510
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_amazonlinux2_510_x86_64:latest
         path: /ko_output/.
     - name: Upload amazonlinux2_510
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_amazonlinux2_510_x86_64
@@ -359,18 +359,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx amazonlinux2_54
       uses: docker/setup-buildx-action@v3
     - name: Build amazonlinux2_54
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -379,7 +379,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_amazonlinux2_54_x86_64:latest
     - name: Docker Hub Description amazonlinux2_54
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_amazonlinux2_54_x86_64
@@ -388,12 +388,12 @@ jobs:
     - name: Extract amazonlinux2_54
       if: always()
       id: extract-amazonlinux2_54
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_amazonlinux2_54_x86_64:latest
         path: /ko_output/.
     - name: Upload amazonlinux2_54
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_amazonlinux2_54_x86_64
@@ -402,18 +402,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx anolis8
       uses: docker/setup-buildx-action@v3
     - name: Build anolis8
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -422,7 +422,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_anolis8_x86_64:latest
     - name: Docker Hub Description anolis8
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_anolis8_x86_64
@@ -431,12 +431,12 @@ jobs:
     - name: Extract anolis8
       if: always()
       id: extract-anolis8
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_anolis8_x86_64:latest
         path: /ko_output/.
     - name: Upload anolis8
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_anolis8_x86_64
@@ -445,18 +445,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx debian10
       uses: docker/setup-buildx-action@v3
     - name: Build debian10
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -465,7 +465,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_debian10_x86_64:latest
     - name: Docker Hub Description debian10
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_debian10_x86_64
@@ -474,12 +474,12 @@ jobs:
     - name: Extract debian10
       if: always()
       id: extract-debian10
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_debian10_x86_64:latest
         path: /ko_output/.
     - name: Upload debian10
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_debian10_x86_64
@@ -488,18 +488,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx debian11
       uses: docker/setup-buildx-action@v3
     - name: Build debian11
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -508,7 +508,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_debian11_x86_64:latest
     - name: Docker Hub Description debian11
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_debian11_x86_64
@@ -517,12 +517,12 @@ jobs:
     - name: Extract debian11
       if: always()
       id: extract-debian11
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_debian11_x86_64:latest
         path: /ko_output/.
     - name: Upload debian11
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_debian11_x86_64
@@ -531,18 +531,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx debian8
       uses: docker/setup-buildx-action@v3
     - name: Build debian8
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -551,7 +551,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_debian8_x86_64:latest
     - name: Docker Hub Description debian8
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_debian8_x86_64
@@ -560,12 +560,12 @@ jobs:
     - name: Extract debian8
       if: always()
       id: extract-debian8
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_debian8_x86_64:latest
         path: /ko_output/.
     - name: Upload debian8
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_debian8_x86_64
@@ -574,18 +574,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx debian9
       uses: docker/setup-buildx-action@v3
     - name: Build debian9
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -594,7 +594,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_debian9_x86_64:latest
     - name: Docker Hub Description debian9
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_debian9_x86_64
@@ -603,12 +603,12 @@ jobs:
     - name: Extract debian9
       if: always()
       id: extract-debian9
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_debian9_x86_64:latest
         path: /ko_output/.
     - name: Upload debian9
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_debian9_x86_64
@@ -617,11 +617,11 @@ jobs:
     runs-on: [self-hosted,linux,ARM64]
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
@@ -630,7 +630,7 @@ jobs:
       with:
         config: /etc/buildkitd.toml
     - name: Build ol8_uek
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -643,12 +643,12 @@ jobs:
     - name: Extract ol8_uek
       if: always()
       id: extract-ol8_uek
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ol8_uek_aarch64:latest
         path: /ko_output/.
     - name: Upload ol8_uek
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ol8_uek_aarch64
@@ -657,18 +657,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ol8_uek
       uses: docker/setup-buildx-action@v3
     - name: Build ol8_uek
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -677,7 +677,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ol8_uek_x86_64:latest
     - name: Docker Hub Description ol8_uek
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ol8_uek_x86_64
@@ -686,12 +686,12 @@ jobs:
     - name: Extract ol8_uek
       if: always()
       id: extract-ol8_uek
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ol8_uek_x86_64:latest
         path: /ko_output/.
     - name: Upload ol8_uek
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ol8_uek_x86_64
@@ -700,18 +700,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ol9_uek
       uses: docker/setup-buildx-action@v3
     - name: Build ol9_uek
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -720,7 +720,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ol9_uek_x86_64:latest
     - name: Docker Hub Description ol9_uek
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ol9_uek_x86_64
@@ -729,12 +729,12 @@ jobs:
     - name: Extract ol9_uek
       if: always()
       id: extract-ol9_uek
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ol9_uek_x86_64:latest
         path: /ko_output/.
     - name: Upload ol9_uek
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ol9_uek_x86_64
@@ -743,18 +743,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx rhel6
       uses: docker/setup-buildx-action@v3
     - name: Build rhel6
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -763,7 +763,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_rhel6_x86_64:latest
     - name: Docker Hub Description rhel6
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_rhel6_x86_64
@@ -772,12 +772,12 @@ jobs:
     - name: Extract rhel6
       if: always()
       id: extract-rhel6
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_rhel6_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel6
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_rhel6_x86_64
@@ -786,18 +786,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx rhel6_elrepo
       uses: docker/setup-buildx-action@v3
     - name: Build rhel6_elrepo
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -806,7 +806,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_rhel6_elrepo_x86_64:latest
     - name: Docker Hub Description rhel6_elrepo
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_rhel6_elrepo_x86_64
@@ -815,12 +815,12 @@ jobs:
     - name: Extract rhel6_elrepo
       if: always()
       id: extract-rhel6_elrepo
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_rhel6_elrepo_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel6_elrepo
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_rhel6_elrepo_x86_64
@@ -829,11 +829,11 @@ jobs:
     runs-on: [self-hosted,linux,ARM64]
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
@@ -842,7 +842,7 @@ jobs:
       with:
         config: /etc/buildkitd.toml
     - name: Build rhel7
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -855,12 +855,12 @@ jobs:
     - name: Extract rhel7
       if: always()
       id: extract-rhel7
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_rhel7_aarch64:latest
         path: /ko_output/.
     - name: Upload rhel7
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_rhel7_aarch64
@@ -869,18 +869,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx rhel7
       uses: docker/setup-buildx-action@v3
     - name: Build rhel7
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -889,7 +889,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_rhel7_x86_64:latest
     - name: Docker Hub Description rhel7
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_rhel7_x86_64
@@ -898,12 +898,12 @@ jobs:
     - name: Extract rhel7
       if: always()
       id: extract-rhel7
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_rhel7_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel7
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_rhel7_x86_64
@@ -912,18 +912,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx rhel7_centosplus
       uses: docker/setup-buildx-action@v3
     - name: Build rhel7_centosplus
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -932,7 +932,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_rhel7_centosplus_x86_64:latest
     - name: Docker Hub Description rhel7_centosplus
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_rhel7_centosplus_x86_64
@@ -941,12 +941,12 @@ jobs:
     - name: Extract rhel7_centosplus
       if: always()
       id: extract-rhel7_centosplus
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_rhel7_centosplus_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel7_centosplus
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_rhel7_centosplus_x86_64
@@ -955,18 +955,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx rhel7_elrepo_lt
       uses: docker/setup-buildx-action@v3
     - name: Build rhel7_elrepo_lt
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -975,7 +975,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_rhel7_elrepo_lt_x86_64:latest
     - name: Docker Hub Description rhel7_elrepo_lt
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_rhel7_elrepo_lt_x86_64
@@ -984,12 +984,12 @@ jobs:
     - name: Extract rhel7_elrepo_lt
       if: always()
       id: extract-rhel7_elrepo_lt
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_rhel7_elrepo_lt_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel7_elrepo_lt
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_rhel7_elrepo_lt_x86_64
@@ -998,18 +998,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx rhel7_elrepo_lt_archive
       uses: docker/setup-buildx-action@v3
     - name: Build rhel7_elrepo_lt_archive
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1018,7 +1018,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_rhel7_elrepo_lt_archive_x86_64:latest
     - name: Docker Hub Description rhel7_elrepo_lt_archive
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_rhel7_elrepo_lt_archive_x86_64
@@ -1027,12 +1027,12 @@ jobs:
     - name: Extract rhel7_elrepo_lt_archive
       if: always()
       id: extract-rhel7_elrepo_lt_archive
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_rhel7_elrepo_lt_archive_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel7_elrepo_lt_archive
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_rhel7_elrepo_lt_archive_x86_64
@@ -1041,18 +1041,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx rhel7_elrepo_ml
       uses: docker/setup-buildx-action@v3
     - name: Build rhel7_elrepo_ml
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1061,7 +1061,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_rhel7_elrepo_ml_x86_64:latest
     - name: Docker Hub Description rhel7_elrepo_ml
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_rhel7_elrepo_ml_x86_64
@@ -1070,12 +1070,12 @@ jobs:
     - name: Extract rhel7_elrepo_ml
       if: always()
       id: extract-rhel7_elrepo_ml
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_rhel7_elrepo_ml_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel7_elrepo_ml
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_rhel7_elrepo_ml_x86_64
@@ -1084,18 +1084,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx rhel7_elrepo_ml_archive
       uses: docker/setup-buildx-action@v3
     - name: Build rhel7_elrepo_ml_archive
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1104,7 +1104,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_rhel7_elrepo_ml_archive_x86_64:latest
     - name: Docker Hub Description rhel7_elrepo_ml_archive
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_rhel7_elrepo_ml_archive_x86_64
@@ -1113,12 +1113,12 @@ jobs:
     - name: Extract rhel7_elrepo_ml_archive
       if: always()
       id: extract-rhel7_elrepo_ml_archive
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_rhel7_elrepo_ml_archive_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel7_elrepo_ml_archive
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_rhel7_elrepo_ml_archive_x86_64
@@ -1127,11 +1127,11 @@ jobs:
     runs-on: [self-hosted,linux,ARM64]
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
@@ -1140,7 +1140,7 @@ jobs:
       with:
         config: /etc/buildkitd.toml
     - name: Build rhel8
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1153,12 +1153,12 @@ jobs:
     - name: Extract rhel8
       if: always()
       id: extract-rhel8
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_rhel8_aarch64:latest
         path: /ko_output/.
     - name: Upload rhel8
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_rhel8_aarch64
@@ -1167,18 +1167,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx rhel8
       uses: docker/setup-buildx-action@v3
     - name: Build rhel8
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1187,7 +1187,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_rhel8_x86_64:latest
     - name: Docker Hub Description rhel8
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_rhel8_x86_64
@@ -1196,12 +1196,12 @@ jobs:
     - name: Extract rhel8
       if: always()
       id: extract-rhel8
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_rhel8_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel8
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_rhel8_x86_64
@@ -1210,18 +1210,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx rhel8_elrepo_lt
       uses: docker/setup-buildx-action@v3
     - name: Build rhel8_elrepo_lt
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1230,7 +1230,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_rhel8_elrepo_lt_x86_64:latest
     - name: Docker Hub Description rhel8_elrepo_lt
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_rhel8_elrepo_lt_x86_64
@@ -1239,12 +1239,12 @@ jobs:
     - name: Extract rhel8_elrepo_lt
       if: always()
       id: extract-rhel8_elrepo_lt
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_rhel8_elrepo_lt_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel8_elrepo_lt
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_rhel8_elrepo_lt_x86_64
@@ -1253,18 +1253,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx rhel8_elrepo_ml
       uses: docker/setup-buildx-action@v3
     - name: Build rhel8_elrepo_ml
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1273,7 +1273,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_rhel8_elrepo_ml_x86_64:latest
     - name: Docker Hub Description rhel8_elrepo_ml
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_rhel8_elrepo_ml_x86_64
@@ -1282,12 +1282,12 @@ jobs:
     - name: Extract rhel8_elrepo_ml
       if: always()
       id: extract-rhel8_elrepo_ml
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_rhel8_elrepo_ml_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel8_elrepo_ml
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_rhel8_elrepo_ml_x86_64
@@ -1296,18 +1296,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx rhel8_plus
       uses: docker/setup-buildx-action@v3
     - name: Build rhel8_plus
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1316,7 +1316,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_rhel8_plus_x86_64:latest
     - name: Docker Hub Description rhel8_plus
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_rhel8_plus_x86_64
@@ -1325,12 +1325,12 @@ jobs:
     - name: Extract rhel8_plus
       if: always()
       id: extract-rhel8_plus
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_rhel8_plus_x86_64:latest
         path: /ko_output/.
     - name: Upload rhel8_plus
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_rhel8_plus_x86_64
@@ -1339,18 +1339,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx rocky8
       uses: docker/setup-buildx-action@v3
     - name: Build rocky8
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1359,7 +1359,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_rocky8_x86_64:latest
     - name: Docker Hub Description rocky8
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_rocky8_x86_64
@@ -1368,12 +1368,12 @@ jobs:
     - name: Extract rocky8
       if: always()
       id: extract-rocky8
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_rocky8_x86_64:latest
         path: /ko_output/.
     - name: Upload rocky8
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_rocky8_x86_64
@@ -1382,18 +1382,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx rocky9
       uses: docker/setup-buildx-action@v3
     - name: Build rocky9
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1402,7 +1402,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_rocky9_x86_64:latest
     - name: Docker Hub Description rocky9
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_rocky9_x86_64
@@ -1411,12 +1411,12 @@ jobs:
     - name: Extract rocky9
       if: always()
       id: extract-rocky9
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_rocky9_x86_64:latest
         path: /ko_output/.
     - name: Upload rocky9
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_rocky9_x86_64
@@ -1425,18 +1425,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx tlinux24
       uses: docker/setup-buildx-action@v3
     - name: Build tlinux24
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1445,7 +1445,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_tlinux24_x86_64:latest
     - name: Docker Hub Description tlinux24
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_tlinux24_x86_64
@@ -1454,12 +1454,12 @@ jobs:
     - name: Extract tlinux24
       if: always()
       id: extract-tlinux24
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_tlinux24_x86_64:latest
         path: /ko_output/.
     - name: Upload tlinux24
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_tlinux24_x86_64
@@ -1468,18 +1468,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx tlinux31
       uses: docker/setup-buildx-action@v3
     - name: Build tlinux31
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1488,7 +1488,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_tlinux31_x86_64:latest
     - name: Docker Hub Description tlinux31
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_tlinux31_x86_64
@@ -1497,12 +1497,12 @@ jobs:
     - name: Extract tlinux31
       if: always()
       id: extract-tlinux31
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_tlinux31_x86_64:latest
         path: /ko_output/.
     - name: Upload tlinux31
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_tlinux31_x86_64
@@ -1511,18 +1511,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu1204
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu1204
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1531,7 +1531,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1204_x86_64:latest
     - name: Docker Hub Description ubuntu1204
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu1204_x86_64
@@ -1540,12 +1540,12 @@ jobs:
     - name: Extract ubuntu1204
       if: always()
       id: extract-ubuntu1204
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu1204_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1204
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu1204_x86_64
@@ -1554,18 +1554,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu1404_k3
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu1404_k3
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1574,7 +1574,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1404_k3_x86_64:latest
     - name: Docker Hub Description ubuntu1404_k3
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu1404_k3_x86_64
@@ -1583,12 +1583,12 @@ jobs:
     - name: Extract ubuntu1404_k3
       if: always()
       id: extract-ubuntu1404_k3
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu1404_k3_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1404_k3
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu1404_k3_x86_64
@@ -1597,18 +1597,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu1404_k4
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu1404_k4
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1617,7 +1617,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1404_k4_x86_64:latest
     - name: Docker Hub Description ubuntu1404_k4
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu1404_k4_x86_64
@@ -1626,12 +1626,12 @@ jobs:
     - name: Extract ubuntu1404_k4
       if: always()
       id: extract-ubuntu1404_k4
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu1404_k4_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1404_k4
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu1404_k4_x86_64
@@ -1640,18 +1640,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu1604_auzre
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu1604_auzre
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1660,7 +1660,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_auzre_x86_64:latest
     - name: Docker Hub Description ubuntu1604_auzre
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu1604_auzre_x86_64
@@ -1669,12 +1669,12 @@ jobs:
     - name: Extract ubuntu1604_auzre
       if: always()
       id: extract-ubuntu1604_auzre
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu1604_auzre_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1604_auzre
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu1604_auzre_x86_64
@@ -1683,18 +1683,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu1604_aws
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu1604_aws
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1703,7 +1703,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_aws_x86_64:latest
     - name: Docker Hub Description ubuntu1604_aws
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu1604_aws_x86_64
@@ -1712,12 +1712,12 @@ jobs:
     - name: Extract ubuntu1604_aws
       if: always()
       id: extract-ubuntu1604_aws
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu1604_aws_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1604_aws
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu1604_aws_x86_64
@@ -1726,18 +1726,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu1604_gcp
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu1604_gcp
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1746,7 +1746,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_gcp_x86_64:latest
     - name: Docker Hub Description ubuntu1604_gcp
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu1604_gcp_x86_64
@@ -1755,12 +1755,12 @@ jobs:
     - name: Extract ubuntu1604_gcp
       if: always()
       id: extract-ubuntu1604_gcp
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu1604_gcp_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1604_gcp
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu1604_gcp_x86_64
@@ -1769,18 +1769,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu1604_gke
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu1604_gke
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1789,7 +1789,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_gke_x86_64:latest
     - name: Docker Hub Description ubuntu1604_gke
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu1604_gke_x86_64
@@ -1798,12 +1798,12 @@ jobs:
     - name: Extract ubuntu1604_gke
       if: always()
       id: extract-ubuntu1604_gke
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu1604_gke_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1604_gke
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu1604_gke_x86_64
@@ -1812,18 +1812,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu1604_k410
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu1604_k410
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1832,7 +1832,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_k410_x86_64:latest
     - name: Docker Hub Description ubuntu1604_k410
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu1604_k410_x86_64
@@ -1841,12 +1841,12 @@ jobs:
     - name: Extract ubuntu1604_k410
       if: always()
       id: extract-ubuntu1604_k410
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu1604_k410_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1604_k410
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu1604_k410_x86_64
@@ -1855,18 +1855,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu1604_k413
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu1604_k413
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1875,7 +1875,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_k413_x86_64:latest
     - name: Docker Hub Description ubuntu1604_k413
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu1604_k413_x86_64
@@ -1884,12 +1884,12 @@ jobs:
     - name: Extract ubuntu1604_k413
       if: always()
       id: extract-ubuntu1604_k413
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu1604_k413_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1604_k413
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu1604_k413_x86_64
@@ -1898,18 +1898,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu1604_k44
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu1604_k44
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1918,7 +1918,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_k44_x86_64:latest
     - name: Docker Hub Description ubuntu1604_k44
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu1604_k44_x86_64
@@ -1927,12 +1927,12 @@ jobs:
     - name: Extract ubuntu1604_k44
       if: always()
       id: extract-ubuntu1604_k44
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu1604_k44_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1604_k44
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu1604_k44_x86_64
@@ -1941,18 +1941,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu1604_k48
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu1604_k48
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -1961,7 +1961,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1604_k48_x86_64:latest
     - name: Docker Hub Description ubuntu1604_k48
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu1604_k48_x86_64
@@ -1970,12 +1970,12 @@ jobs:
     - name: Extract ubuntu1604_k48
       if: always()
       id: extract-ubuntu1604_k48
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu1604_k48_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1604_k48
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu1604_k48_x86_64
@@ -1984,18 +1984,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu1804
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu1804
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -2004,7 +2004,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1804_x86_64:latest
     - name: Docker Hub Description ubuntu1804
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu1804_x86_64
@@ -2013,12 +2013,12 @@ jobs:
     - name: Extract ubuntu1804
       if: always()
       id: extract-ubuntu1804
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu1804_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1804
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu1804_x86_64
@@ -2027,18 +2027,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu1804_aws
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu1804_aws
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -2047,7 +2047,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1804_aws_x86_64:latest
     - name: Docker Hub Description ubuntu1804_aws
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu1804_aws_x86_64
@@ -2056,12 +2056,12 @@ jobs:
     - name: Extract ubuntu1804_aws
       if: always()
       id: extract-ubuntu1804_aws
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu1804_aws_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1804_aws
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu1804_aws_x86_64
@@ -2070,18 +2070,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu1804_azure
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu1804_azure
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -2090,7 +2090,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1804_azure_x86_64:latest
     - name: Docker Hub Description ubuntu1804_azure
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu1804_azure_x86_64
@@ -2099,12 +2099,12 @@ jobs:
     - name: Extract ubuntu1804_azure
       if: always()
       id: extract-ubuntu1804_azure
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu1804_azure_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1804_azure
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu1804_azure_x86_64
@@ -2113,18 +2113,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu1804_gcp
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu1804_gcp
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -2133,7 +2133,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1804_gcp_x86_64:latest
     - name: Docker Hub Description ubuntu1804_gcp
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu1804_gcp_x86_64
@@ -2142,12 +2142,12 @@ jobs:
     - name: Extract ubuntu1804_gcp
       if: always()
       id: extract-ubuntu1804_gcp
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu1804_gcp_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1804_gcp
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu1804_gcp_x86_64
@@ -2156,18 +2156,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu1804_gke
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu1804_gke
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -2176,7 +2176,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu1804_gke_x86_64:latest
     - name: Docker Hub Description ubuntu1804_gke
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu1804_gke_x86_64
@@ -2185,12 +2185,12 @@ jobs:
     - name: Extract ubuntu1804_gke
       if: always()
       id: extract-ubuntu1804_gke
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu1804_gke_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu1804_gke
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu1804_gke_x86_64
@@ -2199,18 +2199,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu2004
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu2004
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -2219,7 +2219,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2004_x86_64:latest
     - name: Docker Hub Description ubuntu2004
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu2004_x86_64
@@ -2228,12 +2228,12 @@ jobs:
     - name: Extract ubuntu2004
       if: always()
       id: extract-ubuntu2004
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu2004_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu2004
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu2004_x86_64
@@ -2242,11 +2242,11 @@ jobs:
     runs-on: [self-hosted,linux,ARM64]
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
@@ -2255,7 +2255,7 @@ jobs:
       with:
         config: /etc/buildkitd.toml
     - name: Build ubuntu2004_aws
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -2268,12 +2268,12 @@ jobs:
     - name: Extract ubuntu2004_aws
       if: always()
       id: extract-ubuntu2004_aws
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu2004_aws_aarch64:latest
         path: /ko_output/.
     - name: Upload ubuntu2004_aws
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu2004_aws_aarch64
@@ -2282,18 +2282,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu2004_aws
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu2004_aws
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -2302,7 +2302,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2004_aws_x86_64:latest
     - name: Docker Hub Description ubuntu2004_aws
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu2004_aws_x86_64
@@ -2311,12 +2311,12 @@ jobs:
     - name: Extract ubuntu2004_aws
       if: always()
       id: extract-ubuntu2004_aws
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu2004_aws_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu2004_aws
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu2004_aws_x86_64
@@ -2325,18 +2325,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu2004_azure
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu2004_azure
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -2345,7 +2345,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2004_azure_x86_64:latest
     - name: Docker Hub Description ubuntu2004_azure
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu2004_azure_x86_64
@@ -2354,12 +2354,12 @@ jobs:
     - name: Extract ubuntu2004_azure
       if: always()
       id: extract-ubuntu2004_azure
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu2004_azure_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu2004_azure
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu2004_azure_x86_64
@@ -2368,18 +2368,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu2004_gcp
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu2004_gcp
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -2388,7 +2388,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2004_gcp_x86_64:latest
     - name: Docker Hub Description ubuntu2004_gcp
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu2004_gcp_x86_64
@@ -2397,12 +2397,12 @@ jobs:
     - name: Extract ubuntu2004_gcp
       if: always()
       id: extract-ubuntu2004_gcp
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu2004_gcp_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu2004_gcp
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu2004_gcp_x86_64
@@ -2411,18 +2411,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu2004_gke
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu2004_gke
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -2431,7 +2431,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2004_gke_x86_64:latest
     - name: Docker Hub Description ubuntu2004_gke
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu2004_gke_x86_64
@@ -2440,12 +2440,12 @@ jobs:
     - name: Extract ubuntu2004_gke
       if: always()
       id: extract-ubuntu2004_gke
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu2004_gke_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu2004_gke
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu2004_gke_x86_64
@@ -2454,18 +2454,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu2204
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu2204
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -2474,7 +2474,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2204_x86_64:latest
     - name: Docker Hub Description ubuntu2204
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu2204_x86_64
@@ -2483,12 +2483,12 @@ jobs:
     - name: Extract ubuntu2204
       if: always()
       id: extract-ubuntu2204
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu2204_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu2204
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu2204_x86_64
@@ -2497,18 +2497,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu2204_aws
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu2204_aws
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -2517,7 +2517,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2204_aws_x86_64:latest
     - name: Docker Hub Description ubuntu2204_aws
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu2204_aws_x86_64
@@ -2526,12 +2526,12 @@ jobs:
     - name: Extract ubuntu2204_aws
       if: always()
       id: extract-ubuntu2204_aws
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu2204_aws_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu2204_aws
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu2204_aws_x86_64
@@ -2540,18 +2540,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu2204_azure
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu2204_azure
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -2560,7 +2560,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2204_azure_x86_64:latest
     - name: Docker Hub Description ubuntu2204_azure
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu2204_azure_x86_64
@@ -2569,12 +2569,12 @@ jobs:
     - name: Extract ubuntu2204_azure
       if: always()
       id: extract-ubuntu2204_azure
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu2204_azure_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu2204_azure
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu2204_azure_x86_64
@@ -2583,18 +2583,18 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: false
     - name: Login to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         username: ${{secrets.DOCKERHUB_USERNAME}}
     - name: Set up Docker Buildx ubuntu2204_gcp
       uses: docker/setup-buildx-action@v3
     - name: Build ubuntu2204_gcp
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       timeout-minutes: 420
       with:
         context: .
@@ -2603,7 +2603,7 @@ jobs:
         push: true
         tags: elkeidteam/elkeid_driver_ubuntu2204_gcp_x86_64:latest
     - name: Docker Hub Description ubuntu2204_gcp
-      uses: peter-evans/dockerhub-description@v3
+      uses: peter-evans/dockerhub-description@v4
       with:
         password: ${{secrets.DOCKERHUB_TOKEN}}
         repository: elkeidteam/elkeid_driver_ubuntu2204_gcp_x86_64
@@ -2612,12 +2612,12 @@ jobs:
     - name: Extract ubuntu2204_gcp
       if: always()
       id: extract-ubuntu2204_gcp
-      uses: shrink/actions-docker-extract@v2
+      uses: shrink/actions-docker-extract@v3
       with:
         image: elkeidteam/elkeid_driver_ubuntu2204_gcp_x86_64:latest
         path: /ko_output/.
     - name: Upload ubuntu2204_gcp
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: elkeid_driver_ubuntu2204_gcp_x86_64
