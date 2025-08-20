@@ -1,5 +1,5 @@
-MODULE_NAME		:= elkeid
-KERNEL_HEAD		:= $(if $(KVERSION),$(KVERSION),$(shell uname -r))
+MODULE_NAME 	:= elkeid
+KERNEL_HEAD 	:= $(if $(wildcard $(srctree)/include/.),_-_,$(if $(KVERSION),$(KVERSION),$(shell uname -r)))
 
 ifneq ($(KERNELRELEASE),)
 
