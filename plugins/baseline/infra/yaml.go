@@ -11,6 +11,7 @@ func BindYaml(filePath string, yamlMap interface{}) error {
 	var err error
 	if f, err := os.Open(filePath); err != nil {
 	} else {
+		defer f.Close()
 		err = yaml.NewDecoder(f).Decode(yamlMap)
 		return err
 	}
