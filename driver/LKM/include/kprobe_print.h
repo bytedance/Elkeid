@@ -402,10 +402,10 @@ SD_XFER_DEFINE( NAME(ptrace),
                 )
 )
 
-SD_XFER_DEFINE( NAME(bind),
+SD_XFER_DEFINE( NAME(bind4),
 
                 PROT(ELEMENT(char *, exe_path),
-                     ELEMENT(struct in_addr *, in_addr),
+                     ELEMENT(__be32, sip4),
                      ELEMENT(int, sport),
                      ELEMENT(int, retval),
                      ELEMENT(char *, pid_tree)
@@ -413,7 +413,7 @@ SD_XFER_DEFINE( NAME(bind),
 
                 XFER(ENTRY_COMMON(49),
                      ENTRY_U16(sa_family, 2),
-                     ENTRY_IP4(in_addr, in_addr->s_addr),
+                     ENTRY_IP4(sip4, sip4),
                      ENTRY_U16(sport, sport),
                      ENTRY_INT(retval, retval),
                      ENTRY_STR(pid_tree, pid_tree)
@@ -424,7 +424,7 @@ SD_XFER_DEFINE( NAME(bind),
 SD_XFER_DEFINE( NAME(bind6),
 
                 PROT(ELEMENT(char *, exe_path),
-                     ELEMENT(struct in6_addr *, in6_addr),
+                     ELEMENT(struct in6_addr *, sip6),
                      ELEMENT(int, sport),
                      ELEMENT(int, retval),
                      ELEMENT(char *, pid_tree)
@@ -432,7 +432,7 @@ SD_XFER_DEFINE( NAME(bind6),
 
                 XFER(ENTRY_COMMON(49),
                      ENTRY_U16(sa_family, 10),
-                     ENTRY_IP6(in6_addr, in6_addr),
+                     ENTRY_IP6(sip6, sip6),
                      ENTRY_U16(sport, sport),
                      ENTRY_INT(retval, retval),
                      ENTRY_STR(pid_tree, pid_tree)
@@ -838,9 +838,9 @@ SD_XFER_DEFINE( NAME(tcpconn4),
                      ENTRY_U64(root_mntns_id, ROOT_MNT_NS_ID),
                      ENTRY_U16(sa_family, 2),
                      ENTRY_IP4(dip, conn->sc_ip.dip4),
-                     ENTRY_U16(dport, conn->sc_dport),
+                     ENTRY_U16(dport, conn->sc_ip.dport),
                      ENTRY_IP4(sip, conn->sc_ip.sip4),
-                     ENTRY_U16(sport, conn->sc_sport),
+                     ENTRY_U16(sport, conn->sc_ip.sport),
                      ENTRY_INT(retval, retval),
                      ENTRY_STR(pid_tree, tid->st_pid_tree)
                 )
@@ -870,9 +870,9 @@ SD_XFER_DEFINE( NAME(tcpconn6),
                      ENTRY_U64(root_mntns_id, ROOT_MNT_NS_ID),
                      ENTRY_U16(sa_family, 10),
                      ENTRY_IP6(dip, &conn->sc_ip.dip6),
-                     ENTRY_U16(dport, conn->sc_dport),
+                     ENTRY_U16(dport, conn->sc_ip.dport),
                      ENTRY_IP6(sip, &conn->sc_ip.sip6),
-                     ENTRY_U16(sport, conn->sc_sport),
+                     ENTRY_U16(sport, conn->sc_ip.sport),
                      ENTRY_INT(retval, retval),
                      ENTRY_STR(pid_tree, tid->st_pid_tree)
                 )

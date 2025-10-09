@@ -803,22 +803,19 @@ static int smith_check_privilege_escalation(int limit, char *pid_tree)
 
 /*
  * Our own implementation of kernel_getsockname and kernel_getpeername,
- * resuing codes logic of kernel inet_getname and inet6_getname.
+ * re-using codes logic of kernel inet_getname and inet6_getname.
  *
- * From 5.15.3 inet_getname and inet6_getname will call lock_sock for
- * lock acquisition, and then lock_sock would lead possible reschedule,
- * which violates the requirement of atomic context for kprobe/ketprobe.
- *
- * Interfaces of kernel_getsockname and kernel_getpeername are changed
- * after 4.17.0, then we'll use our own routines to keep things simple.
+ * Two major things to bypass:
+ * 1) From 4.17.0 interfaces of kernel_getsock/peername are changed
+ * 2) From 5.15.3 inet_getname and inet6_getname will call lock_sock,
+ *    but the lock_sock violates kprobe/ketprobe's atomic context.
  */
 
 #define SMITH_DECLARE_SOCKADDR(type, dst, src)	\
 	type dst = (type)(src)
 
-static int smith_get_sock_v4(struct socket *sock, struct sockaddr *sa)
+static int smith_get_sock_v4(struct sock *sk, struct sockaddr *sa)
 {
-    struct sock *sk	= sock->sk;
     struct inet_sock *inet = inet_sk(sk);
     SMITH_DECLARE_SOCKADDR(struct sockaddr_in *, sin, sa);
 
@@ -837,9 +834,8 @@ static int smith_get_sock_v4(struct socket *sock, struct sockaddr *sa)
     return sizeof(*sin);
 }
 
-static int smith_get_peer_v4(struct socket *sock, struct sockaddr *sa)
+static int smith_get_peer_v4(struct sock *sk, struct sockaddr *sa)
 {
-    struct sock *sk	= sock->sk;
     struct inet_sock *inet = inet_sk(sk);
     SMITH_DECLARE_SOCKADDR(struct sockaddr_in *, sin, sa);
 
@@ -855,10 +851,9 @@ static int smith_get_peer_v4(struct socket *sock, struct sockaddr *sa)
 }
 
 #if IS_ENABLED(CONFIG_IPV6)
-static int smith_get_sock_v6(struct socket *sock, struct sockaddr *sa)
+static int smith_get_sock_v6(struct sock *sk, struct sockaddr *sa)
 {
     struct sockaddr_in6 *sin = (struct sockaddr_in6 *)sa;
-    struct sock *sk = sock->sk;
     struct inet_sock *inet = inet_sk(sk);
     struct ipv6_pinfo *np = inet6_sk(sk);
     const struct in6_addr *in6;
@@ -881,10 +876,9 @@ static int smith_get_sock_v6(struct socket *sock, struct sockaddr *sa)
     return sizeof(*sin);
 }
 
-static int smith_get_peer_v6(struct socket *sock, struct sockaddr *sa)
+static int smith_get_peer_v6(struct sock *sk, struct sockaddr *sa)
 {
     struct sockaddr_in6 *sin = (struct sockaddr_in6 *)sa;
-    struct sock *sk = sock->sk;
     struct inet_sock *inet = inet_sk(sk);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0) || defined(IPV6_SUPPORT)
@@ -907,11 +901,59 @@ static int smith_get_peer_v6(struct socket *sock, struct sockaddr *sa)
 }
 #endif
 
+static int smith_query_ipinfo(struct sock *sk, struct smith_ipinfo *addr)
+{
+    union {
+        struct sockaddr    sa;
+        struct sockaddr_in si4;
+        struct sockaddr_in6 si6;
+        /* to avoid overflow access of kernel_getsockname */
+        struct __kernel_sockaddr_storage kss;
+    } sa;
+
+    if (AF_INET == sk->sk_family) {
+        addr->sa_family = AF_INET;
+        if (smith_get_sock_v4(sk, &sa.sa) >= 0) {
+            addr->sport = ntohs(sa.si4.sin_port);
+            addr->sip4 = sa.si4.sin_addr.s_addr;
+        } else {
+            addr->sport = 0;
+            addr->sip4 = 0;
+        }
+        if (smith_get_peer_v4(sk, &sa.sa) >= 0) {
+            addr->dport = ntohs(sa.si4.sin_port);
+            addr->dip4 = sa.si4.sin_addr.s_addr;
+        } else {
+            addr->dport = 0;
+            addr->dip4 = 0;
+        }
+#if IS_ENABLED(CONFIG_IPV6)
+    } else if (AF_INET6 == sk->sk_family) {
+        addr->sa_family = AF_INET6;
+        if (smith_get_sock_v6(sk, &sa.sa) >= 0) {
+            addr->sport = ntohs(sa.si6.sin6_port);
+            memcpy(&addr->sip6, &sa.si6.sin6_addr, sizeof(struct in6_addr));
+        } else {
+            addr->sport = 0;
+            memset(&addr->sip6, 0, sizeof(struct in6_addr));
+        }
+        if (smith_get_peer_v6(sk, &sa.sa) >= 0) {
+            addr->dport = ntohs(sa.si6.sin6_port);
+            memcpy(&addr->dip6, &sa.si6.sin6_addr, sizeof(struct in6_addr));
+        } else {
+            addr->dport = 0;
+            memset(&addr->dip6, 0, sizeof(struct in6_addr));
+        }
+#endif
+    } else {
+        addr->sa_family = 0;
+    }
+
+    return addr->sa_family;
+}
+
 //get task tree first AF_INET/AF_INET6 socket info
-static void
-get_process_socket(__be32 *sip4, struct in6_addr *sip6, int *sport,
-                   __be32 *dip4, struct in6_addr *dip6, int *dport,
-                   pid_t *socket_pid, int *sa_family)
+static void get_process_socket(struct smith_ipinfo *ip, pid_t *socket_pid)
 {
     struct task_struct *task = current;
     int it = 0, socket_check = 0;
@@ -942,48 +984,15 @@ get_process_socket(__be32 *sip4, struct in6_addr *sip6, int *sport,
             rcu_read_unlock();
 
             if (!IS_ERR_OR_NULL(socket)) {
-                struct sock *sk = socket->sk;
-
                 /* only process known states: SS_CONNECTING/SS_CONNECTED/SS_DISCONNECTING,
                    SS_FREE/SS_UNCONNECTED or any possible new states are to be skipped */
                 if ((socket->state == SS_CONNECTING ||
                      socket->state == SS_CONNECTED ||
-                     socket->state == SS_DISCONNECTING) && sk) {
+                     socket->state == SS_DISCONNECTING) && socket->sk) {
 
-                    union {
-                        struct sockaddr    sa;
-                        struct sockaddr_in si4;
-                        struct sockaddr_in6 si6;
-                        /* to avoid overflow access of kernel_getsockname */
-                        struct __kernel_sockaddr_storage kss;
-                    } sa;
-
-                    if (AF_INET == sk->sk_family) {
-                        if (smith_get_sock_v4(socket, &sa.sa) < 0)
-                            goto next_socket;
-                        *sip4 = sa.si4.sin_addr.s_addr;
-                        *sport = ntohs(sa.si4.sin_port);
-                        if (smith_get_peer_v4(socket, &sa.sa) < 0)
-                            goto next_socket;
-                        *dip4 = sa.si4.sin_addr.s_addr;
-                        *dport = ntohs(sa.si4.sin_port);
-#if IS_ENABLED(CONFIG_IPV6)
-                    } else if (AF_INET6 == sk->sk_family) {
-                        if (smith_get_sock_v6(socket, &sa.sa) < 0)
-                            goto next_socket;
-                        *sport = ntohs(sa.si6.sin6_port);
-                        memcpy(sip6, &sa.si6.sin6_addr, sizeof(struct in6_addr));
-                        if (smith_get_peer_v6(socket, &sa.sa) < 0)
-                            goto next_socket;
-                        *dport = ntohs(sa.si6.sin6_port);
-                        memcpy(dip6, &sa.si6.sin6_addr, sizeof(struct in6_addr));
-#endif
-                    }
-
+                    smith_query_ipinfo(socket->sk, ip);
                     socket_check = 1;
-                    *sa_family = sk->sk_family;
                 }
-next_socket:
                 sockfd_put(socket);
             }
         }
@@ -1015,18 +1024,13 @@ next_task:
 static void smith_trace_sysret_bind(long sockfd, long ret)
 {
     struct socket *sock = NULL;
-    union {
-        struct sockaddr    sa;
-        struct sockaddr_in si4;
-        struct sockaddr_in6 si6;
-        /* to avoid overflow access of kernel_getsockname */
-        struct __kernel_sockaddr_storage kss;
-    } sa;
-    int sport = 0, err = 0;
 
     char *exe_path = DEFAULT_RET_STR;
     char *pid_tree = NULL;
     struct smith_tid *tid = NULL;
+
+    struct smith_ipinfo ip;
+    int err = 0;
 
     /* ignore failed bind calls */
     if (ret != 0)
@@ -1045,22 +1049,12 @@ static void smith_trace_sysret_bind(long sockfd, long ret)
         pid_tree = tid->st_pid_tree;
     }
 
-    if (AF_INET == sock->sk->sk_family) {
-        struct in_addr *sip4;
-        if (smith_get_sock_v4(sock, &sa.sa) < 0)
-            goto out;
-        sip4 = &sa.si4.sin_addr;
-        sport = ntohs(sa.si4.sin_port);
-        bind_print(exe_path, sip4, sport, sockfd, pid_tree);
+    smith_query_ipinfo(sock->sk, &ip);
+    if (AF_INET == ip.sa_family) {
+        bind4_print(exe_path, ip.sip4, ip.sport, sockfd, pid_tree);
 #if IS_ENABLED(CONFIG_IPV6)
-    } else if (AF_INET6 == sock->sk->sk_family) {
-        struct in6_addr *sip6;
-
-        if (smith_get_sock_v6(sock, &sa.sa) < 0)
-            goto out;
-        sip6 = &sa.si6.sin6_addr;
-        sport = ntohs(sa.si6.sin6_port);
-        bind6_print(exe_path, sip6, sport, sockfd, pid_tree);
+    } else if (AF_INET6 == ip.sa_family) {
+        bind6_print(exe_path, &ip.sip6, ip.sport, sockfd, pid_tree);
 #endif
     }
 
@@ -1135,9 +1129,9 @@ static int smith_compare_conns(struct smith_conn *conn1, struct smith_conn *conn
         return 2;
     if (conn1->sc_node.flag_ipv6 != conn2->sc_node.flag_ipv6)
         return 3;
-    if (conn1->sc_sport != conn2->sc_sport)
+    if (conn1->sc_ip.sport != conn2->sc_ip.sport)
         return 4;
-    if (conn1->sc_dport != conn2->sc_dport)
+    if (conn1->sc_ip.dport != conn2->sc_ip.dport)
         return 5;
     if (conn1->sc_node.flag_ipv6) {
         uint16_t *s1 = (uint16_t *)(&conn1->sc_ip.sip6);
@@ -1187,16 +1181,16 @@ static void smith_show_conn(struct tt_node *tnod)
                 "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d\n",
                 conn->sc_comm, conn->sc_tid->st_tgid, conn->sc_age, smith_get_delta(0),
                 ntohs(s[0]), ntohs(s[1]), ntohs(s[2]), ntohs(s[3]), ntohs(s[4]),
-                ntohs(s[5]), ntohs(s[6]), ntohs(s[7]), conn->sc_sport,
+                ntohs(s[5]), ntohs(s[6]), ntohs(s[7]), conn->sc_ip.sport,
                 ntohs(d[0]), ntohs(d[1]), ntohs(d[2]), ntohs(d[3]), ntohs(d[4]),
-                ntohs(d[5]), ntohs(d[6]), ntohs(d[7]), conn->sc_dport);
+                ntohs(d[5]), ntohs(d[6]), ntohs(d[7]), conn->sc_ip.dport);
     } else {
         uint8_t *s = (uint8_t *)(&conn->sc_ip.sip4);
         uint8_t *d = (uint8_t *)(&conn->sc_ip.dip4);
         printk("%s (%u) delta: %u/%u %u.%u.%u.%u:%d -> %u.%u.%u.%u:%d\n",
                 conn->sc_comm, conn->sc_tid->st_tgid, conn->sc_age, smith_get_delta(0),
-                s[0], s[1], s[2], s[3], conn->sc_sport,
-                d[0], d[1], d[2], d[3], conn->sc_dport);
+                s[0], s[1], s[2], s[3], conn->sc_ip.sport,
+                d[0], d[1], d[2], d[3], conn->sc_ip.dport);
     }
 }
 
@@ -1403,8 +1397,8 @@ static int connect4_lru_cache_insert(struct sock *sk,
     memcpy(conn.sc_utsname, current->nsproxy->uts_ns->name.nodename, __NEW_UTS_LEN);
     conn.sc_mntns = smith_query_mntns();
     conn.sc_sock = sk;
-    conn.sc_sport = sport;
-    conn.sc_dport = dport;
+    conn.sc_ip.sport = sport;
+    conn.sc_ip.dport = dport;
     conn.sc_ip.sip4 = sip;
     conn.sc_ip.dip4 = dip;
     return smith_insert_conn(&conn);
@@ -1428,8 +1422,8 @@ static int connect6_lru_cache_insert(struct sock *sk,
     memcpy(conn.sc_utsname, current->nsproxy->uts_ns->name.nodename, __NEW_UTS_LEN);
     conn.sc_mntns = smith_query_mntns();
     conn.sc_sock = sk;
-    conn.sc_sport = sport;
-    conn.sc_dport = dport;
+    conn.sc_ip.sport = sport;
+    conn.sc_ip.dport = dport;
     conn.sc_ip.sip6 = *sip;
     conn.sc_ip.dip6 = *dip;
     return smith_insert_conn(&conn);
@@ -1456,6 +1450,7 @@ static int tcp_finish_connect_handler(struct kprobe *p, struct pt_regs *regs)
         read_unlock_irqrestore(&g_rb_conn.lock, flags);
         return 0;
     }
+    smith_query_ipinfo(sk, &conn->sc_ip);
     smith_log_conn(conn, 0);
     read_unlock_irqrestore(&g_rb_conn.lock, flags);
 
@@ -1544,16 +1539,9 @@ static void smith_trace_sysret_connect(long sockfd, long saddr, int len, int ret
     char *exe_path = DEFAULT_RET_STR;
     char *pid_tree = NULL;
     struct smith_tid *tid = NULL;
-    sa_family_t family = AF_UNSPEC;
 
-    union {
-        struct sockaddr    sa;
-        struct sockaddr_in si4;
-        struct sockaddr_in6 si6;
-        /* to avoid overflow access of kernel_getsockname */
-        struct __kernel_sockaddr_storage kss;
-    } sa;
-    int err = 0, dport, sport;
+    struct smith_ipinfo ip;
+    int err = 0;
 
     sock = sockfd_lookup(sockfd, &err);
     if (IS_ERR_OR_NULL(sock))
@@ -1572,65 +1560,18 @@ static void smith_trace_sysret_connect(long sockfd, long saddr, int len, int ret
         pid_tree = tid->st_pid_tree;
     }
 
-    /* prefer the family type specified by user */
-    family = sock->sk->sk_family;
-    if (family == AF_INET) {
-        __be32 dip4, sip4;
-
-        if (smith_get_sock_v4(sock, &sa.sa) < 0)
-            goto out;
-        sip4 = sa.si4.sin_addr.s_addr;
-        sport = ntohs(sa.si4.sin_port);
-
-        if (smith_get_peer_v4(sock, &sa.sa) < 0) {
-            if (!saddr)
-                goto out;
-            if (len > sizeof(sa))
-                len = sizeof(sa);
-            if (len < 16)
-                len = 16;
-            if (smith_copy_from_user(&sa, (void *)saddr, len))
-                goto out;
-            dip4 = sa.si4.sin_addr.s_addr;
-            dport = ntohs(sa.si4.sin_port);
-        } else {
-            dip4 = sa.si4.sin_addr.s_addr;
-            dport = ntohs(sa.si4.sin_port);
-        }
-
+    smith_query_ipinfo(sock->sk, &ip);
+    if (ip.sa_family == AF_INET) {
         if (TCPCONN_HOOK && retval == -EINPROGRESS)
-            err = connect4_lru_cache_insert(sock->sk, dport, dip4, sip4, sport);
+            err = connect4_lru_cache_insert(sock->sk, ip.dport, ip.dip4, ip.sip4, ip.sport);
         if (!err)
-            connect4_print(dport, dip4, exe_path, sip4, sport, retval, pid_tree);
-
+            connect4_print(ip.dport, ip.dip4, exe_path, ip.sip4, ip.sport, retval, pid_tree);
 #if IS_ENABLED(CONFIG_IPV6)
-    } else if (family == AF_INET6) {
-        struct in6_addr sip6, dip6;
-
-        if (smith_get_sock_v6(sock, &sa.sa) < 0)
-            goto out;
-        sport = ntohs(sa.si6.sin6_port);
-        sip6 = sa.si6.sin6_addr;
-
-        if (smith_get_peer_v6(sock, &sa.sa) < 0) {
-            if (!saddr)
-                goto out;
-            if (len > sizeof(sa))
-                len = sizeof(sa);
-            if (len < 16)
-                len = 16;
-            if (smith_copy_from_user(&sa, (void *)saddr, len))
-                goto out;
-            dport = ntohs(sa.si6.sin6_port);
-            dip6 = sa.si6.sin6_addr;
-        } else {
-            dport = ntohs(sa.si6.sin6_port);
-            dip6 = sa.si6.sin6_addr;
-        }
+    } else if (ip.sa_family == AF_INET6) {
         if (TCPCONN_HOOK && retval == -EINPROGRESS)
-            err = connect6_lru_cache_insert(sock->sk, dport, &dip6, sport, &sip6);
+            err = connect6_lru_cache_insert(sock->sk, ip.dport, &ip.dip6, ip.sport, &ip.sip6);
         if (!err)
-            connect6_print(dport, &dip6, exe_path, &sip6, sport, retval, pid_tree);
+            connect6_print(ip.dport, &ip.dip6, exe_path, &ip.sip6, ip.sport, retval, pid_tree);
 #endif
     }
 
@@ -1645,19 +1586,12 @@ out:
 
 static void smith_trace_sysret_accept(long sockfd)
 {
-    struct socket *sock = NULL;
-
-    union {
-        struct sockaddr    sa;
-        struct sockaddr_in si4;
-        struct sockaddr_in6 si6;
-        /* to avoid overflow access of kernel_getsockname */
-        struct __kernel_sockaddr_storage kss;
-    } sa;
-    int sport = 0, dport = 0, err = 0;
-
     char *exe_path = DEFAULT_RET_STR;
     struct smith_tid *tid = NULL;
+    struct socket *sock = NULL;
+
+    struct smith_ipinfo ip;
+    int err = 0;
 
     sock = sockfd_lookup(sockfd, &err);
     if (IS_ERR_OR_NULL(sock))
@@ -1671,36 +1605,14 @@ static void smith_trace_sysret_accept(long sockfd)
             goto out;
     }
 
-    //only get AF_INET/AF_INET6 accept info
-    if (AF_INET == sock->sk->sk_family) {
-        __be32 sip4, dip4;
-
-        if (smith_get_sock_v4(sock, &sa.sa) < 0)
-            goto out;
-        dip4 = sa.si4.sin_addr.s_addr;
-        dport = ntohs(sa.si4.sin_port);
-
-        if (smith_get_peer_v4(sock, &sa.sa) < 0)
-            goto out;
-        sip4 = sa.si4.sin_addr.s_addr;
-        sport = ntohs(sa.si4.sin_port);
-        accept_print(dport, dip4, exe_path, sip4, sport, sockfd);
+    smith_query_ipinfo(sock->sk, &ip);
+    if (AF_INET == ip.sa_family) {
+        accept_print(ip.dport, ip.dip4, exe_path, ip.sip4, ip.sport, sockfd);
         // printk("accept4_handler: %d.%d.%d.%d/%d -> %d.%d.%d.%d/%d rc=%d\n",
         //         NIPQUAD(sip4), sport, NIPQUAD(dip4), dport, sockfd);
 #if IS_ENABLED(CONFIG_IPV6)
-    } else if (AF_INET6 == sock->sk->sk_family) {
-        struct in6_addr *sip6, dip6;
-
-        if (smith_get_sock_v6(sock, &sa.sa) < 0)
-            goto out;
-        dip6 = sa.si6.sin6_addr;
-        dport = ntohs(sa.si6.sin6_port);
-
-        if (smith_get_peer_v6(sock, &sa.sa) < 0)
-            goto out;
-        sport = ntohs(sa.si6.sin6_port);
-        sip6 = &(sa.si6.sin6_addr);
-        accept6_print(dport, &dip6, exe_path, sip6, sport, sockfd);
+    } else if (AF_INET6 == ip.sa_family) {
+        accept6_print(ip.dport, &ip.dip6, exe_path, &ip.sip6, ip.sport, sockfd);
         // printk("accept6_handler: %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d"
         //        " -> %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x/%d rc=%d\n",
         //         NIP6(*sip6), sport, NIP6(dip6), dport, sockfd);
@@ -1729,8 +1641,7 @@ struct execve_data {
 
 static int smith_trace_process_exec(struct execve_data *data, int rc)
 {
-    int sa_family = -1, dport = 0, sport = 0, i;
-    __be32 dip4, sip4;
+    struct smith_ipinfo ip;
     pid_t socket_pid = -1;
     char md5s[36] = "-1";
     uint64_t size = 0;
@@ -1747,8 +1658,6 @@ static int smith_trace_process_exec(struct execve_data *data, int rc)
     char *stdin_buf = NULL;
     char *stdout_buf = NULL;
 
-    struct in6_addr dip6;
-    struct in6_addr sip6;
     struct file *file;
     struct tty_struct *tty = NULL;
 
@@ -1762,6 +1671,7 @@ static int smith_trace_process_exec(struct execve_data *data, int rc)
 
     tid = smith_lookup_tid(current);
     if (tid) {
+        int i;
         // exe filter check
         if (smith_is_exe_trusted(tid->st_img))
             goto out;
@@ -1783,11 +1693,10 @@ static int smith_trace_process_exec(struct execve_data *data, int rc)
         }
     }
 
-    get_process_socket(&sip4, &sip6, &sport, &dip4, &dip6, &dport,
-                       &socket_pid, &sa_family);
+    get_process_socket(&ip, &socket_pid);
 
     // if socket exist,get pid tree
-    if (sa_family == AF_INET6 || sa_family == AF_INET)
+    if (ip.sa_family == AF_INET6 || ip.sa_family == AF_INET)
         smith_check_privilege_escalation(PID_TREE_LIMIT, pid_tree);
     else
         smith_check_privilege_escalation(PID_TREE_LIMIT_LOW, pid_tree);
@@ -1811,22 +1720,22 @@ static int smith_trace_process_exec(struct execve_data *data, int rc)
     pname_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
     pname = smith_d_path(&current->fs->pwd, pname_buf, PATH_MAX);
 
-    if (sa_family == AF_INET) {
+    if (ip.sa_family == AF_INET) {
         execve_print(pname,
                      exe_path, data->argv,
                      tmp_stdin, tmp_stdout,
-                     dip4, dport, sip4, sport,
+                     ip.dip4, ip.dport, ip.sip4, ip.sport,
                      pid_tree, tty_name, socket_pid,
                      data->ssh_connection,
                      data->ld_preload,
                      data->ld_library_path,
                      rc, size, md5s);
 #if IS_ENABLED(CONFIG_IPV6)
-    } else if (sa_family == AF_INET6) {
+    } else if (ip.sa_family == AF_INET6) {
         execve6_print(pname,
                       exe_path, data->argv,
                       tmp_stdin, tmp_stdout,
-                      &dip6, dport, &sip6, sport,
+                      &ip.dip6, ip.dport, &ip.sip6, ip.sport,
                       pid_tree, tty_name, socket_pid,
                       data->ssh_connection,
                       data->ld_preload,
@@ -1968,16 +1877,9 @@ security_inode_create_pre_handler(struct kprobe *p, struct pt_regs *regs)
     char *exe_path = DEFAULT_RET_STR;
     char *pid_tree = NULL;
     char *s_id = NULL;
-
     struct dentry *de = NULL;
-    struct in6_addr dip6;
-    struct in6_addr sip6;
 
-    int sa_family = -1;
-    int dport = 0, sport = 0;
-
-    __be32 dip4;
-    __be32 sip4;
+    struct smith_ipinfo ip;
     pid_t socket_pid = -1;
     umode_t mode;
 
@@ -2017,18 +1919,17 @@ security_inode_create_pre_handler(struct kprobe *p, struct pt_regs *regs)
         }
     }
 
-    get_process_socket(&sip4, &sip6, &sport, &dip4, &dip6, &dport,
-                       &socket_pid, &sa_family);
+    get_process_socket(&ip, &socket_pid);
 
-    if (sa_family == AF_INET) {
-        security_inode4_create_print(exe_path, pathstr,
-                                    dip4, dport, sip4, sport,
+    if (ip.sa_family == AF_INET) {
+        security_inode4_create_print(exe_path, pathstr, ip.dip4,
+                                    ip.dport, ip.sip4, ip.sport,
                                     socket_pid, s_id, pid_tree);
     }
 #if IS_ENABLED(CONFIG_IPV6)
-    else if (sa_family == AF_INET6) {
-		security_inode6_create_print(exe_path, pathstr, &dip6,
-                                     dport, &sip6, sport,
+    else if (ip.sa_family == AF_INET6) {
+		security_inode6_create_print(exe_path, pathstr, &ip.dip6,
+                                     ip.dport, &ip.sip6, ip.sport,
 			                         socket_pid, s_id, pid_tree);
 	}
 #endif
@@ -2128,24 +2029,6 @@ static void dns6_data_transport(char *query, struct in6_addr *dip,
 }
 #endif
 
-struct smith_ip_addr {
-
-    int sa_family;
-    int sport;
-    int dport;
-
-    union {
-        struct {
-            __be32 dip4;
-            __be32 sip4;
-        };
-        struct {
-            struct in6_addr dip6;
-            struct in6_addr sip6;
-        };
-    };
-};
-
 static void *get_dns_query(unsigned char *data, int query_len, char *res, int *type) {
     int i;
     int flag = -1;
@@ -2170,7 +2053,7 @@ static void *get_dns_query(unsigned char *data, int query_len, char *res, int *t
     return 0;
 }
 
-static int smith_process_dns(struct smith_ip_addr *addr, unsigned char *recv_data, int iov_len)
+static int smith_process_dns(struct smith_ipinfo *addr, unsigned char *recv_data, int iov_len)
 {
     // types of queries in the DNS system: https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml
     int qr, opcode = 0, rcode = 0, type = 0;
@@ -2211,57 +2094,6 @@ static int smith_process_dns(struct smith_ip_addr *addr, unsigned char *recv_dat
     }
 
     return 0;
-}
-
-static int smith_query_ip_addr(struct socket *sock, struct smith_ip_addr *addr)
-{
-    union {
-        struct sockaddr    sa;
-        struct sockaddr_in si4;
-        struct sockaddr_in6 si6;
-        /* to avoid overflow access of kernel_getsockname */
-        struct __kernel_sockaddr_storage kss;
-    } sa;
-
-    if (AF_INET == sock->sk->sk_family) {
-        addr->sa_family = AF_INET;
-        if (smith_get_sock_v4(sock, &sa.sa) >= 0) {
-            addr->sport = ntohs(sa.si4.sin_port);
-            addr->sip4 = sa.si4.sin_addr.s_addr;
-        } else {
-            addr->sport = 0;
-            addr->sip4 = 0;
-        }
-        if (smith_get_peer_v4(sock, &sa.sa) >= 0) {
-            addr->dport = ntohs(sa.si4.sin_port);
-            addr->dip4 = sa.si4.sin_addr.s_addr;
-        } else {
-            addr->dport = 0;
-            addr->dip4 = 0;
-        }
-#if IS_ENABLED(CONFIG_IPV6)
-    } else if (AF_INET6 == sock->sk->sk_family) {
-        addr->sa_family = AF_INET6;
-        if (smith_get_sock_v6(sock, &sa.sa) >= 0) {
-            addr->sport = ntohs(sa.si6.sin6_port);
-            memcpy(&addr->sip6, &sa.si6.sin6_addr, sizeof(struct in6_addr));
-        } else {
-            addr->sport = 0;
-            memset(&addr->sip6, 0, sizeof(struct in6_addr));
-        }
-        if (smith_get_peer_v6(sock, &sa.sa) >= 0) {
-            addr->dport = ntohs(sa.si6.sin6_port);
-            memcpy(&addr->dip6, &sa.si6.sin6_addr, sizeof(struct in6_addr));
-        } else {
-            addr->dport = 0;
-            memset(&addr->dip6, 0, sizeof(struct in6_addr));
-        }
-#endif
-    } else {
-        addr->sa_family = 0;
-    }
-
-    return addr->sa_family;
 }
 
 /*
@@ -2337,8 +2169,9 @@ static void smith_trace_sysret_recvdat(long sockfd, unsigned long userp, long le
 {
     struct socket *sock = NULL;
     unsigned char *data = NULL;
-    struct smith_ip_addr addr;
-    int err;
+
+    struct smith_ipinfo addr;
+    int err = 0;
 
     sock = sockfd_lookup(sockfd, &err);
     if (IS_ERR_OR_NULL(sock))
@@ -2349,7 +2182,7 @@ static void smith_trace_sysret_recvdat(long sockfd, unsigned long userp, long le
         goto out;
 
     /* query ip addresses */
-    if (!smith_query_ip_addr(sock, &addr))
+    if (!smith_query_ipinfo(sock->sk, &addr))
         goto out;
 
     /* we only care IP v4 or v6 and port 53 or 5353 */
@@ -2392,10 +2225,10 @@ static void smith_trace_sysret_recvmsg(long sockfd, unsigned long umsg, long len
 {
     struct socket *sock = NULL;
     unsigned char *data = NULL;
-    struct smith_ip_addr addr;
+    struct smith_ipinfo addr;
     struct user_msghdr msg;
     struct iovec iov = {0};
-    int err;
+    int err = 0;
 
     sock = sockfd_lookup(sockfd, &err);
     if (IS_ERR_OR_NULL(sock))
@@ -2406,7 +2239,7 @@ static void smith_trace_sysret_recvmsg(long sockfd, unsigned long umsg, long len
         goto out;
 
     /* query ip addresses */
-    if (!smith_query_ip_addr(sock, &addr))
+    if (!smith_query_ipinfo(sock->sk, &addr))
         goto out;
 
     /* we only care IP v4 or v6 and port 53 or 5353 */

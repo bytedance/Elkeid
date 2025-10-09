@@ -149,6 +149,23 @@ struct smith_ent {
 int smith_insert_ent(char *path);
 int smith_remove_ent(char *path);
 
+struct smith_ipinfo {
+
+    int sa_family;
+    int sport;
+    int dport;
+
+    union {
+        struct {
+            __be32 dip4;
+            __be32 sip4;
+        };
+        struct {
+            struct in6_addr dip6;
+            struct in6_addr sip6;
+        };
+    };
+};
 
 /*
  * LRU cache list for tcp connections (for MaaS tcp connection auditing)
@@ -169,18 +186,7 @@ struct smith_conn {
     char                sc_utsname[__NEW_UTS_LEN];
     uint64_t            sc_mntns;
     uint32_t            sc_age;     /* timestamp for LRU */
-    uint16_t            sc_sport;
-    uint16_t            sc_dport;
-    union {
-        struct {
-            uint32_t sip4;
-            uint32_t dip4;
-        };
-        struct {
-            struct in6_addr sip6;
-            struct in6_addr dip6;
-        };
-    } sc_ip;
+    struct smith_ipinfo sc_ip;
 };
 
 #endif /* SMITH_HOOK_H */
