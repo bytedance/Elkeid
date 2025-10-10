@@ -425,12 +425,13 @@ static char *__dentry_path(struct dentry *dentry, char *buf, int buflen)
 
     while (!IS_ROOT(dentry)) {
         struct dentry *parent = dentry->d_parent;
+        unsigned long flags;
         int error;
 
         prefetch(parent);
-        spin_lock(&dentry->d_lock);
+        spin_lock_irqsave(&dentry->d_lock, flags);
         error = prepend_name(&end, &buflen, &dentry->d_name);
-        spin_unlock(&dentry->d_lock);
+        spin_unlock_irqrestore(&dentry->d_lock, flags);
         if (error != 0 || prepend(&end, &buflen, "/", 1) != 0)
             goto Elong;
 
