@@ -278,11 +278,13 @@ static void smith_insert_delayed_put_node(struct delayed_put_node *dnod)
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)
+#define smith_sockfd_put(sock) sockfd_put(sock)
 static void smith_fput(struct file *filp)
 {
     fput(filp);
 }
 #else
+#define smith_sockfd_put(sock) smith_fput(sock->file)
 static void smith_fput(struct file *filp)
 {
     struct delayed_put_node *dnod;
@@ -993,7 +995,7 @@ static void get_process_socket(struct smith_ipinfo *ip, pid_t *socket_pid)
                     smith_query_ipinfo(socket->sk, ip);
                     socket_check = 1;
                 }
-                sockfd_put(socket);
+                smith_sockfd_put(socket);
             }
         }
         if (task == current)
@@ -1060,7 +1062,7 @@ static void smith_trace_sysret_bind(long sockfd, long ret)
 
 out:
     if (!IS_ERR_OR_NULL(sock))
-        sockfd_put(sock);
+        smith_sockfd_put(sock);
     if (tid)
         smith_put_tid(tid);
 }
@@ -1577,7 +1579,7 @@ static void smith_trace_sysret_connect(long sockfd, long saddr, int len, int ret
 
 out:
     if (!IS_ERR_OR_NULL(sock))
-        sockfd_put(sock);
+        smith_sockfd_put(sock);
     if (tid)
         smith_put_tid(tid);
 
@@ -1621,7 +1623,7 @@ static void smith_trace_sysret_accept(long sockfd)
 
 out:
     if (!IS_ERR_OR_NULL(sock))
-        sockfd_put(sock);
+        smith_sockfd_put(sock);
     if (tid)
         smith_put_tid(tid);
 }
@@ -2212,7 +2214,7 @@ static void smith_trace_sysret_recvdat(long sockfd, unsigned long userp, long le
 
 out:
     if (!IS_ERR_OR_NULL(sock))
-        sockfd_put(sock);
+        smith_sockfd_put(sock);
     if (data)
         smith_kfree(data);
 }
@@ -2280,7 +2282,7 @@ static void smith_trace_sysret_recvmsg(long sockfd, unsigned long umsg, long len
 
 out:
     if (!IS_ERR_OR_NULL(sock))
-        sockfd_put(sock);
+        smith_sockfd_put(sock);
     if (data)
         smith_kfree(data);
 }
