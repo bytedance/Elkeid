@@ -330,11 +330,13 @@ static void smith_insert_delayed_put_node(struct delayed_put_node *dnod)
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)
+#define smith_sockfd_put(sock) sockfd_put(sock)
 static void smith_fput(struct file *filp)
 {
     fput(filp);
 }
 #else
+#define smith_sockfd_put(sock) smith_fput(sock->file)
 static void smith_fput(struct file *filp)
 {
     struct delayed_put_node *dnod;
@@ -756,7 +758,7 @@ get_process_socket(__be32 * sip4, struct in6_addr *sip6, int *sport,
 #endif
                     }
                 }
-                sockfd_put(socket);
+                smith_sockfd_put(socket);
             }
         }
         if (task == current)
@@ -1165,7 +1167,7 @@ static int connect_syscall_handler(struct kretprobe_instance *ri, struct pt_regs
     }
 
     /* refed by sip6 & dip6 for ipv6 */
-    sockfd_put(socket);
+    smith_sockfd_put(socket);
 
     return 0;
 }
@@ -1380,7 +1382,7 @@ static int accept_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 
 out:
     if (!IS_ERR_OR_NULL(sock))
-        sockfd_put(sock);
+        smith_sockfd_put(sock);
     if (buffer)
         smith_kfree(buffer);
     return 0;
@@ -2369,7 +2371,7 @@ static void smith_trace_sysret_recvdat(long sockfd, unsigned long userp, long le
 
 out:
     if (!IS_ERR_OR_NULL(sock))
-        sockfd_put(sock);
+        smith_sockfd_put(sock);
     if (data)
         smith_kfree(data);
 }
@@ -2436,7 +2438,7 @@ static void smith_trace_sysret_recvmsg(long sockfd, unsigned long umsg, long len
 
 out:
     if (!IS_ERR_OR_NULL(sock))
-        sockfd_put(sock);
+        smith_sockfd_put(sock);
     if (data)
         smith_kfree(data);
 }
