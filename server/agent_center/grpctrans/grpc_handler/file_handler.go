@@ -8,14 +8,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/bytedance/Elkeid/server/agent_center/httptrans/client"
-	"io"
-	"os"
-	"path"
-	"path/filepath"
 )
 
 type FileExtHandler struct {
@@ -92,13 +92,13 @@ func (h *FileExtHandler) Upload(stream pb.FileExt_UploadServer) (err error) {
 		}
 
 		if firstChunk {
-			filePath = path.Join(h.FileBaseDir, fileRequest.Token)
-			fp, err = os.Create(filePath)
+			fp, err = os.CreateTemp(h.FileBaseDir, "cache-*")
 			if err != nil {
-				ylog.Errorf("FileExtHandler_Upload", "Unable to create file: %s", filePath)
+				ylog.Errorf("FileExtHandler_Upload", "Unable to CreateTemp: %s", h.FileBaseDir)
 				stream.SendAndClose(&pb.UploadResponse{Status: pb.UploadResponse_FAILED})
 				goto Fail
 			}
+			filePath = fp.Name()
 			fileBuf = bufio.NewWriter(fp)
 			token = fileRequest.Token
 			firstChunk = false
