@@ -1,0 +1,16 @@
+#!/usr/bin/make -f
+
+include /usr/share/dpkg/pkg-info.mk
+
+%:
+	dh $@ --with dkms
+
+override_dh_builddeb:
+	dh_builddeb -- -Zgzip
+
+override_dh_install:
+	dh_install LKM/* usr/src/elkeid-driver-$(DEB_VERSION)/
+	dh_install dkms.conf usr/src/elkeid-driver-$(DEB_VERSION)/
+
+override_dh_dkms:
+	dh_dkms -V $(DEB_VERSION)

@@ -12,6 +12,7 @@
 
 #include "../include/smith_hook.h"
 #include "../include/trace.h"
+#include "../include/protector.h"
 
 /*
  * network related header files
@@ -70,7 +71,7 @@ SMITH_HOOK(UDEV, 1);
 SMITH_HOOK(CHMOD, 1);
 
 SMITH_HOOK(WRITE, 0);
-SMITH_HOOK(ACCEPT, 0);
+SMITH_HOOK(ACCEPT, 1);
 SMITH_HOOK(OPEN, 0);
 SMITH_HOOK(CLOSE, 1);
 SMITH_HOOK(MPROTECT, 0);
@@ -427,13 +428,12 @@ static char *__dentry_path(struct dentry *dentry, char *buf, int buflen)
 
     while (!IS_ROOT(dentry)) {
         struct dentry *parent = dentry->d_parent;
-        unsigned long flags;
         int error;
 
         prefetch(parent);
-        spin_lock_irqsave(&dentry->d_lock, flags);
+        spin_lock(&dentry->d_lock);
         error = prepend_name(&end, &buflen, &dentry->d_name);
-        spin_unlock_irqrestore(&dentry->d_lock, flags);
+        spin_unlock(&dentry->d_lock);
         if (error != 0 || prepend(&end, &buflen, "/", 1) != 0)
             goto Elong;
 
@@ -1026,13 +1026,12 @@ next_task:
 static void smith_trace_sysret_bind(long sockfd, long ret)
 {
     struct socket *sock = NULL;
+    struct smith_ipinfo ip;
+    int err = 0;
 
     char *exe_path = DEFAULT_RET_STR;
     char *pid_tree = NULL;
     struct smith_tid *tid = NULL;
-
-    struct smith_ipinfo ip;
-    int err = 0;
 
     /* ignore failed bind calls */
     if (ret != 0)
@@ -1541,7 +1540,6 @@ static void smith_trace_sysret_connect(long sockfd, long saddr, int len, int ret
     char *exe_path = DEFAULT_RET_STR;
     char *pid_tree = NULL;
     struct smith_tid *tid = NULL;
-
     struct smith_ipinfo ip;
     int err = 0;
 
@@ -1591,9 +1589,8 @@ static void smith_trace_sysret_accept(long sockfd)
     char *exe_path = DEFAULT_RET_STR;
     struct smith_tid *tid = NULL;
     struct socket *sock = NULL;
-
     struct smith_ipinfo ip;
-    int err = 0;
+    int err;
 
     sock = sockfd_lookup(sockfd, &err);
     if (IS_ERR_OR_NULL(sock))
@@ -1644,7 +1641,6 @@ struct execve_data {
 static int smith_trace_process_exec(struct execve_data *data, int rc)
 {
     struct smith_ipinfo ip;
-    pid_t socket_pid = -1;
     char md5s[36] = "-1";
     uint64_t size = 0;
 
@@ -1663,6 +1659,9 @@ static int smith_trace_process_exec(struct execve_data *data, int rc)
     struct file *file;
     struct tty_struct *tty = NULL;
 
+    pid_t socket_pid = -1;
+    int i;
+
     // argv filter check
     if (g_flt_ops.argv_check(data->argv, data->len_argv))
         goto out;
@@ -1673,7 +1672,6 @@ static int smith_trace_process_exec(struct execve_data *data, int rc)
 
     tid = smith_lookup_tid(current);
     if (tid) {
-        int i;
         // exe filter check
         if (smith_is_exe_trusted(tid->st_img))
             goto out;
@@ -1724,35 +1722,37 @@ static int smith_trace_process_exec(struct execve_data *data, int rc)
 
     if (ip.sa_family == AF_INET) {
         execve_print(pname,
-                     exe_path, data->argv,
-                     tmp_stdin, tmp_stdout,
-                     ip.dip4, ip.dport, ip.sip4, ip.sport,
-                     pid_tree, tty_name, socket_pid,
-                     data->ssh_connection,
-                     data->ld_preload,
-                     data->ld_library_path,
-                     rc, size, md5s);
+                    exe_path, data->argv,
+                    tmp_stdin, tmp_stdout,
+                    ip.dip4, ip.dport,
+                    ip.sip4, ip.sport,
+                    pid_tree, tty_name, socket_pid,
+                    data->ssh_connection,
+                    data->ld_preload,
+                    data->ld_library_path,
+                    rc, size, md5s);
 #if IS_ENABLED(CONFIG_IPV6)
     } else if (ip.sa_family == AF_INET6) {
         execve6_print(pname,
-                      exe_path, data->argv,
-                      tmp_stdin, tmp_stdout,
-                      &ip.dip6, ip.dport, &ip.sip6, ip.sport,
-                      pid_tree, tty_name, socket_pid,
-                      data->ssh_connection,
-                      data->ld_preload,
-                      data->ld_library_path,
-                      rc, size, md5s);
+                    exe_path, data->argv,
+                    tmp_stdin, tmp_stdout,
+                    &ip.dip6, ip.dport,
+                    &ip.sip6, ip.sport,
+                    pid_tree, tty_name, socket_pid,
+                    data->ssh_connection,
+                    data->ld_preload,
+                    data->ld_library_path,
+                    rc, size, md5s);
 #endif
     } else {
         execve_nosocket_print(pname,
-                              exe_path, data->argv,
-                              tmp_stdin, tmp_stdout,
-                              pid_tree, tty_name,
-                              data->ssh_connection,
-                              data->ld_preload,
-                              data->ld_library_path,
-                              rc, size, md5s);
+                    exe_path, data->argv,
+                    tmp_stdin, tmp_stdout,
+                    pid_tree, tty_name,
+                    data->ssh_connection,
+                    data->ld_preload,
+                    data->ld_library_path,
+                    rc, size, md5s);
     }
 
 out:
@@ -1879,8 +1879,8 @@ security_inode_create_pre_handler(struct kprobe *p, struct pt_regs *regs)
     char *exe_path = DEFAULT_RET_STR;
     char *pid_tree = NULL;
     char *s_id = NULL;
-    struct dentry *de = NULL;
 
+    struct dentry *de = NULL;
     struct smith_ipinfo ip;
     pid_t socket_pid = -1;
     umode_t mode;
@@ -2171,9 +2171,8 @@ static void smith_trace_sysret_recvdat(long sockfd, unsigned long userp, long le
 {
     struct socket *sock = NULL;
     unsigned char *data = NULL;
-
     struct smith_ipinfo addr;
-    int err = 0;
+    int err;
 
     sock = sockfd_lookup(sockfd, &err);
     if (IS_ERR_OR_NULL(sock))
@@ -2230,7 +2229,7 @@ static void smith_trace_sysret_recvmsg(long sockfd, unsigned long umsg, long len
     struct smith_ipinfo addr;
     struct user_msghdr msg;
     struct iovec iov = {0};
-    int err = 0;
+    int err;
 
     sock = sockfd_lookup(sockfd, &err);
     if (IS_ERR_OR_NULL(sock))
@@ -4810,6 +4809,51 @@ out:
     return tree;
 }
 
+static void smith_update_protected(struct smith_tid *tid, struct task_struct *task) {
+    const char *exe_path = NULL;
+    struct smith_img *img = NULL;
+
+    if (tid->protected)
+        return;
+
+    // Consider that img->si_exe is unsafe (because we don't have its reference),
+    // so we use img->si_path to check if the process is protected here.
+    img = smith_find_task_img(task);
+    if (img) {
+        exe_path = img->si_path;
+        if (check_exe_path_is_protected(exe_path)) {
+            tid->protected = 1;
+            //pr_info("set protected: %d for %d\n", tid->protected, tid->st_tgid);
+        }
+        smith_put_img(img);
+    }
+}
+
+static void smith_set_protected(struct smith_tid *tid, struct task_struct *task) {
+    struct task_struct *parent = NULL;
+    struct smith_tid *parent_tid = NULL;
+
+    tid->protected = 0;
+
+    // 1st, check if the process is protected.
+    smith_update_protected(tid, task);
+    if (tid->protected) return;
+
+    // 2nd, check if its parent is protected, and inherit its protection status.
+    rcu_read_lock();
+    parent = smith_get_task_struct(rcu_dereference(task->real_parent));
+    rcu_read_unlock();
+
+    parent_tid = smith_lookup_tid(parent);
+    smith_put_task_struct(parent);
+
+    if (parent_tid) {
+        tid->protected = parent_tid->protected; // Inherited from the parent
+        smith_put_tid(parent_tid);
+        //pr_info("set protected: %d for %d inherited from %d\n", tid->protected, task->tgid, parent_tid->st_tgid);
+    }
+}
+
 static void smith_update_comm(struct smith_tid *tid, char *comm_new)
 {
     char pid[PID_TREE_METADATA_LEN];
@@ -4843,6 +4887,7 @@ static int smith_build_tid(struct smith_tid *tid, struct task_struct *task)
         return -ENOMEM;
     smith_build_pid_tree(tid, task);
     tid->st_root = smith_query_mntns_id(task);
+    smith_set_protected(tid, task); // set tid->protected
     return 0;
 }
 
@@ -4986,16 +5031,18 @@ static void smith_trace_proc_exec(
     if (!tid)
         goto errorout;
 
-    /* update pid tree strings */
-    if (task->tgid == task->pid)
-        smith_update_comm(tid, task->comm);
-
     /* build img for execed task */
     exe = smith_find_task_img(task);
     if (exe) {
         /* update st_img with new execed image */
         img = tid->st_img;
         rcu_assign_pointer(tid->st_img, exe);
+    }
+
+    /* update pid tree strings */
+    if (task->tgid == task->pid) {
+        smith_update_comm(tid, task->comm);
+        smith_update_protected(tid, task);
     }
 
 errorout:
@@ -7065,7 +7112,7 @@ MODULE_PARM_DESC(mem_stats, "memory usage of core objects of elkeid");
     module_param(sid_##name, charp, S_IRUSR|S_IRGRP|S_IROTH)
 
 /* latest commit id */
-static char *smith_srcid = SMITH_SRCID(775252b51950f342946c85848c6ba9b894eaf7d7_190115);
+static char *smith_srcid = SMITH_SRCID(0d9f9df4fe191ecd3d2ab76e49d78503a7517a96);
 
 static int __init kprobe_hook_init(void)
 {
@@ -7141,6 +7188,9 @@ static int __init kprobe_hook_init(void)
 
     /* psad skipped, to be dynamically turned on */
 
+    /* init self-protection */
+    smith_protect_init();
+
     /* register binfmt callback for image checking */
     smith_register_exec_load();
 
@@ -7174,6 +7224,9 @@ static void kprobe_hook_exit(void)
     if (g_nf_psad_status)
         unregister_pernet_subsys(&smith_psad_net_ops);
     mutex_unlock(&g_nf_psad_lock);
+
+    /* close self-protection if it's enabled */
+    smith_protect_destroy();
 
     /* cleaning up hook points: kprobe * trace */
     smith_fini_kprobe();

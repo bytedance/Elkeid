@@ -1,0 +1,93 @@
+#! /bin/bash
+
+# heavily based upon find-suggests.ksyms by Andreas Gruenbacher <agruen@suse.de>.
+# with modifications by Michael Brown <Michael_E_Brown@dell.com>
+#
+# -- added module versioning info to modalias() symbols
+# -- removed code which inspects spec files.
+
+IFS=$'\n'
+
+print_modaliases() {
+    declare class=$1 variants=$2 pos=$3
+    if [ -n "$variants" ]; then
+	echo "${class:0:pos}[$variants]${class:pos+1}"
+    else
+	[ -z "$class" ] || echo "$class"
+    fi
+}
+
+combine_modaliases() {
+    declare tag class variants pos n
+    read class
+    while read tag; do
+	for ((n=0; n<${#class}; n++)); do
+	    if [ "*" != "${class:n:1}" -a \
+		 "${class:0:n}" = "${tag:0:n}" -a \
+		 "${class:n+1}" = "${tag:n+1}" ] &&
+	       ( [ -z "$pos" ] || [ $n = $pos ] ); then
+		variants="${variants:-${class:n:1}}${tag:n:1}"
+		pos=$n
+		break
+	    fi
+	done
+	if [ $n -eq ${#class} ]; then
+	    print_modaliases "$class" "$variants" "$pos"
+	    variants=
+	    pos=
+	    class=$tag
+	fi
+    done
+    print_modaliases "$class" "$variants" "$pos"
+}
+
+get_modinfo() {
+    module=$1
+
+    # | head -n1 because some modules have *two* version tags. *cough*b44*cough*
+    modver=$(/sbin/modinfo -F version "$module"| head -n1)
+    modver=${modver// /_}
+
+    # only add version tag if it has a version
+    if [ -n "$modver" ]; then
+        /sbin/modinfo -F alias "$module" \
+        | sed -nre "s,(.+),modalias(\\1) = $modver,p"
+    else
+        /sbin/modinfo -F alias "$module" \
+        | sed -nre "s,(.+),modalias(\\1),p"
+    fi
+}
+
+
+tmp=${TMPDIR:-/tmp}
+TMPDIR=$(mktemp -d ${tmp}/dkms-findprovides-$$-$RANDOM-XXXXXX)
+trap "rm -rf $TMPDIR >/dev/null 2>&1"  QUIT EXIT HUP INT TERM
+
+modlist=
+for cand in $(grep -E '(/lib/modules/.+\.ko$|tgz$|tbz$|tar\.(gz|bz2|xz)$)') $*; do
+    if echo $cand | grep -q -E '/lib/modules/.+\.ko$' > /dev/null 2>&1; then
+        modlist="$modlist $cand"
+    fi
+
+    [ -f $cand ] || continue
+
+    opts=x
+    if gzip -t $cand >/dev/null 2>&1; then
+        opts=${opts}z
+    elif bzip2 -t $cand >/dev/null 2>&1; then
+        opts=${opts}j
+    elif xz -t $cand >/dev/null 2>&1; then
+	opts=${opts}J
+    fi
+    tar ${opts}f $cand -C $TMPDIR > /dev/null 2>&1
+done
+
+for module in $(find $TMPDIR -name \*.ko) $modlist; do
+    if echo $module | grep -q -E '.ko$' >/dev/null 2>&1; then
+        # it is a straight module
+        get_modinfo $module
+        continue
+    fi
+done \
+| sort -u \
+| combine_modaliases

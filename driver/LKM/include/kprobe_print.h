@@ -206,7 +206,7 @@ SD_XFER_DEFINE( NAME(execve),
                      ENTRY_STR(ld_library_path, ld_library_path),
                      ENTRY_INT(retval, retval),
                      ENTRY_U64(size, size),
-                     ENTRY_STR(md5, md5)
+                     ENTRY_STL(md5, md5, 36)
                 )
 )
 
@@ -245,7 +245,7 @@ SD_XFER_DEFINE( NAME(execve_nosocket),
                      ENTRY_STR(ld_library_path, ld_library_path),
                      ENTRY_INT(retval, retval),
                      ENTRY_U64(size, size),
-                     ENTRY_STR(md5, md5)
+                     ENTRY_STL(md5, md5, 36)
                 )
 )
 
@@ -290,7 +290,7 @@ SD_XFER_DEFINE( NAME(execve6),
                      ENTRY_STR(ld_library_path, ld_library_path),
                      ENTRY_INT(retval, retval),
                      ENTRY_U64(size, size),
-                     ENTRY_STR(md5, md5)
+                     ENTRY_STL(md5, md5, 36)
                 )
 )
 #endif
@@ -907,6 +907,6 @@ SD_XFER_DEFINE( NAME(exe_warn_md5),
                      ENTRY_STR(argv, argv),
                      ENTRY_STR(cwd, cwd),
                      ENTRY_STR(pid_tree, pid_tree),
-                     ENTRY_STR(md5, md5)
+                     ENTRY_STL(md5, md5, 36)
                 )
 )

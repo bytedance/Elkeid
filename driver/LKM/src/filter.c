@@ -1061,7 +1061,7 @@ static int filter_ioctl_internal(int cmd, char *data, int len)
 
     /* remove spaces in prefix or suffix */
     smith_strim(data, len);
-    len = strnlen(data, len);
+    len = strlen(data);
 
     switch (cmd) {
         case ADD_EXECVE_EXE_ALLOWLIST:

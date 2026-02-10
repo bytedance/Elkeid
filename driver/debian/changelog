@@ -1,0 +1,102 @@
+mongoose-driver-dkms (3.0.0.5) stable; urgency=medium
+
+  LKM module now synced to v1.9.1.9
+  * FIXME: disable irq to avoid possible deadlock
+  * FIXME: LKM loading failures on v6.9 kernels
+  * FIXME: smith_img structs revoking issues
+  * FIXME: building failure on AWS kernel 5.10.220
+
+mongoose-driver-dkms (3.0.0.4) stable; urgency=medium
+
+  * ebpf driver & plugin updated
+
+mongoose-driver-dkms (3.0.0.1) stable; urgency=medium
+
+  * package name renamed to elkeid-driver
+  * hids ebpf integrated with layout changed
+
+mongoose-driver-dkms (1.9.1.6) stable; urgency=medium
+
+  * Feature: memory stats added for HDIS's own objects & structs
+
+mongoose-driver-dkms (1.9.1.5) stable; urgency=medium
+
+  * FIXME: kernel warning by trace ringbuffer under stress testings
+  * FIXME: DNS 601 record missing on internal 5.4.56.bsk.9 kernels
+  * FIXME: huge memory occupitions on Rocky 8 (kernels < 4.19)
+  * FIXME: files_struct repear thread fully occupies a cpu core
+
+mongoose-driver-dkms (1.9.0.4) stable; urgency=medium
+
+  * FXIME: kernel warning upon pid_task() calling: out of rcu lock
+  * Makefile enchancement for linux header/include files locating
+
+mongoose-driver-dkms (1.9.0.3) stable; urgency=medium
+
+  * FIXME: crash on 5.4.210.bsk.6 due to resched() in put_files_struc
+  * FIXME: building error for CentOS-6.0: IS_ENABLED() undefined
+  * FIXME: idt_table parsing logic corrected as struct gate_desc
+  * FIXME: general trace ringbuffer implementation synced to v6.7
+  * FIXME: building warnings & issues resolved for CentOS 6/7
+  * FIXME: NULL exe_path for executions via call_usermodehelper
+  * Improvement: manually retrieve ip, replacing kernel_getsockname
+
+mongoose-driver-dkms (1.9.0.2) stable; urgency=medium
+
+  * HIPS rules supported: path & args rules and md5 hash rules
+  * Event 613 added for tracing file creation
+  * Event 59 added to report md5 of executable images
+  * Hookpoint switches added for module loading
+
+mongoose-driver-dkms (1.9.0.1) stable; urgency=medium
+
+  * HIPS rules supported: path & args rules and md5 hash rules
+
+mongoose-driver-dkms (1.8.0.6) stable; urgency=medium
+
+  * codes cleanup: file permission & notification relatd codes removed
+  * codes cleanup: __get_dns_query() moved to smith_hook.c from util.h
+  * v6.4 supporting: bailding failures due to changes of kernel structures
+  * optimization of image hash computation, compute when smith_img is created
+
+mongoose-driver-dkms (1.8.0.5) stable; urgency=medium
+
+  * FIXME: cpu-stuck due to multiple registration of nf_hooks
+  * Rocky9 suupprt: building failed due to kernel backporting
+  * SLES 12.5: building failed due to kernel backporting
+  * FIXME: NULL pointer access (Coverity)
+  * KASAN: OOB memory reading & writing issues
+
+mongoose-driver-dkms (1.8.0.4) stable; urgency=medium
+
+  * Feature: port-scan attack detection implemented
+  * Feature: only permit driver plugin or rst to access proc
+  * get_process_socket: report tgid rather than pid
+  * ARM64 dns resolving: should use orig_x0 rather x0
+  * tracing for 32-bit executables supported (i386/arm32)
+  * monitor module loading via tracepoint (migrated from kprobe)
+  * SANDBOX: out-of-bounds access in write_pre_handler
+
+ -- Elkeid Team <elkeid@bytedance.com>   Mon Apr 24 14:10:31 2023 +0800
+
+mongoose-driver-dkms (1.8.0.3) stable; urgency=medium
+
+  * pidtree added to connect/dns/create/setsid/bind
+  * return codes of tb_read_ring() reformated
+  * softlock in smith_strnlen with unaligned string
+  * d_absolute_path failures with piped stdin/stdout
+
+ -- Elkeid Team <elkeid@bytedance.com>  Fri, 11 Nov 2022 14:59:43 +0800
+
+mongoose-driver-dkms (1.8.0.2) stable; urgency=medium
+
+  * Fix sa_family field and tb_read_ring returns 1 record now.
+
+ -- Elkeid Team <elkeid@bytedance.com>  Wed, 02 Nov 2022 15:20:34 +0800
+
+mongoose-driver-dkms (1.8.0.1) stable; urgency=medium
+
+  * 1.8.0.1: https://bytedance.feishu.cn/docx/doxcngdBUbqakiDSTrjJxwigxmh 
+
+ -- Elkeid Team <elkeid@bytedance.com>  Mon, 26 Sep 2022 18:00:00 +0800
+

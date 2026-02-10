@@ -1,0 +1,22 @@
+#!/bin/sh
+
+NAME=elkeid-driver
+
+set -e
+case "$1" in
+    remove|upgrade|deconfigure)
+      for V in `dkms status -m $NAME | awk -F'[/,]' '{print $2}'`; do
+          dkms remove -m $NAME -v $V --all;
+      done
+    ;;
+
+    failed-upgrade)
+    ;;
+
+    *)
+        echo "prerm called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
+esac
+
+exit 0

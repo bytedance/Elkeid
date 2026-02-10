@@ -104,6 +104,7 @@ struct smith_tid {
     uint16_t            st_size_pidtree; /* buffer size of pidtree */
     uint16_t            st_len_pidtree; /* real string size of pidtree */
     uint16_t            st_len_current_pid; /* string size of current item */
+    uint16_t            protected;  /* flag of whether to protect (self-protection) */
 };
 
 static inline uint64_t smith_task_start_time(struct task_struct *task) {
@@ -148,6 +149,7 @@ struct smith_ent {
 
 int smith_insert_ent(char *path);
 int smith_remove_ent(char *path);
+
 
 struct smith_ipinfo {
 

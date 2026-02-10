@@ -1,0 +1,10 @@
+#
+## Bytedance module configuration
+#
+config ELKEID
+        tristate "bytedance HIDS module - ELKEID"
+        depends on KPROBES && KRETPROBES
+	default m
+        help
+		ByteDance ELKEID/HIDS kernel module
+		Project: https://github.com/bytedance/elkeid

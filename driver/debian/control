@@ -1,0 +1,11 @@
+Source: elkeid-driver-dkms
+Section: misc
+Priority: optional
+Maintainer: Elkeid Team <elkeid@bytedance.com>
+Build-Depends: debhelper (>= 7), dh-dkms | dkms
+Standards-Version: 3.8.1
+
+Package: elkeid-driver-dkms
+Architecture: all
+Depends: dkms (>= 1.95), ${misc:Depends}
+Description: elkeid-driver DKMS

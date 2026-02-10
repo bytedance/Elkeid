@@ -1,0 +1,17 @@
+[package]
+name = "rst"
+version = "0.1.0"
+edition = "2018"
+license = "GPLv2"
+authors = [
+    "shenping.matt <shenping.matt@bytedance.com>",
+    "zhanglei.sec <zhanglei.sec@bytedance.com>",
+]
+
+[build-dependencides]
+cc = "1.0"
+
+[dependencies]
+libc = "0.2"
+getopts = "0.2"
+ringslot = {path = "../rust"}

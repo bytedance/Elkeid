@@ -1,10 +1,5 @@
-MODULE_NAME 	:= elkeid
-KERNEL_HEAD 	:= $(if $(wildcard $(srctree)/include/.),_-_,$(if $(KVERSION),$(KVERSION),$(shell uname -r)))
-
-ifneq ($(KERNELRELEASE),)
-
-obj-m += $(MODULE_NAME).o
-$(MODULE_NAME)-objs := src/init.o src/trace.o src/trace_buffer.o src/smith_hook.o src/anti_rootkit.o src/filter.o src/util.o src/memcache.o
+MODULE_NAME		:= elkeid
+KERNEL_HEAD		:= $(if $(KVERSION),$(KVERSION),$(shell uname -r))
 
 MODULE_DIR		:= $(KBUILD_EXTMOD)
 ccflags-y		+= -I$(MODULE_DIR)/include -I$(MODULE_DIR)
@@ -133,6 +128,24 @@ ifneq ($(MM_MMAP_LOCK),)
 ccflags-y += -D MM_MMAP_FLAGS_LOCK
 endif
 
+ifneq ($(CONFIG_ELKEID),)
+
+#
+# sources for intree building
+#
+
+obj-$(CONFIG_ELKEID) += elkeid.o
+elkeid-$(CONFIG_ELKEID) := src/init.o src/trace.o src/trace_buffer.o src/smith_hook.o src/anti_rootkit.o src/protector.o src/filter.o src/util.o src/memcache.o
+
+else ifneq ($(KERNELRELEASE),)
+
+obj-m += $(MODULE_NAME).o
+$(MODULE_NAME)-objs := src/init.o src/trace.o src/trace_buffer.o src/smith_hook.o src/anti_rootkit.o src/protector.o src/filter.o src/util.o src/memcache.o
+
+
+MODULE_DIR		:= $(KBUILD_EXTMOD)
+ccflags-y		+= -I$(MODULE_DIR)/include -I$(MODULE_DIR) -I$(MODULE_DIR)/..
+
 else
 
 MODULE_DIR		:= $(shell pwd)
@@ -151,27 +164,14 @@ all:
 	@echo "| building HIDS kernel module       |"
 	@echo "|-----------------------------------|"
 	$(MAKE) -C $(KERNEL_DIR) M=$(MODULE_DIR) modules
-ifneq ($(BATCH), true)
-	$(MAKE) -C zua
-	$(MAKE) -C test
-endif
 
 clean:
 	$(MAKE) -C $(KERNEL_DIR) M=$(MODULE_DIR) clean
-	$(MAKE) -C zua clean
-	$(MAKE) -C test clean
 
 insmod:
 	sudo insmod $(MODULE_NAME).ko
 
 rmmod:
 	sudo rmmod $(MODULE_NAME)
-
-test:
-	$(MAKE) -C zua
-	$(MAKE) -C test
-
-zua:
-	$(MAKE) -C zua
 
 endif

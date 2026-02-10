@@ -83,16 +83,12 @@ extern struct tb_ring *g_trace_ring;
 #include "../include/anti_rootkit_print.h"
 
 #define SD_XFER_DEFINE_X(n, p, x)                               \
-            { sizeof(SD_XFER_PROTO_##n), SD_XFER_TYPEID_##n,    \
-              SD_XFER_PROTO_##n },
+            { .fmt = sizeof(SD_XFER_PROTO_##n),                 \
+              .eid = SD_XFER_TYPEID_##n,                        \
+              .ent = SD_XFER_PROTO_##n },
 #undef SD_XFER_DEFINE
 #define SD_XFER_DEFINE(n, p, x) SD_XFER_DEFINE_X(n, p, x)
 
-struct sd_event_point {
-    uint32_t  fmt;
-    uint32_t  eid;
-    struct sd_item_ent *ent;
-};
 static struct sd_event_point g_sd_events[] = {
 #include "../include/kprobe_print.h"
 #include "../include/anti_rootkit_print.h"
@@ -336,7 +332,6 @@ static int trace_release_pipe(struct inode *inode, struct file *file)
     trace_n_instances--;
     file->private_data = NULL;
     kfree(ti);
-    fput(file);
     mutex_unlock(&g_trace_lock);
 
     module_put(THIS_MODULE);
@@ -484,6 +479,7 @@ static char g_control_trace[64] = SMITH_VERSION;
 # define K_PARAM_CONST
 #endif
 
+
 /*
  * Here we only use task->comm as a simple filtering for both security
  * enhancement and a workaround for LTP proc01 testcase. We would not
@@ -499,7 +495,7 @@ static char g_control_trace[64] = SMITH_VERSION;
  *    - .../LKM/test/rst
  *    - renamed to elkeid-'arch' for v1.9
  */
-static char *g_trusted_agents[] = {"driver", "rst", "elkeid-amd64", "elkeid-arm64", NULL};
+static char *g_trusted_agents[] = {"driver", "rst", "elkeid", "elkeid-amd64", "elkeid-arm64", 0};
 
 static int trace_get_control(char *val, K_PARAM_CONST struct kernel_param *kp)
 {

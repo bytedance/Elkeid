@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if [[ -z ${BUILD_DIR} ]]; then
+    BUILD_DIR=../hids
+fi
+
+ARCH=$(uname -m | sed -e 's/aarch64/arm64/' -e 's/x86_64/amd64/')
+for v in `find inc/$ARCH -name vmlinux-*.h -printf "%f\n" | sed -e 's/vmlinux-//' -e 's/\.h$//'`;
+do
+	KVERSION=$v KVARCH=$ARCH BUILD_DIR=${BUILD_DIR} make
+done
+

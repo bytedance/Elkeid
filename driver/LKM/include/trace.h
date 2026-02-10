@@ -117,7 +117,7 @@ static __inline uint64_t sd_get_ns_time(void)
  * serializing related
  */
 #define __SD_XFER_SE__
-#include "../include/xfer.h"
+#include <xfer/xfer.h>
 
 /*
  * unique id of HIDS event (eg: 602 can have 3 event formats, thus 3 ids)
@@ -173,85 +173,7 @@ extern struct tb_ring *g_trace_ring;
 
 #else
 
-/*
- * core routines for user mode consuming of trace-buffer
- */
-
-#define RING_KMOD (0x5254004B)  /* kmod: elkeid/smith/hids_driver/ash */
-#define RING_EBPF (0x52540045)  /* ebpf version */
-int tb_init_ring(int type, char *control);
-
-void tb_fini_ring(void);
-int tb_read_ring(char *msg, int len, int (*cb)(int *), int *ctx);
-
-/* manually register or cleanup binfmt callbacks */
-int tb_register_binfmt(void);
-int tb_unregister_binfmt(void);
-
-/* tell LKM driver that it's to be unloaded */
-int tb_pre_unload(void);
-
-/*
- * statatics support routines
- */
-
-struct ring_stat {
-    uint32_t        nrings;
-    uint32_t        flags;
-
-    struct timeval  tv;
-    uint64_t        npros;  /* number of messages producted */
-    uint64_t        ncons;  /* number of messages consumed */
-    uint64_t        ndrop;  /* dropped by producer when ring is full */
-    uint64_t        ndisc;  /* discarded by producer for overwriting */
-    uint64_t        nexcd;  /* total dropped messages (too long to save) */
-    uint64_t        cpros;  /* bytes of produced messages */
-    uint64_t        ccons;  /* bytes of consumed messages */
-    uint64_t        cdrop;  /* bytes of dropped messages */
-    uint64_t        cdisc;  /* bytes of discarded messages */
-    uint32_t        maxsz;
-};
-
-int tb_is_passed(struct timeval *tv, long cycle);
-int tb_stat_ring(struct ring_stat *stat);
-void tb_show_ring(struct ring_stat *s, struct ring_stat *l, struct ring_stat *n);
-
-/*
- * access-control for allowlist / blocklist
- */
-
-/* dev must be RING_KMOD, RING_EBPF not supported */
-int ac_init(int dev, char *control);
-void ac_fini(int dev);
-
-/* allowlist filters */
-#define AL_TYPE_ARGV (0xA1)
-#define AL_TYPE_EXE  (0xA2)
-
-/* 设置端口扫描白名单，目前只支持ipv4设置，不支持查询、ipv6 */
-#define AL_TYPE_PSAD (0xA3)
-
-/* blocklist types */
-#define BL_JSON_DNS  (0xB0)
-#define BL_JSON_EXE  (0xB1) /* 同一json可包含命令行规则及可执行文件路径规则，有限通配符支持 */
-#define BL_JSON_MD5  (0xB2)
-
-/* 设置规则，支持list或json格式 */
-int ac_setup(int ac, char *ptr, int len);
-
-/* 清除特定类型的所有规则 */
-int ac_clear(int ac);
-
-/* 检测规则生效与否，仅适用于allowlist */
-int ac_check(int ac, char *ptr, int len);
-
-/* 删除特定规则，仅适用于allowlist */
-int ac_erase(int ac, char *ptr, int len);
-
-/* 读取当前所有规则，目前仅适用于allowlist */
-int ac_query(int ac, char *ptr, int len);
-
-int ac_process(int type, char *control, char *ptr, int len, int quiet);
+#include "../xfer/ring.h"
 
 #endif /* !__KERNEL__ */
 
