@@ -32,8 +32,9 @@ type RetCheckInfo struct {
 }
 
 type TaskData struct {
-	BaselineId  int   `json:"baseline_id"`
-	CheckIdList []int `json:"check_id_list"`
+	BaselineId    int      `json:"baseline_id"`
+	CheckIdList   []int    `json:"check_id_list"`
+	WeakPasswords []string `json:"weak_passwords"`
 }
 
 var (
@@ -60,6 +61,16 @@ func getBaselineConfigData(baselineId int) (baselineInfo BaselineInfo, err error
 
 // AnalysisBaseline start baseline task
 func AnalysisBaseline(taskData TaskData) (retBaselineInfo RetBaselineInfo, err error) {
+
+	// Update dictionary if present
+	if len(taskData.WeakPasswords) > 0 {
+		UpdateWeakPassDict(taskData.WeakPasswords)
+		// If no baseline ID, maybe just update?
+		if taskData.BaselineId == 0 {
+			retBaselineInfo.Status = BaselineStatusSuccess
+			return retBaselineInfo, nil
+		}
+	}
 
 	// analysis params
 	baselineId := taskData.BaselineId

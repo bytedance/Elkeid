@@ -28,6 +28,29 @@ var (
 	VersionReg = regexp.MustCompile(`-[0-9]`)
 )
 
+func parseClasspath(cmdline string, cwd string) []string {
+	var paths []string
+	parts := strings.Fields(cmdline)
+	for i, part := range parts {
+		if part == "-jar" && i+1 < len(parts) {
+			path := parts[i+1]
+			if !filepath.IsAbs(path) {
+				path = filepath.Join(cwd, path)
+			}
+			paths = append(paths, path)
+		} else if (part == "-cp" || part == "-classpath") && i+1 < len(parts) {
+			cp := parts[i+1]
+			for _, p := range strings.Split(cp, ":") {
+				if !filepath.IsAbs(p) {
+					p = filepath.Join(cwd, p)
+				}
+				paths = append(paths, p)
+			}
+		}
+	}
+	return paths
+}
+
 type SoftwareHandler struct{}
 
 func (h *SoftwareHandler) Name() string {
@@ -54,6 +77,7 @@ type Software struct {
 	Psm     string `mapstructure:"psm"`
 
 	PackageSeq string `mapstructure:"package_seq"`
+	Path       string `mapstructure:"path"`
 }
 
 func parsePypiName(name string) (ret *Software, err error) {
@@ -110,10 +134,22 @@ func findJar(c *plugins.Client, rec *plugins.Record, r *zip.Reader, n string) {
 				}
 			}
 		}
+		// pom.properties
+		if version == "" && strings.HasSuffix(f.Name, "pom.properties") {
+			if r, err := f.Open(); err == nil {
+				for sc := bufio.NewScanner(r); sc.Scan(); {
+					if strings.HasPrefix(sc.Text(), "version=") {
+						version = strings.TrimSpace(sc.Text()[len("version="):])
+						break
+					}
+					r.Close()
+				}
+			}
+		}
 	})
 	rec.Data.Fields["name"] = name
 	rec.Data.Fields["sversion"] = version
-	rec.Data.Fields["path"] = r.Name()
+	rec.Data.Fields["path"] = n
 	rec.Timestamp = time.Now().Unix()
 	c.SendRecord(rec)
 }
@@ -291,6 +327,7 @@ func (h *SoftwareHandler) Handle(c *plugins.Client, cache *engine.Cache, seq str
 			}
 			if fs, err := p.Fds(); err == nil {
 				set := mapset.NewSet()
+				// Scan open file descriptors
 				for _, fn := range fs {
 					if filepath.Ext(fn) == ".jar" {
 						if set.Contains(fn) ||
@@ -303,6 +340,63 @@ func (h *SoftwareHandler) Handle(c *plugins.Client, cache *engine.Cache, seq str
 							r.Close()
 						}
 						set.Add(fn)
+					}
+				}
+
+				// Scan paths from cmdline
+				if cwd, err := p.Cwd(); err == nil {
+					paths := parseClasspath(cmdline, cwd)
+					for _, path := range paths {
+						// Only process .jar files
+						if filepath.Ext(path) == ".jar" {
+							if set.Contains(path) || (filepath.Base(path) != "rt.jar" && (strings.Contains(path, "jdk") || strings.Contains(path, "jre"))) {
+								continue
+							}
+							rootPath := filepath.Join("/proc", p.Pid(), "root", path)
+							if r, err := zip.OpenReader(rootPath); err == nil {
+								findJar(c, rec, r, path)
+								r.Close()
+							}
+							set.Add(path)
+						} else {
+							// Recursive scan for directories
+							rootPath := filepath.Join("/proc", p.Pid(), "root", path)
+							// Check if directory exists
+							if fi, err := os.Stat(rootPath); err == nil && fi.IsDir() {
+								godirwalk.Walk(rootPath, &godirwalk.Options{
+									Callback: func(osPathname string, directoryEntry *godirwalk.Dirent) error {
+										if strings.HasSuffix(directoryEntry.Name(), ".jar") {
+											// Reconstruct original path logic (remove /proc/pid/root prefix for reporting)
+											relPath := ""
+											if strings.HasPrefix(osPathname, filepath.Join("/proc", p.Pid(), "root")) {
+												relPath = strings.TrimPrefix(osPathname, filepath.Join("/proc", p.Pid(), "root"))
+											} else {
+												relPath = osPathname
+											}
+											
+											if !strings.HasPrefix(relPath, "/") {
+												relPath = "/" + relPath
+											}
+											
+											if set.Contains(relPath) || (filepath.Base(relPath) != "rt.jar" && (strings.Contains(relPath, "jdk") || strings.Contains(relPath, "jre"))) {
+												return nil
+											}
+											
+											if r, err := zip.OpenReader(osPathname); err == nil {
+												findJar(c, rec, r, relPath)
+												r.Close()
+											}
+											set.Add(relPath)
+										}
+										return nil
+									},
+									Unsorted: true,
+									ErrorCallback: func(osPathname string, err error) godirwalk.ErrorAction {
+										return godirwalk.SkipNode
+									},
+								})
+							}
+						}
 					}
 				}
 			}

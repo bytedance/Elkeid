@@ -387,41 +387,130 @@ var (
 		"dockerd":         dockerRule,
 		"containerd":      containerdRule,
 		"kubelet":         kubeletRule,
+		"java":            javaRule,
 	}
 )
 
-type App struct {
-	Name    string
-	Version string
-	Type    string
-	Conf    string
-	Matched bool
-}
-type AppRule struct {
-	name              string
-	versionRegex      *regexp.Regexp
-	versionArgs       []string
-	_type             string
-	versionTrimPrefix string
-	versionTrimSuffix string
-	confFunc          func(RuleContext) string
-	sub               *AppRule
-}
-type RuleContext struct {
-	enterContainer bool
-	comm           string
-	uid            uint32
-	gid            uint32
-	dir            string
-	containerID    string
-	exe            string
-	cmdline        string
-	ppid           string
-	proc           process.Process
-	appVersion     string
-}
+var (
+	// Define Java apps
+	kafkaRule = &AppRule{
+		name:              "kafka",
+		_type:             "message_queue",
+		versionRegex:      regexp.MustCompile(`kafka_\d+\.\d+-(\d+\.\d+\.\d+)`),
+		versionTrimPrefix: "",
+		confFunc: func(rc RuleContext) string {
+			res := regexp.MustCompile(`config\/server\.properties`).Find([]byte(rc.cmdline))
+			if res != nil {
+				return string(res)
+			}
+			return ""
+		},
+	}
+	rocketmqRule = &AppRule{
+		name:  "rocketmq",
+		_type: "message_queue",
+		confFunc: func(rc RuleContext) string {
+			return ""
+		},
+	}
+	nacosRule = &AppRule{
+		name:              "nacos",
+		_type:             "service_discovery",
+		versionRegex:      regexp.MustCompile(`nacos-server-(\d+\.\d+\.\d+)`),
+		versionTrimPrefix: "",
+		confFunc: func(rc RuleContext) string {
+			res := regexp.MustCompile(`-Dnacos\.home=(\S+)`).FindSubmatch([]byte(rc.cmdline))
+			if len(res) > 1 {
+				return filepath.Join(string(res[1]), "conf/application.properties")
+			}
+			return ""
+		},
+	}
+	elasticsearchRule = &AppRule{
+		name:              "elasticsearch",
+		_type:             "database",
+		versionRegex:      regexp.MustCompile(`elasticsearch-(\d+\.\d+\.\d+)`),
+		versionTrimPrefix: "",
+		confFunc: func(rc RuleContext) string {
+			res := regexp.MustCompile(`-Des\.path\.conf=(\S+)`).FindSubmatch([]byte(rc.cmdline))
+			if len(res) > 1 {
+				return filepath.Join(string(res[1]), "elasticsearch.yml")
+			}
+			return ""
+		},
+	}
+	jenkinsRule = &AppRule{
+		name:         "jenkins",
+		_type:        "devops",
+		versionRegex: regexp.MustCompile(`jenkins\.war`),
+		confFunc: func(rc RuleContext) string {
+			if envs, err := rc.proc.Envs(); err == nil {
+				if home, ok := envs["JENKINS_HOME"]; ok {
+					return filepath.Join(home, "config.xml")
+				}
+			}
+			return ""
+		},
+	}
+	logstashRule = &AppRule{
+		name:  "logstash",
+		_type: "devops",
+		confFunc: func(rc RuleContext) string {
+			return ""
+		},
+	}
+	// General Java Rule
+	javaRule = &AppRule{
+		name: "java_app",
+		confFunc: func(rc RuleContext) string {
+			cmdline := rc.cmdline
+			if strings.Contains(cmdline, "kafka") {
+				return kafkaRule.confFunc(rc)
+			}
+			if strings.Contains(cmdline, "rocketmq") {
+				return rocketmqRule.confFunc(rc)
+			}
+			if strings.Contains(cmdline, "nacos") {
+				return nacosRule.confFunc(rc)
+			}
+			if strings.Contains(cmdline, "elasticsearch") {
+				return elasticsearchRule.confFunc(rc)
+			}
+			if strings.Contains(cmdline, "jenkins") {
+				return jenkinsRule.confFunc(rc)
+			}
+			if strings.Contains(cmdline, "logstash") {
+				return logstashRule.confFunc(rc)
+			}
+			return ""
+		},
+	}
+)
 
 func (r *AppRule) GenerateApp(rc RuleContext) ([]byte, *App) {
+	// Hook to dispatch java rule
+	if r.name == "java_app" {
+		cmdline := rc.cmdline
+		if strings.Contains(cmdline, "kafka") {
+			return kafkaRule.GenerateApp(rc)
+		}
+		if strings.Contains(cmdline, "rocketmq") {
+			return rocketmqRule.GenerateApp(rc)
+		}
+		if strings.Contains(cmdline, "nacos") {
+			return nacosRule.GenerateApp(rc)
+		}
+		if strings.Contains(cmdline, "elasticsearch") {
+			return elasticsearchRule.GenerateApp(rc)
+		}
+		if strings.Contains(cmdline, "jenkins") {
+			return jenkinsRule.GenerateApp(rc)
+		}
+		if strings.Contains(cmdline, "logstash") {
+			return logstashRule.GenerateApp(rc)
+		}
+	}
+	
 	var output []byte
 	var app *App
 	if r.sub != nil {

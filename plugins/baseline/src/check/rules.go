@@ -227,6 +227,18 @@ func FuncCheck(param []string) (result interface{}, err error) {
 	switch param[0] {
 	case "Ensure no duplicate user names exist":
 		funcRes = IfDuplicateUser()
+	case "check_redis_weak_password":
+		funcRes = CheckRedisWeakPassword()
+	case "check_mysql_weak_password":
+		funcRes = CheckMysqlWeakPassword()
+	case "check_nacos_weak_password":
+		funcRes = CheckNacosWeakPassword()
+	case "check_nacos_config":
+		funcRes = CheckNacosConfig()
+	case "check_archery_config":
+		funcRes = CheckArcheryConfig()
+	case "check_xxl_job_config":
+		funcRes = CheckXxlJobConfig()
 	}
 	return funcRes, nil
 }
