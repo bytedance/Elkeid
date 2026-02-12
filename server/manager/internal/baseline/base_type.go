@@ -124,3 +124,11 @@ const (
 var (
 	BaselineAllIdList = []int{1200, 1300, 1400, 2200, 2300, 2400, 3200, 3300, 3400, 5000, 6000}
 )
+
+// Weak Password Dictionary
+type WeakPassDict struct {
+	Id         string   `json:"id" bson:"_id,omitempty"`
+	Passwords  []string `json:"passwords" bson:"passwords"`
+	UpdateTime int64    `json:"update_time" bson:"update_time"`
+	Operator   string   `json:"operator" bson:"operator"`
+}

@@ -396,6 +396,8 @@ func RegisterRouter(r *gin.Engine) {
 			baselineRouter.POST("/Download", v6.GetBaselineDownload)
 			baselineRouter.POST("/GetBaselineCheckList", v6.GetBaselineCheckList)
 			baselineRouter.POST("/GetCheckHostList", v6.GetCheckHostList)
+			baselineRouter.POST("/UpdateWeakPassDict", v6.UpdateWeakPassDictHandler)
+			baselineRouter.GET("/GetWeakPassDict", v6.GetWeakPassDictHandler)
 
 		}
 		// 系统告警
