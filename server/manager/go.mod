@@ -6,7 +6,7 @@ require (
 	github.com/Shopify/sarama v1.37.2
 	github.com/bramvdbogaerde/go-scp v1.2.0
 	github.com/bytedance/mockey v1.0.0-rc.0
-	github.com/gin-gonic/gin v1.8.1
+	github.com/gin-gonic/gin v1.9.1
 	github.com/go-playground/validator/v10 v10.10.0
 	github.com/go-redis/redis/v8 v8.8.0
 	github.com/golang-jwt/jwt v3.2.1+incompatible
@@ -16,7 +16,7 @@ require (
 	github.com/muesli/cache2go v0.0.0-20221011235721-518229cd8021
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852
 	github.com/olivere/elastic/v7 v7.0.32
-	github.com/prometheus/alertmanager v0.24.0
+	github.com/prometheus/alertmanager v0.25.1
 	github.com/prometheus/client_golang v1.12.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rs/xid v1.2.1
