@@ -17,7 +17,7 @@ import (
 	"github.com/bytedance/Elkeid/agent/resource"
 	"github.com/bytedance/Elkeid/agent/transport"
 	"github.com/bytedance/Elkeid/agent/transport/connection"
-	"github.com/coreos/go-systemd/daemon"
+	"github.com/coreos/go-systemd/v22/daemon"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
 	"go.uber.org/zap"
