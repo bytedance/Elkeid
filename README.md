@@ -160,7 +160,7 @@ Therefore, it is necessary to have complete anti-intrusion and risk perception c
 
 
 ## Console User Guide
-* **[ELkeid Console User Guide](server/docs/console_tutorial/Elkeid_Console_manual.md)**
+* **[Elkeid Console User Guide](server/docs/console_tutorial/Elkeid_Console_manual.md)**
 
 
 ## Quick Start
