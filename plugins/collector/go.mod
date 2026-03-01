@@ -10,7 +10,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2
 	github.com/coocood/freecache v1.2.3
 	github.com/deckarep/golang-set v1.8.0
-	github.com/docker/docker v20.10.21+incompatible
+	github.com/docker/docker v20.10.27+incompatible
 	github.com/go-logr/zapr v1.2.2
 	github.com/jellydator/ttlcache/v3 v3.0.0
 	github.com/juju/ratelimit v1.0.2
