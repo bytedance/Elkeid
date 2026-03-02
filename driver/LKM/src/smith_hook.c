@@ -62,11 +62,12 @@ SMITH_HOOK(EXIT, SANDBOX);
 /*
  *
  * raw tracepoint brings severe performance penalty for syscall-intensive ops.
- * so disabled by default, and enabled only for SANDBOX or kernels >= 5.4.210
- *
+ * so disabled by default, and enabled only for SANDBOX or kernels >= 5.5.0
+ * 5.4.210 was used before, but ubuntu 20.04 focal defines kernel version as
+ * 5.4.255 for 5.4.0-xxx versions, which brings disorders
  */
-SMITH_HOOK(RAWTP, SANDBOX || (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 210)));
-SMITH_HOOK(DNS, SANDBOX || (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 210)));
+SMITH_HOOK(RAWTP, SANDBOX || (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0)));
+SMITH_HOOK(DNS, SANDBOX || (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0)));
 
 static int FAKE_RM = SANDBOX;
 
@@ -5021,7 +5022,7 @@ static void __init install_kprobe(void)
     module_param(sid_##name, charp, S_IRUSR|S_IRGRP|S_IROTH)
 
 /* latest commit id */
-static char *smith_srcid = SMITH_SRCID(d2effe977bb0090128d7bfcfb725d3a997fff2ca);
+static char *smith_srcid = SMITH_SRCID(ff8c8c100f9cd9d0aa1e0bb96031f45ef17dccf6_17024);
 
 static int __init kprobe_hook_init(void)
 {
