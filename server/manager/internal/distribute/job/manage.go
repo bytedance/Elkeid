@@ -201,7 +201,7 @@ func (jm *jobManager) syncSend(transInfo TransInfo) {
 	option.RequestTimeout = 2 * time.Second
 	for _, host := range othHosts {
 		url := fmt.Sprintf(syncURL, host)
-		_, err := grequests.Post(url, option)
+		_, err := grequests.Post(url, grequests.FromRequestOptions(option))
 		if err != nil {
 			ylog.Errorf("jobManager", "sync send to %s error: %s", host, err.Error())
 			continue

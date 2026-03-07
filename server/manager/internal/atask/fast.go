@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/bytedance/Elkeid/server/manager/biz/midware"
 	"github.com/bytedance/Elkeid/server/manager/infra"
 	. "github.com/bytedance/Elkeid/server/manager/infra/def"
@@ -12,7 +14,6 @@ import (
 	"github.com/levigross/grequests"
 	"github.com/rs/xid"
 	"go.mongodb.org/mongo-driver/bson"
-	"time"
 )
 
 func getSvrAddr(agentID string) (host string, err error) {
@@ -51,7 +52,7 @@ func sendAgentCommand(agentID string, request *ConfigRequest) (string, interface
 	option := midware.SvrAuthRequestOption()
 	option.JSON = body
 	option.RequestTimeout = 5 * time.Second
-	r, err := grequests.Post(url, option)
+	r, err := grequests.Post(url, grequests.FromRequestOptions(option))
 	if err != nil {
 		ylog.Errorf("SendQuickTask", "request url %s, body %#v, error %s", url, body, err.Error())
 		return url, body, nil, err

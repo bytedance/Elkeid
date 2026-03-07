@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/bytedance/Elkeid/server/manager/biz/midware"
 	"github.com/bytedance/Elkeid/server/manager/infra"
 	. "github.com/bytedance/Elkeid/server/manager/infra/def"
@@ -14,7 +16,6 @@ import (
 	"github.com/bytedance/Elkeid/server/manager/internal/distribute/job"
 	"github.com/levigross/grequests"
 	"go.mongodb.org/mongo-driver/bson"
-	"time"
 )
 
 // AgentControlDistribute for old version config
@@ -158,9 +159,9 @@ func AgentControlDo(Jid string, args interface{}) (interface{}, error) {
 
 	switch ja.Method {
 	case job.HttpMethodGet:
-		r, err = grequests.Get(url, option)
+		r, err = grequests.Get(url, grequests.FromRequestOptions(option))
 	case job.HttpMethodPost:
-		r, err = grequests.Post(url, option)
+		r, err = grequests.Post(url, grequests.FromRequestOptions(option))
 	default:
 		return nil, errors.New("request method not support")
 	}
@@ -324,9 +325,9 @@ func AgentControlDoV2(Jid string, args interface{}) (interface{}, error) {
 
 	switch ja.Method {
 	case job.HttpMethodGet:
-		r, err = grequests.Get(url, option)
+		r, err = grequests.Get(url, grequests.FromRequestOptions(option))
 	case job.HttpMethodPost:
-		r, err = grequests.Post(url, option)
+		r, err = grequests.Post(url, grequests.FromRequestOptions(option))
 	default:
 		return nil, errors.New("request method not support")
 	}
