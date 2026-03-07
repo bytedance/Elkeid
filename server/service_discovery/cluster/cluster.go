@@ -2,10 +2,11 @@ package cluster
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/bytedance/Elkeid/server/service_discovery/common/safemap"
 	"github.com/bytedance/Elkeid/server/service_discovery/common/ylog"
 	"github.com/levigross/grequests"
-	"time"
 )
 
 const (
@@ -49,9 +50,9 @@ func (bc *BaseCluster) ping() {
 					continue
 				}
 				url := fmt.Sprintf(pingUrl, host)
-				_, err := grequests.Get(url, &grequests.RequestOptions{
+				_, err := grequests.Get(url, grequests.FromRequestOptions(&grequests.RequestOptions{
 					RequestTimeout: defaultPingTimeout * time.Second,
-				})
+				}))
 				if err != nil {
 					ylog.Errorf("ping", "ping %s error: %s", host, err.Error())
 				}
