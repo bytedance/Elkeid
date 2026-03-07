@@ -17,7 +17,7 @@ require (
 	go.uber.org/zap v1.19.0
 	google.golang.org/grpc v1.69.4
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
-	k8s.io/apiserver v0.21.0
+	k8s.io/apiserver v0.21.14
 )
 
 require (
