@@ -3,13 +3,14 @@ package endpoint
 import (
 	"errors"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/bytedance/Elkeid/server/service_discovery/cluster"
 	"github.com/bytedance/Elkeid/server/service_discovery/common/safemap"
 	"github.com/bytedance/Elkeid/server/service_discovery/common/ylog"
 	"github.com/bytedance/Elkeid/server/service_discovery/server/midware"
 	"github.com/levigross/grequests"
-	"sync"
-	"time"
 )
 
 const (
@@ -136,7 +137,7 @@ func send(wg *sync.WaitGroup, host string, data *TransInfo) {
 	option := midware.AuthRequestOption()
 	option.JSON = data
 	option.RequestTimeout = defaultSyncTimeout * time.Second
-	_, err := grequests.Post(url, option)
+	_, err := grequests.Post(url, grequests.FromRequestOptions(option))
 	if err != nil {
 		ylog.Errorf("send_error", "sync send data to %s error: %s\n", host, err.Error())
 		return
@@ -144,7 +145,7 @@ func send(wg *sync.WaitGroup, host string, data *TransInfo) {
 	return
 }
 
-//sync send data
+// sync send data
 func (e *Endpoint) syncSend() {
 	t := time.NewTicker(defaultSendInterval * time.Second)
 	defer t.Stop()
@@ -202,7 +203,7 @@ func (e *Endpoint) Recv(transInfo TransInfo) error {
 	return nil
 }
 
-//sync recv data
+// sync recv data
 func (e *Endpoint) syncRecv() {
 	t := time.NewTicker(10 * time.Second)
 	defer t.Stop()
@@ -226,7 +227,7 @@ func (e *Endpoint) syncRecv() {
 	}
 }
 
-//register action
+// register action
 func (e *Endpoint) Register(name string, ip string, port int, weight int, extra map[string]interface{}) {
 	var (
 		reg Registry
@@ -264,7 +265,7 @@ func (e *Endpoint) Register(name string, ip string, port int, weight int, extra 
 	}
 }
 
-//evict action
+// evict action
 func (e *Endpoint) Evict(name string, ip string, port int) {
 	//delete from local memory
 	e.registryMap.HDel(name, fmt.Sprintf("%s:%d", ip, port))
@@ -285,7 +286,7 @@ func (e *Endpoint) Evict(name string, ip string, port int) {
 	}
 }
 
-//fetch registry
+// fetch registry
 func (e *Endpoint) Fetch(name string, n int, fa FetchAlgorithm) ([]Registry, error) {
 	var (
 		regs []Registry
@@ -313,7 +314,7 @@ func (e *Endpoint) Fetch(name string, n int, fa FetchAlgorithm) ([]Registry, err
 	return regs, nil
 }
 
-//registry summary
+// registry summary
 func (e *Endpoint) RegistrySummary() map[string]int {
 	suMap := make(map[string]int)
 	names := e.registryMap.Keys()
@@ -323,12 +324,12 @@ func (e *Endpoint) RegistrySummary() map[string]int {
 	return suMap
 }
 
-//registry name list
+// registry name list
 func (e *Endpoint) RegistryList() []string {
 	return e.registryMap.Keys()
 }
 
-//registry detail
+// registry detail
 func (e *Endpoint) RegistryDetail(name string) []Registry {
 	regs := make([]Registry, 0)
 	regMap := e.registryMap.Get(name)
