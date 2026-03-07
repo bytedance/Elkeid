@@ -2,11 +2,12 @@ package kafka
 
 import (
 	"fmt"
-	"github.com/Shopify/sarama"
+	"sync"
+
+	"github.com/IBM/sarama"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/gogo/protobuf/proto"
-	"sync"
 )
 
 // Consumer 消费者
@@ -15,7 +16,7 @@ type Consumer struct {
 	Topic    string
 }
 
-//NewProducer creates kafka async producer
+// NewProducer creates kafka async producer
 func NewConsumerWithLog(addrs []string, topic string, logPath string) (*Consumer, error) {
 	logger := ylog.NewYLog(
 		ylog.WithLogFile(logPath),
