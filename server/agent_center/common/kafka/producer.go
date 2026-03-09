@@ -1,14 +1,15 @@
 package kafka
 
 import (
+	"sync"
+	"time"
+
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	pb "github.com/bytedance/Elkeid/server/agent_center/grpctrans/proto"
 	"github.com/gogo/protobuf/proto"
 	jsoniter "github.com/json-iterator/go"
-	"sync"
-	"time"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 )
 
 var (
@@ -47,7 +48,7 @@ type Producer struct {
 	Topic    string
 }
 
-//NewProducer creates kafka async producer
+// NewProducer creates kafka async producer
 func NewProducerWithLog(addrs []string, topic, clientID, logPath, userName, passWord string, enableAuth bool) (*Producer, error) {
 	logger := ylog.NewYLog(
 		ylog.WithLogFile(logPath),
@@ -78,7 +79,7 @@ func NewProducerWithLog(addrs []string, topic, clientID, logPath, userName, pass
 	return newProducerWithConfig(addrs, topic, config)
 }
 
-//NewProducer creates kafka async producer
+// NewProducer creates kafka async producer
 func NewProducer(addrs []string, topic string, clientID string) (*Producer, error) {
 	//initial config and log
 	config := sarama.NewConfig()
@@ -93,7 +94,7 @@ func NewProducer(addrs []string, topic string, clientID string) (*Producer, erro
 	return newProducerWithConfig(addrs, topic, config)
 }
 
-//newProducerWithConfig creates kafka async producer
+// newProducerWithConfig creates kafka async producer
 func newProducerWithConfig(addrs []string, topic string, config *sarama.Config) (*Producer, error) {
 	//create async producer
 	client, err := sarama.NewClient(addrs, config)

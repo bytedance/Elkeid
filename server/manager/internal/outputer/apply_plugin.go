@@ -3,9 +3,10 @@ package outputer
 import (
 	"errors"
 	"fmt"
-	"github.com/bytedance/Elkeid/server/manager/internal/monitor"
 	"math/rand"
 	"time"
+
+	"github.com/bytedance/Elkeid/server/manager/internal/monitor"
 
 	"github.com/bytedance/Elkeid/server/manager/biz/midware"
 	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
@@ -83,7 +84,7 @@ func ApplyHubPlugin(req TestPluginReq) (interface{}, error) {
 		Config:     req.Config,
 		Data:       req.Data,
 	}
-	resp, err := grequests.Post(testUrl, option)
+	resp, err := grequests.Post(testUrl, grequests.FromRequestOptions(option))
 	if err != nil {
 		ylog.Errorf("ApplyHubPlugin", "test python plugin to hub err: %s", err.Error())
 		return nil, err

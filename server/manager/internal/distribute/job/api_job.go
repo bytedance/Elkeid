@@ -220,9 +220,9 @@ func defaultApiDo(jid string, args interface{}) (interface{}, error) {
 
 	switch ja.Method {
 	case HttpMethodGet:
-		r, err = grequests.Get(url, option)
+		r, err = grequests.Get(url, grequests.FromRequestOptions(option))
 	case HttpMethodPost:
-		r, err = grequests.Post(url, option)
+		r, err = grequests.Post(url, grequests.FromRequestOptions(option))
 	default:
 		return nil, errors.New("request method not support")
 	}

@@ -43,7 +43,7 @@ func uploadFileToNginx(ctx context.Context, downloadUrl string, uploadPath strin
 	opts := grequests.RequestOptions{
 		InsecureSkipVerify: true,
 	}
-	resp, err := grequests.Get(downloadUrl, &opts)
+	resp, err := grequests.Get(downloadUrl, grequests.FromRequestOptions(&opts))
 	if err != nil {
 		ylog.Errorf("Http download "+downloadUrl+" failed: ", err.Error())
 		return err
@@ -143,7 +143,7 @@ func SendAgentDriverKoMissedMsg(c *gin.Context) {
 		opts := grequests.RequestOptions{
 			InsecureSkipVerify: true,
 		}
-		resp, err := grequests.Get(getUrl, &opts)
+		resp, err := grequests.Get(getUrl, grequests.FromRequestOptions(&opts))
 		if err != nil {
 			ylog.Errorf("GetKoDownAddress", err.Error())
 			return

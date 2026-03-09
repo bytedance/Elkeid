@@ -2,12 +2,13 @@ package discovery
 
 import (
 	"fmt"
+	"math/rand"
+	"time"
+
 	"github.com/bytedance/Elkeid/server/manager/biz/midware"
 	"github.com/bytedance/Elkeid/server/manager/infra"
 	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	"github.com/levigross/grequests"
-	"math/rand"
-	"time"
 )
 
 const (
@@ -50,7 +51,7 @@ func NewRegistry(svrName, ip, sdUrl string, port int) *ServerRegistry {
 	}
 	option.RequestTimeout = 2 * time.Second
 	url := fmt.Sprintf(sdRegisterURL, sdUrl)
-	r, err := grequests.Post(url, option)
+	r, err := grequests.Post(url, grequests.FromRequestOptions(option))
 	if err != nil {
 		ylog.Errorf("NewRegistry", "register failed: %v", err)
 		fmt.Printf("register error: %s\n", err.Error())
@@ -78,7 +79,7 @@ func (s *ServerRegistry) renewRegistry() {
 			}
 			option.RequestTimeout = 2 * time.Second
 			ylog.Infof("RenewRegistry", ">>>>register %s %s %d %d to SD %s", s.Name, s.Ip, s.Port, s.Weight, url)
-			resp, err := grequests.Post(url, option)
+			resp, err := grequests.Post(url, grequests.FromRequestOptions(option))
 			if err != nil {
 				ylog.Errorf("RenewRegistry", "####renew registry failed: %v", err)
 				continue
@@ -106,7 +107,7 @@ func (s *ServerRegistry) Stop() {
 	}
 	option.RequestTimeout = 2 * time.Second
 	url := fmt.Sprintf(sdEvictURL, s.SDHost)
-	if resp, err = grequests.Post(url, option); err != nil {
+	if resp, err = grequests.Post(url, grequests.FromRequestOptions(option)); err != nil {
 		ylog.Errorf("ServerRegistryStop", "####evict server failed: %v", err)
 		return
 	}

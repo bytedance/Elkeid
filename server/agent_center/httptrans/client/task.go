@@ -3,10 +3,11 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	"github.com/levigross/grequests"
-	"time"
 )
 
 const TaskUrl = `http://%s/api/v1/agent/updateSubTask`
@@ -17,10 +18,10 @@ type ResTaskConf struct {
 }
 
 func PostTask(postList []map[string]string) {
-	resp, err := grequests.Post(fmt.Sprintf(TaskUrl, common.GetRandomManageAddr()), &grequests.RequestOptions{
+	resp, err := grequests.Post(fmt.Sprintf(TaskUrl, common.GetRandomManageAddr()), grequests.FromRequestOptions(&grequests.RequestOptions{
 		JSON:           postList,
 		RequestTimeout: 2 * time.Second,
-	})
+	}))
 	if err != nil {
 		ylog.Errorf("PostTask", "error: %s, %#v", err.Error(), postList)
 		return

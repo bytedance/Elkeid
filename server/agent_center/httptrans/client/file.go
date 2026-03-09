@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/bytedance/Elkeid/server/agent_center/common"
 	"github.com/bytedance/Elkeid/server/agent_center/common/ylog"
 	"github.com/levigross/grequests"
@@ -25,10 +26,10 @@ func UploadFile(filePath string, hash string) (string, error) {
 		return "", err
 	}
 	resp, err := grequests.Post(fmt.Sprintf(UploadFileUrl, common.GetRandomManageAddr()),
-		&grequests.RequestOptions{
+		grequests.FromRequestOptions(&grequests.RequestOptions{
 			Files: fd,
 			Data:  map[string]string{"hash": hash},
-		})
+		}))
 	if err != nil {
 		return "", err
 	}

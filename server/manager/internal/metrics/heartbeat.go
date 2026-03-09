@@ -3,6 +3,8 @@ package metrics
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/bytedance/Elkeid/server/manager/infra"
 	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	"github.com/bytedance/Elkeid/server/manager/internal/monitor"
@@ -10,7 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"time"
 )
 
 const (
@@ -45,7 +46,7 @@ func getVersionByPingAPI(ctx context.Context, url string) (version BuildVersion,
 	}
 
 	var resp *grequests.Response
-	resp, err = grequests.Get(url+"/ping", &opts)
+	resp, err = grequests.Get(url+"/ping", grequests.FromRequestOptions(&opts))
 	if err != nil {
 		return version, fmt.Errorf("get ping api error: %w", err)
 	}

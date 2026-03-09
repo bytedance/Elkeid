@@ -2,10 +2,11 @@ package monitor
 
 import (
 	"context"
-	"github.com/levigross/grequests"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/levigross/grequests"
 )
 
 type Component struct {
@@ -92,7 +93,7 @@ func post(url string, content interface{}) {
 	opts := grequests.RequestOptions{
 		JSON: content,
 	}
-	resp, err := grequests.Post(url, &opts)
+	resp, err := grequests.Post(url, grequests.FromRequestOptions(&opts))
 	if err != nil {
 		log.Println("post to " + url + " error: " + err.Error())
 		return

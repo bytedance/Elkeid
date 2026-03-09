@@ -7,13 +7,14 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
-	"github.com/levigross/grequests"
 	"io"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
+	"github.com/levigross/grequests"
 )
 
 var (
@@ -76,7 +77,7 @@ func reset(count int) {
 	option := svrAuthRequestOption()
 	option.JSON = body
 	option.RequestTimeout = 60 * time.Second
-	resp, err := grequests.Post(url, option)
+	resp, err := grequests.Post(url, grequests.FromRequestOptions(option))
 	if err != nil {
 		ylog.Errorf("PostTask", "error: %s, %s", err.Error(), url)
 		return

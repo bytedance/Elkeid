@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/levigross/grequests"
-	"github.com/oliveagle/jsonpath"
 	"net/url"
 	"time"
+
+	"github.com/levigross/grequests"
+	"github.com/oliveagle/jsonpath"
 )
 
 type PromClient struct {
@@ -60,7 +61,7 @@ func (cli PromClient) HttpGet(ctx context.Context, queryUrl string, ret interfac
 		DialTimeout:        time.Second * 2,
 		RequestTimeout:     time.Second * 10,
 	}
-	resp, err := grequests.Get(cli.Address+queryUrl, &opts)
+	resp, err := grequests.Get(cli.Address+queryUrl, grequests.FromRequestOptions(&opts))
 	if err != nil {
 		return fmt.Errorf("prometheus http client GET failed by %w", err)
 	}

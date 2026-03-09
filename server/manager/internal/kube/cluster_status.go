@@ -95,7 +95,7 @@ func getActiveCluster() ([]string, error) {
 		url := fmt.Sprintf("https://%s/kube/cluster/list", host)
 		option := midware.SvrAuthRequestOption()
 		option.RequestTimeout = 5 * time.Second
-		r, err := grequests.Get(url, option)
+		r, err := grequests.Get(url, grequests.FromRequestOptions(option))
 		if err != nil {
 			ylog.Errorf("getActiveCluster", "Get error %s, %s", url, err.Error())
 			continue
