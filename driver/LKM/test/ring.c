@@ -546,7 +546,7 @@ static int ac_pack_md5(image_hash_t *md5, char *id, char *size, char *hash)
 }
 
 #define MAX_RULE_SIZE (65536)
-static int ac_pack_rule(char *id, int nitems, char *items[])
+static int ac_pack_rule(char *id, int version, int nitems, char *items[])
 {
     exe_rule_flex_t *rule;
     char *data;
@@ -559,6 +559,7 @@ static int ac_pack_rule(char *id, int nitems, char *items[])
     memset(data, 0, MAX_RULE_SIZE);
     rule = (exe_rule_flex_t *)data;
     memcpy(rule->id, id, 8);
+    rule->version = version;
     for (i = 0; i < nitems; i++) {
         if (!items[i])
             continue;
@@ -610,20 +611,24 @@ static int ac_setup_blocklist(int ac, char *json, int len)
         if (!rule)
            break;
         if (ac == BL_JSON_EXE) {
-            zval *id, *exe, *cmd, *stdin, *stdout;
+            zval *id, *exe, *cmd, *stdin, *stdout, *verstr;
             char *items[4];
+            int version = 0;
             id = zua_get_value_by_path(rule, ZUA_STR("ID"));
             exe = zua_get_value_by_path(rule, ZUA_STR("Exe"));
             cmd = zua_get_value_by_path(rule, ZUA_STR("Argv"));
             stdin = zua_get_value_by_path(rule, ZUA_STR("Stdin"));
             stdout = zua_get_value_by_path(rule, ZUA_STR("Stdout"));
+            verstr = zua_get_value_by_path(rule, ZUA_STR("Version"));
             if (!id || !Z_STR_P(id))
                 break;
             items[0] = (exe && Z_STR_P(exe)) ? ZSTR_VAL(Z_STR_P(exe)) : NULL;
             items[1] = (cmd && Z_STR_P(cmd)) ? ZSTR_VAL(Z_STR_P(cmd)) : NULL;
             items[2] = (stdin && Z_STR_P(stdin)) ? ZSTR_VAL(Z_STR_P(stdin)) : NULL;
             items[3] = (stdout && Z_STR_P(stdout)) ? ZSTR_VAL(Z_STR_P(stdout)) : NULL;
-            rc = ac_pack_rule(ZSTR_VAL(Z_STR_P(id)), 4, items);
+            if (verstr && Z_STR_P(verstr))
+                version = atoi(ZSTR_VAL(Z_STR_P(verstr)));
+            rc = ac_pack_rule(ZSTR_VAL(Z_STR_P(id)), version, 4, items);
         } else if (ac == BL_JSON_MD5) {
             image_hash_t hash;
             zval *id, *md5, *size;

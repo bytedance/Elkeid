@@ -74,6 +74,7 @@ typedef struct exe_rule_item {
 typedef struct exe_rule_flex {
     uint16_t                size;   /* total size */
     uint16_t                nitems; /* num of items */
+    int                     version; /* 0: default 1: support wcs */
     char                    id[8];  /* rule id */
 
     union {

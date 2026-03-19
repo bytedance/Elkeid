@@ -544,7 +544,7 @@ static void image_md5_enum(void)
 }
 
 /*
- * exe_path / cmdline blocking rules
+ * matching rules for exe_path / cmdline / stdin / stdout
  */
 
 static DEFINE_RWLOCK(exe_rule_lock);
@@ -563,6 +563,7 @@ struct rule_node {
     struct rule_item    items[4];
     int16_t             nitems;
     int16_t             size;
+    int32_t             version;
     char                data[];
 } __attribute__((packed));
 
@@ -604,7 +605,56 @@ static int rule_kmp_match(struct rule_item *ri, struct exe_item *ei)
     return 0;
 }
 
+/*
+ * 通配符匹配，仅支持字符 '*'，支持多个 '*'，大小写敏感：
+ *  - '*' 可匹配任意长度（含空串）的任意子串
+ *  - 其他字符按字节精确匹配
+ *  - 支持多个 '*'，用‘*’可在任意位置
+ *
+ * 返回值： 1=匹配，0=不匹配
+ */
+static int rule_wcs_match(struct rule_item *ri, struct exe_item *ei)
+{
+    const char *s = ei->item;
+    const char *p = ri->item;
+    const char *star = NULL;
+    const char *ss = NULL;
+
+    /* empty rule: match all strings */
+    if (!ri->size || !ri->item)
+        return 1;
+
+    if (!ei->size || !ei->item)
+        return 0;
+
+    while (*s) {
+        /* case sensitive */
+        if (*p == *s) {
+            p++;
+            s++;
+        } else if (*p == '*') {
+            star = p++;
+            ss = s;
+        } else if (star) {
+            p = star + 1;
+            s = ++ss;
+        } else {
+            /* mismatch */
+            return 0;
+        }
+    }
+
+    /* ignoring all trailing '*' */
+    while (*p == '*')
+        p++;
+
+    return *p == '\0';
+}
+
 #if 0
+/*
+ * hex-format dump:  debugging purpose
+ */
 static void smith_hexdump(void *ptr, int len)
 {
     uint8_t *dat = ptr;
@@ -653,7 +703,7 @@ static struct rule_node *rule_alloc(exe_rule_flex_t *rule)
         return NULL;
     memcpy(nod->id, rule->id, sizeof(nod->id));
     nod->nitems = rule->nitems;
-
+    nod->version = rule->version;
     data = next * sizeof(int16_t);
     next = 0;
     for (i = 0; i < rule->nitems; i++) {
@@ -729,8 +779,13 @@ static int rule_match(struct hlist_head *list,
             if (nitems != nod->nitems)
                 continue;
             for (i = 0; i < nod->nitems; i++) {
-                if (!rule_kmp_match(&nod->items[i], &ei[i]))
-                    break;
+                if (nod->version < 1) {
+                    if (!rule_kmp_match(&nod->items[i], &ei[i]))
+                        break;
+                } else {
+                    if (!rule_wcs_match(&nod->items[i], &ei[i]))
+                        break;
+                }
             }
             if (i >= nod->nitems)
                 break;
