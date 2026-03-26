@@ -1,13 +1,17 @@
 MODULE_NAME 	:= elkeid
 KERNEL_HEAD 	:= $(if $(wildcard $(srctree)/include/.),_-_,$(if $(KVERSION),$(KVERSION),$(shell uname -r)))
 
+LKM_VERSION    := 1.9.1.16
+LKM_VNUM       := 190116
+LKM_SRCID      := 39de0979a3e6eef352cc1c7284349db1a36be273
+
 ifneq ($(KERNELRELEASE),)
 
 obj-m += $(MODULE_NAME).o
 $(MODULE_NAME)-objs := src/init.o src/trace.o src/trace_buffer.o src/smith_hook.o src/anti_rootkit.o src/filter.o src/util.o src/memcache.o
 
 MODULE_DIR		:= $(KBUILD_EXTMOD)
-ccflags-y		+= -I$(MODULE_DIR)/include -I$(MODULE_DIR)
+ccflags-y		+= -I$(MODULE_DIR)/include -I$(MODULE_DIR) -DLKM_VERSION=$(LKM_VERSION) -DLKM_VNUM=$(LKM_VNUM) -DLKM_SRCID=$(LKM_SRCID)
 
 K_I_PATH		:= .
 ifneq ($(wildcard $(srctree)/include/.),)

@@ -58,8 +58,10 @@ module_init(kprobes_init);
 module_exit(kprobes_exit);
 
 MODULE_INFO(homepage, "https://github.com/bytedance/Elkeid/tree/main/driver");
-MODULE_VERSION(SMITH_VERSION);
-
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Elkeid Team <elkeid@bytedance.com>");
 MODULE_DESCRIPTION("Elkied Driver is the core component of Elkeid HIDS project");
+
+#define VERSION2STRING(s) #s
+#define LKM_VERSION_STRING(v) VERSION2STRING(v)
+MODULE_VERSION(LKM_VERSION_STRING(LKM_VERSION));

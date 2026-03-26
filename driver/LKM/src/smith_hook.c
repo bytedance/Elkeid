@@ -7808,13 +7808,16 @@ module_param_call(mem_stats, drvstats_set_params, drvstats_get_params, &g_drv_st
 MODULE_PARM_DESC(worker_stats, "kernel worker threads for elkeid");
 MODULE_PARM_DESC(mem_stats, "memory usage of core objects of elkeid");
 
-#define SMITH_SRCID(name)                           \
-    #name;                                          \
-    static char *sid_##name = #name;                \
-    module_param(sid_##name, charp, S_IRUSR|S_IRGRP|S_IROTH)
-
 /* latest commit id */
-static char *smith_srcid = SMITH_SRCID(775252b51950f342946c85848c6ba9b894eaf7d7_190115);
+#define V2STRING(v) #v
+#define SMITH_SRCID(srcid, version)                                       \
+    V2STRING(srcid##_##version);                                          \
+    static char *sid_##srcid##_##version = V2STRING(srcid##_##version);   \
+    module_param(sid_##srcid##_##version, charp, S_IRUSR|S_IRGRP|S_IROTH)
+#define SMITH_MODULE_ID(srcid, version) SMITH_SRCID(srcid, version)
+
+static char *smith_srcid = SMITH_MODULE_ID(LKM_SRCID, LKM_VNUM);
+module_param(smith_srcid, charp, S_IRUSR|S_IRGRP|S_IROTH);
 
 static int __init kprobe_hook_init(void)
 {
