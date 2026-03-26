@@ -641,13 +641,79 @@ static int ac_setup_blocklist(int ac, char *json, int len)
             rc = ac_pack_md5(&hash, ZSTR_VAL(Z_STR_P(id)),
                             (char *)Z_STR_P(size),
                             ZSTR_VAL(Z_STR_P(md5)));
-        } else if (ac == BL_JSON_DNS) {
         }
     }
 
 out:
     if (response)
         zval_free(response);
+    return rc;
+}
+
+static int ac_setup_dns(int ac, char *json, int lf)
+{
+    char *data = NULL;
+    struct dns_domain *domain;
+    zval *response = NULL, *rules;
+    int i, rc = -1, len = 4, cmd;
+
+    if (ac != BL_JSON_DNS)
+        goto out;
+
+    data = malloc(MAX_RULE_SIZE);
+    if (!data)
+        goto out;
+    memset(data, 0, MAX_RULE_SIZE);
+
+    response = json_decode(json, (uint32_t)lf);
+    if (response->u2.errcode != 0) {
+        printf("ac_setup_dns: failed to parse json with error: %d\n", response->u2.errcode);
+        goto out;
+    }
+
+    rules = zua_get_value_by_path(response, ZUA_STR("R"));
+    if (!rules)
+        goto out;
+
+    for (i = 0; ; i++) {
+        zval *rule;
+        domain = (struct dns_domain *)&data[len];
+        rule = zua_get_value_by_index(rules, i);
+        if (!rule)
+           break;
+        if (ac == BL_JSON_DNS) {
+            zval *id, *dom, *ver;
+            int version = 0, s;
+            id = zua_get_value_by_path(rule, ZUA_STR("ID"));
+            ver = zua_get_value_by_path(rule, ZUA_STR("Version"));
+            dom = zua_get_value_by_path(rule, ZUA_STR("Domain"));
+            if (!id || !Z_STR_P(id))
+                break;
+            if (!dom || !Z_STR_P(dom))
+                break;
+            s = strnlen(ZSTR_VAL(Z_STR_P(dom)), 255);
+            if (len + 8 + s + 1 + 1 >= MAX_RULE_SIZE)
+                break;
+            strncpy(domain->id, ZSTR_VAL(Z_STR_P(id)), 8);
+            strncpy(domain->name, ZSTR_VAL(Z_STR_P(dom)), s);
+            domain->len = s;
+            len += 8 + s + 1 + 1;
+        } else {
+            break;
+        }
+    }
+
+    if (len <= 4)
+        goto out;
+
+    *((int *)data) = len - 4;
+    cmd = TRACE_IOCTL_FILTER + DNS_BLOCK_LIST;
+    rc = ioctl(g_tb_trace.fd - 1, cmd, data);
+out:
+    if (response)
+        zval_free(response);
+    if (data)
+        free(data);
     return rc;
 }
 
@@ -674,7 +740,9 @@ int ac_setup(int ac, char *item, int len)
 
     if (ac >= AL_TYPE_ARGV && ac <= AL_TYPE_PSAD)
         return ac_setup_allowlist(ac, item, len);
-    if (ac >= BL_JSON_DNS && ac <= BL_JSON_MD5)
+    if (ac == BL_JSON_DNS)
+        return ac_setup_dns(ac, item, len);
+    if (ac > BL_JSON_DNS && ac <= BL_JSON_MD5)
         return ac_setup_blocklist(ac, item, len);
     return -2;
 }
@@ -732,6 +800,9 @@ int ac_clear_blocklist(int ac)
         rc = ioctl(g_tb_trace.fd - 1, cmd, NULL);
     } else if (ac == BL_JSON_EXE) {
         cmd = TRACE_IOCTL_FILTER + IMAGE_EXE_CLR;
+        rc = ioctl(g_tb_trace.fd - 1, cmd, NULL);
+    } else if (ac == BL_JSON_DNS) {
+        cmd = TRACE_IOCTL_FILTER + DNS_BLOCK_LIST;
         rc = ioctl(g_tb_trace.fd - 1, cmd, NULL);
     }
 

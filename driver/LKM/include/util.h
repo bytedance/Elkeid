@@ -45,7 +45,7 @@
 
 #define smith_kmalloc(size, flags)  kmalloc(size, (flags) | __GFP_NOWARN)
 #define smith_kzalloc(size, flags)  kmalloc(size, (flags) | __GFP_NOWARN | __GFP_ZERO)
-#define smith_kfree(ptr)            do { void * _ptr = (ptr); if (_ptr) kfree(_ptr);} while(0)
+#define smith_kfree(ptr)            do { if (ptr) { kfree(ptr); ptr = NULL;}} while(0)
 
 /*
  * common routines
@@ -282,6 +282,21 @@ static __always_inline unsigned long __must_check smith_copy_from_user(void *to,
     (x) = (__typeof__(*(ptr)))__val;                            \
     __ret;                                                      \
 })
+
+
+static __always_inline unsigned long __must_check smith_copy_to_user(void __user *to, void *from, unsigned long n)
+{
+    unsigned long res;
+    smith_pagefault_disable();
+    /* validate user-mode buffer: ['to' - 'to' + 'n') */
+    if (smith_access_ok(to, n))
+        res = __copy_to_user_inatomic(to, from, n);
+    else
+        res = n;
+    smith_pagefault_enable();
+    return res;
+}
+
 
 static inline int __get_pgid(void) {
     return task_pgrp_nr_ns(current, &init_pid_ns);

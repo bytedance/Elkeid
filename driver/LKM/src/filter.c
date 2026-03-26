@@ -629,7 +629,7 @@ static int rule_wcs_match(struct rule_item *ri, struct exe_item *ei)
 
     while (*s) {
         /* case sensitive */
-        if (*p == *s) {
+        if (*p == *s || *p == '?') {
             p++;
             s++;
         } else if (*p == '*') {
@@ -846,6 +846,120 @@ static int rule_check(struct exe_item *items, int nitems, char *id)
 }
 
 /*
+ * DNS blocking: domain name matching
+ *
+ * wildcard support of mutiple '*', case insensitive
+ */
+static struct dns_blocked_domain {
+    struct rcu_head    rcu;
+    int                size;
+    struct dns_domain  list[0];
+} *g_blocked_domains;
+
+static void dns_free_list_rcu(struct rcu_head *rcu)
+{
+    smith_kfree(rcu);
+}
+
+/* case insensitive version of rule_wcs_match */
+#define cased_eq(s, t) ((s) == (t) && ((s) >= 'a' && (s) <= 'z'))
+
+static int wcs_is_match(char *p, char *s)
+{
+    char *star = NULL;
+    char *ss = NULL;
+
+    while (*s) {
+        /* case insensitive */
+        if (*p == *s || *p == '?' || cased_eq(*p | 0x20, *s | 0x20)) {
+            p++;
+            s++;
+        } else if (*p == '*') {
+            star = p++;
+            ss = s;
+        } else if (star) {
+            p = star + 1;
+            s = ++ss;
+        } else {
+            /* mismatch */
+            return 0;
+        }
+    }
+
+    /* ignoring all trailing '*' */
+    while (*p == '*')
+        p++;
+
+    return *p == '\0';
+}
+
+static int dns_check_domain(int blocked, char *name, char *id)
+{
+    struct dns_blocked_domain *list;
+    int rc = 0, next = 0;
+
+    rcu_read_lock();
+    if (blocked) {
+        /* just skip if there's no blocked list */
+        list = rcu_dereference(g_blocked_domains);
+    }
+    if (!list) {
+        rcu_read_unlock();
+        return 0;
+    }
+
+    while (next < list->size) {
+        struct dns_domain *domain = (void *)&list->list[0] + next;
+        if (wcs_is_match(domain->name, name)) {
+            memcpy(id, domain->id, sizeof(domain->id));
+            rc = 1;
+            printk("BL_DNS rule matched: id=%8.8s dom=%s/%s next:%d/%d\n",
+                    domain->id, domain->name, name, next, list->size);
+            break;
+        }
+        next += domain->len + 1 + 1 + 8;
+    }
+    rcu_read_unlock();
+
+    return rc;
+}
+
+static int dns_free_list(void)
+{
+    struct dns_blocked_domain *list = READ_ONCE(g_blocked_domains);
+
+    if (!list)
+        return 0;
+
+    do {
+        if (cmpxchg(&g_blocked_domains, list, NULL) == list)
+            break;
+        list = READ_ONCE(g_blocked_domains);
+    } while (list);
+
+    if (list)
+        call_rcu(&list->rcu, dns_free_list_rcu);
+
+    return 1;
+}
+
+static int dns_set_list(struct dns_blocked_domain *newlist)
+{
+    struct dns_blocked_domain *list = READ_ONCE(g_blocked_domains);
+
+    do {
+        if (cmpxchg(&g_blocked_domains, list, newlist) == list)
+            break;
+        list = READ_ONCE(g_blocked_domains);
+    } while (list);
+
+    if (list)
+        call_rcu(&list->rcu, dns_free_list_rcu);
+
+    return 0;
+}
+
+/*
  * psad allowlist checking: ipv4
  */
 static struct psad_ip4_list {
@@ -856,7 +970,6 @@ static struct psad_ip4_list {
 
 static void psad_free_list_rcu(struct rcu_head *rcu)
 {
-    printk("ip allowlist %px to be freed.\n", rcu);
     smith_kfree(rcu);
 }
 
@@ -1092,7 +1205,6 @@ static int filter_ioctl_internal(int cmd, char *data, int len)
             goto out;
 
         case IMAGE_EXE_ADD:
-            // smith_hexdump(data, len);
             if (rule_add(&exe_rule_list, &exe_rule_lock,
                          (exe_rule_flex_t *)data))
                 rc = 0;
@@ -1111,6 +1223,11 @@ static int filter_ioctl_internal(int cmd, char *data, int len)
             rc = psad_set_ip_list(data, len);
             if (rc > 0)
                 data = NULL;
+            goto out;
+        case DNS_BLOCK_LIST:
+            // smith_hexdump(data, len);
+            rc = dns_set_list((void *)data);
+            data = NULL;
             goto out;
     }
 
@@ -1194,6 +1311,9 @@ static int filter_ioctl(int cmd, const __user char *buf)
         psad_ip4_clear();
         psad_ip6_clear();
         return 0;
+    } else if (cmd == DNS_BLOCK_LIST && !buf) {
+        dns_free_list();
+        return 0;
     }
 
     /* check whether length is valid */
@@ -1228,6 +1348,15 @@ static int filter_ioctl(int cmd, const __user char *buf)
             skip = offsetof(struct psad_ip6_list, list);
             len = (list.nips * 4 + 2) * sizeof(uint32_t) + skip;
         }
+    } else if (cmd == DNS_BLOCK_LIST) {
+        if (smith_copy_from_user(&len, buf, 4))
+            goto errorout;
+        if (len < 32 || len >= 65536) {
+            printk("blocked domain list: invalid length.\n");
+            goto errorout;
+        }
+        skip = offsetof(struct dns_blocked_domain, size);
+        len += skip + 4;
     } else {
         len = strnlen_user(buf, ALLOWLIST_NODE_MAX);
         if (len < ALLOWLIST_NODE_MIN)
@@ -1235,7 +1364,7 @@ static int filter_ioctl(int cmd, const __user char *buf)
     }
 
     /* try to grab user's input parameters */
-    if (!smith_access_ok(buf, len))
+    if (!smith_access_ok(buf, len - skip))
         goto errorout;
     data = smith_kzalloc(len + 1, GFP_KERNEL);
     if (!data)
@@ -1342,6 +1471,7 @@ struct filter_ops g_flt_ops = {
     .rule_check = rule_check,           /* exe/cmd blocklist checking */
     .ipv4_check = psad_ip4_check,       /* ipv4 allowlist */
     .ipv6_check = psad_ip6_check,       /* ipv6 allowlist */
+    .domain_check = dns_check_domain,   /* domain blocklist */
     .ioctl = filter_ioctl,              /* interfaces for user ioctl */
     .store = filter_store,              /* callback of module param settings */
 };
@@ -1357,8 +1487,10 @@ static void filter_exit(void)
     del_all_execve_argv_allowlist();
     image_md5_clear();
     rule_clear(&exe_rule_list, &exe_rule_lock);
-    if (psad_ip4_clear() + psad_ip6_clear())
+    if (psad_ip4_clear() + psad_ip6_clear() + dns_free_list()) {
         rcu_barrier();
+        synchronize_rcu();
+    }
 }
 
 KPROBE_INITCALL(filter, filter_init, filter_exit);

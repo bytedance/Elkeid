@@ -125,6 +125,32 @@ out:
         free(data);
 }
 
+static void process_block_dns(char *name)
+{
+    char *data = NULL;
+    FILE *fp;
+    int len;
+
+    fp = fopen(name, "rb");
+    if (!fp)
+        return;
+    fseek(fp, 0, SEEK_END);
+    len = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    data = malloc(len + 1);
+    if (!data)
+        goto out;
+    fread(data, 1, len, fp);
+    data[len] = 0;
+    ac_setup(BL_JSON_DNS, data, len);
+
+out:
+    if (fp)
+        fclose(fp);
+    if (data)
+        free(data);
+}
+
 static void psad_set_ip4(void)
 {
     char ips[16] = {0};
@@ -352,6 +378,8 @@ int main(int argc, char *argv[])
     process_block_exe("exe2.json");
     ac_clear(BL_JSON_EXE);
     process_block_exe("exe1.json");
+
+    process_block_dns("dns.json");
 
     psad_set_ip4();
     psad_set_ip6();

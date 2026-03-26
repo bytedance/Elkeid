@@ -38,6 +38,16 @@
 #define REGISTER_BINFMT 0x52                /* R */
 #define UNREGISTER_BINFMT 0x55              /* U */
 #define PSAD_IP_LIST   0x4e                 /* N */
+#define DNS_BLOCK_LIST 87                   /* W */
+
+/*
+ * blocked (allowed) domain list
+ */
+struct dns_domain {
+    char           id[8];
+    unsigned char  len;
+    char           name[255]; /* VLA, trailing with \0 */
+} __attribute__((packed));
 
 /*
  * ip allowlist for psad

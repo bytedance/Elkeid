@@ -879,6 +879,19 @@ SD_XFER_DEFINE( NAME(tcpconn6),
 )
 #endif
 
+SD_XFER_DEFINE( NAME(dns_uprobe),
+
+                PROT(ELEMENT(char *, exe_path),
+                     ELEMENT(char *, domain),
+                     ELEMENT(char *, pid_tree)
+                ),
+
+                XFER(ENTRY_COMMON(600),
+                     ENTRY_STR(domain, domain),
+                     ENTRY_STR(pid_tree, pid_tree)
+                )
+)
+
 SD_XFER_DEFINE( NAME(exe_warn_dns),
 
                 PROT(ELEMENT(char *, exe_path),

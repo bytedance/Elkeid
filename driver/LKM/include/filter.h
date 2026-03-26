@@ -27,6 +27,7 @@ struct filter_ops {
     int (*ipv6_check)(uint32_t *ip);
     int (*ioctl)(int cmd, const __user char *buf);
     int (*store)(const char *buf, int len);
+    int (*domain_check)(int blocked, char *domain, char *id);
 };
 extern struct filter_ops g_flt_ops;
 

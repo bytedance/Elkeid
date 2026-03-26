@@ -6962,6 +6962,754 @@ int smith_unregister_exec_load(void)
     return (rc ? 0 : -EALREADY);
 }
 
+
+/*
+ * DNS audit with uprobe/uretprobe
+ */
+
+static loff_t smith_find_elf64_symbol(const char *filename, const char *symbol)
+{
+    struct file *filp;
+    Elf64_Ehdr ehdr;
+    Elf64_Shdr *shdr = NULL;
+    Elf64_Sym *symtab = NULL;
+    char *strtab = NULL;
+    size_t sh_size;
+    size_t sym_count;
+    loff_t offset = (loff_t)-1;
+    loff_t pos = 0;
+    ssize_t ret, i, j;
+
+    filp = filp_open(filename, O_RDONLY, 0);
+    if (IS_ERR(filp)) {
+        printk(KERN_ERR "filp_open failed\n");
+        return offset;
+    }
+
+    ret = kernel_read(filp, &ehdr, sizeof(ehdr), &pos);
+    if (ret != sizeof(ehdr)) {
+        printk(KERN_ERR "read ELF header failed\n");
+        goto cleanup_filp;
+    }
+
+    if (memcmp(ehdr.e_ident, ELFMAG, SELFMAG)) {
+        printk(KERN_ERR "not an ELF file\n");
+        goto cleanup_filp;
+    }
+
+    sh_size = ehdr.e_shnum * sizeof(*shdr);
+    shdr = smith_kmalloc(sh_size, GFP_KERNEL);
+    if (!shdr) {
+        printk(KERN_ERR "kmalloc failed\n");
+        goto cleanup_filp;
+    }
+
+    pos = ehdr.e_shoff;
+    ret = kernel_read(filp, shdr, sh_size, &pos);
+    if (ret != sh_size) {
+        printk(KERN_ERR "read section headers failed\n");
+        goto cleanup_shdr;
+    }
+
+    for (i = 0; i < ehdr.e_shnum; i++) {
+        if (shdr[i].sh_type == SHT_DYNSYM || shdr[i].sh_type == SHT_SYMTAB) {
+            sym_count = shdr[i].sh_size / sizeof(*symtab);
+            symtab = smith_kmalloc(shdr[i].sh_size, GFP_KERNEL);
+            if (!symtab) {
+                printk(KERN_ERR "kmalloc failed\n");
+                goto cleanup_shdr;
+            }
+
+            pos = shdr[i].sh_offset;
+            ret = kernel_read(filp, symtab, shdr[i].sh_size, &pos);
+            if (ret != shdr[i].sh_size) {
+                printk(KERN_ERR "read symbol table failed\n");
+                goto cleanup_symtab;
+            }
+
+            strtab = smith_kmalloc(shdr[shdr[i].sh_link].sh_size, GFP_KERNEL);
+            if (!strtab) {
+                printk(KERN_ERR "kmalloc failed\n");
+                goto cleanup_symtab;
+            }
+
+            pos = shdr[shdr[i].sh_link].sh_offset;
+            ret = kernel_read(filp, strtab, shdr[shdr[i].sh_link].sh_size, &pos);
+            if (ret != shdr[shdr[i].sh_link].sh_size) {
+                printk(KERN_ERR "read string table failed\n");
+                goto cleanup_strtab;
+            }
+
+            for (j = 0; j < sym_count; j++) {
+                if (strcmp(strtab + symtab[j].st_name, symbol) == 0) {
+                    offset = (loff_t)symtab[j].st_value;
+                    goto cleanup_strtab;
+                }
+            }
+
+            smith_kfree(strtab);
+            smith_kfree(symtab);
+
+            printk(KERN_ERR "symbol %s not found in %s\n", symbol, filename);
+        }
+    }
+
+cleanup_strtab:
+    smith_kfree(strtab);
+cleanup_symtab:
+    smith_kfree(symtab);
+cleanup_shdr:
+    smith_kfree(shdr);
+cleanup_filp:
+    filp_close(filp, NULL);
+    return offset;
+}
+
+/*
+ * domain cache per task (calling of get_addrinfo)
+ */
+static struct rb_root dns_name_list = RB_ROOT;
+static DEFINE_RWLOCK(dns_list_lock);
+
+struct dns_node {
+    struct rb_node node;
+    pid_t pid;
+    unsigned long pai;
+    char name[256];
+};
+
+static struct dns_node *dns_is_name_cached(struct rb_root *root, pid_t pid)
+{
+    struct rb_node *node = root->rb_node;
+
+    while (node) {
+        struct dns_node *nod = container_of(node, struct dns_node, node);
+        if (pid < nod->pid) {
+            node = node->rb_left;
+        } else if (pid > nod->pid) {
+            node = node->rb_right;
+        } else {
+            return nod;
+        }
+    }
+    return NULL;
+}
+
+/*
+ * return value description for insert_rb():
+ *  0: succeeded to insert node to rbtree
+ *  1: same record was already inserted
+ */
+static int dns_insert_node(struct rb_root *root, struct dns_node *record)
+{
+    struct rb_node **node = &(root->rb_node), *parent = NULL;
+
+    while (*node) {
+        struct dns_node *nod = container_of(*node, struct dns_node, node);
+        parent = *node;
+        if (record->pid < nod->pid) {
+            node = &((*node)->rb_left);
+        } else if (record->pid > nod->pid) {
+            node = &((*node)->rb_right);
+        } else {
+            return 1;
+        }
+    }
+
+    rb_link_node(&record->node, parent, node);
+    rb_insert_color(&record->node, root);
+    return 0;
+}
+
+static void dns_list_clear(struct rb_node *root)
+{
+    struct dns_node *nod;
+
+    if(!root)
+        return;
+
+    dns_list_clear(root->rb_left);
+    dns_list_clear(root->rb_right);
+
+    nod = rb_entry(root, struct dns_node, node);
+    printk("uprobe domain record (%p): %s to be freed.\n", nod, nod->name);
+    smith_kfree(nod);
+}
+
+static struct dns_node *dns_insert_domain(struct dns_node *nod)
+{
+    struct dns_node *old = NULL;
+    unsigned long flags;
+
+    write_lock_irqsave(&dns_list_lock, flags);
+    old = dns_is_name_cached(&dns_name_list,  current->pid);
+    if (old) {
+        memcpy(old->name, nod->name, sizeof(nod->name));
+        smith_kfree(nod);
+        nod = old;
+        printk(KERN_INFO "[ELKEID] task has already have a dns record cached.\n");
+    } else {
+        int rc = dns_insert_node(&dns_name_list, nod);
+        if (rc) {
+            /* Something is wrong: shouldn't happen */
+            smith_kfree(nod);
+            nod = NULL;
+        }
+    }
+    write_unlock_irqrestore(&dns_list_lock, flags);
+    return nod;
+}
+
+static struct dns_node *dns_is_domain_cached(void)
+{
+    struct dns_node *nod = NULL;
+    unsigned long flags;
+
+    read_lock_irqsave(&dns_list_lock, flags);
+    nod = dns_is_name_cached(&dns_name_list, current->pid);
+    if (nod)
+        rb_erase(&nod->node, &dns_name_list);
+    read_unlock_irqrestore(&dns_list_lock, flags);
+    return nod;
+}
+
+static struct dns_node *dns_retrieve_domain(void)
+{
+    struct dns_node *nod = NULL;
+    unsigned long flags;
+
+    write_lock_irqsave(&dns_list_lock, flags);
+    nod = dns_is_name_cached(&dns_name_list, current->pid);
+    if (nod)
+        rb_erase(&nod->node, &dns_name_list);
+    write_unlock_irqrestore(&dns_list_lock, flags);
+    return nod;
+}
+
+static void dns_cleanup_list(void)
+{
+    unsigned long flags;
+
+    write_lock_irqsave(&dns_list_lock, flags);
+    dns_list_clear(dns_name_list.rb_node);
+    dns_name_list = RB_ROOT;
+    write_unlock_irqrestore(&dns_list_lock, flags);
+}
+
+/* Error values for `getaddrinfo' function.  */
+# define EAI_BADFLAGS     -1    /* Invalid value for `ai_flags' field.  */
+# define EAI_NONAME       -2    /* NAME or SERVICE is unknown.  */
+# define EAI_AGAIN        -3    /* Temporary failure in name resolution.  */
+# define EAI_FAIL         -4    /* Non-recoverable failure in name res.  */
+# define EAI_FAMILY       -6    /* `ai_family' not supported.  */
+# define EAI_SOCKTYPE     -7    /* `ai_socktype' not supported.  */
+# define EAI_SERVICE      -8    /* SERVICE not supported for `ai_socktype'.  */
+# define EAI_MEMORY       -10   /* Memory allocation failure.  */
+# define EAI_SYSTEM       -11   /* System error returned in `errno'.  */
+# define EAI_OVERFLOW     -12   /* Argument buffer overflow.  */
+# ifdef __USE_GNU
+#  define EAI_NODATA      -5    /* No address associated with NAME.  */
+#  define EAI_ADDRFAMILY  -9    /* Address family for NAME not supported.  */
+#  define EAI_INPROGRESS  -100  /* Processing request in progress.  */
+#  define EAI_CANCELED    -101  /* Request canceled.  */
+#  define EAI_NOTCANCELED -102  /* Request not canceled.  */
+#  define EAI_ALLDONE     -103  /* All requests done.  */
+#  define EAI_INTR        -104  /* Interrupted by a signal.  */
+#  define EAI_IDN_ENCODE  -105  /* IDN encoding failed.  */
+# endif
+
+/*
+ *
+ * Prototype of getaddrinfo
+ *
+ *
+ *      int getaddrinfo(const char *node, const char *service,
+ *                      const struct addrinfo *hints,
+ *                     struct addrinfo **res);
+ *      void freeaddrinfo(struct addrinfo *res);
+ *
+ *      struct addrinfo {
+ *             int              ai_flags;
+ *             int              ai_family;
+ *             int              ai_socktype;
+ *             int              ai_protocol;
+ *             socklen_t        ai_addrlen;
+ *             struct sockaddr *ai_addr;
+ *             char            *ai_canonname;
+ *             struct addrinfo *ai_next;
+ *      };
+ *
+ */
+struct addrinfo64 {
+    int              ai_flags;
+    int              ai_family;
+    int              ai_socktype;
+    int              ai_protocol;
+    int              ai_addrlen;
+    struct sockaddr __user *ai_addr;
+    char            __user *ai_canonname;
+    struct addrinfo __user *ai_next;
+};
+
+struct addrinfo32 {
+    int              ai_flags;
+    int              ai_family;
+    int              ai_socktype;
+    int              ai_protocol;
+    int              ai_addrlen;
+    uint32_t         ai_addr;
+    uint32_t         ai_canonname;
+    uint32_t         ai_next;
+};
+
+static void smith_clear_getaddrinfo64(struct addrinfo64 ** __user res)
+{
+    struct addrinfo64 addr, __user *ai;
+    char localipv6[20] = {AF_INET6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
+    char localipv4[8] = {AF_INET, 0, 0, 0, 127, 0, 0, 1};
+
+    if (!res || smith_get_user(ai, res))
+        return;
+    while (ai) {
+        int rc;
+        if (smith_copy_from_user(&addr, ai, sizeof(addr)))
+            break;
+        if (addr.ai_addrlen == 16 && addr.ai_family == AF_INET) {
+            rc = smith_copy_to_user(addr.ai_addr, localipv4, 8);
+        }
+        if (addr.ai_addrlen == 28 && addr.ai_family == AF_INET6) {
+            rc = smith_copy_to_user(addr.ai_addr, localipv6, 20);
+        }
+        ai = (struct addrinfo64 __user *) addr.ai_next;
+    }
+}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0)
+static int smith_getaddrinfo64_pre_handler(struct uprobe_consumer *self, struct pt_regs *regs, __u64 *data)
+#else
+static int smith_getaddrinfo64_pre_handler(struct uprobe_consumer *self, struct pt_regs *regs)
+#endif
+{
+    struct smith_tid *tid = NULL;
+    unsigned long domain;
+    struct dns_node *nod = NULL;
+    int nod_created = 0, len;
+
+    tid = smith_lookup_tid(current);
+    if (!tid)
+        return 0;
+
+    domain = p_regs_get_arg1(regs);
+    if (!domain)
+        goto errorout;
+    len = smith_strnlen_user((void __user *)domain, sizeof(nod->name) - 1);
+    if (len <= 0)
+        goto errorout;
+
+    nod = dns_is_domain_cached();
+    if (!nod) {
+        nod = smith_kmalloc(sizeof(struct dns_node), GFP_ATOMIC);
+        if (!nod)
+            goto errorout;
+        nod->pid = current->pid;
+        nod_created = 1;
+    }
+    nod->pai = p_regs_get_arg4(regs);
+    memset(nod->name, 0, sizeof(nod->name));
+    if (smith_copy_from_user(nod->name, (char __user *)domain, len))
+        goto errorout;
+
+    dns_uprobe_print(tid->st_img->si_path, nod->name, tid->st_pid_tree);
+    if (nod_created) {
+        dns_insert_domain(nod);
+        nod = NULL;
+    }
+
+errorout:
+    if (nod_created && nod)
+        smith_kfree(nod);
+    if (tid)
+        smith_put_tid(tid);
+    return 0;
+}
+
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0)
+static int smith_getaddrinfo64_ret_handler(struct uprobe_consumer *self, unsigned long func, struct pt_regs *regs, __u64 *data)
+#else
+static int smith_getaddrinfo64_ret_handler(struct uprobe_consumer *self, unsigned long func, struct pt_regs *regs)
+#endif
+{
+    struct dns_node *nod = dns_retrieve_domain();
+    char id[9] = {0};
+
+    if (!nod)
+        return 0;
+
+    if (g_flt_ops.domain_check(1, nod->name, id)) {
+        struct smith_tid *tid = smith_lookup_tid(current);
+        if (tid) {
+            exe_warn_dns_print(tid->st_img->si_path, id, nod->name);
+            smith_put_tid(tid);
+        }
+
+        /* clear ips in getaddrinfo results */
+        smith_clear_getaddrinfo64((struct addrinfo64 ** __user)nod->pai);
+
+        /* fail getaddrinfo might cause memory leak of res */
+        // smith_regs_set_return_value(EAI_FAIL);
+    }
+
+    smith_kfree(nod);
+    return 0;
+}
+
+#if IS_ENABLED(CONFIG_X86_64)
+static loff_t smith_find_elf32_symbol(const char *filename, const char *symbol)
+{
+    struct file *filp;
+    Elf32_Ehdr ehdr;
+    Elf32_Shdr *shdr = NULL;
+    Elf32_Sym *symtab = NULL;
+    char *strtab = NULL;
+    size_t sh_size;
+    size_t sym_count;
+    loff_t offset = (loff_t)-1;
+    loff_t pos = 0;
+    ssize_t ret, i, j;
+
+    filp = filp_open(filename, O_RDONLY, 0);
+    if (IS_ERR(filp)) {
+        printk(KERN_ERR "filp_open failed\n");
+        return offset;
+    }
+
+    ret = kernel_read(filp, &ehdr, sizeof(ehdr), &pos);
+    if (ret != sizeof(ehdr)) {
+        printk(KERN_ERR "read ELF header failed\n");
+        goto cleanup_filp;
+    }
+
+    if (memcmp(ehdr.e_ident, ELFMAG, SELFMAG)) {
+        printk(KERN_ERR "not an ELF file\n");
+        goto cleanup_filp;
+    }
+
+    sh_size = ehdr.e_shnum * sizeof(*shdr);
+    shdr = smith_kmalloc(sh_size, GFP_KERNEL);
+    if (!shdr) {
+        printk(KERN_ERR "kmalloc failed\n");
+        goto cleanup_filp;
+    }
+
+    pos = ehdr.e_shoff;
+    ret = kernel_read(filp, shdr, sh_size, &pos);
+    if (ret != sh_size) {
+        printk(KERN_ERR "read section headers failed\n");
+        goto cleanup_shdr;
+    }
+
+    for (i = 0; i < ehdr.e_shnum; i++) {
+        if (shdr[i].sh_type == SHT_DYNSYM || shdr[i].sh_type == SHT_SYMTAB) {
+            sym_count = shdr[i].sh_size / sizeof(*symtab);
+            symtab = smith_kmalloc(shdr[i].sh_size, GFP_KERNEL);
+            if (!symtab) {
+                printk(KERN_ERR "kmalloc failed\n");
+                goto cleanup_shdr;
+            }
+
+            pos = shdr[i].sh_offset;
+            ret = kernel_read(filp, symtab, shdr[i].sh_size, &pos);
+            if (ret != shdr[i].sh_size) {
+                printk(KERN_ERR "read symbol table failed\n");
+                goto cleanup_symtab;
+            }
+
+            strtab = smith_kmalloc(shdr[shdr[i].sh_link].sh_size, GFP_KERNEL);
+            if (!strtab) {
+                printk(KERN_ERR "kmalloc failed\n");
+                goto cleanup_symtab;
+            }
+
+            pos = shdr[shdr[i].sh_link].sh_offset;
+            ret = kernel_read(filp, strtab, shdr[shdr[i].sh_link].sh_size, &pos);
+            if (ret != shdr[shdr[i].sh_link].sh_size) {
+                printk(KERN_ERR "read string table failed\n");
+                goto cleanup_strtab;
+            }
+
+            for (j = 0; j < sym_count; j++) {
+                if (strcmp(strtab + symtab[j].st_name, symbol) == 0) {
+                    offset = (loff_t)symtab[j].st_value;
+                    goto cleanup_strtab;
+                }
+            }
+
+            smith_kfree(strtab);
+            smith_kfree(symtab);
+
+            printk(KERN_ERR "symbol %s not found in %s\n", symbol, filename);
+        }
+    }
+
+cleanup_strtab:
+    smith_kfree(strtab);
+cleanup_symtab:
+    smith_kfree(symtab);
+cleanup_shdr:
+    smith_kfree(shdr);
+cleanup_filp:
+    filp_close(filp, NULL);
+    return offset;
+}
+
+static void smith_clear_getaddrinfo32(struct addrinfo32 ** __user res)
+{
+    struct addrinfo32 addr, __user *ai;
+    uint32_t ptr;
+    char localipv6[20] = {AF_INET6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
+    char localipv4[8] = {AF_INET, 0, 0, 0, 127, 0, 0, 1};
+
+    if (!res || smith_copy_from_user(&ptr, res, sizeof(ptr)))
+        return;
+    ai = (struct addrinfo32 __user *)(long)ptr;
+    while (ai) {
+        int rc;
+        if (smith_copy_from_user(&addr, ai, sizeof(addr)))
+            break;
+        if (addr.ai_addrlen == 16 && addr.ai_family == AF_INET) {
+            rc = smith_copy_to_user((void *)(long)addr.ai_addr, localipv4, 8);
+        }
+        if (addr.ai_addrlen == 28 && addr.ai_family == AF_INET6) {
+            rc = smith_copy_to_user((void *)(long)addr.ai_addr, localipv6, 20);
+        }
+        ai = (struct addrinfo32 __user *)(long)addr.ai_next;
+    }
+}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0)
+static int smith_getaddrinfo32_pre_handler(struct uprobe_consumer *self, struct pt_regs *regs, __u64 *data)
+#else
+static int smith_getaddrinfo32_pre_handler(struct uprobe_consumer *self, struct pt_regs *regs)
+#endif
+{
+    struct smith_tid *tid = NULL;
+    unsigned long domain;
+    struct dns_node *nod = NULL;
+    int nod_created = 0, len;
+    uint32_t stack[5];
+
+    tid = smith_lookup_tid(current);
+    if (!tid)
+        return 0;
+
+    if (smith_copy_from_user(stack, (void *)regs->sp, sizeof(stack)))
+        goto errorout;
+    domain = (unsigned long)stack[1];
+    if (!domain)
+        goto errorout;
+    len = smith_strnlen_user((void __user *)domain, sizeof(nod->name) - 1);
+    if (len <= 0)
+        goto errorout;
+
+    nod = dns_is_domain_cached();
+    if (!nod) {
+        nod = smith_kmalloc(sizeof(struct dns_node), GFP_ATOMIC);
+        if (!nod)
+            goto errorout;
+        nod->pid = current->pid;
+        nod_created = 1;
+    }
+    nod->pai = (unsigned long)stack[4];
+    memset(nod->name, 0, sizeof(nod->name));
+    if (smith_copy_from_user(nod->name, (char __user *)domain, len))
+        goto errorout;
+
+    dns_uprobe_print(tid->st_img->si_path, nod->name, tid->st_pid_tree);
+    if (nod_created) {
+        dns_insert_domain(nod);
+        nod = NULL;
+    }
+
+errorout:
+    if (nod_created && nod)
+        smith_kfree(nod);
+    if (tid)
+        smith_put_tid(tid);
+    return 0;
+}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0)
+static int smith_getaddrinfo32_ret_handler(struct uprobe_consumer *self, unsigned long func, struct pt_regs *regs, __u64 *data)
+#else
+static int smith_getaddrinfo32_ret_handler(struct uprobe_consumer *self, unsigned long func, struct pt_regs *regs)
+#endif
+{
+    struct dns_node *nod = dns_retrieve_domain();
+    char id[9] = {0};
+
+    if (!nod)
+        return 0;
+
+    if (g_flt_ops.domain_check(1, nod->name, id)) {
+        struct smith_tid *tid = smith_lookup_tid(current);
+        if (tid) {
+            exe_warn_dns_print(tid->st_img->si_path, id, nod->name);
+            smith_put_tid(tid);
+        }
+
+        /* clear ips in getaddrinfo results */
+        smith_clear_getaddrinfo32((struct addrinfo32 ** __user)nod->pai);
+
+        /* fail getaddrinfo might cause memory leak of res */
+        // smith_regs_set_return_value(EAI_FAIL);
+    }
+
+    smith_kfree(nod);
+    return 0;
+}
+#endif // CONFIG_X86_64
+
+struct smith_uprobe_item {
+    const char *libc_name;
+    const char *func_name;
+    loff_t (*sym_query)(const char *filename, const char *sym);
+    loff_t      func_addr;
+    struct uprobe_consumer uc;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+    struct uprobe *up;
+#endif
+    int         registered;
+};
+
+static struct smith_uprobe_item g_uprobes[] = {
+    {
+#if IS_ENABLED(CONFIG_X86_64)
+        .libc_name = "/lib/x86_64-linux-gnu/libc.so.6",
+#elif IS_ENABLED(CONFIG_ARM64)
+        .libc_name = "/lib/aarch64-linux-gnu/libc.so.6",
+#elif IS_ENABLED(CONFIG_ARCH_RV64I)
+        .libc_name = "/lib/riscv64-linux-gnu/libc.so.6",
+#else
+#error "Unsupported CPU architecture"
+#endif
+        .func_name = "getaddrinfo",
+        .sym_query = smith_find_elf64_symbol,
+        .uc = {
+            .handler = smith_getaddrinfo64_pre_handler,
+            .ret_handler = smith_getaddrinfo64_ret_handler,
+        },
+    },
+    {
+        .libc_name = "/lib64/libc.so.6",
+        .func_name = "getaddrinfo",
+        .sym_query = smith_find_elf64_symbol,
+        .uc = {
+            .handler = smith_getaddrinfo64_pre_handler,
+            .ret_handler = smith_getaddrinfo64_ret_handler,
+        },
+    },
+
+#if IS_ENABLED(CONFIG_X86_64)
+    {
+        .libc_name = "/lib/libc.so.6",
+        .func_name = "getaddrinfo",
+        .sym_query = smith_find_elf32_symbol,
+        .uc = {
+            .handler = smith_getaddrinfo32_pre_handler,
+            .ret_handler = smith_getaddrinfo32_ret_handler,
+        },
+    },
+    {
+        .libc_name = "/lib32/libc.so.6",
+        .func_name = "getaddrinfo",
+        .sym_query = smith_find_elf32_symbol,
+        .uc = {
+            .handler = smith_getaddrinfo32_pre_handler,
+            .ret_handler = smith_getaddrinfo32_ret_handler,
+        },
+    }
+#endif
+};
+
+static int smith_register_uprobe(struct smith_uprobe_item *ui)
+{
+    struct path fp;
+    int rc;
+
+    rc = kern_path(ui->libc_name, LOOKUP_FOLLOW, &fp);
+    if (rc)
+        return -1;
+
+    ui->func_addr = ui->sym_query(ui->libc_name, ui->func_name);
+    if (ui->func_addr == (loff_t)-1)
+        goto errorout;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+    ui->up = uprobe_register(fp.dentry->d_inode, ui->func_addr, 0, &ui->uc);
+    if (ui->up)
+        ui->registered = 1;
+#else
+    rc = uprobe_register(fp.dentry->d_inode, ui->func_addr, &ui->uc);
+    ui->registered = (rc == 0);
+#endif
+
+    if (ui->registered)
+        printk(KERN_INFO "[ELKEID] uprobe %s:%s registered.\n", ui->libc_name, ui->func_name);
+
+errorout:
+    path_put(&fp);
+
+    return !ui->registered;
+}
+
+static void smith_unregister_uprobe(struct smith_uprobe_item *ui)
+{
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0)
+    struct path fp;
+#endif
+
+    if (!ui->registered || !ui->func_addr)
+        return;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+    uprobe_unregister_nosync(ui->up, &ui->uc);
+#else
+    if (!kern_path(ui->libc_name, LOOKUP_FOLLOW, &fp)) {
+        uprobe_unregister(fp.dentry->d_inode, ui->func_addr, &ui->uc);
+        path_put(&fp);
+    }
+#endif
+   printk(KERN_INFO "[ELKEID] uprobe %s:%s unregistered.\n", ui->libc_name, ui->func_name);
+}
+
+static void smith_init_uprobe(void)
+{
+    int rc, i;
+
+    if (DNS_HOOK == 1) {
+        for (i = 0; i < ARRAY_SIZE(g_uprobes); i++) {
+            if (g_uprobes[i].func_addr < 0)
+                continue;
+            rc = smith_register_uprobe(&g_uprobes[i]);
+        }
+    }
+}
+
+static void smith_fini_uprobe(void)
+{
+    int i;
+
+    for (i = 0; i < ARRAY_SIZE(g_uprobes); i++) {
+        if (!g_uprobes[i].registered)
+            continue;
+        smith_unregister_uprobe(&g_uprobes[i]);
+    }
+
+    /* clean all pended records in queue */
+    dns_cleanup_list();
+}
+
 /*
  * System resouces used by HIDS/Elkeid LKM
  */
@@ -7139,6 +7887,9 @@ static int __init kprobe_hook_init(void)
     /* install kprobe & kretprobe hookpoints */
     smith_init_kprobe();
 
+    /* install uprobe & uretprobe hookpoints */
+    smith_init_uprobe();
+
     /* psad skipped, to be dynamically turned on */
 
     /* register binfmt callback for image checking */
@@ -7175,7 +7926,8 @@ static void kprobe_hook_exit(void)
         unregister_pernet_subsys(&smith_psad_net_ops);
     mutex_unlock(&g_nf_psad_lock);
 
-    /* cleaning up hook points: kprobe * trace */
+    /* cleaning up hook points: uprobe & kprobe & trace */
+    smith_fini_uprobe();
     smith_fini_kprobe();
     smith_fini_trace();
 
