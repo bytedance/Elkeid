@@ -521,7 +521,7 @@ static int ac_pack_md5(image_hash_t *md5, char *id, char *size, char *hash)
 
     if (strlen(id) < 8)
         return -EINVAL;
-    memcpy(&md5->id[0], &id[2], 6); /* prifix: 'EL' omitted */
+    strncpy(&md5->id[0], &id[0], RULE_ID_SIZE);
     md5->hlen = 16;
     md5->size = (uint64_t)(long)size;
     md5->hash.v64[0] = md5->hash.v64[1] = 0;
@@ -536,7 +536,7 @@ static int ac_pack_md5(image_hash_t *md5, char *id, char *size, char *hash)
         md5->hash.v8[i] = (b1 << 4) | b2;
     }
 #if 0
-    printf("MD5 Rule: EL%6.6s: %u ", md5->id, md5->hlen);
+    printf("MD5 Rule: %20.20s: %u ", md5->id, md5->hlen);
     for (i = 0; i < 16; i++)
         printf("%2.2x", md5->hash.v8[i]);
     printf(" %lu\n", md5->size);
@@ -558,7 +558,7 @@ static int ac_pack_rule(char *id, int version, int nitems, char *items[])
     data = malloc(MAX_RULE_SIZE);
     memset(data, 0, MAX_RULE_SIZE);
     rule = (exe_rule_flex_t *)data;
-    memcpy(rule->id, id, 8);
+    strncpy(rule->id, id, RULE_ID_SIZE);
     rule->version = version;
     for (i = 0; i < nitems; i++) {
         if (!items[i])
@@ -694,10 +694,10 @@ static int ac_setup_dns(int ac, char *json, int lf)
             s = strnlen(ZSTR_VAL(Z_STR_P(dom)), 255);
             if (len + 8 + s + 1 + 1 >= MAX_RULE_SIZE)
                 break;
-            strncpy(domain->id, ZSTR_VAL(Z_STR_P(id)), 8);
+            strncpy(domain->id, ZSTR_VAL(Z_STR_P(id)), RULE_ID_SIZE);
             strncpy(domain->name, ZSTR_VAL(Z_STR_P(dom)), s);
             domain->len = s;
-            len += 8 + s + 1 + 1;
+            len += RULE_ID_SIZE + s + 1 + 1;
         } else {
             break;
         }

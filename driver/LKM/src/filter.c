@@ -350,7 +350,7 @@ static void show_hash(image_hash_t *hash, char *msg)
     int i;
     for (i = 0; i < 16; i++)
         sprintf(&md5[i * 2], "%2.2x", hash->hash.v8[i]);
-    printk("%s hash EL%6.6s %u %s %llu\n", msg, hash->id,
+    printk("%s hash %20.20s %u %s %llu\n", msg, hash->id,
             hash->hlen, md5, hash->size);
 }
 
@@ -389,7 +389,7 @@ static int exist_rb_hash(struct rb_root *root, image_hash_t *hash)
         else if (rc > 0)
             node = node->rb_right;
         else {
-            memcpy(hash->id, data->hash.id, sizeof(data->hash.id));
+            strncpy(hash->id, data->hash.id, RULE_ID_SIZE);
             return 1;
         }
     }
@@ -559,8 +559,8 @@ struct rule_item {
 
 struct rule_node {
     struct hlist_node   link;
-    char                id[8];
     struct rule_item    items[4];
+    char                id[RULE_ID_SIZE];
     int16_t             nitems;
     int16_t             size;
     int32_t             version;
@@ -701,7 +701,7 @@ static struct rule_node *rule_alloc(exe_rule_flex_t *rule)
     nod = smith_kzalloc(lnod, GFP_KERNEL);
     if (!nod)
         return NULL;
-    memcpy(nod->id, rule->id, sizeof(nod->id));
+    strncpy(nod->id, rule->id, RULE_ID_SIZE);
     nod->nitems = rule->nitems;
     nod->version = rule->version;
     data = next * sizeof(int16_t);
@@ -747,7 +747,7 @@ static int rule_del(struct hlist_head *list,
     write_lock_irqsave(lock, flags);
     hlist_for_each(ent, list) {
         nod = hlist_entry(ent, struct rule_node, link);
-        if (!memcmp(nod->id, id, sizeof(nod->id)))
+        if (!strncmp(nod->id, id, sizeof(nod->id)))
             break;
         else
             nod = NULL;
@@ -793,7 +793,7 @@ static int rule_match(struct hlist_head *list,
                 nod = NULL;
         }
         if (nod)
-            memcpy(id, nod->id, sizeof(nod->id));
+            strncpy(id, nod->id, RULE_ID_SIZE);
         rc = (nod != NULL);
     } else {
         rc = !hlist_empty(list);
@@ -829,7 +829,7 @@ static void rule_enum(struct hlist_head *list, rwlock_t *lock)
     printk("enuming exe/cmd rules: %px\n", list);
     hlist_for_each(ent, list) {
         nod = hlist_entry(ent, struct rule_node, link);
-        printk("%4d: %8.8s %d %s|%s|%s|%s\n",
+        printk("%4d: %20.20s %d %s|%s|%s|%s\n",
                 i++, nod->id, nod->nitems,
                 nod->items[0].item ? nod->items[0].item : "(null)",
                 nod->items[1].item ? nod->items[1].item : "(null)",
@@ -911,13 +911,13 @@ static int dns_check_domain(int blocked, char *name, char *id)
     while (next < list->size) {
         struct dns_domain *domain = (void *)&list->list[0] + next;
         if (wcs_is_match(domain->name, name)) {
-            memcpy(id, domain->id, sizeof(domain->id));
+            strncpy(id, domain->id, RULE_ID_SIZE);
             rc = 1;
-            printk("BL_DNS rule matched: id=%8.8s dom=%s/%s next:%d/%d\n",
+            printk("BL_DNS rule matched: id=%20.20s dom=%s/%s next:%d/%d\n",
                     domain->id, domain->name, name, next, list->size);
             break;
         }
-        next += domain->len + 1 + 1 + 8;
+        next += domain->len + 1 + 1 + RULE_ID_SIZE;
     }
     rcu_read_unlock();
 
@@ -1351,7 +1351,7 @@ static int filter_ioctl(int cmd, const __user char *buf)
     } else if (cmd == DNS_BLOCK_LIST) {
         if (smith_copy_from_user(&len, buf, 4))
             goto errorout;
-        if (len < 32 || len >= 65536) {
+        if (len < 60 || len >= 65536) {
             printk("blocked domain list: invalid length.\n");
             goto errorout;
         }

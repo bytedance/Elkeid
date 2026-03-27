@@ -40,11 +40,14 @@
 #define PSAD_IP_LIST   0x4e                 /* N */
 #define DNS_BLOCK_LIST 87                   /* W */
 
+/* max length of rule id number: digits or characters */
+#define RULE_ID_SIZE  (20)
+
 /*
  * blocked (allowed) domain list
  */
 struct dns_domain {
-    char           id[8];
+    char           id[RULE_ID_SIZE];
     unsigned char  len;
     char           name[255]; /* VLA, trailing with \0 */
 } __attribute__((packed));
@@ -63,8 +66,8 @@ struct psad_ip_list {
  */
 typedef struct image_hash {
     uint64_t size; /* content length */
-    uint16_t hlen; /* length of hash in bytes */
-    char id[6]; /* rule id, without prefix "EL" */
+    uint32_t hlen; /* length of hash in bytes */
+    char id[RULE_ID_SIZE]; /* rule id  */
     union {
         uint64_t v64[2];
         uint32_t v32[4];
@@ -85,7 +88,7 @@ typedef struct exe_rule_flex {
     uint16_t                size;   /* total size */
     uint16_t                nitems; /* num of items */
     int                     version; /* 0: default 1: support wcs */
-    char                    id[8];  /* rule id */
+    char                    id[RULE_ID_SIZE];  /* rule id */
 
     union {
         exe_rule_item_t     items[4];

@@ -6583,13 +6583,13 @@ static void md5_block_notify(image_hash_t *hash, char *file_path, char *args)
     char *pid_tree = NULL;
     char *exe_path = file_path;
     struct smith_tid *tid = NULL;
-    char rule[12];
+    char rule[RULE_ID_SIZE + 4] = {0};
     char md5s[36] = {0};
     int i;
 
     for (i = 0; i < 16; i++)
         sprintf(&md5s[i * 2], "%2.2x", hash->hash.v8[i]);
-    snprintf(rule, sizeof(rule), "EL%6.6s", hash->id);
+    strncpy(rule, hash->id, RULE_ID_SIZE);
     tid = smith_lookup_tid(current);
     if (tid) {
         if (!exe_path)
@@ -6803,7 +6803,7 @@ static int smith_exec_load(struct linux_binprm *bprm, struct pt_regs *regs)
     struct file *file;
     struct exe_item ei[4] = {{0}, {0}, {0}, {0}};
     image_hash_t md5 = {0};
-    char id[12] = {0};
+    char id[RULE_ID_SIZE + 4] = {0};
     int rc = -ENOEXEC; /* continue to next bprm checking */
 
     /* always do md5 hash computing as required */
@@ -7341,7 +7341,7 @@ static int smith_getaddrinfo64_ret_handler(struct uprobe_consumer *self, unsigne
 #endif
 {
     struct dns_node *nod = dns_retrieve_domain();
-    char id[9] = {0};
+    char id[RULE_ID_SIZE + 4] = {0};
 
     if (!nod)
         return 0;
@@ -7365,6 +7365,7 @@ static int smith_getaddrinfo64_ret_handler(struct uprobe_consumer *self, unsigne
 }
 
 #if IS_ENABLED(CONFIG_X86_64)
+
 static loff_t smith_find_elf32_symbol(const char *filename, const char *symbol)
 {
     struct file *filp;
@@ -7546,7 +7547,7 @@ static int smith_getaddrinfo32_ret_handler(struct uprobe_consumer *self, unsigne
 #endif
 {
     struct dns_node *nod = dns_retrieve_domain();
-    char id[9] = {0};
+    char id[RULE_ID_SIZE + 4] = {0};
 
     if (!nod)
         return 0;
