@@ -1351,7 +1351,7 @@ static int filter_ioctl(int cmd, const __user char *buf)
     } else if (cmd == DNS_BLOCK_LIST) {
         if (smith_copy_from_user(&len, buf, 4))
             goto errorout;
-        if (len < 60 || len >= 65536) {
+        if (len < 26 || len >= 65536) {
             printk("blocked domain list: invalid length.\n");
             goto errorout;
         }

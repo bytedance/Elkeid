@@ -650,6 +650,18 @@ out:
     return rc;
 }
 
+static int dns_is_valid_pattern(char *s, int l)
+{
+    int i;
+
+    for (i = 0; i < l; i++) {
+        if (s[i] != '*' && s[i] != '?')
+            break;
+    }
+
+    return i < l;
+}
+
 static int ac_setup_dns(int ac, char *json, int lf)
 {
     char *data = NULL;
@@ -683,6 +695,7 @@ static int ac_setup_dns(int ac, char *json, int lf)
            break;
         if (ac == BL_JSON_DNS) {
             zval *id, *dom, *ver;
+            char *ds;
             int version = 0, s;
             id = zua_get_value_by_path(rule, ZUA_STR("ID"));
             ver = zua_get_value_by_path(rule, ZUA_STR("Version"));
@@ -691,11 +704,14 @@ static int ac_setup_dns(int ac, char *json, int lf)
                 break;
             if (!dom || !Z_STR_P(dom))
                 break;
-            s = strnlen(ZSTR_VAL(Z_STR_P(dom)), 255);
-            if (len + 8 + s + 1 + 1 >= MAX_RULE_SIZE)
+            ds = ZSTR_VAL(Z_STR_P(dom));
+            s = strnlen(ds, 255);
+            if (s <= 1 || !dns_is_valid_pattern(ds, s))
+                continue;
+            if (len + RULE_ID_SIZE + s + 1 + 1 >= MAX_RULE_SIZE)
                 break;
             strncpy(domain->id, ZSTR_VAL(Z_STR_P(id)), RULE_ID_SIZE);
-            strncpy(domain->name, ZSTR_VAL(Z_STR_P(dom)), s);
+            strncpy(domain->name, ds, s);
             domain->len = s;
             len += RULE_ID_SIZE + s + 1 + 1;
         } else {
