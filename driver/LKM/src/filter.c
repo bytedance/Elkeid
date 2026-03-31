@@ -358,10 +358,6 @@ static int hash_compare(image_hash_t *h1, image_hash_t *h2)
 {
     uint16_t i;
 
-    if (h1->size < h2->size)
-        return -1;
-    if (h1->size > h2->size)
-        return 1;
     if (h1->hlen < h2->hlen)
         return -1;
     if (h1->hlen > h2->hlen)
@@ -390,7 +386,7 @@ static int exist_rb_hash(struct rb_root *root, image_hash_t *hash)
             node = node->rb_right;
         else {
             strncpy(hash->id, data->hash.id, RULE_ID_SIZE);
-            return 1;
+	    return (!data->hash.size || data->hash.size == hash->size);
         }
     }
     return 0;
