@@ -611,8 +611,8 @@ static int ac_setup_blocklist(int ac, char *json, int len)
         if (!rule)
            break;
         if (ac == BL_JSON_EXE) {
-            zval *id, *exe, *cmd, *stdin, *stdout, *verstr;
-            char *items[4];
+            zval *id, *exe, *cmd, *stdin, *stdout, *verstr, *ppid_cmd, *ppid_tree;
+            char *items[EXE_RULE_NITEMS];
             int version = 0;
             id = zua_get_value_by_path(rule, ZUA_STR("ID"));
             exe = zua_get_value_by_path(rule, ZUA_STR("Exe"));
@@ -620,15 +620,19 @@ static int ac_setup_blocklist(int ac, char *json, int len)
             stdin = zua_get_value_by_path(rule, ZUA_STR("Stdin"));
             stdout = zua_get_value_by_path(rule, ZUA_STR("Stdout"));
             verstr = zua_get_value_by_path(rule, ZUA_STR("Version"));
+            ppid_cmd = zua_get_value_by_path(rule, ZUA_STR("ppid_cmd"));
+            ppid_tree = zua_get_value_by_path(rule, ZUA_STR("ppid_tree"));
             if (!id || !Z_STR_P(id))
                 break;
             items[0] = (exe && Z_STR_P(exe)) ? ZSTR_VAL(Z_STR_P(exe)) : NULL;
             items[1] = (cmd && Z_STR_P(cmd)) ? ZSTR_VAL(Z_STR_P(cmd)) : NULL;
             items[2] = (stdin && Z_STR_P(stdin)) ? ZSTR_VAL(Z_STR_P(stdin)) : NULL;
             items[3] = (stdout && Z_STR_P(stdout)) ? ZSTR_VAL(Z_STR_P(stdout)) : NULL;
+            items[4] = (ppid_cmd && Z_STR_P(ppid_cmd)) ? ZSTR_VAL(Z_STR_P(ppid_cmd)) : NULL;
+            items[5] = (ppid_tree && Z_STR_P(ppid_tree)) ? ZSTR_VAL(Z_STR_P(ppid_tree)) : NULL;
             if (verstr && Z_STR_P(verstr))
                 version = atoi(ZSTR_VAL(Z_STR_P(verstr)));
-            rc = ac_pack_rule(ZSTR_VAL(Z_STR_P(id)), version, 4, items);
+            rc = ac_pack_rule(ZSTR_VAL(Z_STR_P(id)), version, EXE_RULE_NITEMS, items);
         } else if (ac == BL_JSON_MD5) {
             image_hash_t hash;
             zval *id, *md5, *size;

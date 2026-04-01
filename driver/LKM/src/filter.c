@@ -386,7 +386,7 @@ static int exist_rb_hash(struct rb_root *root, image_hash_t *hash)
             node = node->rb_right;
         else {
             strncpy(hash->id, data->hash.id, RULE_ID_SIZE);
-	    return (!data->hash.size || data->hash.size == hash->size);
+            return (!data->hash.size || data->hash.size == hash->size);
         }
     }
     return 0;
@@ -555,7 +555,7 @@ struct rule_item {
 
 struct rule_node {
     struct hlist_node   link;
-    struct rule_item    items[4];
+    struct rule_item    items[EXE_RULE_NITEMS];
     char                id[RULE_ID_SIZE];
     int16_t             nitems;
     int16_t             size;
@@ -679,7 +679,7 @@ static struct rule_node *rule_alloc(exe_rule_flex_t *rule)
     struct rule_node *nod;
     int next = 0, lnod, data, i;
 
-    if (rule->nitems != 4)
+    if (rule->nitems != EXE_RULE_NITEMS)
         return NULL;
 
     for (i = 0; i < rule->nitems; i++) {
@@ -825,12 +825,15 @@ static void rule_enum(struct hlist_head *list, rwlock_t *lock)
     printk("enuming exe/cmd rules: %px\n", list);
     hlist_for_each(ent, list) {
         nod = hlist_entry(ent, struct rule_node, link);
-        printk("%4d: %20.20s %d %s|%s|%s|%s\n",
+        printk("%4d: %20.20s %d %s|%s|%s|%s|%s|%s\n",
                 i++, nod->id, nod->nitems,
                 nod->items[0].item ? nod->items[0].item : "(null)",
                 nod->items[1].item ? nod->items[1].item : "(null)",
                 nod->items[2].item ? nod->items[2].item : "(null)",
-                nod->items[3].item ? nod->items[3].item : "(null)");
+                nod->items[3].item ? nod->items[3].item : "(null)",
+                nod->items[4].item ? nod->items[4].item : "(null)",
+                nod->items[5].item ? nod->items[5].item : "(null)"
+            );
     }
     read_unlock_irqrestore(lock, flags);
 }

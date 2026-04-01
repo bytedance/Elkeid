@@ -84,6 +84,7 @@ typedef struct exe_rule_item {
     uint16_t len;
 } __attribute__((packed)) exe_rule_item_t;
 
+#define EXE_RULE_NITEMS (6)
 typedef struct exe_rule_flex {
     uint16_t                size;   /* total size */
     uint16_t                nitems; /* num of items */
@@ -91,12 +92,14 @@ typedef struct exe_rule_flex {
     char                    id[RULE_ID_SIZE];  /* rule id */
 
     union {
-        exe_rule_item_t     items[4];
+        exe_rule_item_t     items[EXE_RULE_NITEMS];
         struct {
             exe_rule_item_t exe;
             exe_rule_item_t cmd;
             exe_rule_item_t stdin;
             exe_rule_item_t stdout;
+            exe_rule_item_t ppid_cmd;
+            exe_rule_item_t ppid_tree;
         };
     };
     char                    data[];

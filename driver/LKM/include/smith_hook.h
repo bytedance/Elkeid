@@ -96,14 +96,16 @@ struct smith_img;
 struct smith_tid {
     struct hlist_hnod   st_node;
     uint64_t            st_start;   /* start time of current task */
+    uint64_t            st_root;    /* root fs & mnt_namespace id */
     uint32_t            st_tgid;    /* process id / thread group id */
     uint32_t            st_sid;     /* session id (when being created) */
     char               *st_pid_tree;/* pid tree strings */
+    char               *st_cmd;     /* cmdline */
     struct smith_img   *st_img;     /* cache of exe path */
-    uint64_t            st_root;    /* root fs & mnt_namespace id */
     uint16_t            st_size_pidtree; /* buffer size of pidtree */
     uint16_t            st_len_pidtree; /* real string size of pidtree */
     uint16_t            st_len_current_pid; /* string size of current item */
+    uint16_t            st_len_cmd; /* size of cmdline in bytes */
 };
 
 static inline uint64_t smith_task_start_time(struct task_struct *task) {

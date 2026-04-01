@@ -1674,6 +1674,14 @@ static int smith_trace_process_exec(struct execve_data *data, int rc)
     tid = smith_lookup_tid(current);
     if (tid) {
         int i;
+
+        if (!tid->st_cmd) {
+            tid->st_cmd = data->argv;
+            data->argv = NULL;
+            tid->st_len_cmd = data->len_argv;
+            printk("pidtree: %s cmd: %s\n", tid->st_pid_tree, tid->st_cmd);
+        }
+
         // exe filter check
         if (smith_is_exe_trusted(tid->st_img))
             goto out;
@@ -1724,7 +1732,7 @@ static int smith_trace_process_exec(struct execve_data *data, int rc)
 
     if (ip.sa_family == AF_INET) {
         execve_print(pname,
-                     exe_path, data->argv,
+                     exe_path, tid->st_cmd,
                      tmp_stdin, tmp_stdout,
                      ip.dip4, ip.dport, ip.sip4, ip.sport,
                      pid_tree, tty_name, socket_pid,
@@ -1735,7 +1743,7 @@ static int smith_trace_process_exec(struct execve_data *data, int rc)
 #if IS_ENABLED(CONFIG_IPV6)
     } else if (ip.sa_family == AF_INET6) {
         execve6_print(pname,
-                      exe_path, data->argv,
+                      exe_path, tid->st_cmd,
                       tmp_stdin, tmp_stdout,
                       &ip.dip6, ip.dport, &ip.sip6, ip.sport,
                       pid_tree, tty_name, socket_pid,
@@ -1746,7 +1754,7 @@ static int smith_trace_process_exec(struct execve_data *data, int rc)
 #endif
     } else {
         execve_nosocket_print(pname,
-                              exe_path, data->argv,
+                              exe_path, tid->st_cmd,
                               tmp_stdin, tmp_stdout,
                               pid_tree, tty_name,
                               data->ssh_connection,
@@ -4884,6 +4892,8 @@ static void smith_release_tid(struct hlist_root *hr, struct hlist_hnod *hnod)
         smith_put_img(tid->st_img);
     if (tid->st_pid_tree)
         smith_kfree(tid->st_pid_tree);
+    if (tid->st_cmd)
+        smith_kfree(tid->st_cmd);
     hlist_free_node(hr, hnod);
 }
 
@@ -6796,15 +6806,18 @@ static int smith_exec_load(struct linux_binprm *bprm)
 static int smith_exec_load(struct linux_binprm *bprm, struct pt_regs *regs)
 #endif
 {
+    struct smith_tid *tid = NULL;
     char *file_path = (char *)bprm->filename;
     char *buffer = NULL, *args = NULL;
     char *stdin_buf = NULL, *stdout_buf = NULL;
     struct smith_img *img = NULL;
     struct file *file;
-    struct exe_item ei[4] = {{0}, {0}, {0}, {0}};
+    struct exe_item ei[EXE_RULE_NITEMS] = {{0}, {0}, {0}, {0}, {0}, {0}};
     image_hash_t md5 = {0};
     char id[RULE_ID_SIZE + 4] = {0};
     int rc = -ENOEXEC; /* continue to next bprm checking */
+
+    tid = smith_lookup_tid(current);
 
     /* always do md5 hash computing as required */
     if (bprm->file) {
@@ -6877,8 +6890,16 @@ static int smith_exec_load(struct linux_binprm *bprm, struct pt_regs *regs)
     if (ei[1].item)
         ei[1].size = strlen(ei[1].item);
 
+    if (tid->st_cmd) {
+        ei[4].item = tid->st_cmd;
+        ei[4].size = tid->st_len_cmd;
+    }
+    if (tid->st_pid_tree) {
+        ei[5].item = tid->st_pid_tree;
+        ei[5].size = tid->st_len_pidtree;
+    }
     /* checking exe/cmd rules */
-    if (g_flt_ops.rule_check(ei, 4, id)) {
+    if (g_flt_ops.rule_check(ei, EXE_RULE_NITEMS, id)) {
         exe_block_notify(id, file_path, args);
         rc = -EACCES;
         goto errorout;
