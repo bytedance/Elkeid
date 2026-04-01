@@ -523,7 +523,10 @@ static int ac_pack_md5(image_hash_t *md5, char *id, char *size, char *hash)
         return -EINVAL;
     strncpy(&md5->id[0], &id[0], RULE_ID_SIZE);
     md5->hlen = 16;
-    md5->size = (uint64_t)(long)size;
+    if (size)
+        md5->size = (uint64_t)(long)size;
+    else
+        md5->size = 0;
     md5->hash.v64[0] = md5->hash.v64[1] = 0;
     for (i = 0; i < 16; i++) {
         uint8_t b1, b2;
@@ -639,11 +642,10 @@ static int ac_setup_blocklist(int ac, char *json, int len)
             id = zua_get_value_by_path(rule, ZUA_STR("ID"));
             md5 = zua_get_value_by_path(rule, ZUA_STR("M2MD5"));
             size = zua_get_value_by_path(rule, ZUA_STR("Size"));
-            if (!id || !md5 || !size || !Z_STR_P(id) ||
-                !Z_STR_P(md5) || !Z_STR_P(size))
+            if (!id || !md5 || !Z_STR_P(id) || !Z_STR_P(md5))
                 break;
             rc = ac_pack_md5(&hash, ZSTR_VAL(Z_STR_P(id)),
-                            (char *)Z_STR_P(size),
+                            size ? (char *)Z_STR_P(size) : NULL,
                             ZSTR_VAL(Z_STR_P(md5)));
         }
     }
