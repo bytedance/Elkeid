@@ -1675,13 +1675,6 @@ static int smith_trace_process_exec(struct execve_data *data, int rc)
     if (tid) {
         int i;
 
-        if (!tid->st_cmd) {
-            tid->st_cmd = data->argv;
-            data->argv = NULL;
-            tid->st_len_cmd = data->len_argv;
-            printk("pidtree: %s cmd: %s\n", tid->st_pid_tree, tid->st_cmd);
-        }
-
         // exe filter check
         if (smith_is_exe_trusted(tid->st_img))
             goto out;
@@ -1732,7 +1725,7 @@ static int smith_trace_process_exec(struct execve_data *data, int rc)
 
     if (ip.sa_family == AF_INET) {
         execve_print(pname,
-                     exe_path, tid->st_cmd,
+                     exe_path, data->argv,
                      tmp_stdin, tmp_stdout,
                      ip.dip4, ip.dport, ip.sip4, ip.sport,
                      pid_tree, tty_name, socket_pid,
@@ -1743,7 +1736,7 @@ static int smith_trace_process_exec(struct execve_data *data, int rc)
 #if IS_ENABLED(CONFIG_IPV6)
     } else if (ip.sa_family == AF_INET6) {
         execve6_print(pname,
-                      exe_path, tid->st_cmd,
+                      exe_path, data->argv,
                       tmp_stdin, tmp_stdout,
                       &ip.dip6, ip.dport, &ip.sip6, ip.sport,
                       pid_tree, tty_name, socket_pid,
@@ -1754,7 +1747,7 @@ static int smith_trace_process_exec(struct execve_data *data, int rc)
 #endif
     } else {
         execve_nosocket_print(pname,
-                              exe_path, tid->st_cmd,
+                              exe_path, data->argv,
                               tmp_stdin, tmp_stdout,
                               pid_tree, tty_name,
                               data->ssh_connection,
@@ -4839,6 +4832,50 @@ static void smith_update_comm(struct smith_tid *tid, char *comm_new)
     tid->st_len_current_pid = n;
 }
 
+static void smith_build_cmdline(struct smith_tid *tid, struct task_struct *task)
+{
+    unsigned long args, larg, i;
+    char *parg;
+
+    /* query arg and env mmap sections */
+    if (!task->mm)
+        return;
+    task_lock(task);
+    args = task->mm->arg_start;
+    if (task->mm->arg_end > args)
+        larg = task->mm->arg_end - args;
+    else
+        larg = 0;
+    task_unlock(task);
+
+    /* query argv of current task */
+    if (larg > SMITH_MAX_CMDLINE)
+        larg = SMITH_MAX_CMDLINE;
+    if (!larg)
+        goto errorout;
+    parg = smith_kzalloc(larg < 16 ? 16 : larg, GFP_ATOMIC);
+    if (!parg)
+        goto errorout;
+    i = larg - 1 - smith_copy_from_user(parg, (void *)args, larg - 1);
+    if (i == 0 || i >= larg) {
+        smith_kfree(parg);
+    } else {
+        unsigned long j = 0;
+        while(j < i) {
+            if (!parg[j])
+                parg[j] = ' ';
+            j++;
+        }
+        parg[i] = 0;
+        tid->st_cmd= smith_strim(parg, i);
+        tid->st_len_cmd = strlen(parg);
+    }
+
+errorout:
+
+    return;
+}
+
 static int smith_build_tid(struct smith_tid *tid, struct task_struct *task)
 {
     tid->st_start = smith_task_start_time(task);
@@ -4850,6 +4887,7 @@ static int smith_build_tid(struct smith_tid *tid, struct task_struct *task)
     if (!tid->st_img)
         return -ENOMEM;
     smith_build_pid_tree(tid, task);
+    smith_build_cmdline(tid, task);
     tid->st_root = smith_query_mntns_id(task);
     return 0;
 }
