@@ -7367,7 +7367,8 @@ static int smith_getaddrinfo64_ret_handler(struct uprobe_consumer *self, unsigne
     if (!nod)
         return 0;
 
-    if (g_flt_ops.domain_check(1, nod->name, id)) {
+    if (g_flt_ops.domain_check(0, nod->name, id) == 0 &&
+        g_flt_ops.domain_check(1, nod->name, id)) {
         struct smith_tid *tid = smith_lookup_tid(current);
         if (tid) {
             exe_warn_dns_print(tid->st_img->si_path, id, nod->name);

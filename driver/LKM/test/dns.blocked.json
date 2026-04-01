@@ -1,0 +1,23 @@
+{
+    "R":[
+        {
+            "ID":"BD012345678901200001",
+            "Version": "1",
+            "Domain":"*.dynox.cn"
+        },
+        {
+            "ID":"BD012345678901200002",
+            "Version": "0",
+            "Domain": "www.microsoft.com"
+	},
+        {
+            "ID":"BD012345678901200003",
+            "Domain": "*baidu*"
+	},
+        {
+            "ID":"BD012345678901200004",
+            "Version":"",
+            "Domain": "*163.com"
+	}
+    ]
+}

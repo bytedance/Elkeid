@@ -673,7 +673,7 @@ static int ac_setup_dns(int ac, char *json, int lf)
     zval *response = NULL, *rules;
     int i, rc = -1, len = 4, cmd;
 
-    if (ac != BL_JSON_DNS)
+    if (ac != BL_JSON_DNS && ac != AL_JSON_DNS)
         goto out;
 
     data = malloc(MAX_RULE_SIZE);
@@ -693,41 +693,42 @@ static int ac_setup_dns(int ac, char *json, int lf)
 
     for (i = 0; ; i++) {
         zval *rule;
+        zval *id, *dom, *ver;
+        char *ds;
+        int version = 0, s;
         domain = (struct dns_domain *)&data[len];
         rule = zua_get_value_by_index(rules, i);
         if (!rule)
            break;
-        if (ac == BL_JSON_DNS) {
-            zval *id, *dom, *ver;
-            char *ds;
-            int version = 0, s;
-            id = zua_get_value_by_path(rule, ZUA_STR("ID"));
-            ver = zua_get_value_by_path(rule, ZUA_STR("Version"));
-            dom = zua_get_value_by_path(rule, ZUA_STR("Domain"));
-            if (!id || !Z_STR_P(id))
-                break;
-            if (!dom || !Z_STR_P(dom))
-                break;
-            ds = ZSTR_VAL(Z_STR_P(dom));
-            s = strnlen(ds, 255);
-            if (s <= 1 || !dns_is_valid_pattern(ds, s))
-                continue;
-            if (len + RULE_ID_SIZE + s + 1 + 1 >= MAX_RULE_SIZE)
-                break;
-            strncpy(domain->id, ZSTR_VAL(Z_STR_P(id)), RULE_ID_SIZE);
-            strncpy(domain->name, ds, s);
-            domain->len = s;
-            len += RULE_ID_SIZE + s + 1 + 1;
-        } else {
+        id = zua_get_value_by_path(rule, ZUA_STR("ID"));
+        ver = zua_get_value_by_path(rule, ZUA_STR("Version"));
+        dom = zua_get_value_by_path(rule, ZUA_STR("Domain"));
+        if (!id || !Z_STR_P(id))
             break;
-        }
+        if (!dom || !Z_STR_P(dom))
+            break;
+        ds = ZSTR_VAL(Z_STR_P(dom));
+        s = strnlen(ds, 255);
+        if (s <= 1 || !dns_is_valid_pattern(ds, s))
+            continue;
+        if (len + RULE_ID_SIZE + s + 1 + 1 >= MAX_RULE_SIZE)
+            break;
+        strncpy(domain->id, ZSTR_VAL(Z_STR_P(id)), RULE_ID_SIZE);
+        strncpy(domain->name, ds, s);
+        domain->len = s;
+        len += RULE_ID_SIZE + s + 1 + 1;
     }
 
     if (len <= 4)
         goto out;
 
     *((int *)data) = len - 4;
-    cmd = TRACE_IOCTL_FILTER + DNS_BLOCK_LIST;
+    if (ac == BL_JSON_DNS)
+        cmd = TRACE_IOCTL_FILTER + DNS_BLOCK_LIST;
+    else if (ac == AL_JSON_DNS)
+        cmd = TRACE_IOCTL_FILTER + DNS_ALLOW_LIST;
+    else
+        goto out;
     rc = ioctl(g_tb_trace.fd - 1, cmd, data);
 out:
     if (response)
@@ -758,10 +759,10 @@ int ac_setup(int ac, char *item, int len)
     if (!item)
         return -1;
 
+    if (ac == BL_JSON_DNS || ac == AL_JSON_DNS)
+        return ac_setup_dns(ac, item, len);
     if (ac >= AL_TYPE_ARGV && ac <= AL_TYPE_PSAD)
         return ac_setup_allowlist(ac, item, len);
-    if (ac == BL_JSON_DNS)
-        return ac_setup_dns(ac, item, len);
     if (ac > BL_JSON_DNS && ac <= BL_JSON_MD5)
         return ac_setup_blocklist(ac, item, len);
     return -2;
@@ -805,6 +806,8 @@ int ac_clear_allowlist(int ac)
         cmd = TRACE_IOCTL_FILTER + DEL_ALL_EXECVE_EXE_ALLOWLIST;
     else if (ac == AL_TYPE_PSAD)
         cmd = TRACE_IOCTL_FILTER + PSAD_IP_LIST;
+    else if (ac == AL_JSON_DNS)
+        cmd = TRACE_IOCTL_FILTER + DNS_ALLOW_LIST;
     else
         return -2;
 
@@ -831,9 +834,9 @@ int ac_clear_blocklist(int ac)
 
 int ac_clear(int ac)
 {
-    if (ac >= AL_TYPE_ARGV && ac <= AL_TYPE_PSAD)
+    if (ac >= AL_TYPE_ARGV && ac <= AL_TYPE_MAX)
         return ac_clear_allowlist(ac);
-    if (ac >= BL_JSON_DNS && ac <= BL_JSON_MD5)
+    if (ac >= BL_JSON_DNS && ac <= BL_TYPE_MAX)
         return ac_clear_blocklist(ac);
     return -2;
 }

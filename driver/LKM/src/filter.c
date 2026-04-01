@@ -845,15 +845,15 @@ static int rule_check(struct exe_item *items, int nitems, char *id)
 }
 
 /*
- * DNS blocking: domain name matching
+ * DNS blocking and bypassing: domain name matching
  *
  * wildcard support of mutiple '*', case insensitive
  */
-static struct dns_blocked_domain {
+static struct dns_domain_list {
     struct rcu_head    rcu;
     int                size;
     struct dns_domain  list[0];
-} *g_blocked_domains;
+} *g_blocked_domains, *g_allowed_domains;
 
 static void dns_free_list_rcu(struct rcu_head *rcu)
 {
@@ -894,14 +894,16 @@ static int wcs_is_match(char *p, char *s)
 
 static int dns_check_domain(int blocked, char *name, char *id)
 {
-    struct dns_blocked_domain *list;
+    struct dns_domain_list *list;
     int rc = 0, next = 0;
 
     rcu_read_lock();
     if (blocked) {
-        /* just skip if there's no blocked list */
         list = rcu_dereference(g_blocked_domains);
+    } else {
+        list = rcu_dereference(g_allowed_domains);
     }
+    /* just skip if there's no domain list */
     if (!list) {
         rcu_read_unlock();
         return 0;
@@ -912,8 +914,9 @@ static int dns_check_domain(int blocked, char *name, char *id)
         if (wcs_is_match(domain->name, name)) {
             strncpy(id, domain->id, RULE_ID_SIZE);
             rc = 1;
-            printk("BL_DNS rule matched: id=%20.20s dom=%s/%s next:%d/%d\n",
-                    domain->id, domain->name, name, next, list->size);
+            printk("%s rule matched: id=%20.20s dom=%s/%s next:%d/%d\n",
+                    blocked ? "BL_DNS" : "AL_DNS", domain->id,
+                    domain->name, name, next, list->size);
             break;
         }
         next += domain->len + 1 + 1 + RULE_ID_SIZE;
@@ -923,17 +926,17 @@ static int dns_check_domain(int blocked, char *name, char *id)
     return rc;
 }
 
-static int dns_free_list(void)
+static int dns_free_domain_list(struct dns_domain_list **head)
 {
-    struct dns_blocked_domain *list = READ_ONCE(g_blocked_domains);
+    struct dns_domain_list *list = READ_ONCE(*head);
 
     if (!list)
         return 0;
 
     do {
-        if (cmpxchg(&g_blocked_domains, list, NULL) == list)
+        if (cmpxchg(head, list, NULL) == list)
             break;
-        list = READ_ONCE(g_blocked_domains);
+        list = READ_ONCE(*head);
     } while (list);
 
     if (list)
@@ -942,20 +945,76 @@ static int dns_free_list(void)
     return 1;
 }
 
-static int dns_set_list(struct dns_blocked_domain *newlist)
+static int dns_free_list(int blocked)
 {
-    struct dns_blocked_domain *list = READ_ONCE(g_blocked_domains);
+    if (blocked)
+        return dns_free_domain_list(&g_blocked_domains);
+    else
+        return dns_free_domain_list(&g_allowed_domains);
+}
 
-    do {
-        if (cmpxchg(&g_blocked_domains, list, newlist) == list)
-            break;
+static int dns_set_list(int blocked, struct dns_domain_list *newlist)
+{
+    struct dns_domain_list *list;
+
+    if (blocked) {
         list = READ_ONCE(g_blocked_domains);
-    } while (list);
+        do {
+            if (cmpxchg(&g_blocked_domains, list, newlist) == list)
+                break;
+            list = READ_ONCE(g_blocked_domains);
+        } while (list);
+    } else {
+        list = READ_ONCE(g_allowed_domains);
+        do {
+            if (cmpxchg(&g_allowed_domains, list, newlist) == list)
+                break;
+            list = READ_ONCE(g_allowed_domains);
+        } while (list);
+    }
 
     if (list)
         call_rcu(&list->rcu, dns_free_list_rcu);
 
     return 0;
+}
+
+static void dns_enum_list(void)
+{
+    struct dns_domain_list *list;
+    int next;
+
+    rcu_read_lock();
+    list = rcu_dereference(g_blocked_domains);
+    /* just skip if there's no domain list */
+    if (!list)
+        goto allowed_list;
+
+    next = 0;
+    while (next < list->size) {
+        struct dns_domain *domain = (void *)&list->list[0] + next;
+        printk("BL_DNS rule: id=%20.20s dom=%s next:%d/%d\n",
+                domain->id, domain->name, next, list->size);
+        next += domain->len + 1 + 1 + RULE_ID_SIZE;
+    }
+
+allowed_list:
+
+    list = rcu_dereference(g_allowed_domains);
+    /* just skip if there's no domain list */
+    if (!list) {
+        rcu_read_unlock();
+        return;
+    }
+
+    next = 0;
+    while (next < list->size) {
+        struct dns_domain *domain = (void *)&list->list[0] + next;
+        printk("AL_DNS rule: id=%20.20s dom=%s next:%d/%d\n",
+                domain->id, domain->name, next, list->size);
+        next += domain->len + 1 + 1 + RULE_ID_SIZE;
+    }
+    rcu_read_unlock();
 }
 
 /*
@@ -1218,15 +1277,24 @@ static int filter_ioctl_internal(int cmd, char *data, int len)
             rule_enum(&exe_rule_list, &exe_rule_lock);
             rc = 0;
             goto out;
+
         case PSAD_IP_LIST:
             rc = psad_set_ip_list(data, len);
             if (rc > 0)
                 data = NULL;
             goto out;
+
         case DNS_BLOCK_LIST:
-            // smith_hexdump(data, len);
-            rc = dns_set_list((void *)data);
+            rc = dns_set_list(1, (void *)data);
             data = NULL;
+            goto out;
+        case DNS_ALLOW_LIST:
+            rc = dns_set_list(0, (void *)data);
+            data = NULL;
+            goto out;
+        case DNS_ENUM_LIST:
+            dns_enum_list();
+            rc = 0;
             goto out;
     }
 
@@ -1311,7 +1379,10 @@ static int filter_ioctl(int cmd, const __user char *buf)
         psad_ip6_clear();
         return 0;
     } else if (cmd == DNS_BLOCK_LIST && !buf) {
-        dns_free_list();
+        dns_free_list(1);
+        return 0;
+    } else if (cmd == DNS_ALLOW_LIST && !buf) {
+        dns_free_list(0);
         return 0;
     }
 
@@ -1347,14 +1418,14 @@ static int filter_ioctl(int cmd, const __user char *buf)
             skip = offsetof(struct psad_ip6_list, list);
             len = (list.nips * 4 + 2) * sizeof(uint32_t) + skip;
         }
-    } else if (cmd == DNS_BLOCK_LIST) {
+    } else if (cmd == DNS_BLOCK_LIST || cmd == DNS_ALLOW_LIST) {
         if (smith_copy_from_user(&len, buf, 4))
             goto errorout;
         if (len < 26 || len >= 65536) {
             printk("blocked domain list: invalid length.\n");
             goto errorout;
         }
-        skip = offsetof(struct dns_blocked_domain, size);
+        skip = offsetof(struct dns_domain_list, size);
         len += skip + 4;
     } else {
         len = strnlen_user(buf, ALLOWLIST_NODE_MAX);
@@ -1423,6 +1494,9 @@ static int filter_store(const char *buf, int len)
     } else if (cmd == IMAGE_EXE_ENUM) {
         rule_enum(&exe_rule_list, &exe_rule_lock);
         goto errorout;
+    } else if (cmd == DNS_ENUM_LIST) {
+        dns_enum_list();
+        goto errorout;
     } else if (cmd == REGISTER_BINFMT) {
         rc = smith_register_exec_load();
         goto errorout;
@@ -1486,8 +1560,7 @@ static void filter_exit(void)
     del_all_execve_argv_allowlist();
     image_md5_clear();
     rule_clear(&exe_rule_list, &exe_rule_lock);
-    if (psad_ip4_clear() + psad_ip6_clear() + dns_free_list()) {
-        rcu_barrier();
+    if (psad_ip4_clear() + psad_ip6_clear() + dns_free_list(0) + dns_free_list(1)) {
         synchronize_rcu();
     }
 }

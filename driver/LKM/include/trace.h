@@ -39,6 +39,9 @@
 #define UNREGISTER_BINFMT 0x55              /* U */
 #define PSAD_IP_LIST   0x4e                 /* N */
 #define DNS_BLOCK_LIST 87                   /* W */
+#define DNS_ALLOW_LIST 119                  /* w */
+#define DNS_ENUM_LIST 76                    /* L */
+
 
 /* max length of rule id number: digits or characters */
 #define RULE_ID_SIZE  (20)
@@ -248,10 +251,14 @@ void ac_fini(int dev);
 /* 设置端口扫描白名单，目前只支持ipv4设置，不支持查询、ipv6 */
 #define AL_TYPE_PSAD (0xA3)
 
+#define AL_JSON_DNS  (0xA4) /* permitted domain list */
+#define AL_TYPE_MAX  (0xA4)
+
 /* blocklist types */
-#define BL_JSON_DNS  (0xB0)
+#define BL_JSON_DNS  (0xB0) /* forbidden domain list */
 #define BL_JSON_EXE  (0xB1) /* 同一json可包含命令行规则及可执行文件路径规则，有限通配符支持 */
 #define BL_JSON_MD5  (0xB2)
+#define BL_TYPE_MAX  (0xB2)
 
 /* 设置规则，支持list或json格式 */
 int ac_setup(int ac, char *ptr, int len);

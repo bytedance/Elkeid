@@ -125,11 +125,11 @@ out:
         free(data);
 }
 
-static void process_block_dns(char *name)
+static void process_blocked_dns(char *name)
 {
     char *data = NULL;
     FILE *fp;
-    int len;
+    int len, rc;
 
     fp = fopen(name, "rb");
     if (!fp)
@@ -142,7 +142,37 @@ static void process_block_dns(char *name)
         goto out;
     fread(data, 1, len, fp);
     data[len] = 0;
-    ac_setup(BL_JSON_DNS, data, len);
+    rc = ac_setup(BL_JSON_DNS, data, len);
+    if (rc)
+        printf("BL_JSON_DNS failed with %d %d %s\n", rc, len ,data);
+
+out:
+    if (fp)
+        fclose(fp);
+    if (data)
+        free(data);
+}
+
+static void process_allowed_dns(char *name)
+{
+    char *data = NULL;
+    FILE *fp;
+    int len, rc;
+
+    fp = fopen(name, "rb");
+    if (!fp)
+        return;
+    fseek(fp, 0, SEEK_END);
+    len = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    data = malloc(len + 1);
+    if (!data)
+        goto out;
+    fread(data, 1, len, fp);
+    data[len] = 0;
+    rc = ac_setup(AL_JSON_DNS, data, len);
+    if (rc)
+        printf("AL_JSON_DNS failed with %d %d %s\n", rc, len ,data);
 
 out:
     if (fp)
@@ -379,7 +409,8 @@ int main(int argc, char *argv[])
     ac_clear(BL_JSON_EXE);
     process_block_exe("exe1.json");
 
-    process_block_dns("dns.json");
+    process_blocked_dns("dns.blocked.json");
+    process_allowed_dns("dns.allowed.json");
 
     psad_set_ip4();
     psad_set_ip6();
