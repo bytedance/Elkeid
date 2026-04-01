@@ -6855,6 +6855,7 @@ static int smith_exec_load(struct linux_binprm *bprm, struct pt_regs *regs)
     char id[RULE_ID_SIZE + 4] = {0};
     int rc = -ENOEXEC; /* continue to next bprm checking */
 
+    /* locate tid for current (parent) process */
     tid = smith_lookup_tid(current);
 
     /* always do md5 hash computing as required */
@@ -6928,11 +6929,11 @@ static int smith_exec_load(struct linux_binprm *bprm, struct pt_regs *regs)
     if (ei[1].item)
         ei[1].size = strlen(ei[1].item);
 
-    if (tid->st_cmd) {
+    if (tid && tid->st_cmd) {
         ei[4].item = tid->st_cmd;
         ei[4].size = tid->st_len_cmd;
     }
-    if (tid->st_pid_tree) {
+    if (tid && tid->st_pid_tree) {
         ei[5].item = tid->st_pid_tree;
         ei[5].size = tid->st_len_pidtree;
     }
@@ -6991,6 +6992,8 @@ errorout:
         smith_kfree(stdout_buf);
     if (img)
         smith_put_img(img);
+    if (tid)
+        smith_put_tid(tid);
     return rc;
 }
 
