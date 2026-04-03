@@ -85,6 +85,10 @@ FS_FILE_REF := $(shell sh -c "grep -s file_ref_t $(FS_H_FILES)")
 ifneq ($(FS_FILE_REF),)
 ccflags-y += -D SMITH_FS_FILE_REF
 endif
+FS_KERNEL_READ_LEGACY := $(shell sh -c " grep -s -E 'kernel_read\(struct\ file \*, loff_t,.+\)' $(FS_H_FILES)")
+ifneq ($(FS_KERNEL_READ_LEGACY),)
+ccflags-y += -D SMITH_FS_KERNEL_READ_LEGACY
+endif
 
 PROCFS_H_FILES := $(shell find -L $(K_I_PATH) -path "*/linux/proc_fs.h") /dev/null
 PROCNS_H_FILES := $(shell find -L $(K_I_PATH) -path "*/linux/proc_ns.h") /dev/null
