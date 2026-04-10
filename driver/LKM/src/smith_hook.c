@@ -6016,6 +6016,14 @@ static int smith_unregister_tracepoint(struct smith_tracepoint *tp)
 }
 #endif
 
+/*
+ * smith_get_hash_file():
+ * max length of file content to read and compute MD5 hash
+ * default value: 50M, so min(file_size, 50M) is being used
+ */
+static int md5_max_mb = 50;
+module_param(md5_max_mb, int, S_IRUSR|S_IRGRP|S_IROTH);
+
 static int __init smith_init_cache(void)
 {
     int rc, nimgs, ntids;
@@ -6024,6 +6032,12 @@ static int __init smith_init_cache(void)
     rc = smith_assert_tracepoints();
     if (rc)
         goto errorout;
+
+    /* validate max md5 hash file size */
+    if (md5_max_mb < 1) /* 1M */
+        md5_max_mb = 1;
+    else if (md5_max_mb > 4096) /* 4G */
+        md5_max_mb = 4096;
 
     /* check dns parameters */
     smith_check_dns_params();
@@ -6600,7 +6614,7 @@ static int smith_get_hash_file(struct file *file, image_hash_t *hash)
             printk("md5 update failure: rc=%zd\n", rc);
             goto out;
         }
-    } while (off < 1048576 * 2 && off < hash->size);
+    } while (off < 1048576ULL * md5_max_mb && off < hash->size);
 
     rc = smith_md5_final(&md5, (char *)&hash->hash);
     if (rc) {
