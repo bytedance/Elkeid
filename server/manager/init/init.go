@@ -129,7 +129,7 @@ func initDefault() error {
 
 	infra.HttpPort = infra.Conf.GetInt("http.port")
 	infra.ApiAuth = infra.Conf.GetBool("http.apiauth.enable")
-	infra.Secret = infra.Conf.GetString("http.apiauth.secret")
+	infra.Secret = []byte(infra.Conf.GetString("http.apiauth.secret"))
 	infra.InnerAuth = infra.Conf.GetStringMapString("http.innerauth")
 
 	infra.SvrName = infra.Conf.GetString("server.name")

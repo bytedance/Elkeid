@@ -5,16 +5,17 @@ import (
 	"crypto/sha1"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/bytedance/Elkeid/server/manager/infra"
 	"github.com/bytedance/Elkeid/server/manager/infra/ylog"
 	"github.com/bytedance/Elkeid/server/manager/internal/login"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 	"github.com/rs/xid"
-	"io"
-	"net/http"
-	"strings"
-	"time"
 )
 
 var whiteUrlList = []string{
@@ -43,7 +44,7 @@ const (
 	JWTExpireMinute = 720
 )
 
-var APITokenSecret = []byte(infra.Secret)
+// var APITokenSecret = []byte(infra.Secret)
 
 func CreateToken(payload jwt.Claims, secret []byte) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)
@@ -115,7 +116,7 @@ func GeneralJwtToken(userName string) (string, error) {
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(JWTExpireMinute * time.Minute).Unix(),
 		},
-	}, APITokenSecret)
+	}, infra.Secret)
 }
 
 func GeneralSession() string {
@@ -161,7 +162,7 @@ func TokenAuth() gin.HandlerFunc {
 			}
 		} else {
 			//jwt
-			payload, err := VerifyToken(token, APITokenSecret)
+			payload, err := VerifyToken(token, infra.Secret)
 			if err != nil {
 				ylog.Errorf("AuthRequired", err.Error())
 				c.AbortWithStatus(http.StatusUnauthorized)

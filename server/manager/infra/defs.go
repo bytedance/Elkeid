@@ -125,7 +125,7 @@ var (
 	HttpPort  int
 	ApiAuth   bool
 	InnerAuth map[string]string
-	Secret    string
+	Secret    []byte
 
 	SvrName string
 	SvrAK   string
