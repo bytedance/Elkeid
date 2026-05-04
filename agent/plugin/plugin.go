@@ -172,8 +172,6 @@ func Sync(cfgs map[string]*proto.Config) (err error) {
 func Startup(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	defer zap.S().Info("plugin daemon will exit")
-	ticker := time.NewTicker(time.Minute)
-	defer ticker.Stop()
 	zap.S().Info("plugin daemon startup")
 	for {
 		select {
