@@ -31,14 +31,14 @@ def gen_job(vminfo):
             "continue-on-error": True,
             "steps": [
                 OrderedDict({
-                    "uses": "actions/checkout@v3",
+                    "uses": "actions/checkout@v4",
                     "with": {
                         "submodules": False
                     }
                 }),
                 OrderedDict({
                     "name": "Login to Docker Hub",
-                    "uses": "docker/login-action@v2",
+                    "uses": "docker/login-action@v3",
                     "with": {
                         "username": "${{secrets.DOCKERHUB_USERNAME}}",
                         "password": "${{secrets.DOCKERHUB_TOKEN}}"
@@ -57,7 +57,7 @@ def gen_job(vminfo):
 
                 OrderedDict({
                     "name": "Build "+vmname,
-                    "uses": "docker/build-push-action@v3",
+                    "uses": "docker/build-push-action@v6",
                     "timeout-minutes": 420,
                     "with": {
                         "context": ".",
@@ -74,7 +74,7 @@ def gen_job(vminfo):
                     "run": "echo Docker Hub Description Skipped",
                 }) if aarch.endswith("aarch64") else OrderedDict({
                     "name": "Docker Hub Description "+vmname,
-                    "uses": "peter-evans/dockerhub-description@v3",
+                    "uses": "peter-evans/dockerhub-description@v4",
                     "with": {
                         "username": "${{secrets.DOCKERHUB_USERNAME}}",
                         "password": "${{secrets.DOCKERHUB_TOKEN}}",
@@ -87,7 +87,7 @@ def gen_job(vminfo):
                     "name": "Extract "+vmname,
                     "if": "always()",
                     "id": "extract-"+vmname,
-                    "uses": "shrink/actions-docker-extract@v2",
+                    "uses": "shrink/actions-docker-extract@v3",
                     "with": {
                         "image": "elkeidteam/elkeid_driver_"+vmname+"_"+aarch+":latest",
                         "path": "/ko_output/."
@@ -95,7 +95,7 @@ def gen_job(vminfo):
                 }),
                 OrderedDict({
                     "name": "Upload "+vmname,
-                    "uses": "actions/upload-artifact@v3",
+                    "uses": "actions/upload-artifact@v4",
                     "if": "always()",
                     "with": {
                         "path": "${{steps.extract-"+vmname+".outputs.destination}}",
@@ -172,7 +172,7 @@ create_release_job = OrderedDict(
                 }
             }),
             OrderedDict({
-                    "uses": "actions/checkout@v3",
+                    "uses": "actions/checkout@v4",
                     "with": {
                         "submodules": False
                     }

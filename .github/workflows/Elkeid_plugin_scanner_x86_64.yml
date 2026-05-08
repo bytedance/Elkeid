@@ -14,13 +14,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1
 
     - name: Build Scanner
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       with:
         file: plugins/scanner/docker/Dockerfile.x86_64
         load: true
@@ -34,7 +34,7 @@ jobs:
         path: /Elkeid/plugins/scanner/output/.
 
     - name: Upload Scanner
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         path: ${{ steps.extract-scanner.outputs.destination }}
         name: scanner_x86_64
