@@ -355,7 +355,7 @@ func (w *leaderRaspWriter) Run() {
 
 			res, err := raspHbCol.BulkWrite(context.Background(), raspHbWrites, writeOption)
 			if err != nil {
-				ylog.Errorf("leaderRaspWriter_BulkWrite", "error:%s len:%s", err.Error(), len(raspHbWrites))
+				ylog.Errorf("leaderRaspWriter_BulkWrite", "error:%s len:%d", err.Error(), len(raspHbWrites))
 			} else {
 				ylog.Debugf("leaderRaspWriter_BulkWrite", "UpsertedCount:%d InsertedCount:%d ModifiedCount:%d ", res.UpsertedCount, res.InsertedCount, res.ModifiedCount)
 			}
@@ -367,7 +367,7 @@ func (w *leaderRaspWriter) Run() {
 			if count >= 100 {
 				res, err := raspHbCol.BulkWrite(context.Background(), raspHbWrites, writeOption)
 				if err != nil {
-					ylog.Errorf("leaderRaspWriter_BulkWrite", "error:%s len:%s", err.Error(), len(raspHbWrites))
+					ylog.Errorf("leaderRaspWriter_BulkWrite", "error:%s len:%d", err.Error(), len(raspHbWrites))
 				} else {
 					ylog.Debugf("leaderRaspWriter_BulkWrite", "UpsertedCount:%d InsertedCount:%d ModifiedCount:%d ", res.UpsertedCount, res.InsertedCount, res.ModifiedCount)
 				}
