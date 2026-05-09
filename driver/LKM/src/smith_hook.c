@@ -634,101 +634,6 @@ errorout:
     return mntns;
 }
 
-ssize_t (*smith_strscpy)(char *dest, const char *src, size_t count);
-
-static struct task_struct *(*smith_get_pid_task)(struct pid *pid, enum pid_type type);
-
-static int __init kernel_init_symbols(void)
-{
-    void *ptr;
-
-    ptr = (void *)smith_kallsyms_lookup_name("get_pid_task");
-    if (!ptr) {
-        printk("smith:fatal: get_pid_task not exported.\n");
-        return -ENODEV;
-    }
-    smith_get_pid_task = ptr;
-
-    /* sized_strscpy introduced from v6.9 to replace strscpy */
-    ptr = (void *)smith_kallsyms_lookup_name("strscpy");
-    if (!ptr)
-        ptr = (void *)smith_kallsyms_lookup_name("sized_strscpy");
-    if (!ptr)
-        ptr = (void *)smith_kallsyms_lookup_name("strlcpy");
-    if (!ptr) {
-        printk("smith:fatal: strs/lcpy not exported.\n");
-        return -ENODEV;
-    }
-    smith_strscpy = ptr;
-
-    ptr = (void *)smith_kallsyms_lookup_name("put_files_struct");
-    if (!ptr) {
-        printk("smith:fatal: put_files_struct not exported.\n");
-        return -ENODEV;
-    }
-    put_files_struct_sym = ptr;
-
-    ptr = (void *)smith_kallsyms_lookup_name("get_task_cred");
-    if (!ptr) {
-        printk("smith:fatal: get_task_cred not exported.\n");
-        return -ENODEV;
-    }
-    get_task_cred_sym = ptr;
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
-    ptr = (void *)smith_kallsyms_lookup_name("__put_task_struct");
-    if (!ptr) {
-        printk("smith:fatal: __put_task_struct not exported.\n");
-        return -ENODEV;
-    }
-    __smith_put_task_struct = ptr;
-#endif
-
-    ptr = (void *)smith_kallsyms_lookup_name("ktime_get_real");
-    if (!ptr) {
-        printk("smith:fatal: ktime_get_real not exported.\n");
-        return -ENODEV;
-    }
-    smith_ktime_get_real_ns = ptr;
-
-/*
- * prepend_path will throw a WARN for d_absolute_path if root
- * dentry is not properly named:
- *
- *			if (IS_ROOT(dentry) &&
- *			   (dentry->d_name.len != 1 ||
- *			    dentry->d_name.name[0] != '/')) {
- *				WARN(1, "Root dentry has weird name <%.*s>\n",
- *				     (int) dentry->d_name.len,
- *				     dentry->d_name.name);
- *			}
- * The above check was removed from 4.1.2. But anyway we won't
- * try d_absolute_path for these kerenls, d_path should be fine.
- */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
-    ptr = (void *)smith_kallsyms_lookup_name("d_absolute_path");
-    if (ptr)
-        smith_d_absolute_path = ptr;
-    else
-        smith_d_absolute_path = (void *)d_path;
-#else
-    smith_d_absolute_path = (void *)d_path;
-#endif
-
-    ptr = (void *)smith_kallsyms_lookup_name("mntns_operations");
-    if (ptr)
-        smith_mntns_ops = ptr;
-
-
-    ptr = (void *)smith_kallsyms_lookup_name("get_arg_page");
-    if (!ptr) {
-        printk("smith WARNING: get_arg_page not exported.\n");
-    }
-    smith_get_arg_page_krnl = ptr;
-
-    return 0;
-}
-
 static void to_print_privilege_escalation(const struct cred *current_cred, unsigned int p_cred_info[], char * pid_tree, int p_pid)
 {
     char *exe_path = DEFAULT_RET_STR;
@@ -2361,6 +2266,8 @@ out:
         smith_put_tid(tid);
     return 0;
 }
+
+ssize_t (*smith_strscpy)(char *dest, const char *src, size_t count);
 
 static int call_usermodehelper_exec_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
@@ -6156,6 +6063,7 @@ static void __init smith_fini_trace(void)
         unregister_tcp_connect_kprobe();
 }
 
+static struct task_struct *(*smith_get_pid_task)(struct pid *pid, enum pid_type type);
 
 static void __init smith_init_systemd_ns(void)
 {
@@ -6870,6 +6778,34 @@ static char *smith_query_args(struct linux_binprm *bprm)
     return cmd;
 }
 
+static char *smith_banner;
+module_param_named(banner, smith_banner, charp, S_IRUSR);
+MODULE_PARM_DESC(banner, "Warning banner messages");
+
+static int smith_prepare_binprm(struct linux_binprm *bprm)
+{
+    loff_t pos = 0;
+
+    memset(bprm->buf, 0, BINPRM_BUF_SIZE);
+    if (!bprm->file)
+        return 0;
+    return smith_kernel_read(bprm->file, bprm->buf, BINPRM_BUF_SIZE, &pos);
+}
+
+struct file *(*smith_open_exec)(char *name);
+
+static struct file *smith_open_banner(void)
+{
+    struct file *fp = NULL;
+
+    if (!smith_banner)
+        goto errorout;
+    fp = smith_open_exec(smith_banner);
+
+errorout:
+    return fp;
+}
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
 static int smith_exec_load(struct linux_binprm *bprm)
 #else
@@ -6971,8 +6907,17 @@ static int smith_exec_load(struct linux_binprm *bprm, struct pt_regs *regs)
     }
     /* checking exe/cmd rules */
     if (g_flt_ops.rule_check(ei, EXE_RULE_NITEMS, id)) {
+        struct file *fp = smith_open_banner();
         exe_block_notify(id, file_path, args);
-        rc = -EACCES;
+        if (fp) {
+            if (bprm->file)
+                fput(bprm->file);
+            bprm->file = fp;
+            if (smith_prepare_binprm(bprm) <= 0)
+                rc = -EACCES;
+        } else {
+            rc = -EACCES;
+        }
         goto errorout;
     }
 
@@ -7914,7 +7859,109 @@ MODULE_PARM_DESC(mem_stats, "memory usage of core objects of elkeid");
 #define SMITH_MODULE_ID(srcid, version) SMITH_SRCID(srcid, version)
 
 static char *smith_srcid = SMITH_MODULE_ID(LKM_SRCID, LKM_VNUM);
-module_param(smith_srcid, charp, S_IRUSR|S_IRGRP|S_IROTH);
+module_param_named(srcid, smith_srcid, charp, S_IRUSR|S_IRGRP|S_IROTH);
+
+static int __init kernel_init_symbols(void)
+{
+    void *ptr;
+
+    ptr = (void *)smith_kallsyms_lookup_name("open_exec");
+    if (!ptr) {
+        if (smith_banner) {
+            printk("smith:fatal: open_exec not exported.\n");
+            return -ENODEV;
+        } else {
+            printk("smith:warning: open_exec not exported.\n");
+        }
+    }
+    smith_open_exec = ptr;
+
+    ptr = (void *)smith_kallsyms_lookup_name("get_pid_task");
+    if (!ptr) {
+        printk("smith:fatal: get_pid_task not exported.\n");
+        return -ENODEV;
+    }
+    smith_get_pid_task = ptr;
+
+    /* sized_strscpy introduced from v6.9 to replace strscpy */
+    ptr = (void *)smith_kallsyms_lookup_name("strscpy");
+    if (!ptr)
+        ptr = (void *)smith_kallsyms_lookup_name("sized_strscpy");
+    if (!ptr)
+        ptr = (void *)smith_kallsyms_lookup_name("strlcpy");
+    if (!ptr) {
+        printk("smith:fatal: strs/lcpy not exported.\n");
+        return -ENODEV;
+    }
+    smith_strscpy = ptr;
+
+    ptr = (void *)smith_kallsyms_lookup_name("put_files_struct");
+    if (!ptr) {
+        printk("smith:fatal: put_files_struct not exported.\n");
+        return -ENODEV;
+    }
+    put_files_struct_sym = ptr;
+
+    ptr = (void *)smith_kallsyms_lookup_name("get_task_cred");
+    if (!ptr) {
+        printk("smith:fatal: get_task_cred not exported.\n");
+        return -ENODEV;
+    }
+    get_task_cred_sym = ptr;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 39)
+    ptr = (void *)smith_kallsyms_lookup_name("__put_task_struct");
+    if (!ptr) {
+        printk("smith:fatal: __put_task_struct not exported.\n");
+        return -ENODEV;
+    }
+    __smith_put_task_struct = ptr;
+#endif
+
+    ptr = (void *)smith_kallsyms_lookup_name("ktime_get_real");
+    if (!ptr) {
+        printk("smith:fatal: ktime_get_real not exported.\n");
+        return -ENODEV;
+    }
+    smith_ktime_get_real_ns = ptr;
+
+/*
+ * prepend_path will throw a WARN for d_absolute_path if root
+ * dentry is not properly named:
+ *
+ *			if (IS_ROOT(dentry) &&
+ *			   (dentry->d_name.len != 1 ||
+ *			    dentry->d_name.name[0] != '/')) {
+ *				WARN(1, "Root dentry has weird name <%.*s>\n",
+ *				     (int) dentry->d_name.len,
+ *				     dentry->d_name.name);
+ *			}
+ * The above check was removed from 4.1.2. But anyway we won't
+ * try d_absolute_path for these kerenls, d_path should be fine.
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
+    ptr = (void *)smith_kallsyms_lookup_name("d_absolute_path");
+    if (ptr)
+        smith_d_absolute_path = ptr;
+    else
+        smith_d_absolute_path = (void *)d_path;
+#else
+    smith_d_absolute_path = (void *)d_path;
+#endif
+
+    ptr = (void *)smith_kallsyms_lookup_name("mntns_operations");
+    if (ptr)
+        smith_mntns_ops = ptr;
+
+
+    ptr = (void *)smith_kallsyms_lookup_name("get_arg_page");
+    if (!ptr) {
+        printk("smith WARNING: get_arg_page not exported.\n");
+    }
+    smith_get_arg_page_krnl = ptr;
+
+    return 0;
+}
 
 static int __init kprobe_hook_init(void)
 {
