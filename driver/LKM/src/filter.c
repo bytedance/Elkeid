@@ -1302,8 +1302,13 @@ static void filter_exit(void)
     del_all_execve_argv_allowlist();
     image_md5_clear();
     rule_clear(&exe_rule_list, &exe_rule_lock);
-    if (psad_ip4_clear() + psad_ip6_clear())
+    if (psad_ip4_clear() + psad_ip6_clear()) {
+        /* wait for a grace period: no concurrent readings */
+        synchronize_rcu();
+
+        /* guarantee pended call_rcu callbacks to finish */
         rcu_barrier();
+    }
 }
 
 KPROBE_INITCALL(filter, filter_init, filter_exit);
