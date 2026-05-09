@@ -1561,7 +1561,11 @@ static void filter_exit(void)
     image_md5_clear();
     rule_clear(&exe_rule_list, &exe_rule_lock);
     if (psad_ip4_clear() + psad_ip6_clear() + dns_free_list(0) + dns_free_list(1)) {
+        /* wait for a grace period: no concurrent readings */
         synchronize_rcu();
+
+        /* guarantee pended call_rcu callbacks to finish */
+        rcu_barrier();
     }
 }
 

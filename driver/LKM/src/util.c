@@ -440,6 +440,11 @@ void hlist_fini(struct hlist_root *hr)
      * synchronize_rcu() can NOT guarantee, though it waits a grace
      * period to elapse.
      */
+
+    /* wait for a grace period: no concurrent readings */
+    synchronize_rcu();
+
+    /* guarantee pended call_rcu callbacks to finish */
     rcu_barrier();
 
     /*
