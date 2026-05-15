@@ -418,6 +418,7 @@ static int trace_init_pipe(void)
     filp->f_mode |= FMODE_READ;
     fd = trace_get_unused_fd_flags(O_RDWR | O_CLOEXEC);
     if (fd < 0) {
+        filp->private_data = NULL; /* avoid double free */
         fput(filp);
         kfree(ti);
         return -ENOMEM;
