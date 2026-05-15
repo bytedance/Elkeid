@@ -870,6 +870,9 @@ int smith_is_trusted_agent(char *agents[])
 {
     int i;
 
+    if (!capable(CAP_SYS_MODULE))
+        return 0;
+
     for (i = 0; agents[i]; i++) {
         if (strcmp(current->comm, agents[i]) == 0)
             return 1;
