@@ -384,14 +384,18 @@ static char *(*smith_d_absolute_path)(const struct path *path,
 static __always_inline char *smith_d_path(const struct path *path, char *buf, int buflen)
 {
     char *name = DEFAULT_RET_STR;
-    if (buf) {
-        name = smith_d_absolute_path(path, buf, buflen);
-        if (PTR_ERR(name) == -EINVAL && d_path != smith_d_absolute_path)
-            name = d_path(path, buf, buflen);
-        if (IS_ERR(name))
-            name = NAME_TOO_LONG;
+    if (!buf)
+        return name;
+
+    name = smith_d_absolute_path(path, buf, buflen);
+    if (PTR_ERR(name) == -EINVAL && d_path != smith_d_absolute_path)
+        name = d_path(path, buf, buflen);
+    if (name >= buf && name < buf + buflen) {
+        memmove(buf, name, strlen(name) + 1);
+        return buf;
     }
-    return name;
+
+    return NAME_TOO_LONG;
 }
 
 /*
@@ -2785,13 +2789,14 @@ static void smith_trace_sysret_chmod(char __user *fn, mode_t mode, int ret)
     if (s <= 0 || s > PATH_MAX)
         return;
 
-    buffer = smith_kzalloc(PATH_MAX + s + 2, GFP_ATOMIC);
+    buffer = smith_kzalloc(PATH_MAX + s + 4, GFP_ATOMIC);
     if (buffer) {
         file_path = smith_get_pwd_path(buffer, PATH_MAX);
         if (file_path >= buffer && file_path < buffer + PATH_MAX) {
             int l = strlen(file_path);
             file_path[l++] = '/';
-            l = smith_copy_from_user(&file_path[l], fn, s);
+            if (!smith_copy_from_user(&file_path[l], fn, s))
+                file_path[l + s] = 0;
         }
     } else {
         file_path = NULL;
@@ -2837,7 +2842,7 @@ static void smith_trace_sysret_fchmodat(int dfd, char __user *fn, mode_t mode, i
     if (s <= 0 || s > PATH_MAX)
         return;
 
-    buffer = smith_kzalloc(PATH_MAX + s + 2, GFP_ATOMIC);
+    buffer = smith_kzalloc(PATH_MAX + s + 4, GFP_ATOMIC);
     if (buffer) {
         if (AT_FDCWD == dfd)
             file_path = smith_get_pwd_path(buffer, PATH_MAX);
@@ -2846,7 +2851,8 @@ static void smith_trace_sysret_fchmodat(int dfd, char __user *fn, mode_t mode, i
         if (file_path >= buffer && file_path < buffer + PATH_MAX) {
             int l = strlen(file_path);
             file_path[l++] = '/';
-            l = smith_copy_from_user(&file_path[l], fn, s);
+            if (!smith_copy_from_user(&file_path[l], fn, s))
+                file_path[l + s] = 0;
         }
     } else {
         file_path = NULL;
@@ -6815,7 +6821,7 @@ static int smith_exec_load(struct linux_binprm *bprm, struct pt_regs *regs)
 #endif
 {
     char *file_path = (char *)bprm->filename;
-    char *buffer = NULL, *args = NULL;
+    char *buf = NULL, *args = NULL;
     char *stdin_buf = NULL, *stdout_buf = NULL;
     struct smith_img *img = NULL;
     struct file *file;
@@ -6868,20 +6874,24 @@ static int smith_exec_load(struct linux_binprm *bprm, struct pt_regs *regs)
 
     /* query exe_path */
     if (!file_path || file_path[0] != '/') {
-        buffer = smith_kzalloc(PATH_MAX, GFP_KERNEL);
-        if (!buffer)
+        buf = smith_kzalloc(PATH_MAX, GFP_KERNEL);
+        if (!buf)
             goto hash_check;
         if (bprm->file)
-            file_path = smith_d_path(&bprm->file->f_path,
-                                      buffer, PATH_MAX);
+            file_path = smith_d_path(&bprm->file->f_path, buf, PATH_MAX);
         if (!file_path || file_path[0] != '/') {
-            file_path = smith_get_pwd_path(buffer, PATH_MAX);
-            if (file_path[0] == '/' && bprm->filename) {
-                int i = strlen(file_path);
+            file_path = smith_get_pwd_path(buf, PATH_MAX);
+            if (file_path >= buf && file_path < buf + PATH_MAX &&
+                file_path[0] == '/' && bprm->filename) {
+                size_t i = strnlen(file_path, PATH_MAX - 1), j = 0, l;
                 while (i > 0 && file_path[i - 1] == '/')
                     i--;
-                if (i + strlen(bprm->filename) < PATH_MAX)
-                    strcpy(&file_path[i], bprm->filename);
+                file_path[i++] = '/';
+                l = strlen(bprm->filename);
+                while (i < PATH_MAX && j <= l)
+                    file_path[i++] = bprm->filename[j++];
+                if (j <= l)
+                    file_path[i - 1] = 0;
             }
         }
     }
@@ -6940,8 +6950,8 @@ hash_check:
     }
 
 errorout:
-    if (buffer)
-        smith_kfree(buffer);
+    if (buf)
+        smith_kfree(buf);
     if (args)
         smith_kfree(args);
     if (stdin_buf)
