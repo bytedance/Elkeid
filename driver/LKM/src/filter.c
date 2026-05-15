@@ -557,10 +557,11 @@ struct rule_item {
     int16_t             align;
 } __attribute__((packed));
 
+#define EXE_RULE_NITEMS (4)
 struct rule_node {
     struct hlist_node   link;
     char                id[8];
-    struct rule_item    items[4];
+    struct rule_item    items[EXE_RULE_NITEMS];
     int16_t             nitems;
     int16_t             size;
     char                data[];
@@ -638,9 +639,8 @@ static struct rule_node *rule_alloc(exe_rule_flex_t *rule)
 
     for (i = 0; i < rule->nitems; i++) {
         if (!rule->items[i].len)
-            continue ;
-        if (sizeof(exe_rule_flex_t) + rule->items[i].off >=
-            rule->size)
+            continue;
+        if (sizeof(exe_rule_flex_t) + rule->items[i].off >= rule->size)
             return NULL;
         next += rule->items[i].len + 1;
     }
@@ -672,11 +672,14 @@ static struct rule_node *rule_alloc(exe_rule_flex_t *rule)
 }
 
 static struct rule_node *rule_add(struct hlist_head *list,
-                    rwlock_t *lock, exe_rule_flex_t *rule)
+                    rwlock_t *lock, exe_rule_flex_t *rule, int len)
 {
     struct rule_node *nod;
     unsigned long flags;
 
+    if (rule->size <= sizeof(exe_rule_flex_t) ||
+        rule->size > len || rule->size >= EXE_MAX_RULE_BLOCK)
+        return NULL;
     nod = rule_alloc(rule);
     if (!nod)
         return nod;
@@ -808,7 +811,7 @@ static void psad_free_list_rcu(struct rcu_head *rcu)
 static int psad_ip4_check(uint32_t ip)
 {
     struct psad_ip4_list *psad;
-    int rc = 0, first = 0, last, mid;
+    uint32_t rc = 0, first = 0, last, mid;
 
     rcu_read_lock();
     /* just skip if there's no allowlist */
@@ -858,7 +861,7 @@ static int psad_ip4_set(struct psad_ip4_list *psad)
 {
     struct psad_ip4_list *list = READ_ONCE(g_ip4_list);
     uint32_t *ip4s = (uint32_t *)psad->ip4s;
-    int i, sorted, nips = psad->list.nips;
+    uint32_t i, sorted, nips = psad->list.nips;
 
     do {
         sorted = 1;
@@ -915,7 +918,7 @@ static int psad_ip6_check(uint32_t *ip)
 {
     struct psad_ip6_list *psad;
     struct ipaddr_v6 *a6 = (void *)ip;
-    int rc = 0, first = 0, last, mid;
+    uint32_t rc = 0, first = 0, last, mid;
 
     rcu_read_lock();
     /* just skip if there's no allowlist */
@@ -964,7 +967,7 @@ static int psad_ip6_clear(void)
 static int psad_ip6_set(struct psad_ip6_list *psad)
 {
     struct psad_ip6_list *list = READ_ONCE(g_ip6_list);
-    int i, sorted, nips = psad->list.nips;
+    uint32_t i, sorted, nips = psad->list.nips;
 
     do {
         sorted = 1;
@@ -1037,9 +1040,8 @@ static int filter_ioctl_internal(int cmd, char *data, int len)
             goto out;
 
         case IMAGE_EXE_ADD:
-            // smith_hexdump(data, len);
             if (rule_add(&exe_rule_list, &exe_rule_lock,
-                         (exe_rule_flex_t *)data))
+                         (exe_rule_flex_t *)data, len))
                 rc = 0;
             goto out;
         case IMAGE_EXE_DEL:
@@ -1151,6 +1153,8 @@ static int filter_ioctl(int cmd, const __user char *buf)
             goto errorout;
         if (len <= sizeof(exe_rule_flex_t))
             goto errorout;
+        if (len >= EXE_MAX_RULE_BLOCK)
+            goto errorout;
     } else if (cmd == IMAGE_EXE_DEL || cmd == IMAGE_EXE_CHK) {
         len = 8;
     } else if (cmd == PSAD_IP_LIST) {
@@ -1165,7 +1169,10 @@ static int filter_ioctl(int cmd, const __user char *buf)
             else
                 psad_ip6_clear();
             goto errorout;
+        } else if (list.nips >= PASD_MAX_IPS) {
+            goto errorout;
         }
+
         if (list.type == 4) {
             skip = offsetof(struct psad_ip4_list, list);
             len = (list.nips + 2) * sizeof(uint32_t) + skip;
@@ -1257,6 +1264,8 @@ static int filter_store(const char *buf, int len)
             goto errorout;
         len = rule->size;
         if (len <= sizeof(exe_rule_flex_t))
+            goto errorout;
+        if (len >= EXE_MAX_RULE_BLOCK)
             goto errorout;
     } else if (cmd == IMAGE_EXE_DEL || cmd == IMAGE_EXE_CHK) {
         len = 8;

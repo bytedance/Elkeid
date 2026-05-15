@@ -39,6 +39,8 @@
 #define UNREGISTER_BINFMT 0x55              /* U */
 #define PSAD_IP_LIST   0x4e                 /* N */
 
+#define DNS_MAX_BLK_SIZE (1048576 * 4)
+
 /*
  * ip allowlist for psad
  */
@@ -47,6 +49,8 @@ struct psad_ip_list {
     uint32_t   nips; /* number of ips */
     uint32_t   ips[];
 } __attribute__((packed));
+
+#define PASD_MAX_IPS (1048576) /* max number of ips per list */
 
 /*
  * md5 hash description for exec blocklist
@@ -87,6 +91,8 @@ typedef struct exe_rule_flex {
     };
     char                    data[];
 } __attribute__((packed)) exe_rule_flex_t;
+
+#define EXE_MAX_RULE_BLOCK (4096 * EXE_RULE_NITEMS)
 
 struct exe_item {
     char               *item;
