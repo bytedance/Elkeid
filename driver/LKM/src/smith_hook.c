@@ -6411,6 +6411,31 @@ MODULE_PARM_DESC(psad_switch, "Set to 1 to enable detection of port-scanning, 0 
 MODULE_PARM_DESC(psad_flags, "psad scanning mask of tcp flags");
 
 /*
+ * interface of kernel_read changed from v4.14, the fileds of pos and buf are swapped,
+ * thus could lead possible panic if using old interfaces with new kernels. Luckily it's
+ * *safe* to use new interfaces for old kernels, since the pos is likely exceeding EOF
+ * with treating buf as pos
+ *
+ * >= 4.14.0
+ *    ssize_t kernel_read(struct file *file, void *buf, size_t count, loff_t *pos);
+ * < 4.14.0
+ *    ssize_t kernel_read(struct file *file, loff_t offset, char *buf, size_t count);
+ */
+ static int smith_kernel_read(struct file *filp, void *buf, size_t len, loff_t *off)
+ {
+    int rc;
+
+#if defined(SMITH_FS_KERNEL_READ_LEGACY)
+    rc = kernel_read(filp, *off, buf, len);
+    if (rc > 0)
+        *off += rc;
+#else
+    rc = kernel_read(filp, buf, len, off);
+#endif
+    return rc;
+ }
+
+/*
  * file md5 hash computation
  */
 
@@ -6519,16 +6544,9 @@ static int smith_get_hash_file(struct file *file, image_hash_t *hash)
     }
 
     do {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
-        rc = kernel_read(file, buf, len, &off);
+        rc = smith_kernel_read(file, buf, len, &off);
         if (rc <= 0)
             break;
-#else
-        rc = kernel_read(file, off, buf, len);
-        if (rc <= 0)
-            break;
-        off += rc;
-#endif
         rc = smith_md5_update(&md5, buf, rc);
         if (rc) {
             printk("md5 update failure: rc=%zd\n", rc);
