@@ -120,7 +120,7 @@ impl Kmod {
                     loop {
                         if let Some((instant, argv)) = filtered_argv_entries.pop_front() {
                             if instant.elapsed() < ARGV_FILTER_TIME {
-                                filtered_exe_entries.push_front((instant, argv));
+                                filtered_argv_entries.push_front((instant, argv));
                                 break;
                             }
                             let mut controler = controler_c.lock();
