@@ -336,9 +336,8 @@ static int trace_release_pipe(struct inode *inode, struct file *file)
     trace_n_instances--;
     file->private_data = NULL;
     kfree(ti);
-    fput(file);
     mutex_unlock(&g_trace_lock);
-
+    /* no fput here, to be called by syscall close */
     module_put(THIS_MODULE);
 
     return 0;
