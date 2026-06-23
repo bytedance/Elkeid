@@ -348,11 +348,13 @@ struct hlist_hnod *hlist_alloc_node(struct hlist_root *hr)
         hnod->flag_pool = 1;
         hnod->hash = hr;
         atomic_inc(&hr->allocs);
+        INIT_LIST_HEAD(&hnod->link);
     } else {
         hnod = (struct hlist_hnod *)smith_kzalloc(size, hr->gfp);
         if (hnod) {
             hnod->hash = hr;
             atomic_inc(&hr->allocs);
+            INIT_LIST_HEAD(&hnod->link);
         }
     }
     return hnod;
@@ -491,8 +493,9 @@ struct hlist_hnod *hlist_lookup_key(struct hlist_root *hr, void *key)
     rcu_read_lock();
     list_for_each_entry_rcu(e, &hr->lists[id], link) {
         if (hr->cmp(hr, e, key) == 0) {
-            atomic_inc(&e->refs);
-            hnod = e;
+            if (!e->flag_rcu && atomic_inc_not_zero(&e->refs))
+                hnod = e;
+            /* race condition: skip nods with zero refs */
             break;
         }
     }
@@ -503,7 +506,7 @@ struct hlist_hnod *hlist_lookup_key(struct hlist_root *hr, void *key)
 
 static int hlist_remove_node_nolock(struct hlist_root *hr, struct hlist_hnod *hnod)
 {
-    list_del_rcu(&hnod->link);
+    list_del_rcu(&hnod->link); /* in spinlock */
     atomic_dec(&hr->count);
     return atomic_dec_return(&hnod->refs);
 }
