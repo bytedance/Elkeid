@@ -3677,44 +3677,6 @@ static struct notifier_block smith_usb_notifier = {
         .notifier_call = smith_usb_ncb,
 };
 
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
-
-static void smith_update_comm(struct smith_tid *tid, char *comm_new);
-
-/*
- * 3.16 and later:
- * void __set_task_comm(struct task_struct *tsk, const char *buf, bool exec);
- *
- * pre 3.16:
- * void set_task_comm(struct task_struct *tsk, char *buf);
- */
-static int set_task_comm_pre_handler(struct kprobe *kp, struct pt_regs *regs)
-{
-    struct task_struct *task = (void *)p_regs_get_arg1(regs);
-    struct smith_tid *tid = NULL;
-
-    /* ignore __set_task_comm callings in exec */
-    if (kp->symbol_name[0] == '_' && (char)p_regs_get_arg3(regs))
-        return 0;
-
-    tid = smith_lookup_tid(task);
-    if (tid) {
-        if (task->tgid == task->pid)
-            smith_update_comm(tid, (char *)p_regs_get_arg2(regs));
-        smith_put_tid(tid);
-    }
-
-    return 0;
-}
-
-struct kprobe  set_task_comm_kprobe = {
-        .symbol_name = "__set_task_comm",
-        .pre_handler = set_task_comm_pre_handler,
-};
-
-#endif
-
 /*
  * set minimal of maxactive as 32 to avoid possible missings
  * of kretprobe events, especially for NON-PREEMPTED systems
@@ -3955,7 +3917,8 @@ static void smith_fini_kprobe(void)
 {
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
-    unregister_kprobe(&set_task_comm_kprobe);
+    if (set_task_comm_kprobe_state)
+        unregister_kprobe(&set_task_comm_kprobe);
 #endif
 
     if (UDEV_HOOK == 1) {
@@ -4110,7 +4073,9 @@ static void smith_init_kprobe(void)
      */
     if (register_kprobe(&set_task_comm_kprobe)) {
         set_task_comm_kprobe.symbol_name = &set_task_comm_kprobe.symbol_name[2];
-        register_kprobe(&set_task_comm_kprobe);
+        set_task_comm_kprobe_state = !register_kprobe(&set_task_comm_kprobe);
+    } else {
+        set_task_comm_kprobe_state = 1;
     }
 #endif
 }
@@ -5889,6 +5854,41 @@ TRACEPOINT_PROBE(smith_trace_task_rename,
         smith_put_tid(tid);
     }
 }
+
+#else
+
+static char set_task_comm_kprobe_state = 0x0;
+
+/*
+ * 3.16 and later:
+ * void __set_task_comm(struct task_struct *tsk, const char *buf, bool exec);
+ *
+ * pre 3.16:
+ * void set_task_comm(struct task_struct *tsk, char *buf);
+ */
+static int set_task_comm_pre_handler(struct kprobe *kp, struct pt_regs *regs)
+{
+    struct task_struct *task = (void *)p_regs_get_arg1(regs);
+    struct smith_tid *tid = NULL;
+
+    /* ignore __set_task_comm callings in exec */
+    if (kp->symbol_name[0] == '_' && (char)p_regs_get_arg3(regs))
+        return 0;
+
+    tid = smith_lookup_tid(task);
+    if (tid) {
+        if (task->tgid == task->pid)
+            smith_update_comm(tid, (char *)p_regs_get_arg2(regs));
+        smith_put_tid(tid);
+    }
+
+    return 0;
+}
+
+struct kprobe  set_task_comm_kprobe = {
+        .symbol_name = "__set_task_comm",
+        .pre_handler = set_task_comm_pre_handler,
+};
 
 #endif
 
