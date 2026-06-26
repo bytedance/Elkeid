@@ -136,7 +136,7 @@ static int add_execve_exe_allowlist(char *data)
     } else {
         write_unlock_irqrestore(&exe_allowlist_lock, flags);
         if (rc == 1)
-            printk(KERN_INFO "[ELKEID] exe already added: %s\n", data);
+            rc = -EALREADY;
         smith_kfree(node);
     }
 
@@ -248,7 +248,7 @@ static int add_execve_argv_allowlist(char *data)
     } else {
         write_unlock_irqrestore(&argv_allowlist_lock, flags);
         if (rc == 1)
-            printk(KERN_INFO"[ELKEID] cmd already added: %s\n", data);
+            rc = -EALREADY;
         smith_kfree(node);
     }
 
@@ -477,10 +477,8 @@ static int image_md5_add(image_hash_t *md5)
         write_unlock_irqrestore(&image_hash_lock, flags);
     } else {
         write_unlock_irqrestore(&image_hash_lock, flags);
-        if (rc == 1) {
-            show_hash(&node->hash, "DUPED:");
-            printk(KERN_INFO"[ELKEID] hash already added.\n");
-        }
+        if (rc == 1)
+            rc = -EALREADY;
         smith_kfree(node);
     }
 
