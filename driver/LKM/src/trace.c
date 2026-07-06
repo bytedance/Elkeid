@@ -409,7 +409,7 @@ static int trace_init_pipe(void)
 
     filp = anon_inode_getfile("trace_pipe", &trace_pipe_fops,
                               ti, O_RDWR | O_CLOEXEC);
-    if (!filp) {
+    if (IS_ERR(filp)) {
         kfree(ti);
         return -ENOMEM;
     }
