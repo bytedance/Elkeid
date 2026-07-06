@@ -326,9 +326,9 @@ static int execve_argv_check(char *data, int len)
         return 0;
 
     value = hash_murmur_OAAT64(data, len);
-    read_lock_irqsave(&exe_allowlist_lock, flags);
+    read_lock_irqsave(&argv_allowlist_lock, flags);
     res = exist_rb_value(&execve_argv_allowlist, value);
-    read_unlock_irqrestore(&exe_allowlist_lock, flags);
+    read_unlock_irqrestore(&argv_allowlist_lock, flags);
 
     return res;
 }
