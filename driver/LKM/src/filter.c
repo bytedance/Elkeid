@@ -636,9 +636,12 @@ static struct rule_node *rule_alloc(exe_rule_flex_t *rule)
         return NULL;
 
     for (i = 0; i < rule->nitems; i++) {
+        int rsize = sizeof(exe_rule_flex_t) + rule->items[i].off;
         if (!rule->items[i].len)
             continue;
-        if (sizeof(exe_rule_flex_t) + rule->items[i].off >= rule->size)
+        if (rsize >= rule->size)
+            return NULL;
+        if (rsize + rule->items[i].len + 1 > rule->size)
             return NULL;
         next += rule->items[i].len + 1;
     }

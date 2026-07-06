@@ -567,7 +567,7 @@ static int ac_pack_rule(char *id, int nitems, char *items[])
             continue;
         rule->items[i].off = len;
         len += rule->items[i].len + 1;
-        if (len > MAX_RULE_SIZE) {
+        if (sizeof(exe_rule_flex_t) + len > MAX_RULE_SIZE) {
             printf("ac_pack_rule: given rule is too long.\n");
             return 0;
         }
