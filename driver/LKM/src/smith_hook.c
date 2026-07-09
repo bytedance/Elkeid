@@ -3913,173 +3913,6 @@ static void unregister_write_kprobe(void)
     unregister_kprobe(&write_kprobe);
 }
 
-static void smith_fini_kprobe(void)
-{
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
-    if (set_task_comm_kprobe_state)
-        unregister_kprobe(&set_task_comm_kprobe);
-#endif
-
-    if (UDEV_HOOK == 1) {
-        static void (*smith_usb_unregister_notify) (struct notifier_block * nb);
-        smith_usb_unregister_notify = (void *)__symbol_get("usb_unregister_notify");
-        if (smith_usb_unregister_notify) {
-            smith_usb_unregister_notify(&smith_usb_notifier);
-            __symbol_put("usb_unregister_notify");
-        }
-    }
-
-    if (call_usermodehelper_exec_kprobe_state == 0x1)
-        unregister_call_usermodehelper_exec_kprobe();
-
-    if (mprotect_kprobe_state == 0x1)
-        unregister_mprotect_kprobe();
-
-    if (create_file_kprobe_state == 0x1)
-        unregister_create_file_kprobe();
-
-    if (update_cred_kprobe_state == 0x1)
-        unregister_update_cred_kprobe();
-
-    if (mount_kprobe_state == 0x1)
-        unregister_mount_kprobe();
-
-    if (write_kprobe_state == 0x1)
-        unregister_write_kprobe();
-
-    if (rename_kprobe_state == 0x1)
-        unregister_rename_kprobe();
-
-    if (open_kprobe_state == 0x1)
-        unregister_open_kprobe();
-
-    if (openat_kprobe_state == 0x1)
-        unregister_openat_kprobe();
-
-    if (exit_kprobe_state == 0x1)
-        unregister_exit_kprobe();
-
-    if (exit_group_kprobe_state == 0x1)
-        unregister_exit_group_kprobe();
-
-    if (security_path_rmdir_kprobe_state == 0x1)
-        unregister_security_path_rmdir_kprobe();
-
-    if (security_path_unlink_kprobe_state == 0x1)
-        unregister_security_path_unlink_kprobe();
-
-    if (link_kprobe_state == 0x1)
-        unregister_link_kprobe();
-}
-
-static void smith_init_kprobe(void)
-{
-    int ret;
-
-    if (UDEV_HOOK == 1) {
-        static void (*smith_usb_register_notify) (struct notifier_block * nb);
-        smith_usb_register_notify = __symbol_get("usb_register_notify");
-        if (smith_usb_register_notify && __symbol_get("usb_unregister_notify")) {
-            smith_usb_register_notify(&smith_usb_notifier);
-            __symbol_put("usb_unregister_notify");
-        }
-        if (smith_usb_register_notify)
-            __symbol_put("usb_register_notify");
-    }
-
-    if (RM_HOOK == 1) {
-        ret = register_security_path_rmdir_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] security_path_rmdir register_kprobe failed, returned %d\n", ret);
-
-        ret = register_security_path_unlink_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] security_path_unlink register_kprobe failed, returned %d\n", ret);
-    }
-
-    if (OPEN_HOOK == 1) {
-        ret = register_open_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] open register_kprobe failed, returned %d\n", ret);
-
-        ret = register_openat_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] openat register_kprobe failed, returned %d\n", ret);
-    }
-
-    if (WRITE_HOOK == 1) {
-        ret = register_write_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] write register_kprobe failed, returned %d\n", ret);
-    }
-
-    if (EXIT_HOOK == 1) {
-        ret = register_exit_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] exit register_kprobe failed, returned %d\n", ret);
-
-        ret = register_exit_group_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] exit_group register_kprobe failed, returned %d\n", ret);
-    }
-
-    if (MPROTECT_HOOK == 1) {
-        ret = register_mprotect_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] mprotect register_kprobe failed, returned %d\n", ret);
-    }
-
-    if (MOUNT_HOOK == 1) {
-        ret = register_mount_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] mount register_kprobe failed, returned %d\n", ret);
-    }
-
-    if (RENAME_HOOK == 1) {
-        ret = register_rename_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] renameat register_kprobe failed, returned %d\n", ret);
-    }
-
-    if (LINK_HOOK == 1) {
-        ret = register_link_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] link register_kprobe failed, returned %d\n", ret);
-    }
-
-    if (CREATE_FILE_HOOK == 1) {
-        ret = register_create_file_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] create_file register_kprobe failed, returned %d\n", ret);
-    }
-
-    if (USERMODEHELPER_HOOK == 1) {
-        ret = register_call_usermodehelper_exec_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] call_usermodehelper_exec register_kprobe failed, returned %d\n", ret);
-    }
-
-    if (UPDATE_CRED_HOOK == 1) {
-        ret = register_update_cred_kprobe();
-        if (ret < 0)
-            printk(KERN_INFO "[ELKEID] update_cred register_kprobe failed, returned %d\n", ret);
-    }
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
-    /*
-     * try __set_task_comm first, then set_task_comm. kernels >= 3.16 should work
-     * with __set_task_comm, and the 2nd try should work for kernels < 3.16
-     */
-    if (register_kprobe(&set_task_comm_kprobe)) {
-        set_task_comm_kprobe.symbol_name = &set_task_comm_kprobe.symbol_name[2];
-        set_task_comm_kprobe_state = !register_kprobe(&set_task_comm_kprobe);
-    } else {
-        set_task_comm_kprobe_state = 1;
-    }
-#endif
-}
-
 /*
  * rbtree defs for exectuable images
  */
@@ -7098,6 +6931,113 @@ MODULE_PARM_DESC(mem_stats, "memory usage of core objects of elkeid");
 static char *smith_srcid = SMITH_MODULE_ID(LKM_SRCID, LKM_VNUM);
 module_param(smith_srcid, charp, S_IRUSR|S_IRGRP|S_IROTH);
 
+static void __init smith_init_kprobe(void)
+{
+    int ret;
+
+    if (UDEV_HOOK == 1) {
+        static void (*smith_usb_register_notify) (struct notifier_block * nb);
+        smith_usb_register_notify = __symbol_get("usb_register_notify");
+        if (smith_usb_register_notify && __symbol_get("usb_unregister_notify")) {
+            smith_usb_register_notify(&smith_usb_notifier);
+            __symbol_put("usb_unregister_notify");
+        }
+        if (smith_usb_register_notify)
+            __symbol_put("usb_register_notify");
+    }
+
+    if (RM_HOOK == 1) {
+        ret = register_security_path_rmdir_kprobe();
+        if (ret < 0)
+            printk(KERN_INFO "[ELKEID] security_path_rmdir register_kprobe failed, returned %d\n", ret);
+
+        ret = register_security_path_unlink_kprobe();
+        if (ret < 0)
+            printk(KERN_INFO "[ELKEID] security_path_unlink register_kprobe failed, returned %d\n", ret);
+    }
+
+    if (OPEN_HOOK == 1) {
+        ret = register_open_kprobe();
+        if (ret < 0)
+            printk(KERN_INFO "[ELKEID] open register_kprobe failed, returned %d\n", ret);
+
+        ret = register_openat_kprobe();
+        if (ret < 0)
+            printk(KERN_INFO "[ELKEID] openat register_kprobe failed, returned %d\n", ret);
+    }
+
+    if (WRITE_HOOK == 1) {
+        ret = register_write_kprobe();
+        if (ret < 0)
+            printk(KERN_INFO "[ELKEID] write register_kprobe failed, returned %d\n", ret);
+    }
+
+    if (EXIT_HOOK == 1) {
+        ret = register_exit_kprobe();
+        if (ret < 0)
+            printk(KERN_INFO "[ELKEID] exit register_kprobe failed, returned %d\n", ret);
+
+        ret = register_exit_group_kprobe();
+        if (ret < 0)
+            printk(KERN_INFO "[ELKEID] exit_group register_kprobe failed, returned %d\n", ret);
+    }
+
+    if (MPROTECT_HOOK == 1) {
+        ret = register_mprotect_kprobe();
+        if (ret < 0)
+            printk(KERN_INFO "[ELKEID] mprotect register_kprobe failed, returned %d\n", ret);
+    }
+
+    if (MOUNT_HOOK == 1) {
+        ret = register_mount_kprobe();
+        if (ret < 0)
+            printk(KERN_INFO "[ELKEID] mount register_kprobe failed, returned %d\n", ret);
+    }
+
+    if (RENAME_HOOK == 1) {
+        ret = register_rename_kprobe();
+        if (ret < 0)
+            printk(KERN_INFO "[ELKEID] renameat register_kprobe failed, returned %d\n", ret);
+    }
+
+    if (LINK_HOOK == 1) {
+        ret = register_link_kprobe();
+        if (ret < 0)
+            printk(KERN_INFO "[ELKEID] link register_kprobe failed, returned %d\n", ret);
+    }
+
+    if (CREATE_FILE_HOOK == 1) {
+        ret = register_create_file_kprobe();
+        if (ret < 0)
+            printk(KERN_INFO "[ELKEID] create_file register_kprobe failed, returned %d\n", ret);
+    }
+
+    if (USERMODEHELPER_HOOK == 1) {
+        ret = register_call_usermodehelper_exec_kprobe();
+        if (ret < 0)
+            printk(KERN_INFO "[ELKEID] call_usermodehelper_exec register_kprobe failed, returned %d\n", ret);
+    }
+
+    if (UPDATE_CRED_HOOK == 1) {
+        ret = register_update_cred_kprobe();
+        if (ret < 0)
+            printk(KERN_INFO "[ELKEID] update_cred register_kprobe failed, returned %d\n", ret);
+    }
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
+    /*
+     * try __set_task_comm first, then set_task_comm. kernels >= 3.16 should work
+     * with __set_task_comm, and the 2nd try should work for kernels < 3.16
+     */
+    if (register_kprobe(&set_task_comm_kprobe)) {
+        set_task_comm_kprobe.symbol_name = &set_task_comm_kprobe.symbol_name[2];
+        set_task_comm_kprobe_state = !register_kprobe(&set_task_comm_kprobe);
+    } else {
+        set_task_comm_kprobe_state = 1;
+    }
+#endif
+}
+
 static int __init kprobe_hook_init(void)
 {
     int ret;
@@ -7193,6 +7133,66 @@ static int __init kprobe_hook_init(void)
 #endif
 
     return 0;
+}
+
+static void smith_fini_kprobe(void)
+{
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0)
+    if (set_task_comm_kprobe_state)
+        unregister_kprobe(&set_task_comm_kprobe);
+#endif
+
+    if (UDEV_HOOK == 1) {
+        static void (*smith_usb_unregister_notify) (struct notifier_block * nb);
+        smith_usb_unregister_notify = (void *)__symbol_get("usb_unregister_notify");
+        if (smith_usb_unregister_notify) {
+            smith_usb_unregister_notify(&smith_usb_notifier);
+            __symbol_put("usb_unregister_notify");
+        }
+    }
+
+    if (call_usermodehelper_exec_kprobe_state == 0x1)
+        unregister_call_usermodehelper_exec_kprobe();
+
+    if (mprotect_kprobe_state == 0x1)
+        unregister_mprotect_kprobe();
+
+    if (create_file_kprobe_state == 0x1)
+        unregister_create_file_kprobe();
+
+    if (update_cred_kprobe_state == 0x1)
+        unregister_update_cred_kprobe();
+
+    if (mount_kprobe_state == 0x1)
+        unregister_mount_kprobe();
+
+    if (write_kprobe_state == 0x1)
+        unregister_write_kprobe();
+
+    if (rename_kprobe_state == 0x1)
+        unregister_rename_kprobe();
+
+    if (open_kprobe_state == 0x1)
+        unregister_open_kprobe();
+
+    if (openat_kprobe_state == 0x1)
+        unregister_openat_kprobe();
+
+    if (exit_kprobe_state == 0x1)
+        unregister_exit_kprobe();
+
+    if (exit_group_kprobe_state == 0x1)
+        unregister_exit_group_kprobe();
+
+    if (security_path_rmdir_kprobe_state == 0x1)
+        unregister_security_path_rmdir_kprobe();
+
+    if (security_path_unlink_kprobe_state == 0x1)
+        unregister_security_path_unlink_kprobe();
+
+    if (link_kprobe_state == 0x1)
+        unregister_link_kprobe();
 }
 
 static void kprobe_hook_exit(void)
