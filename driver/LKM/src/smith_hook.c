@@ -2173,6 +2173,7 @@ static int smith_is_dns_armed(struct smith_dns_threshold *sdt)
 
 static void smith_trace_sysret_recvdat(long sockfd, unsigned long userp, long len)
 {
+    struct smith_tid *tid = NULL;
     struct socket *sock = NULL;
     unsigned char *data = NULL;
 
@@ -2186,6 +2187,13 @@ static void smith_trace_sysret_recvdat(long sockfd, unsigned long userp, long le
     /* skip tcp connections */
     if (!smith_sock_is_udp(sock))
         goto out;
+
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        // exe filter check
+        if (smith_is_exe_trusted(tid->st_img))
+            goto out;
+    }
 
     /* query ip addresses */
     if (!smith_query_ipinfo(sock->sk, &addr))
@@ -2217,10 +2225,12 @@ static void smith_trace_sysret_recvdat(long sockfd, unsigned long userp, long le
     smith_process_dns(&addr, data, len);
 
 out:
-    if (!IS_ERR_OR_NULL(sock))
-        smith_sockfd_put(sock);
     if (data)
         smith_kfree(data);
+    if (!IS_ERR_OR_NULL(sock))
+        smith_sockfd_put(sock);
+    if (tid)
+        smith_put_tid(tid);
 }
 
 #ifdef USER_MSGHDR_SUPPORT
@@ -2229,6 +2239,7 @@ out:
 
 static void smith_trace_sysret_recvmsg(long sockfd, unsigned long umsg, long len)
 {
+    struct smith_tid *tid = NULL;
     struct socket *sock = NULL;
     unsigned char *data = NULL;
     struct smith_ipinfo addr;
@@ -2243,6 +2254,13 @@ static void smith_trace_sysret_recvmsg(long sockfd, unsigned long umsg, long len
     /* skip tcp connections */
     if (!smith_sock_is_udp(sock))
         goto out;
+
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        // exe filter check
+        if (smith_is_exe_trusted(tid->st_img))
+            goto out;
+    }
 
     /* query ip addresses */
     if (!smith_query_ipinfo(sock->sk, &addr))
@@ -2285,10 +2303,12 @@ static void smith_trace_sysret_recvmsg(long sockfd, unsigned long umsg, long len
     smith_process_dns(&addr, data, len);
 
 out:
-    if (!IS_ERR_OR_NULL(sock))
-        smith_sockfd_put(sock);
     if (data)
         smith_kfree(data);
+    if (!IS_ERR_OR_NULL(sock))
+        smith_sockfd_put(sock);
+    if (tid)
+        smith_put_tid(tid);
 }
 
 static int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
@@ -6653,6 +6673,7 @@ static int smith_exec_load(struct linux_binprm *bprm)
 static int smith_exec_load(struct linux_binprm *bprm, struct pt_regs *regs)
 #endif
 {
+    struct smith_tid *tid = NULL;
     char *file_path = (char *)bprm->filename;
     char *buf = NULL, *args = NULL;
     char *stdin_buf = NULL, *stdout_buf = NULL;
@@ -6662,6 +6683,22 @@ static int smith_exec_load(struct linux_binprm *bprm, struct pt_regs *regs)
     image_hash_t md5 = {0};
     char id[12] = {0};
     int rc = -ENOEXEC; /* continue to next bprm checking */
+
+    /* check if the executable image is in allowlist */
+    if (file_path) {
+        uint16_t name_len = (uint16_t)strlen(file_path);
+        uint64_t murmur64 =  hash_murmur_OAAT64(file_path, name_len);
+        if (g_flt_ops.exe_check(file_path, name_len, murmur64))
+            goto errorout;
+    }
+
+    /* locate tid for current (parent) process */
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        // exe filter check
+        if (smith_is_exe_trusted(tid->st_img))
+            goto errorout;
+    }
 
     /* always do md5 hash computing as required */
     if (bprm->file) {
@@ -6793,6 +6830,8 @@ errorout:
         smith_kfree(stdout_buf);
     if (img)
         smith_put_img(img);
+    if (tid)
+        smith_put_tid(tid);
     return rc;
 }
 
