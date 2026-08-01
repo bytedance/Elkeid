@@ -99,9 +99,9 @@ func handleUpload(ctx context.Context, wg *sync.WaitGroup, req UploadRequest) {
 	for {
 		select {
 		case <-ticker.C:
-			n, rerr := io.ReadFull(file, buf)
-			if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
-				zap.S().Error(err)
+			n, done, rerr := readUploadChunk(file, buf)
+			if rerr != nil {
+				zap.S().Error(rerr)
 				return
 			}
 			err = client.Send(
@@ -116,7 +116,7 @@ func handleUpload(ctx context.Context, wg *sync.WaitGroup, req UploadRequest) {
 			}
 			size += n
 			zap.S().Infof("upload process:%v/%v", size, expectedSize)
-			if rerr == io.EOF || rerr == io.ErrUnexpectedEOF {
+			if done {
 				var resp *proto.FileUploadResponse
 				resp, err = client.CloseAndRecv()
 				if err != nil {
@@ -129,5 +129,17 @@ func handleUpload(ctx context.Context, wg *sync.WaitGroup, req UploadRequest) {
 		case <-ctx.Done():
 			return
 		}
+	}
+}
+
+func readUploadChunk(reader io.Reader, buf []byte) (n int, done bool, err error) {
+	n, err = io.ReadFull(reader, buf)
+	switch err {
+	case nil:
+		return n, false, nil
+	case io.EOF, io.ErrUnexpectedEOF:
+		return n, true, nil
+	default:
+		return n, false, err
 	}
 }
