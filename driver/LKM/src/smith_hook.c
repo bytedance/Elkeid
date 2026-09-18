@@ -111,6 +111,55 @@ static void exit_protect_action(void)
 #endif
 
 /*
+ * Real Time Kernel checking
+ */
+#ifdef CONFIG_PREEMPT_RT
+#error "WARNING: Real-time kernel is not supported"
+#endif
+static __always_inline bool smith_is_rt_enabled(void)
+{
+	return IS_ENABLED(CONFIG_PREEMPT_RT);
+}
+
+/*
+ * Control Flow Protection [CFI] runtime level checking
+ */
+#if defined(CONFIG_X86) || defined(CONFIG_ARM64)
+#include <asm/cpufeature.h>
+#endif
+
+static __always_inline bool smith_is_cfg_enabled(void)
+{
+#if defined(CONFIG_CFI_CLANG) || defined(CONFIG_KCFI)
+	return true;
+#endif
+
+#if defined(CONFIG_X86_64) || defined(CONFIG_X86)
+#ifdef CONFIG_X86_KERNEL_IBT
+	if (cpu_feature_enabled(X86_FEATURE_IBT))
+		return true;
+#endif
+#endif
+
+#ifdef CONFIG_ARM64
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
+    if (system_supports_address_auth())
+#else
+    if (IS_ENABLED(CONFIG_ARM64_PTR_AUTH) &&
+        cpus_have_const_cap(ARM64_HAS_ADDRESS_AUTH))
+#endif
+        return true;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+    if (system_supports_bti())
+#else
+    if (IS_ENABLED(CONFIG_ARM64_BTI) && cpus_have_const_cap(ARM64_BTI))
+#endif
+        return true;
+#endif
+    return false;
+}
+
+/*
  * wrapper for ktime_get_boottime
  */
 
@@ -7080,6 +7129,15 @@ static void __init smith_init_kprobe(void)
 static int __init kprobe_hook_init(void)
 {
     int ret;
+
+    if (smith_is_rt_enabled()) {
+        printk(KERN_INFO "[ELKEID] Real Time Kernel enabled, not supported by Elkeid.\n");
+        return -EINVAL;
+    }
+    if (smith_is_cfg_enabled()) {
+        printk(KERN_INFO "[ELKEID] Control Flow Guard enabled, not supported by Elkeid.\n");
+        return -EINVAL;
+    }
 
     /* enable sandbox mode if necessary */
     if (SANDBOX == 1) {

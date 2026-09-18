@@ -24,6 +24,7 @@
 #include <linux/fs.h>
 #include <linux/fs_struct.h>
 #include <linux/init.h>
+#include <linux/kconfig.h>
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
