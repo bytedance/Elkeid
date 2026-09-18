@@ -2395,25 +2395,21 @@ static int mprotect_pre_handler(struct kprobe *p, struct pt_regs *regs)
             mprotect_print(exe_path, prot, "-1", -1, "-1", "-1");
         } else {
             rcu_read_lock();
-            if (!IS_ERR_OR_NULL(vma->vm_mm)) {
-                if (!IS_ERR_OR_NULL(&vma->vm_mm->exe_file)) {
-                    if (smith_get_file(vma->vm_mm->exe_file)) {
-                        file_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-                        file_path = smith_d_path(&vma->vm_mm->exe_file->f_path, file_buf, PATH_MAX);
-                        smith_fput(vma->vm_mm->exe_file);
-                    }
+            if (vma->vm_mm && vma->vm_mm->exe_file) {
+                if (smith_get_file(vma->vm_mm->exe_file)) {
+                    file_buf = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
+                    file_path = smith_d_path(&vma->vm_mm->exe_file->f_path, file_buf, PATH_MAX);
+                    smith_fput(vma->vm_mm->exe_file);
                 }
 #ifdef CONFIG_MEMCG
                 target_pid = vma->vm_mm->owner->pid;
 #endif
             }
 
-            if (!IS_ERR_OR_NULL(vma->vm_file)) {
-                if (smith_get_file(vma->vm_file)) {
-                    vm_file_buff = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-                    vm_file_path = smith_d_path(&vma->vm_file->f_path, vm_file_buff, PATH_MAX);
-                    smith_fput(vma->vm_file);
-                }
+            if (vma->vm_file && smith_get_file(vma->vm_file)) {
+                vm_file_buff = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
+                vm_file_path = smith_d_path(&vma->vm_file->f_path, vm_file_buff, PATH_MAX);
+                smith_fput(vma->vm_file);
             }
             rcu_read_unlock();
 
@@ -2737,7 +2733,9 @@ static int write_pre_handler(struct kprobe *p, struct pt_regs *regs)
     buf = (const char __user *) p_regs_get_arg2(regs);
     len = (size_t) p_regs_get_arg3(regs);
 
-    if (len <= 0 || !S_ISREG(file_inode(file)->i_mode))
+    if (len <= 0)
+        return 0;
+    if (!file_inode(file) || !S_ISREG(file_inode(file)->i_mode))
         return 0;
 
     kbuf = smith_kzalloc(len, GFP_ATOMIC);
@@ -4154,7 +4152,7 @@ static int smith_file2img(struct file *filp, struct smith_img *img)
 {
     struct dentry *de;
 
-    if (!filp)
+    if (!filp || !file_inode(filp))
         return -ENOENT;
     img->si_exe = filp;
 
@@ -5258,6 +5256,8 @@ static void smith_trace_sysent_close(long fd)
 
     if (!filp)
         return;
+    if (!file_inode(filp))
+        goto out;
 
 #if !SMITH_FILE_CREATION_TRACK
     if (!(filp->f_mode & FMODE_CREATED))
