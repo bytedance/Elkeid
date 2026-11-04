@@ -111,19 +111,19 @@ static void module_list_unlock(void)
 static void analyze_syscalls(void)
 {
 	int i;
-	unsigned long addr;
-	struct module *mod;
 
 	if (!sct || !ckt)
 		return;
 
 	for (i = 0; i < NR_syscalls; i++) {
 		char *mod_name = NULL;
-		addr = sct[i];
+		struct module *mod = NULL;
+		unsigned long addr = sct[i];
 	
 		if (!ckt(addr)) {
 			module_list_lock();
-			mod = get_module_from_addr(addr);
+			if (get_module_from_addr)
+				mod = get_module_from_addr(addr);
 			if (mod) {
 				mod_name = mod->name;
 			} else {
@@ -147,7 +147,6 @@ static void analyze_interrupts(void)
 
 	int i;
 	unsigned long addr;
-	struct module *mod;
 
 	if (!idt || !ckt)
 		return;
@@ -157,9 +156,10 @@ static void analyze_interrupts(void)
 
 		addr = get_isr_addr(&idt[i]);
 		if (addr && !ckt(addr)) {
+			struct module *mod = NULL;
 			module_list_lock();
-
-			mod = get_module_from_addr(addr);
+			if (get_module_from_addr)
+				mod = get_module_from_addr(addr);
 			if (mod) {
 				mod_name = mod->name;
 			} else {
@@ -209,6 +209,9 @@ static void analyze_fops(void)
     unsigned long addr;
 	char *mod_name;
 	struct file *fp;
+
+	if (!ckt)
+		return;
 
 	fp = filp_open("/proc", O_RDONLY, S_IRUSR);
 	if (IS_ERR_OR_NULL(fp)) {
