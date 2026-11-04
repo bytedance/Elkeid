@@ -1191,7 +1191,7 @@ static int filter_ioctl(int cmd, const __user char *buf)
     }
 
     /* try to grab user's input parameters */
-    if (!smith_access_ok(buf, len))
+    if (!smith_access_ok(buf, len - skip))
         goto errorout;
     data = smith_kzalloc(len + 1, GFP_KERNEL);
     if (!data)
