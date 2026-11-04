@@ -29,7 +29,8 @@ extern const struct kprobe_initcall KPROBE_CALL(filter);
 extern const struct kprobe_initcall KPROBE_CALL(anti_rootkit);
 extern const struct kprobe_initcall KPROBE_CALL(kprobe_hook);
 
-#define V2STRING(v) #v
-#define SMITH_VERSION V2STRING(LKM_VERSION)
+#define SMITH_V2ST(v) #v            /* convert version 1.9.x.x to string */
+#define SMITH_V2VV(v) SMITH_V2ST(v) /* force expansion of v to 1.9.x.x */
+#define SMITH_VERSION SMITH_V2VV(LKM_VERSION)
 
 #endif /* __KPROBE_TEMPLATE_H */
