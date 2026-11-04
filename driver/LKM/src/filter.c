@@ -805,14 +805,13 @@ static struct psad_ip4_list {
 
 static void psad_free_list_rcu(struct rcu_head *rcu)
 {
-    printk("ip allowlist %px to be freed.\n", rcu);
     smith_kfree(rcu);
 }
 
 static int psad_ip4_check(uint32_t ip)
 {
     struct psad_ip4_list *psad;
-    uint32_t rc = 0, first = 0, last, mid;
+    int32_t rc = 0, first = 0, last, mid;
 
     rcu_read_lock();
     /* just skip if there's no allowlist */
@@ -823,7 +822,7 @@ static int psad_ip4_check(uint32_t ip)
     }
 
     /* using bi-search to check whether it's allowed */
-    last = psad->list.nips - 1;
+    last = (int32_t)psad->list.nips - 1;
     while (first <= last) {
         mid = (first + last) / 2;
         rc = (psad->ip4s[mid].v4_addr32 == ip);
@@ -876,11 +875,13 @@ static int psad_ip4_set(struct psad_ip4_list *psad)
         }
     } while (!sorted);
 
+#if 0
     printk("allowed ipv4 addrs to bypass psad:");
     for (i = 0; i < nips; i++) {
         uint8_t *d = (uint8_t *)&ip4s[i];
         printk("%4d: %u.%u.%u.%u\n", i, d[0], d[1], d[2], d[3]);
     }
+#endif
 
     do {
         if (cmpxchg(&g_ip4_list, list, psad) == list)
@@ -919,7 +920,7 @@ static int psad_ip6_check(uint32_t *ip)
 {
     struct psad_ip6_list *psad;
     struct ipaddr_v6 *a6 = (void *)ip;
-    uint32_t rc = 0, first = 0, last, mid;
+    int32_t rc = 0, first = 0, last, mid;
 
     rcu_read_lock();
     /* just skip if there's no allowlist */
@@ -930,7 +931,7 @@ static int psad_ip6_check(uint32_t *ip)
     }
 
     /* using bi-search to check whether it's allowed */
-    last = psad->list.nips - 1;
+    last = (int32_t)psad->list.nips - 1;
     while (first <= last) {
         mid = (first + last) / 2;
         rc = psad_ip6_compare(&psad->ip6s[mid], a6);
@@ -984,6 +985,7 @@ static int psad_ip6_set(struct psad_ip6_list *psad)
         }
     } while (!sorted);
 
+#if 0
     printk("allowed ipv6 addrs to bypass psad:");
     for (i = 0; i < nips; i++) {
         uint16_t *d = (uint16_t *)&psad->ip6s[i];
@@ -991,6 +993,7 @@ static int psad_ip6_set(struct psad_ip6_list *psad)
                 i, ntohs(d[0]), ntohs(d[1]), ntohs(d[2]), ntohs(d[3]),
                 ntohs(d[4]), ntohs(d[5]), ntohs(d[6]), ntohs(d[7]));
     }
+#endif
 
     do {
         if (cmpxchg(&g_ip6_list, list, psad) == list)
