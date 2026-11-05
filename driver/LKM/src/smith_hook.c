@@ -72,7 +72,6 @@ SMITH_HOOK(CHMOD, 1);
 SMITH_HOOK(WRITE, 0);
 SMITH_HOOK(ACCEPT, 0);
 SMITH_HOOK(OPEN, 0);
-SMITH_HOOK(CLOSE, 1);
 SMITH_HOOK(MPROTECT, 0);
 SMITH_HOOK(NANOSLEEP, 0);
 SMITH_HOOK(KILL, 0);
@@ -2507,7 +2506,6 @@ static void rename_and_link_handler(int type, char * oldori, char * newori, char
 
     if (type) {
         rename_print(exe_path, oldori, newori, s_id);
-        file_creation_print(exe_path, newori);
     } else {
         link_print(exe_path, oldori, newori, s_id);
     }
@@ -4270,11 +4268,15 @@ static void smith_enum_img_lru(void)
     read_unlock_irqrestore(&g_rb_img.lock, flags);
 }
 
+/*
+ * disable SMITH_FILE_CREATION_TRACK for performance issues
+ */
+
 /* FMODE_CREATED added since v4.19 */
 #ifdef FMODE_CREATED
 # define SMITH_FILE_CREATION_TRACK 0
 #else
-# define SMITH_FILE_CREATION_TRACK 1
+# define SMITH_FILE_CREATION_TRACK 0
 #endif
 
 #if SMITH_FILE_CREATION_TRACK
@@ -4922,6 +4924,81 @@ TRACEPOINT_PROBE(smith_trace_proc_exit, struct task_struct *task)
     smith_drop_tid(task);
 }
 
+
+static void smith_trace_sysret_prctl(long option, char __user *name, int ret)
+{
+    struct smith_tid *tid = NULL;
+    char *exe_path = DEFAULT_RET_STR;
+    char *newname = NULL;
+    int len;
+
+    //only get PS_SET_NAME data
+    //PR_SET_NAME (since Linux 2.6.9)
+    //Set the name of the calling thread, using the value in the lo‐
+    //cation pointed to by (char *) arg2.  The name can be up to 16
+    //bytes long, including the terminating null byte.  (If the
+    //length of the string, including the terminating null byte, ex‐
+    //ceeds 16 bytes, the string is silently truncated.)
+    if (PR_SET_NAME != option || IS_ERR_OR_NULL(name) || ret != 0)
+        return;
+
+    len = smith_strnlen_user(name, PATH_MAX);
+    if (len <= 0 || len > PATH_MAX)
+        return;
+
+    newname = smith_kzalloc(len + 1, GFP_ATOMIC);
+    if(!newname)
+        return;
+
+    if(smith_copy_from_user(newname, name, len)) {
+        smith_kfree(newname);
+        return;
+    }
+    newname[len] = '\0';
+
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (smith_is_exe_trusted(tid->st_img))
+            goto out;
+    }
+
+    /*
+     * pidtree to be updated in kprobe callback of set_task_comm
+     * so here we won't do smith_update_comm(tid, current->comm)
+     */
+    prctl_print(exe_path, PR_SET_NAME, newname);
+
+out:
+    smith_kfree(newname);
+    if (tid)
+        smith_put_tid(tid);
+}
+
+/* create new session id (-1 if got errors) */
+static void smith_trace_sysret_setsid(int ret)
+{
+    char *exe_path = DEFAULT_RET_STR;
+    char *pid_tree = NULL;
+    struct smith_tid *tid = NULL;
+
+    tid = smith_lookup_tid(current);
+    if (tid) {
+        exe_path = tid->st_img->si_path;
+        // exe filter check
+        if (smith_is_exe_trusted(tid->st_img))
+            goto out;
+        pid_tree = tid->st_pid_tree;
+    }
+
+    setsid_print(exe_path, ret, pid_tree);
+
+out:
+    if (tid)
+        smith_put_tid(tid);
+}
+
 #include <linux/thread_info.h>
 #include <asm/syscall.h> /* syscall_get_nr() */
 #include <asm/unistd.h> /* __NR_syscall defintions */
@@ -4957,6 +5034,22 @@ static void smith_trace_sysexit_x86(struct pt_regs *regs, long id, long ret)
             if (PTRACE_HOOK)
                 smith_trace_sysret_ptrace(regs->bx, regs->cx,
                                           (void *)regs->dx, ret);
+            break;
+
+        /*
+         * create new session id
+         */
+        case 66 /*__NR_ia32_setsid */:
+            if (SETSID_HOOK)
+                smith_trace_sysret_setsid(ret);
+            break;
+
+        /*
+         * prctl: PR_SET_NAME
+         */
+        case 172 /* __NR_ia32_prctl */:
+            if (PRCTL_HOOK)
+                smith_trace_sysret_prctl(regs->bx, (char *)regs->cx, ret);
             break;
 
         /*
@@ -5114,6 +5207,22 @@ static void smith_trace_sysexit_arm32(struct pt_regs *regs, long id, long ret)
             break;
 
         /*
+         * create new session id
+         */
+        case 66: /* setsid */
+            if (SETSID_HOOK)
+                smith_trace_sysret_setsid(ret);
+            break;
+
+        /*
+         * prctl: PR_SET_NAME
+         */
+        case 172: /* prctl */
+            if (PRCTL_HOOK)
+                smith_trace_sysret_prctl(regs->orig_x0, (char *)regs->regs[1], ret);
+            break;
+
+        /*
          * task kill / tkill / tgkill
          */
         case 37: /* kill */
@@ -5246,268 +5355,6 @@ static void smith_trace_sysexit_arm32(struct pt_regs *regs, long id, long ret)
 }
 #endif
 
-static void smith_trace_sysent_close(long fd)
-{
-    struct smith_tid *tid = NULL;
-    char *exe_path = DEFAULT_RET_STR;
-    char *buffer = NULL;
-    char *file_path;
-    struct file *filp = smith_fget_raw(fd);
-
-    if (!filp)
-        return;
-    if (!file_inode(filp))
-        goto out;
-
-#if !SMITH_FILE_CREATION_TRACK
-    if (!(filp->f_mode & FMODE_CREATED))
-        goto out;
-#endif
-
-    tid = smith_lookup_tid(current);
-    if (tid) {
-        exe_path = tid->st_img->si_path;
-        // exe filter check
-        if (smith_is_exe_trusted(tid->st_img))
-            goto out;
-    }
-
-    buffer = smith_kzalloc(PATH_MAX, GFP_ATOMIC);
-    if (!buffer)
-        goto out;
-
-    file_path = smith_get_file_path(fd, buffer, PATH_MAX);
-    if (!smith_remove_ent(file_path))
-        goto out;
-
-    /* we only care about nonempty regular files */
-    if (!S_ISREG(file_inode(filp)->i_mode))
-        goto out;
-    if (!i_size_read(file_inode(filp)))
-        goto out;
-    file_creation_print(exe_path, file_path);
-
-out:
-    if (tid)
-        smith_put_tid(tid);
-    smith_fput(filp);
-    if (buffer)
-        smith_kfree(buffer);
-}
-
-static void smith_trace_sysent_prctl(long option, char __user *name)
-{
-    struct smith_tid *tid = NULL;
-    char *exe_path = DEFAULT_RET_STR;
-    char *newname = NULL;
-    int len;
-
-    //only get PS_SET_NAME data
-    //PR_SET_NAME (since Linux 2.6.9)
-    //Set the name of the calling thread, using the value in the lo‐
-    //cation pointed to by (char *) arg2.  The name can be up to 16
-    //bytes long, including the terminating null byte.  (If the
-    //length of the string, including the terminating null byte, ex‐
-    //ceeds 16 bytes, the string is silently truncated.)
-    if (PR_SET_NAME != option || IS_ERR_OR_NULL(name))
-        return;
-
-    len = smith_strnlen_user(name, PATH_MAX);
-    if (len <= 0 || len > PATH_MAX)
-        return;
-
-    newname = smith_kzalloc(len + 1, GFP_ATOMIC);
-    if(!newname)
-        return;
-
-    if(smith_copy_from_user(newname, name, len)) {
-        smith_kfree(newname);
-        return;
-    }
-    newname[len] = '\0';
-
-    tid = smith_lookup_tid(current);
-    if (tid) {
-        exe_path = tid->st_img->si_path;
-        // exe filter check
-        if (smith_is_exe_trusted(tid->st_img))
-            goto out;
-    }
-
-    /*
-     * pidtree to be updated in kprobe callback of set_task_comm
-     * so here we won't do smith_update_comm(tid, current->comm)
-     */
-    prctl_print(exe_path, PR_SET_NAME, newname);
-
-out:
-    smith_kfree(newname);
-    if (tid)
-        smith_put_tid(tid);
-}
-
-/* create new session id (-1 if got errors) */
-static void smith_trace_sysent_setsid(int ret)
-{
-    char *exe_path = DEFAULT_RET_STR;
-    char *pid_tree = NULL;
-    struct smith_tid *tid = NULL;
-
-    tid = smith_lookup_tid(current);
-    if (tid) {
-        exe_path = tid->st_img->si_path;
-        // exe filter check
-        if (smith_is_exe_trusted(tid->st_img))
-            goto out;
-        pid_tree = tid->st_pid_tree;
-    }
-
-    setsid_print(exe_path, ret, pid_tree);
-
-out:
-    if (tid)
-        smith_put_tid(tid);
-}
-
-#if IS_ENABLED(CONFIG_X86) || IS_ENABLED(CONFIG_IA32_EMULATION)
-
-/* only for x86 systems */
-static void smith_trace_sysent_x86(struct pt_regs *regs, long id, long ret)
-{
-    switch (id) {
-
-        /*
-         * close:
-         */
-        case 6 /* __NR_ia32_close */:
-            if (CLOSE_HOOK)
-                smith_trace_sysent_close(regs->bx);
-            break;
-
-        /*
-         * create new session id
-         */
-        case 66 /*__NR_ia32_setsid */:
-            if (SETSID_HOOK)
-                smith_trace_sysent_setsid(ret);
-            break;
-
-        /*
-         * prctl: PR_SET_NAME
-         */
-        case 172 /* __NR_ia32_prctl */:
-            if (PRCTL_HOOK)
-                smith_trace_sysent_prctl(regs->bx, (char *)regs->cx);
-            break;
-    }
-}
-
-#elif defined(CONFIG_ARM64) && defined(CONFIG_COMPAT)
-
-/* only for ARM64 system */
-static void smith_trace_sysent_arm32(struct pt_regs *regs, long id, long ret)
-{
-    switch (id) {
-
-        /*
-         * close
-         */
-        case 6: /* close */
-            if (CLOSE_HOOK)
-                smith_trace_sysent_close(regs->orig_x0);
-            break;
-
-        /*
-         * create new session id
-         */
-        case 66: /* setsid */
-            if (SETSID_HOOK)
-                smith_trace_sysent_setsid(ret);
-            break;
-
-        /*
-         * prctl: PR_SET_NAME
-         */
-        case 172: /* prctl */
-            if (PRCTL_HOOK)
-                smith_trace_sysent_prctl(regs->orig_x0, (char *)regs->regs[1]);
-            break;
-    }
-}
-#endif
-
-TRACEPOINT_PROBE(smith_trace_sys_enter, struct pt_regs *regs, long ret)
-{
-    long id = syscall_get_nr(current, regs);
-
-    /* ignore all kernel threads */
-    if (current->flags & PF_KTHREAD)
-        return;
-
-#if BITS_PER_LONG == 32
-
-#if IS_ENABLED(CONFIG_X86)
-    /* 32bit OS - x86 / i386 */
-    smith_trace_sysent_x86(regs, id, ret);
-    return;
-#endif
-
-#elif BITS_PER_LONG == 64
-
-#if IS_ENABLED(CONFIG_IA32_EMULATION)
-    /*
-     * Parameters passing for x86-32 syscall:
-     * 1) %eax for syscall_number
-     * 2) %ebx, %ecx, %edx, %esi, %edi, %ebp are used for passing 6 parameters
-     * 3) if there are more than 6 arguments (very unlikely), %ebx must contain
-     *    the user memory location where the list of arguments is stored
-     */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
-    /* in_ia32_syscall(): introduced after 4.7.0 */
-    if (unlikely(in_ia32_syscall())) {
-#else
-    if (unlikely(current_thread_info()->status & TS_COMPAT)) {
-#endif
-        smith_trace_sysent_x86(regs, id, ret);
-        return;
-    }
-#endif
-
-#if defined(CONFIG_ARM64) && defined(CONFIG_COMPAT)
-    if (ESR_ELx_EC_SVC32 == ESR_ELx_EC(read_sysreg(esr_el1))) {
-        smith_trace_sysent_arm32(regs, id, ret);
-        return;
-    }
-#endif
-
-    /* 64-bit native mode: HIDS doesn't support 32bit OS */
-    switch (id) {
-
-        case __NR_close:
-            if (CLOSE_HOOK)
-                smith_trace_sysent_close(p_regs_get_arg1_of_syscall(regs));
-            break;
-
-        /*
-         * create new session id
-         */
-        case __NR_setsid:
-            if (SETSID_HOOK)
-                smith_trace_sysent_setsid(ret);
-            break;
-
-        /*
-         * prctl: PR_SET_NAME
-         */
-        case __NR_prctl:
-            if (PRCTL_HOOK)
-                smith_trace_sysent_prctl(p_regs_get_arg1_of_syscall(regs),
-                                         (char __user *)p_regs_get_arg2_syscall(regs));
-            break;
-    }
-#endif /* BITS_PER_LONG == 64 */
-}
-
 TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
 {
     long id = syscall_get_nr(current, regs);
@@ -5632,6 +5479,23 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
                                             p_regs_get_arg3_syscall(regs), ret);
             break;
 #endif
+
+        /*
+         * create new session id
+         */
+        case __NR_setsid:
+            if (SETSID_HOOK)
+                smith_trace_sysret_setsid(ret);
+            break;
+
+        /*
+         * prctl: PR_SET_NAME
+         */
+        case __NR_prctl:
+            if (PRCTL_HOOK)
+                smith_trace_sysret_prctl(p_regs_get_arg1_of_syscall(regs),
+                                         (char __user *)p_regs_get_arg2_syscall(regs), ret);
+            break;
 
         /*
          * nanosleep
@@ -5806,7 +5670,6 @@ static struct smith_tracepoint {
      * affect all syscalls, and could lead performance drop of about 3
      * - 5%, even with noop-processing in the hookpoint callback
      */
-    {.name = "sys_enter", .handler = smith_trace_sys_enter},
     {.name = "sys_exit", .handler = smith_trace_sys_exit},
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0)
