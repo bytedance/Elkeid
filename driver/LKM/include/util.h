@@ -17,6 +17,7 @@
 #include <linux/ctype.h>
 #include <linux/cred.h>
 #include <linux/kthread.h>
+#include <linux/rbtree.h>
 
 /*
  * constants & globals
@@ -359,6 +360,37 @@ struct tt_node *tt_rb_lookup_key(struct tt_rb *rb, void *key);
 int tt_rb_query_key(struct tt_rb *rb, void *key);
 struct tt_node *tt_rb_find_key(struct tt_rb *rb, void *key);
 void tt_rb_enum(struct tt_rb *rb, void (*cb)(struct tt_node *));
+
+/**
+ * rbtree_postorder_for_each_entry_safe - iterate in post-order over rb_root of
+ * given type allowing the backing memory of @pos to be invalidated
+ *
+ * @pos:	the 'type *' to use as a loop cursor.
+ * @n:		another 'type *' to use as temporary storage
+ * @root:	'rb_root *' of the rbtree.
+ * @field:	the name of the rb_node field within 'type'.
+ *
+ * rbtree_postorder_for_each_entry_safe() provides a similar guarantee as
+ * list_for_each_entry_safe() and allows the iteration to continue independent
+ * of changes to @pos by the body of the loop.
+ *
+ * Note, however, that it cannot handle other modifications that re-order the
+ * rbtree it is iterating over. This includes calling rb_erase() on @pos, as
+ * rb_erase() may rebalance the tree, causing us to miss some nodes.
+ */
+#ifndef rb_entry_safe
+#define rb_entry_safe(ptr, type, member) \
+	({ typeof(ptr) ____ptr = (ptr); \
+	   ____ptr ? rb_entry(____ptr, type, member) : NULL; \
+	})
+#endif
+#ifndef rbtree_postorder_for_each_entry_safe
+#define rbtree_postorder_for_each_entry_safe(pos, n, root, field) \
+	for (pos = rb_entry_safe(rb_first_postorder(root), typeof(*pos), field); \
+	     pos && ({ n = rb_entry_safe(rb_next_postorder(&pos->field), \
+			typeof(*pos), field); 1; }); \
+	     pos = n)
+#endif
 
 /*
  * hash list implementation with rcu lock

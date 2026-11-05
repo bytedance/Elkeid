@@ -294,27 +294,25 @@ struct tt_node *tt_rb_find_key(struct tt_rb *rb, void *key)
     return tnod;
 }
 
-static void tt_rb_clear_node(struct tt_rb *rb, struct rb_node *node)
-{
-    struct tt_node *tnod;
-
-    if (!node)
-        return;
-
-    tt_rb_clear_node(rb, node->rb_left);
-    tt_rb_clear_node(rb, node->rb_right);
-
-    tnod = container_of(node, struct tt_node, node);
-    rb->release(rb, tnod);
-}
-
 void tt_rb_fini(struct tt_rb *rb)
 {
+    struct rb_root root;
+    struct tt_node *tnod, *pos;
     unsigned long flags;
+    unsigned int cnt = 0;
 
     write_lock_irqsave(&rb->lock, flags);
-    tt_rb_clear_node(rb, rb->root.rb_node);
+    root = rb->root;
+    rb->root = RB_ROOT;
     write_unlock_irqrestore(&rb->lock, flags);
+
+    rbtree_postorder_for_each_entry_safe(pos, tnod, &root, node) {
+        rb->release(rb, pos);
+        if (++cnt >= 1024) {
+            cnt = 0;
+            cond_resched();
+        }
+    }
 
     /* cleanup objects pool */
     memcache_fini(&rb->pool);
