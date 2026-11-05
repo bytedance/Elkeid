@@ -1,9 +1,9 @@
 MODULE_NAME 	:= elkeid
 KERNEL_HEAD 	:= $(if $(wildcard $(srctree)/include/.),_-_,$(if $(KVERSION),$(KVERSION),$(shell uname -r)))
 
-LKM_VERSION    := 1.9.1.18
-LKM_VNUM       := 190118
-LKM_SRCID      := 4048ac7fbef962d9ed57249fa52eae3709d740ed
+LKM_VERSION    := 1.9.1.19
+LKM_VNUM       := 190119
+LKM_SRCID      := 1143d7ebbe5cebe8321f4fe14a5f0c25fa2112d0
 
 ifneq ($(KERNELRELEASE),)
 
