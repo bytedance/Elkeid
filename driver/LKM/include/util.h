@@ -421,8 +421,8 @@ static inline void hlist_memcpy(void *t, void *p, int s)
 struct hlist_root {
     spinlock_t      lock;
     void           *data;
-    uint16_t        node;
-    uint16_t        nlists;
+    uint32_t        node;
+    uint32_t        nlists;
     gfp_t           gfp;
     atomic_t        count;
     atomic_t        allocs;

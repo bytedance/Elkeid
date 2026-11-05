@@ -386,6 +386,35 @@ static void hlist_free_node_rcu(struct rcu_head *rcu)
         hlist_free_node(hnod->hash, hnod);
 }
 
+static unsigned long hlist_build_size(void)
+{
+    struct sysinfo info;
+    u64 total_bytes;
+    u32 total_gb;
+
+    si_meminfo(&info);
+    total_bytes = (u64)info.totalram * info.mem_unit;
+    total_gb = (u32)(total_bytes >> 30);
+
+    if (total_gb >= 256)
+        return 256UL * PAGE_SIZE;
+    else if (total_gb >= 128)
+        return 128UL * PAGE_SIZE;
+    else if (total_gb >= 64)
+        return 64UL * PAGE_SIZE;
+    else if (total_gb >= 32)
+        return 32UL * PAGE_SIZE;
+    else if (total_gb >= 16)
+        return 16UL * PAGE_SIZE;
+    else if (total_gb >= 8)
+        return 8UL * PAGE_SIZE;
+    else if (total_gb >= 4)
+        return 4UL * PAGE_SIZE;
+    else if (total_gb >= 2)
+        return 2UL * PAGE_SIZE;
+    return 1UL * PAGE_SIZE;
+}
+
 int hlist_init(struct hlist_root *hr, void *data, int nobjs,
                int objsz, gfp_t gfp_node, gfp_t gfp_op,
                struct hlist_hnod *(*init)(struct hlist_root *, void *),
@@ -393,7 +422,7 @@ int hlist_init(struct hlist_root *hr, void *data, int nobjs,
                int (*cmp)(struct hlist_root *, struct hlist_hnod *, void *),
                void (*release)(struct hlist_root *, struct hlist_hnod *))
 {
-    int i, n;
+    unsigned long i, n;
 
     /* initialize hash list */
     memset(hr, 0, sizeof(struct hlist_root));
@@ -409,9 +438,11 @@ int hlist_init(struct hlist_root *hr, void *data, int nobjs,
     hr->cmp = cmp;
 
     /* initialize hash lists */
-    n = rounddown_pow_of_two(PAGE_SIZE / sizeof(struct list_head));
-    if (num_present_cpus() > 50)
-        n = n << 1;
+    n = rounddown_pow_of_two(hlist_build_size() / sizeof(struct list_head));
+    if (n > 1UL * 1024 * 1024)
+        n = 1UL * 1024 * 1024;
+    if (n < 256)
+        n = 256;
     hr->nlists = n - 1;
     hr->lists = vmalloc(sizeof(struct list_head) * n);
     if (!hr->lists)
@@ -461,6 +492,7 @@ void hlist_fini(struct hlist_root *hr)
             else
                 hlist_free_node(hr, hnod);
         }
+        cond_resched();
     }
     vfree(hr->lists);
 
