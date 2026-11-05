@@ -5003,8 +5003,64 @@ out:
 #include <asm/syscall.h> /* syscall_get_nr() */
 #include <asm/unistd.h> /* __NR_syscall defintions */
 
-
 #if IS_ENABLED(CONFIG_X86) || IS_ENABLED(CONFIG_IA32_EMULATION)
+
+static int smith_skip_sc_x86(int nr)
+{
+    switch (nr) {
+
+        /* 文件 / 通用 I/O */
+        case 3 /*__NR_read */:
+        case 4 /*__NR_write */:
+        case 145 /*__NR_readv */:
+        case 333 /* __NR_preadv */:
+        case 378 /* __NR_preadv2 */:
+        case 180 /* __NR_pread64 */:
+        case 146 /* __NR_writev */:
+        case 334 /* __NR_pwritev */:
+        case 379 /* __NR_pwritev2 */:
+        case 181 /* __NR_pwrite64 */:
+        // __NR_openat
+        // __NR_close
+        case 28 /* __NR_oldfstat */:
+        case 106 /* __NR_stat */:
+        case 195 /* __NR_stat64 */:
+        case 196 /* __NR_lstat64 */:
+        case 197 /* __NR_fstat64 */:
+        case 268 /* __NR_statfs64 */:
+        case 269 /* __NR_fstatfs64 */:
+        case 383 /* __NR_statx */:
+
+        /* 内存 */
+        case 90 /* __NR_mmap */:
+        case 192 /* __NR_mmap2 */:
+        case 91 /* __NR_munmap */:
+        case 125 /* __NR_mprotect */:
+        case 219 /* __NR_madvise */:
+        case 163 /* __NR_mremap */:
+        case 45 /* __NR_brk */:
+
+        /* 事件 / 同步 */
+        case 168 /* __NR_poll */:
+        case 309 /* __NR_ppoll */:
+        case 256 /* __NR_epoll_wait */:
+        case 255 /* __NR_epoll_ctl */:
+        case 319 /* __NR_epoll_pwait */:
+        case 240 /* __NR_futex */:
+        case 265 /* __NR_clock_gettime */:
+
+        /* 进程 / 线程 */
+        case 114 /* __NR_wait4 */:
+        case 284 /* __NR_waitid */:
+        case 7 /* __NR_waitpid */:
+
+        case 158 /* __NR_sched_yield */:
+        case 20 /* __NR_getpid */:
+
+            return 1;
+    }
+    return 0;
+}
 
 /* only for x86 systems */
 static void smith_trace_sysexit_x86(struct pt_regs *regs, long id, long ret)
@@ -5175,6 +5231,60 @@ static void smith_trace_sysexit_x86(struct pt_regs *regs, long id, long ret)
 }
 
 #elif defined(CONFIG_ARM64) && defined(CONFIG_COMPAT)
+
+static int smith_skip_sc_arm32(int nr)
+{
+    switch (nr) {
+
+        /* 文件 / 通用 I/O */
+        case 3 /*__NR_read */:
+        case 4 /*__NR_write */:
+        case 145 /*__NR_readv */:
+        case 361 /* __NR_preadv */:
+        case 392 /* __NR_preadv2 */:
+        case 180 /* __NR_pread64 */:
+        case 146 /* __NR_writev */:
+        case 362 /* __NR_pwritev */:
+        case 393 /* __NR_pwritev2 */:
+        case 181 /* __NR_pwrite64 */:
+        // __NR_openat
+        // __NR_close
+        case 99 /*__NR_statfs */:
+        case 106 /* __NR_stat */:
+        case 107 /* __NR_lstat */:
+        case 195 /* __NR_stat64 */:
+        case 196 /* __NR_lstat64 */:
+        case 266 /* __NR_statfs64 */:
+        case 397 /* __NR_statx */:
+
+        /* 内存 */
+        case 192 /* __NR_mmap2 */:
+        case 91 /* __NR_munmap */:
+        case 125 /* __NR_mprotect */:
+        case 220 /* __NR_madvise */:
+        case 163 /* __NR_mremap */:
+        case 45 /* __NR_brk */:
+
+        /* 事件 / 同步 */
+        case 168 /* __NR_poll */:
+        case 336 /* __NR_ppoll */:
+        case 252 /* __NR_epoll_wait */:
+        case 251 /* __NR_epoll_ctl */:
+        case 346 /* __NR_epoll_pwait */:
+        case 240 /* __NR_futex */:
+        case 263 /* __NR_clock_gettime */:
+
+        /* 进程 / 线程 */
+        case 114 /* __NR_wait4 */:
+        case 280 /* __NR_waitid */:
+
+        case 158 /* __NR_sched_yield */:
+        case 20 /* __NR_getpid */:
+
+            return 1;
+    }
+    return 0;
+}
 
 /* only for ARM64 system */
 static void smith_trace_sysexit_arm32(struct pt_regs *regs, long id, long ret)
@@ -5355,10 +5465,62 @@ static void smith_trace_sysexit_arm32(struct pt_regs *regs, long id, long ret)
 }
 #endif
 
+static int smith_skip_syscall(int nr)
+{
+    switch (nr) {
+
+        /* 文件 / 通用 I/O */
+        case __NR_read:
+        case __NR_write:
+        case __NR_readv:
+        case __NR_writev:
+        case __NR_pread64:
+        case __NR_pwrite64:
+        case __NR_preadv:
+        case __NR_pwritev:
+        case __NR_preadv2:
+        case __NR_pwritev2:
+        // __NR_openat
+        // __NR_close
+        case __NR_statx:
+        case __NR_newfstatat:
+
+        case __NR_io_uring_enter:
+
+        /* 内存 */
+        case __NR_mmap:
+        case __NR_munmap:
+        case __NR_mprotect:
+        case __NR_madvise:
+        case __NR_mremap:
+        case __NR_brk:
+
+        /* 事件 / 同步 */
+#ifdef __NR_epoll_wait
+        case __NR_epoll_wait:
+#endif
+        case __NR_epoll_ctl:
+        case __NR_epoll_pwait:
+        case __NR_futex:
+        case __NR_clock_gettime:
+
+        /* 进程 / 线程 */
+        case __NR_wait4:
+        case __NR_waitid:
+        case __NR_sched_yield:
+        case __NR_getpid:
+
+        return 1;
+    }
+    return 0;
+}
+
 TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
 {
     long id = syscall_get_nr(current, regs);
 
+    if (unlikely(in_interrupt()))
+        return;
     /* ignore all kernel threads */
     if (current->flags & PF_KTHREAD)
         return;
@@ -5367,6 +5529,8 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
 
 #if IS_ENABLED(CONFIG_X86)
     /* 32bit OS - x86 / i386 */
+    if (smith_skip_sc_x86(id))
+        return;
     smith_trace_sysexit_x86(regs, id, ret);
     return;
 #endif
@@ -5387,6 +5551,8 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
 #else
     if (unlikely(current_thread_info()->status & TS_COMPAT)) {
 #endif
+        if (smith_skip_sc_x86(id))
+            return;
         smith_trace_sysexit_x86(regs, id, ret);
         return;
     }
@@ -5394,10 +5560,15 @@ TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
 
 #if defined(CONFIG_ARM64) && defined(CONFIG_COMPAT)
     if (ESR_ELx_EC_SVC32 == ESR_ELx_EC(read_sysreg(esr_el1))) {
+        if (smith_skip_sc_arm32(id))
+            return;
         smith_trace_sysexit_arm32(regs, id, ret);
         return;
     }
 #endif
+
+    if (smith_skip_syscall(id))
+        return;
 
     /* 64-bit native mode: HIDS doesn't support 32bit OS */
     switch (id) {
