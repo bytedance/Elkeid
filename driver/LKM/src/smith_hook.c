@@ -1840,6 +1840,10 @@ static void smith_trace_prepare_exec(struct execve_data *data)
     if (!task->mm)
         return;
     task_lock(task);
+    if (!task->mm) {
+        task_unlock(task);
+        return;
+    }
     args = task->mm->arg_start;
     if (task->mm->arg_end > args)
         larg = task->mm->arg_end - args;
