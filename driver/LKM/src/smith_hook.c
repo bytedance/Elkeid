@@ -5006,64 +5006,88 @@ out:
 #include <linux/thread_info.h>
 #include <asm/syscall.h> /* syscall_get_nr() */
 #include <asm/unistd.h> /* __NR_syscall defintions */
+#include <linux/bitops.h> /* DECLARE_BITMAP / set_bit / test_bit */
+
+/*
+ * syscall quick-bypass bitmaps.
+ *
+ * A set bit means the syscall has no audit handler in the matching
+ * smith_trace_sysexit_*() switch, allowing the sys_exit tracepoint
+ * callback to return before any tid lookup or user memory access.
+ *
+ * WARNING: whenever a new 'case' is added to a sysexit handler switch,
+ * its number MUST be removed from the corresponding table below,
+ * otherwise the new event will be dropped silently (no compile error).
+ *
+ * The ia32 and arm32 compat tables have to stay separate: numeric ids
+ * collide across ABIs with different meanings, e.g. 333 is preadv in
+ * ia32 but fchmodat in arm32 compat, 379 is pwritev2 vs finit_module.
+ *
+ * Tables are populated once in smith_init_skip_maps(); the hot path is
+ * a bounds-checked test_bit(), i.e. a single indexed load with no
+ * indirect jump and no retpoline cost.
+ */
+#define SMITH_SKIP_SC_MAX 512
 
 #if IS_ENABLED(CONFIG_X86) || IS_ENABLED(CONFIG_IA32_EMULATION)
 
-static int smith_skip_sc_x86(int nr)
+/* x86-32 / ia32 compat numbers, see arch/x86/entry/syscalls/syscall_32.tbl */
+static DECLARE_BITMAP(smith_skip_sc_x86_map, SMITH_SKIP_SC_MAX);
+
+static const int smith_skip_sc_x86_nrs[] = {
+
+    /* 文件 / 通用 I/O */
+    3,   /* __NR_read */
+    4,   /* __NR_write */
+    145, /* __NR_readv */
+    333, /* __NR_preadv */
+    378, /* __NR_preadv2 */
+    180, /* __NR_pread64 */
+    146, /* __NR_writev */
+    334, /* __NR_pwritev */
+    379, /* __NR_pwritev2 */
+    181, /* __NR_pwrite64 */
+    /* __NR_openat / __NR_close: reserved, not skipped */
+    28,  /* __NR_oldfstat */
+    106, /* __NR_stat */
+    195, /* __NR_stat64 */
+    196, /* __NR_lstat64 */
+    197, /* __NR_fstat64 */
+    268, /* __NR_statfs64 */
+    269, /* __NR_fstatfs64 */
+    383, /* __NR_statx */
+
+    /* 内存 */
+    90,  /* __NR_mmap */
+    192, /* __NR_mmap2 */
+    91,  /* __NR_munmap */
+    125, /* __NR_mprotect */
+    219, /* __NR_madvise */
+    163, /* __NR_mremap */
+    45,  /* __NR_brk */
+
+    /* 事件 / 同步 */
+    168, /* __NR_poll */
+    309, /* __NR_ppoll */
+    256, /* __NR_epoll_wait */
+    255, /* __NR_epoll_ctl */
+    319, /* __NR_epoll_pwait */
+    240, /* __NR_futex */
+    265, /* __NR_clock_gettime */
+
+    /* 进程 / 线程 */
+    114, /* __NR_wait4 */
+    284, /* __NR_waitid */
+    7,   /* __NR_waitpid */
+
+    158, /* __NR_sched_yield */
+    20,  /* __NR_getpid */
+};
+
+static inline int smith_skip_sc_x86(long nr)
 {
-    switch (nr) {
-
-        /* 文件 / 通用 I/O */
-        case 3 /*__NR_read */:
-        case 4 /*__NR_write */:
-        case 145 /*__NR_readv */:
-        case 333 /* __NR_preadv */:
-        case 378 /* __NR_preadv2 */:
-        case 180 /* __NR_pread64 */:
-        case 146 /* __NR_writev */:
-        case 334 /* __NR_pwritev */:
-        case 379 /* __NR_pwritev2 */:
-        case 181 /* __NR_pwrite64 */:
-        // __NR_openat
-        // __NR_close
-        case 28 /* __NR_oldfstat */:
-        case 106 /* __NR_stat */:
-        case 195 /* __NR_stat64 */:
-        case 196 /* __NR_lstat64 */:
-        case 197 /* __NR_fstat64 */:
-        case 268 /* __NR_statfs64 */:
-        case 269 /* __NR_fstatfs64 */:
-        case 383 /* __NR_statx */:
-
-        /* 内存 */
-        case 90 /* __NR_mmap */:
-        case 192 /* __NR_mmap2 */:
-        case 91 /* __NR_munmap */:
-        case 125 /* __NR_mprotect */:
-        case 219 /* __NR_madvise */:
-        case 163 /* __NR_mremap */:
-        case 45 /* __NR_brk */:
-
-        /* 事件 / 同步 */
-        case 168 /* __NR_poll */:
-        case 309 /* __NR_ppoll */:
-        case 256 /* __NR_epoll_wait */:
-        case 255 /* __NR_epoll_ctl */:
-        case 319 /* __NR_epoll_pwait */:
-        case 240 /* __NR_futex */:
-        case 265 /* __NR_clock_gettime */:
-
-        /* 进程 / 线程 */
-        case 114 /* __NR_wait4 */:
-        case 284 /* __NR_waitid */:
-        case 7 /* __NR_waitpid */:
-
-        case 158 /* __NR_sched_yield */:
-        case 20 /* __NR_getpid */:
-
-            return 1;
-    }
-    return 0;
+    return (unsigned long)nr < SMITH_SKIP_SC_MAX &&
+           test_bit(nr, smith_skip_sc_x86_map);
 }
 
 /* only for x86 systems */
@@ -5236,58 +5260,60 @@ static void smith_trace_sysexit_x86(struct pt_regs *regs, long id, long ret)
 
 #elif defined(CONFIG_ARM64) && defined(CONFIG_COMPAT)
 
-static int smith_skip_sc_arm32(int nr)
+/* arm32 (AArch32) compat numbers, see include/uapi/asm-generic/unistd.h */
+static DECLARE_BITMAP(smith_skip_sc_arm32_map, SMITH_SKIP_SC_MAX);
+
+static const int smith_skip_sc_arm32_nrs[] = {
+
+    /* 文件 / 通用 I/O */
+    3,   /* __NR_read */
+    4,   /* __NR_write */
+    145, /* __NR_readv */
+    361, /* __NR_preadv */
+    392, /* __NR_preadv2 */
+    180, /* __NR_pread64 */
+    146, /* __NR_writev */
+    362, /* __NR_pwritev */
+    393, /* __NR_pwritev2 */
+    181, /* __NR_pwrite64 */
+    /* __NR_openat / __NR_close: reserved, not skipped */
+    99,  /* __NR_statfs */
+    106, /* __NR_stat */
+    107, /* __NR_lstat */
+    195, /* __NR_stat64 */
+    196, /* __NR_lstat64 */
+    266, /* __NR_statfs64 */
+    397, /* __NR_statx */
+
+    /* 内存 */
+    192, /* __NR_mmap2 */
+    91,  /* __NR_munmap */
+    125, /* __NR_mprotect */
+    220, /* __NR_madvise */
+    163, /* __NR_mremap */
+    45,  /* __NR_brk */
+
+    /* 事件 / 同步 */
+    168, /* __NR_poll */
+    336, /* __NR_ppoll */
+    252, /* __NR_epoll_wait */
+    251, /* __NR_epoll_ctl */
+    346, /* __NR_epoll_pwait */
+    240, /* __NR_futex */
+    263, /* __NR_clock_gettime */
+
+    /* 进程 / 线程 */
+    114, /* __NR_wait4 */
+    280, /* __NR_waitid */
+
+    158, /* __NR_sched_yield */
+    20,  /* __NR_getpid */
+};
+
+static inline int smith_skip_sc_arm32(long nr)
 {
-    switch (nr) {
-
-        /* 文件 / 通用 I/O */
-        case 3 /*__NR_read */:
-        case 4 /*__NR_write */:
-        case 145 /*__NR_readv */:
-        case 361 /* __NR_preadv */:
-        case 392 /* __NR_preadv2 */:
-        case 180 /* __NR_pread64 */:
-        case 146 /* __NR_writev */:
-        case 362 /* __NR_pwritev */:
-        case 393 /* __NR_pwritev2 */:
-        case 181 /* __NR_pwrite64 */:
-        // __NR_openat
-        // __NR_close
-        case 99 /*__NR_statfs */:
-        case 106 /* __NR_stat */:
-        case 107 /* __NR_lstat */:
-        case 195 /* __NR_stat64 */:
-        case 196 /* __NR_lstat64 */:
-        case 266 /* __NR_statfs64 */:
-        case 397 /* __NR_statx */:
-
-        /* 内存 */
-        case 192 /* __NR_mmap2 */:
-        case 91 /* __NR_munmap */:
-        case 125 /* __NR_mprotect */:
-        case 220 /* __NR_madvise */:
-        case 163 /* __NR_mremap */:
-        case 45 /* __NR_brk */:
-
-        /* 事件 / 同步 */
-        case 168 /* __NR_poll */:
-        case 336 /* __NR_ppoll */:
-        case 252 /* __NR_epoll_wait */:
-        case 251 /* __NR_epoll_ctl */:
-        case 346 /* __NR_epoll_pwait */:
-        case 240 /* __NR_futex */:
-        case 263 /* __NR_clock_gettime */:
-
-        /* 进程 / 线程 */
-        case 114 /* __NR_wait4 */:
-        case 280 /* __NR_waitid */:
-
-        case 158 /* __NR_sched_yield */:
-        case 20 /* __NR_getpid */:
-
-            return 1;
-    }
-    return 0;
+    return (unsigned long)nr < SMITH_SKIP_SC_MAX &&
+           test_bit(nr, smith_skip_sc_arm32_map);
 }
 
 /* only for ARM64 system */
@@ -5469,54 +5495,125 @@ static void smith_trace_sysexit_arm32(struct pt_regs *regs, long id, long ret)
 }
 #endif
 
-static int smith_skip_syscall(int nr)
-{
-    switch (nr) {
+#if BITS_PER_LONG == 64
 
-        /* 文件 / 通用 I/O */
-        case __NR_read:
-        case __NR_write:
-        case __NR_readv:
-        case __NR_writev:
-        case __NR_pread64:
-        case __NR_pwrite64:
-        case __NR_preadv:
-        case __NR_pwritev:
-        case __NR_preadv2:
-        case __NR_pwritev2:
-        // __NR_openat
-        // __NR_close
-        case __NR_statx:
-        case __NR_newfstatat:
+/* native 64-bit numbers, see include/uapi/asm-generic/unistd.h */
+static DECLARE_BITMAP(smith_skip_syscall_map, SMITH_SKIP_SC_MAX);
 
-        case __NR_io_uring_enter:
+static const int smith_skip_syscall_nrs[] = {
 
-        /* 内存 */
-        case __NR_mmap:
-        case __NR_munmap:
-        case __NR_mprotect:
-        case __NR_madvise:
-        case __NR_mremap:
-        case __NR_brk:
-
-        /* 事件 / 同步 */
-#ifdef __NR_epoll_wait
-        case __NR_epoll_wait:
+    /* 文件 / 通用 I/O */
+    __NR_read,
+    __NR_write,
+    __NR_readv,
+    __NR_writev,
+    __NR_pread64,
+    __NR_pwrite64,
+    __NR_preadv,
+    __NR_pwritev,
+#ifdef __NR_preadv2
+    __NR_preadv2,
+    __NR_pwritev2,
 #endif
-        case __NR_epoll_ctl:
-        case __NR_epoll_pwait:
-        case __NR_futex:
-        case __NR_clock_gettime:
+    /* __NR_openat / __NR_close: reserved, not skipped */
+    __NR_lseek,
+    __NR_getdents64,
+#ifdef __NR_statx
+    __NR_statx,
+#endif
+    __NR_newfstatat,
 
-        /* 进程 / 线程 */
-        case __NR_wait4:
-        case __NR_waitid:
-        case __NR_sched_yield:
-        case __NR_getpid:
+    /* io_uring: no sysexit audit handler, SQE work is invisible here anyway */
+#ifdef __NR_io_uring_setup
+    __NR_io_uring_setup,
+#endif
+#ifdef __NR_io_uring_enter
+    __NR_io_uring_enter,
+#endif
+#ifdef __NR_io_uring_register
+    __NR_io_uring_register,
+#endif
 
-        return 1;
+    /* 内存 */
+    __NR_mmap,
+    __NR_munmap,
+    __NR_mprotect,
+    __NR_madvise,
+    __NR_mremap,
+    __NR_brk,
+
+    /* 事件 / 同步 */
+#ifdef __NR_poll
+    /* __NR_poll only exists on x86-64, no asm-generic (arm64) counterpart */
+    __NR_poll,
+#endif
+    __NR_ppoll,
+    __NR_pselect6,
+#ifdef __NR_epoll_wait
+    __NR_epoll_wait,
+#endif
+    __NR_epoll_ctl,
+    __NR_epoll_pwait,
+#ifdef __NR_epoll_pwait2
+    __NR_epoll_pwait2,
+#endif
+    __NR_futex,
+    __NR_clock_gettime,
+    __NR_clock_nanosleep,
+    /* Go runtime and many VMs toggle signal mask at very high frequency */
+    __NR_rt_sigprocmask,
+    /* 3.17+; guarded for the 2.6.x build floor */
+#ifdef __NR_getrandom
+    __NR_getrandom,
+#endif
+
+    /* 进程 / 线程 */
+    __NR_wait4,
+    __NR_waitid,
+    __NR_sched_yield,
+    __NR_getpid,
+};
+
+static inline int smith_skip_syscall(long nr)
+{
+    return (unsigned long)nr < SMITH_SKIP_SC_MAX &&
+           test_bit(nr, smith_skip_syscall_map);
+}
+#endif
+
+/* populate the quick-bypass bitmaps once at module load */
+static void __init smith_init_skip_maps(void)
+{
+#if IS_ENABLED(CONFIG_X86) || IS_ENABLED(CONFIG_IA32_EMULATION)
+    {
+        int i;
+
+        for (i = 0; i < ARRAY_SIZE(smith_skip_sc_x86_nrs); i++) {
+            BUG_ON(smith_skip_sc_x86_nrs[i] >= SMITH_SKIP_SC_MAX);
+            set_bit(smith_skip_sc_x86_nrs[i], smith_skip_sc_x86_map);
+        }
     }
-    return 0;
+#endif
+#if defined(CONFIG_ARM64) && defined(CONFIG_COMPAT)
+    {
+        int i;
+
+        for (i = 0; i < ARRAY_SIZE(smith_skip_sc_arm32_nrs); i++) {
+            BUG_ON(smith_skip_sc_arm32_nrs[i] >= SMITH_SKIP_SC_MAX);
+            set_bit(smith_skip_sc_arm32_nrs[i], smith_skip_sc_arm32_map);
+        }
+    }
+#endif
+#if BITS_PER_LONG == 64
+    {
+        int i;
+
+        for (i = 0; i < ARRAY_SIZE(smith_skip_syscall_nrs); i++) {
+            BUG_ON(smith_skip_syscall_nrs[i] >= SMITH_SKIP_SC_MAX);
+            set_bit(smith_skip_syscall_nrs[i], smith_skip_syscall_map);
+        }
+    }
+#endif
 }
 
 TRACEPOINT_PROBE(smith_trace_sys_exit, struct pt_regs *regs, long ret)
@@ -7203,6 +7300,9 @@ static int __init kprobe_hook_init(void)
     /* TCPCONN_HOOK depends on CONNECT_HOOK */
     if (!CONNECT_HOOK && TCPCONN_HOOK)
         TCPCONN_HOOK = 0;
+
+    /* build syscall quick-bypass bitmaps before any tracepoint fires */
+    smith_init_skip_maps();
 
     g_loaded_jiffies = smith_get_jiffies();
 
